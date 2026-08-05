@@ -384,6 +384,13 @@ public sealed class ResolveCurrentEventCommandHandler
                 _ => 5
             }
         };
+        // Standard "Combat" nodes: use the player's chosen/generated tier DIRECTLY —
+        // it's already the exact 1-5 RiskTier the catalog/DifficultyMultiplier expect
+        // (see the comment above generatedRiskTier). Previously this re-derived the
+        // level from enemyCount, whose Dangereux/Perilleux buckets both map to 4
+        // enemies — collapsing the two tiers together and silently downgrading a
+        // player's "Périlleux" pick to Dangereux's (lower) stat/loot/reputation/eclats
+        // multipliers.
         var catalogRiskLevel = encounterType switch
         {
             "Elite" => (int)Leds.GameEngine.Domain.Combats.RiskTier.Dangereux,
@@ -391,13 +398,7 @@ public sealed class ResolveCurrentEventCommandHandler
             "Rare" => Math.Max(
                 (int)Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
                 (int)generatedRiskTier),
-            _ => enemyCount switch
-            {
-                <= 2 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Calme,
-                3 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
-                4 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Dangereux,
-                _ => (int)Leds.GameEngine.Domain.Combats.RiskTier.Fatal
-            }
+            _ => (int)generatedRiskTier
         };
 
         var draftContext = new CombatEncounterDraftContext(

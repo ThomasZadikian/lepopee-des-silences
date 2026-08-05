@@ -14,6 +14,7 @@ using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.RoomMaps;
@@ -116,7 +117,11 @@ public static class InfrastructureServiceCollectionExtensions
                 client.Timeout = options.Timeout;
             });
 
-        services.AddHttpClient<IPlayerProfileGateway, HttpPlayerProfileGateway>(
+        // Registered as itself (not as IPlayerProfileGateway) so it can be wrapped below by
+        // EquipmentAwarePlayerProfileGateway, which enriches every returned PlayerProfileView
+        // with equipped items' stat bonuses — the same computation combat uses (PlayerStatMerger)
+        // — instead of the raw base stat block HttpPlayerProfileGateway gets from player-service.
+        services.AddHttpClient<HttpPlayerProfileGateway>(
             (serviceProvider, client) =>
             {
                 var options = serviceProvider
@@ -126,6 +131,12 @@ public static class InfrastructureServiceCollectionExtensions
                 client.BaseAddress = new Uri(options.BaseUrl);
                 client.Timeout = options.Timeout;
             });
+
+        services.AddScoped<IPlayerProfileGateway>(serviceProvider =>
+            new EquipmentAwarePlayerProfileGateway(
+                serviceProvider.GetRequiredService<HttpPlayerProfileGateway>(),
+                serviceProvider.GetRequiredService<PlayerSkillMerger>(),
+                serviceProvider.GetRequiredService<PlayerStatMerger>()));
 
         RegisterOutbox(services, configuration);
 

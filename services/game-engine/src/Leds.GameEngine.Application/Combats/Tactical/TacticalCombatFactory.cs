@@ -57,12 +57,23 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
                 ?.EquippedItemKeys.ToArray() ?? []));
 
         var selectedNode = room.GetNode(nodeId);
+        // The player's chosen/generated tier lives directly on the node
+        // (selectedNode.CombatRiskTier — set at generation and, for Combat/Rare nodes,
+        // overridable via the "Difficulté" room selector / SetRoomRiskTierCommand). Elite
+        // and RoomBoss/FinalBoss keep a fixed danger tier by design, mirroring
+        // ResolveCurrentEventCommandHandler.GenerateEncounterDraft's catalogRiskLevel — but
+        // Combat/Rare MUST reuse the node's own tier as-is. Reconstructing it from the
+        // deployed enemy headcount (the previous approach) is lossy: Dangereux and Perilleux
+        // both field 4 enemies, so a "Périlleux" pick silently landed here as Dangereux —
+        // understating AI aggression (TacticalEnemyAi) and the RiskTier-gated behaviors in
+        // TacticalEnemyTurnDriver, on top of the identical bug fixed at draft-generation time.
         var riskTier = selectedNode.EventType switch
         {
             NodeEventType.RoomBoss or NodeEventType.FinalBoss => RiskTier.Fatal,
             NodeEventType.Elite => RiskTier.Dangereux,
-            NodeEventType.Rare => enemies.Length <= 2 ? RiskTier.Tendu : TierFromCount(enemies.Length),
-            _ => TierFromCount(enemies.Length)
+            NodeEventType.Rare => (RiskTier)Math.Max(
+                (int)RiskTier.Tendu, (int)(selectedNode.CombatRiskTier ?? RiskTier.Tendu)),
+            _ => selectedNode.CombatRiskTier ?? RiskTier.Tendu
         };
         var escapePosition = selectedNode.EventType == NodeEventType.Combat
             ? ResolveEscapePosition(battlefield, allyCells, enemyCells)
@@ -95,14 +106,6 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
             roster.MiroirEnabled,
             roster.ForgottenSkillKey);
     }
-
-    private static RiskTier TierFromCount(int enemyCount) => enemyCount switch
-    {
-        <= 2 => RiskTier.Calme,
-        3 => RiskTier.Tendu,
-        4 => RiskTier.Dangereux,
-        _ => RiskTier.Fatal
-    };
 
     private static GridPosition? ResolveEscapePosition(
         TacticalBattlefield battlefield,
