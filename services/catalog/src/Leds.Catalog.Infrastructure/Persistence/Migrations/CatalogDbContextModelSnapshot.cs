@@ -2493,6 +2493,18 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(10)
                         .HasColumnName("action_cost");
 
+                    b.Property<string>("AllowedArchetypesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("allowed_archetypes_json");
+
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Player")
+                        .HasColumnName("audience");
+
                     b.Property<int>("BasePower")
                         .HasColumnType("integer")
                         .HasColumnName("base_power");

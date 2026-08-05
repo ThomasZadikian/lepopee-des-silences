@@ -63,6 +63,8 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
     {
         var effects = JsonSerializer.Deserialize<List<SkillEffectSpec>>(
             entity.EffectsJson ?? "[]", JsonOptions) ?? [];
+        var allowedArchetypes = JsonSerializer.Deserialize<List<string>>(
+            entity.AllowedArchetypesJson ?? "[]", JsonOptions) ?? [];
 
         return SkillDefinition.Create(
             entity.Key, entity.Name, entity.Description, entity.Version,
@@ -77,6 +79,8 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
             requiresLineOfSight: entity.RequiresLineOfSight,
             cooldown: entity.Cooldown,
             isUltimate: entity.IsUltimate,
-            emotionalRegister: entity.EmotionalRegister);
+            emotionalRegister: entity.EmotionalRegister,
+            audience: entity.Audience,
+            allowedArchetypes: allowedArchetypes);
     }
 }

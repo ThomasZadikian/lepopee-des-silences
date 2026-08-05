@@ -6,6 +6,7 @@ import { usePlayerStore } from '../../../party/stores/playerStore';
 import { useRunStore } from '../../stores/runStore';
 import { skillsApi } from '../../../party/api/skillsApi';
 import { categoryLabel } from './grimoireDisplay';
+import { isArchetypeIncompatible } from '../../../party/archetypes';
 import GrimoireSkillCard from './GrimoireSkillCard.vue';
 import GrimoirePaginationControls from './GrimoirePaginationControls.vue';
 
@@ -59,6 +60,10 @@ const filteredSkills = computed(() => {
 
 const knownKeys = computed(() => new Set(props.character.skills.map((s) => s.skillKey)));
 
+function isIncompatible(skill: SkillDefinitionView): boolean {
+  return isArchetypeIncompatible(skill.allowedArchetypes, props.character.definitionKey);
+}
+
 // ── Staged equip/unequip state ("Valider les choix") ──
 const pendingEquippedKeys = ref<Set<string>>(new Set());
 
@@ -90,6 +95,8 @@ function togglePending(skillKey: string) {
     next.delete(skillKey);
   } else {
     if (isLoadoutFull.value) return;
+    const skill = allSkills.value.find((s) => s.key === skillKey);
+    if (skill && isIncompatible(skill)) return;
     next.add(skillKey);
   }
   pendingEquippedKeys.value = next;
@@ -268,7 +275,8 @@ function cancelChoices() {
             :skill="skill"
             :is-known="true"
             :is-equipped="false"
-            :disabled="isLoadoutFull"
+            :disabled="isLoadoutFull || isIncompatible(skill)"
+            :archetype-incompatible="isIncompatible(skill)"
             @toggle-equip="togglePending"
           />
         </div>

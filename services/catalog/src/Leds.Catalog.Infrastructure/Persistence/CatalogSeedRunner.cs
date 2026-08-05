@@ -2527,12 +2527,12 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.flamme-froide", "Flamme froide",
             "Bleu-violet, elle ne brûle pas la peau mais la chair, et le givre transperce l'os. Le sort de l'apothicaire.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.priere-aspiration", "Prière",
             "Une prière lituique aspire la conscience. Elle restaure — mais nourrit ce qui rôde, et gonfle l'Égo.",
-            "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
+            "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 3, Stat: "Defense") },
             category: "Magic");
 
@@ -2559,24 +2559,24 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
-            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 4, TicksPerTurn * 3, Stat: "AttackPower") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.brume", "Brume",
             "Le brouillard non-naturel se lève. Portée et précision s'effondrent — pour tous.",
-            "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken,
+            "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 3, Stat: "Focus") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.flamme-seraphine", "Flamme Séraphine",
             "Le feu, le vrai. La seule terreur de l'Homoncule. Pure, dévorante, sans gel.",
-            "Damage", "SingleEnemy", "Damage", mana: 12, power: 34, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 34, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.se-taire", "Se taire",
             "Ne rien dire. Ne pas prier. L'acte de silence. Inutile contre la chair — dévastateur contre ce qui se nourrit de la voix.",
-            "Silence", "AllEnemies", "Status", mana: 0, power: 0, cancellationToken,
+            "Silence", "AllEnemies", "Status", mana: 0, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("Silence", null, 0, 3) },
             category: "Magic");
 
@@ -2646,7 +2646,7 @@ public sealed partial class CatalogSeedRunner
         // indépendant de qui le lance.
         await UpsertSkillAsync("canon.skill.frayeur-organique", "Frayeur organique",
             "Une peur qui ne vient pas de la voix — elle sourd de lui, brute, organique, sans qu'il ait besoin de dire un mot.",
-            "Damage", "SingleEnemy", "Damage", mana: 14, power: 16, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 16, cancellationToken, audience: "Any",
             category: "Magic");
 
         // "Clairvoyance" (Araran) : réduit de 5 points la chance de coup critique de
@@ -2668,7 +2668,7 @@ public sealed partial class CatalogSeedRunner
         // "Connaissance académique" plus haut).
         await UpsertSkillAsync("canon.skill.impulsivite", "Impulsivité",
             "Agir avant de réfléchir — plus vite, plus fort, mais à découvert.",
-            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken, allowedArchetypes: new[] { "GlassCannon" },
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.impulsivite:speed", 5, TicksPerTurn * 5,
@@ -2716,7 +2716,7 @@ public sealed partial class CatalogSeedRunner
         // EffectType que Heal ("% des PV max")/Création ("nb de tours").
         await UpsertSkillAsync("canon.skill.ecriture-continuelle", "Écriture continuelle",
             "Il n'arrête jamais d'écrire — et ce qu'il décrit continue, un peu plus longtemps que prévu, de se produire.",
-            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 16, power: 25, cancellationToken,
+            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 16, power: 25, cancellationToken, audience: "Any",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.larme-des-enfers", "Larme des enfers",
@@ -2727,7 +2727,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.souffle-de-la-forge", "Souffle de la forge",
             "Cette puissante machine crache ses flammes jusqu'au tréfonds des enfers. Celui qui sait la manier peut calciner son adversaire jusqu'à ce que ses os fondent.",
-            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken, audience: "Any",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 10, TicksPerTurn * 10, TickInterval: TicksPerTurn) },
             category: "Physical");
 
@@ -2735,7 +2735,7 @@ public sealed partial class CatalogSeedRunner
         // partagée (voir CombatTime.TicksPerTurn côté moteur).
         await UpsertSkillAsync("canon.skill.contemplation-infinie", "Contemplation infinie",
             "En se perdant dans les méandres du Palais, la vérité apparaît, mais la clairvoyance pousse à l'immobilité.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -25, TicksPerTurn * 3,
@@ -2746,14 +2746,14 @@ public sealed partial class CatalogSeedRunner
         // "Silence" : neutralise complètement la prochaine activation de la cible.
         await UpsertSkillAsync("canon.skill.silence", "Silence",
             "Le silence n'est pas seulement une manière de réfléchir, mais il est également une punition à ceux qui se montrent trop agressifs.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("Silence", null, 0, TicksPerTurn) },
             category: "Magic");
 
         // Type émotionnel intrinsèque (Mémoire) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
         await UpsertSkillAsync("canon.skill.sursaut-memoriel", "Sursaut mémoriel",
             "La mémoire est une réalité qu'il faut trop souvent fuir. Mais rappelez-vous, et souffrez pour accepter.",
-            "Damage", "SingleEnemy", "Damage", mana: 20, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 12, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 11, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
             category: "Magic");
 
@@ -2777,19 +2777,19 @@ public sealed partial class CatalogSeedRunner
         // Type émotionnel intrinsèque (Déni) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
         await UpsertSkillAsync("canon.skill.anagramme", "Anagramme",
             "Inverse les lettres, change les mots, change de personne et attaque sous une nouvelle identité.",
-            "Damage", "SingleEnemy", "Damage", mana: 14, power: 17, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 17, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Type émotionnel intrinsèque (Silence) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
         await UpsertSkillAsync("canon.skill.lecture-des-silences", "Lecture des silences",
             "Lire des passages du tome de silence n'est pas donné à tous, mais ceux qui y arrivent font peser le silence sur les ennemis.",
-            "Damage", "SingleEnemy", "Damage", mana: 14, power: 15, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 15, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Type émotionnel intrinsèque (Effroi) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
         await UpsertSkillAsync("canon.skill.nevrose", "Névrose",
             "Plonger son ennemi dans une névrose profonde, lui dictant des passages du tome des silences.",
-            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 10, TickInterval: TicksPerTurn) },
             category: "Magic");
 
@@ -2799,7 +2799,7 @@ public sealed partial class CatalogSeedRunner
         // (DoT), les deux durant la même fenêtre de 15 tours.
         await UpsertSkillAsync("canon.skill.plongee-dans-la-folie", "Plongée dans la folie",
             "Fait perdre tout contact avec la réalité à la cible, la rendant extrêmement puissante mais la faisant se consumer à petit feu.",
-            "Damage", "SingleEnemy", "Damage", mana: 24, power: 20, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 24, power: 20, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("DamageOverTime", null, 10, TicksPerTurn * 15, TickInterval: TicksPerTurn),
@@ -2811,23 +2811,23 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.egide", "Égide",
             "Lève une égide mentale pour se protéger des assaillants actuels.",
-            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken,
+            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.rempart", "Rempart",
             "Élève de puissants remparts pour contrecarrer les attaques ennemies.",
-            "Buff", "AllAllies", "Guard", mana: 16, power: 7, cancellationToken,
+            "Buff", "AllAllies", "Guard", mana: 16, power: 7, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.symphonie-des-enfers", "Symphonie des enfers",
             "Les enfers vous viennent en aide ; ils veulent récupérer toutes les âmes qui se trouvent face à vous.",
-            "Damage", "AllEnemies", "Damage", mana: 26, power: 6, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 26, power: 6, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.deluge-du-styx", "Déluge du Styx",
             "Ouvre une brèche pour laisser se déverser les eaux des enfers, empoisonnant les ennemis.",
-            "Debuff", "AllEnemies", "Debuff", mana: 22, power: 0, cancellationToken,
+            "Debuff", "AllEnemies", "Debuff", mana: 22, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
             category: "Magic");
 
@@ -2857,7 +2857,7 @@ public sealed partial class CatalogSeedRunner
         // pas au lanceur (pas de AppliesToActor, cf. "Rempart").
         await UpsertSkillAsync("canon.skill.fondations-de-thomas", "Fondations",
             "Il pose, sous les pas d'un allié, quelque chose d'aussi stable que le Palais lui-même.",
-            "Buff", "SingleAlly", "Guard", mana: 14, power: 15, cancellationToken,
+            "Buff", "SingleAlly", "Guard", mana: 14, power: 15, cancellationToken, allowedArchetypes: new[] { "Tank" },
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.fondations-de-thomas:defense", 10, TicksPerTurn * 4,
@@ -2869,7 +2869,7 @@ public sealed partial class CatalogSeedRunner
         // thème protecteur/enfantin, cohérent avec sa persona (veillée par Him'Lit).
         await UpsertSkillAsync("canon.skill.veillee-de-mina", "Veillée",
             "Elle veille sur toi comme Him'Lit veille sur elle — une garde qui revient, tour après tour.",
-            "Buff", "SingleAlly", "Buff", mana: 18, power: 0, cancellationToken,
+            "Buff", "SingleAlly", "Buff", mana: 18, power: 0, cancellationToken, allowedArchetypes: new[] { "Support" },
             effects: new[]
             {
                 new SkillEffectSpec("GuardOverTime", null, 6, TicksPerTurn * 5, TickInterval: TicksPerTurn)
@@ -2880,7 +2880,7 @@ public sealed partial class CatalogSeedRunner
         // le seul geste concret d'Elise, elle qui ne répond jamais aux questions.
         await UpsertSkillAsync("canon.skill.baiser-delise", "Baiser d'Elise",
             "Elle ne dit rien. Elle pose seulement les lèvres, et ce qui était perdu revient, un peu.",
-            "Heal", "SingleAlly", "Heal", mana: 16, power: 20, cancellationToken,
+            "Heal", "SingleAlly", "Heal", mana: 16, power: 20, cancellationToken, allowedArchetypes: new[] { "Hybrid" },
             category: "Magic",
             basePowerIsPercentOfMaxVitality: true);
 
@@ -2890,7 +2890,7 @@ public sealed partial class CatalogSeedRunner
         // John, pas sur la cible frappée (cf. "La liberté retrouvée").
         await UpsertSkillAsync("canon.skill.vol-a-la-tire", "Vol à la tire",
             "Un geste vif, appris dans les ruines, avant que le Palais ne lui envoie Him'Lit.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken, allowedArchetypes: new[] { "Opportunist" },
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.vol-a-la-tire:crit", 10, TicksPerTurn,
@@ -2923,13 +2923,13 @@ public sealed partial class CatalogSeedRunner
         // Pli du tapis (Veilleur du Tapis) : frappe basique flavorée, le tapis claque comme un fouet.
         await UpsertSkillAsync("canon.skill.pli-du-tapis", "Pli du tapis",
             "Le tapis se soulève et claque comme un fouet.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Étouffement feutré (Veilleur du Tapis) : -15% Vitesse, 3 tours.
         await UpsertSkillAsync("canon.skill.etouffement-feutre", "Étouffement feutré",
             "Enroule la cible : le tapis absorbe le bruit des pas.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3,
@@ -2942,19 +2942,19 @@ public sealed partial class CatalogSeedRunner
         // (règle comportementale, non une restriction de ciblage moteur).
         await UpsertSkillAsync("canon.skill.seuil-souille", "Seuil souillé",
             "Punition du protocole : quiconque frappe un Veilleur en répond devant tous les autres.",
-            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Service du thé (Porteur de Plateau) : soin 12% PV max.
         await UpsertSkillAsync("canon.skill.service-du-the", "Service du thé",
             "Soigne l'allié le plus blessé. La première tasse fume toujours.",
-            "Heal", "SingleAlly", "Heal", mana: 10, power: 12, cancellationToken,
+            "Heal", "SingleAlly", "Heal", mana: 10, power: 12, cancellationToken, audience: "Enemy",
             category: "Magic", basePowerIsPercentOfMaxVitality: true);
 
         // Tasse retournée (Porteur de Plateau) : poison 5 dégâts/tour, 6 tours.
         await UpsertSkillAsync("canon.skill.tasse-retournee", "Tasse retournée",
             "La troisième tasse trouve enfin preneur.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("DamageOverTime", null, 5, TicksPerTurn * 6, TickInterval: TicksPerTurn)
@@ -2964,14 +2964,14 @@ public sealed partial class CatalogSeedRunner
         // Étiquette (Porteur de Plateau) : +3 Focus brut à toute l'équipe, 3 tours.
         await UpsertSkillAsync("canon.skill.etiquette", "Étiquette",
             "Le service se resserre.",
-            "Buff", "AllAllies", "Buff", mana: 8, power: 0, cancellationToken,
+            "Buff", "AllAllies", "Buff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 3, TicksPerTurn * 3, Stat: "Focus") },
             category: "Magic");
 
         // Formule creuse (Écho de Politesse) : dégâts magiques.
         await UpsertSkillAsync("canon.skill.formule-creuse", "Formule creuse",
             "Les mots vides pèsent plus lourd qu'on ne croit.",
-            "Damage", "SingleEnemy", "Damage", mana: 9, power: 13, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 9, power: 13, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Courbette inversée (Écho de Politesse) : la doc décrit un renvoi de 30% des
@@ -2980,7 +2980,7 @@ public sealed partial class CatalogSeedRunner
         // que réflexion offensive, simplification à assumer/affiner plus tard).
         await UpsertSkillAsync("canon.skill.courbette-inversee", "Courbette inversée",
             "La politesse se retourne.",
-            "Buff", "Self", "Buff", mana: 11, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 11, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, 30, TicksPerTurn * 2, Stat: "MagicDamageReduction")
@@ -2990,13 +2990,13 @@ public sealed partial class CatalogSeedRunner
         // Chute de marbre (Sentinelle du Seuil) : frappe lourde.
         await UpsertSkillAsync("canon.skill.chute-de-marbre", "Chute de marbre",
             "Frappe lourde mono-cible. Elle doit se redresser.",
-            "Damage", "SingleEnemy", "Damage", mana: 6, power: 18, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 18, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Socle (Sentinelle du Seuil) : garde instantanée de 15.
         await UpsertSkillAsync("canon.skill.socle", "Socle",
             "Redevient pilier un instant.",
-            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken,
+            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Verdict du seuil (Sentinelle du Seuil) : exécution. La doc exige -DEF ET
@@ -3004,7 +3004,7 @@ public sealed partial class CatalogSeedRunner
         // restriction de ciblage moteur.
         await UpsertSkillAsync("canon.skill.verdict-du-seuil", "Verdict du seuil",
             "Le protocole est complet ; la sentence tombe.",
-            "Damage", "SingleEnemy", "Damage", mana: 16, power: 28, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 28, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // roomTypes uses "Memory"/"Silence", not "Threshold": no Palais room theme ever
@@ -3083,7 +3083,7 @@ public sealed partial class CatalogSeedRunner
         // magique mineure et immédiate.
         await UpsertSkillAsync("canon.skill.dictee", "Dictée",
             "Marque la cible : ce qui est dicté est aggravé.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 2, Stat: "MagicDefense")
@@ -3093,13 +3093,13 @@ public sealed partial class CatalogSeedRunner
         // Plume sèche (Copiste Aveugle) : frappe de repli quand le mana manque.
         await UpsertSkillAsync("canon.skill.plume-seche", "Plume sèche",
             "Griffure de plume. Frappe de repli quand le mana manque.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Encre vive (Encrier Vivant) : DoT pur, l'encre pénètre et continue d'écrire.
         await UpsertSkillAsync("canon.skill.encre-vive", "Encre vive",
             "L'encre pénètre et continue d'écrire sous la peau.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 8, TickInterval: TicksPerTurn)
@@ -3111,20 +3111,20 @@ public sealed partial class CatalogSeedRunner
         // ajouté avec cette famille pour porter le rôle de réservoir tactique du groupe.
         await UpsertSkillAsync("canon.skill.recharge", "Recharge",
             "L'encrier se penche, l'allié trempe sa plume.",
-            "Buff", "SingleAlly", "RestoreMana", mana: 0, power: 8, cancellationToken,
+            "Buff", "SingleAlly", "RestoreMana", mana: 0, power: 8, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Éclaboussure (Encrier Vivant) : dégâts de zone légers + -2 Focus (2 tours).
         await UpsertSkillAsync("canon.skill.eclaboussure", "Éclaboussure",
             "L'encre gicle dans les yeux.",
-            "Damage", "AllEnemies", "Damage", mana: 12, power: 10, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 12, power: 10, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -2, TicksPerTurn * 2, Stat: "Focus") },
             category: "Magic");
 
         // Corps de verre (Encrier Vivant) : garde instantanée de 10.
         await UpsertSkillAsync("canon.skill.corps-de-verre", "Corps de verre",
             "Durcit sa paroi fêlée.",
-            "Buff", "Self", "Guard", mana: 8, power: 10, cancellationToken,
+            "Buff", "Self", "Guard", mana: 8, power: 10, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Phrase inachevée (Page Inachevée) : dégâts magiques. Le bonus documenté
@@ -3134,7 +3134,7 @@ public sealed partial class CatalogSeedRunner
         // narratif reste respecté même sans bonus de puissance conditionnel.
         await UpsertSkillAsync("canon.skill.phrase-inachevee", "Phrase inachevée",
             "Dégâts. Si la cible était en train de canaliser ou vient de subir Silence : la phrase frappe plus fort.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // Marge blanche (Page Inachevée) : la doc décrit l'effacement du plus récent
@@ -3143,7 +3143,7 @@ public sealed partial class CatalogSeedRunner
         // n'existe pas »), simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.marge-blanche", "Marge blanche",
             "Ce qui n'est pas écrit n'existe pas.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 2, Stat: "Focus") },
             category: "Magic");
 
@@ -3153,7 +3153,7 @@ public sealed partial class CatalogSeedRunner
         // simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.repli-de-papier", "Repli de papier",
             "Se plie sur elle-même.",
-            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken,
+            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Couture (Le Relieur) : l'aiguille traverse. La doc conditionne -3 Vitesse à
@@ -3162,7 +3162,7 @@ public sealed partial class CatalogSeedRunner
         // simplification mineure à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.couture", "Couture",
             "L'aiguille traverse. Cousue sur place.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Speed") },
             category: "Physical");
 
@@ -3173,7 +3173,7 @@ public sealed partial class CatalogSeedRunner
         // assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.reliure-de-chair", "Reliure de chair",
             "Lie deux adversaires : la douleur de l'un rejaillit sur l'autre.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true)
@@ -3186,7 +3186,7 @@ public sealed partial class CatalogSeedRunner
         // simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.noeud-final", "Nœud final",
             "Le livre se ferme.",
-            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -3265,18 +3265,18 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.griffe-dos", "Griffe d'os",
             "Frappe simple. Ce que tout ce qui a des phalanges sait faire.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.fragment-grave", "Fragment gravé",
             "Lance un éclat d'os gravé : la cible voit le souvenir.",
-            "Damage", "SingleEnemy", "Damage", mana: 6, power: 8, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 8, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -2, TicksPerTurn * 2, Stat: "Focus") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.etreinte-creuse", "Étreinte creuse",
             "Agrippe : il cherche quelqu'un pour se souvenir de lui.",
-            "Damage", "SingleEnemy", "Damage", mana: 4, power: 6, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 4, power: 6, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
@@ -3285,17 +3285,17 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.effondrement", "Effondrement",
             "Se démembre volontairement : dégâts de zone.",
-            "Damage", "AllEnemies", "Damage", mana: 0, power: 6, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 0, power: 6, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.braise-memorielle", "Braise mémorielle",
             "Rallume un Ossement — pour l'instant, ne fait que se replier prudemment.",
-            "Buff", "Self", "Guard", mana: 8, power: 6, cancellationToken,
+            "Buff", "Self", "Guard", mana: 8, power: 6, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.jet-de-cendre", "Jet de cendre",
             "La cendre entre dans les yeux et la mémoire.",
-            "Damage", "SingleEnemy", "Damage", mana: 7, power: 9, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 7, power: 9, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
             category: "Magic");
 
@@ -3305,14 +3305,14 @@ public sealed partial class CatalogSeedRunner
         // pour un coût), simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.fardeau-partage", "Fardeau partagé",
             "Il absorbe le fardeau de l'allié.",
-            "Heal", "SingleAlly", "Heal", mana: 10, power: 8, cancellationToken,
+            "Heal", "SingleAlly", "Heal", mana: 10, power: 8, cancellationToken, audience: "Enemy",
             category: "Magic", basePowerIsPercentOfMaxVitality: true);
 
         // "Berceuse inversée" réduit temporairement la Vitesse et déclenche donc
         // immédiatement le recalcul de l'ordre tactique.
         await UpsertSkillAsync("canon.skill.berceuse-inversee", "Berceuse inversée",
             "Le sommeil monte sans qu'aucun son ne l'annonce.",
-            "Debuff", "AllEnemies", "Debuff", mana: 12, power: 0, cancellationToken,
+            "Debuff", "AllEnemies", "Debuff", mana: 12, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
@@ -3324,7 +3324,7 @@ public sealed partial class CatalogSeedRunner
         // (famille Copistes).
         await UpsertSkillAsync("canon.skill.note-tenue", "Note tenue",
             "L'accord final.",
-            "Damage", "SingleEnemy", "Damage", mana: 18, power: 20, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 20, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -3388,7 +3388,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.morsure-composite", "Morsure composite",
             "Trois rangées de dents qui ne s'accordent pas.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Bond de flanc" : la doc décrit une intargetabilité par les attaques de
@@ -3397,7 +3397,7 @@ public sealed partial class CatalogSeedRunner
         // plus tard.
         await UpsertSkillAsync("canon.skill.bond-de-flanc", "Bond de flanc",
             "Frappe et change de rang.",
-            "Damage", "SingleEnemy", "Damage", mana: 6, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 10, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Curée" : la doc décrit un soin de 50% des dégâts infligés (lifesteal) —
@@ -3406,7 +3406,7 @@ public sealed partial class CatalogSeedRunner
         // même coup, simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.curee", "Curée",
             "Ne frappe que ce qui est déjà à terre.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("HealOverTime", null, 8, TicksPerTurn, TickInterval: TicksPerTurn,
@@ -3419,7 +3419,7 @@ public sealed partial class CatalogSeedRunner
         // instantanée, même esprit défensif par un autre levier déjà câblé.
         await UpsertSkillAsync("canon.skill.guet", "Guet",
             "Elle attend que ça saigne.",
-            "Buff", "Self", "Guard", mana: 0, power: 6, cancellationToken,
+            "Buff", "Self", "Guard", mana: 0, power: 6, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Désignation" : la doc décrit +10% dégâts physiques subis — aucun canal
@@ -3428,7 +3428,7 @@ public sealed partial class CatalogSeedRunner
         // dégâts symétrique), simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.designation", "Désignation",
             "Marque une cible : toutes les Chimères la priorisent.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true)
@@ -3437,31 +3437,31 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.houlette", "Houlette",
             "Un coup sec de la règle démesurée. Rappel à l'ordre.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 11, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 11, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Ration" : la doc décrit une dépense de 2 crans de Faim (non modélisée) —
         // le coût est ignoré, seul le soin de groupe est câblé.
         await UpsertSkillAsync("canon.skill.ration", "Ration",
             "Le berger nourrit — un peu, jamais assez.",
-            "Buff", "AllAllies", "Heal", mana: 10, power: 10, cancellationToken,
+            "Buff", "AllAllies", "Heal", mana: 10, power: 10, cancellationToken, audience: "Enemy",
             category: "Magic", basePowerIsPercentOfMaxVitality: true);
 
         await UpsertSkillAsync("canon.skill.brout", "Brout",
             "Passe son tour en broutant. Le calme s'épaissit.",
-            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken,
+            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Regard fixe" réduit temporairement la Vitesse.
         await UpsertSkillAsync("canon.skill.regard-fixe", "Regard fixe",
             "Vous l'avez regardé trop longtemps.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.belement-a-lenvers", "Bêlement à l'envers",
             "Un son qui rentre au lieu de sortir.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Détente" : la doc ajoute un déclenchement passif à la mort de l'Agneau —
@@ -3470,7 +3470,7 @@ public sealed partial class CatalogSeedRunner
         // l'IA (AgneauInverseBossBehavior).
         await UpsertSkillAsync("canon.skill.detente", "Détente",
             "Le silence comprimé se libère.",
-            "Damage", "AllEnemies", "Damage", mana: 0, power: 26, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 0, power: 26, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("Silence", null, 0, TicksPerTurn) },
             category: "Magic");
 
@@ -3534,7 +3534,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.coup-de-plaque", "Coup de plaque",
             "Frappe avec ce qui dépasse.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Foyer ouvert" : la doc décrit un piège réactif (Brûlure à la première
@@ -3545,13 +3545,13 @@ public sealed partial class CatalogSeedRunner
         // (voir CreationInstableBossBehavior, via Combatant.LastAttackerId).
         await UpsertSkillAsync("canon.skill.foyer-ouvert", "Foyer ouvert",
             "Son torse s'ouvre.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 5, TicksPerTurn * 4, TickInterval: TicksPerTurn) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.redressement", "Redressement",
             "Elle se remet droite. Encore.",
-            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.redressement:attack", 4, TicksPerTurn * 3, Stat: "AttackPower"),
@@ -3561,12 +3561,12 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.frappe-denclume", "Frappe d'enclume",
             "Le geste appris. Précis, cadencé, sans intention.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.cadence", "Cadence",
             "Le rythme s'accélère.",
-            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 4, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Physical");
 
@@ -3576,12 +3576,12 @@ public sealed partial class CatalogSeedRunner
         // l'IA le réservant aux cibles déjà sous DoT (voir MarteauVivantBossBehavior).
         await UpsertSkillAsync("canon.skill.coup-de-grace-forgeron", "Coup de grâce du forgeron",
             "On frappe le fer tant qu'il est chaud.",
-            "Damage", "SingleEnemy", "Damage", mana: 14, power: 22, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 22, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.transmutation-alliee", "Transmutation",
             "Plomb, or, mercure, soufre, sel.",
-            "Buff", "SingleAlly", "Buff", mana: 6, power: 0, cancellationToken,
+            "Buff", "SingleAlly", "Buff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.transmutation-alliee:attack", 4, TicksPerTurn * 3, Stat: "AttackPower"),
@@ -3591,7 +3591,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.litanie", "Litanie",
             "La formule récitée en entier, une fois n'est pas coutume.",
-            "Buff", "AllAllies", "Buff", mana: 10, power: 0, cancellationToken,
+            "Buff", "AllAllies", "Buff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.litanie:attack", 4, TicksPerTurn * 2, Stat: "AttackPower"),
@@ -3601,13 +3601,13 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.scorie", "Scorie",
             "Crache du métal en fusion.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 3, TickInterval: TicksPerTurn) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.fonte", "Fonte",
             "Elle était déjà assise.",
-            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, 8, TicksPerTurn * 3, Stat: "Defense"),
@@ -3617,7 +3617,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.contact", "Contact",
             "Toucher incandescent.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Laitier ardent" : la doc décrit +2 tours flat sur les DoT de feu actifs —
@@ -3626,7 +3626,7 @@ public sealed partial class CatalogSeedRunner
         // en tours fixes ; approximé par +40%.
         await UpsertSkillAsync("canon.skill.laitier-ardent", "Laitier ardent",
             "La braise recouverte dure plus longtemps.",
-            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 8, power: 40, cancellationToken,
+            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 8, power: 40, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Éclat vitrifié" : la doc décrit 10% de chance d'appliquer Brûlure — aucune
@@ -3635,7 +3635,7 @@ public sealed partial class CatalogSeedRunner
         // donc à chaque coup, simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.eclat-vitrifie", "Éclat vitrifié",
             "Projette un fragment.",
-            "Damage", "SingleEnemy", "Damage", mana: 5, power: 9, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 5, power: 9, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 3, TicksPerTurn * 3, TickInterval: TicksPerTurn) },
             category: "Physical");
 
@@ -3645,7 +3645,7 @@ public sealed partial class CatalogSeedRunner
         // plus tard.
         await UpsertSkillAsync("canon.skill.reformation", "Reformation",
             "Se reforme.",
-            "Buff", "Self", "Heal", mana: 6, power: 15, cancellationToken,
+            "Buff", "Self", "Heal", mana: 6, power: 15, cancellationToken, audience: "Enemy",
             category: "Magic", basePowerIsPercentOfMaxVitality: true);
 
         await UpsertEnemyAsync(
@@ -3724,12 +3724,12 @@ public sealed partial class CatalogSeedRunner
         // garde instantanée directe, simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.placebo", "Placebo",
             "Le prochain soin reçu par la cible est nié.",
-            "Buff", "Self", "Guard", mana: 10, power: 10, cancellationToken,
+            "Buff", "Self", "Guard", mana: 10, power: 10, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.bordage", "Bordage",
             "C'est pour votre bien.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.bordage:speed", -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true),
@@ -3742,12 +3742,12 @@ public sealed partial class CatalogSeedRunner
         // famille Copistes) ; dégâts purs, simplification à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.injection-blanche", "Injection blanche",
             "Le produit fait effet : vous redevenez conforme.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 10, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.drap-tendu", "Drap tendu",
             "Le tissu sent le produit ménager.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
             category: "Physical");
 
@@ -3757,7 +3757,7 @@ public sealed partial class CatalogSeedRunner
         // +5 Garde sur soi") est câblé.
         await UpsertSkillAsync("canon.skill.sonnette", "Sonnette",
             "Appelle.",
-            "Buff", "Self", "Guard", mana: 8, power: 5, cancellationToken,
+            "Buff", "Self", "Guard", mana: 8, power: 5, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Visite" : la doc décrit une attraction de rang — aucun système de rang
@@ -3765,7 +3765,7 @@ public sealed partial class CatalogSeedRunner
         // assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.visite", "Visite",
             "Approchez. Il attendait.",
-            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Tour de clef" : la doc décrit une immobilisation de rang/fuite — sans objet
@@ -3774,7 +3774,7 @@ public sealed partial class CatalogSeedRunner
         // à assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.tour-de-clef", "Tour de clef",
             "La chambre est fermée.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true)
@@ -3783,12 +3783,12 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.trousseau", "Trousseau",
             "Le poids de toutes les portes.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.extinction-des-feux", "Extinction des feux",
             "Le règlement est appliqué.",
-            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -3850,12 +3850,12 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.baton-de-marche", "Bâton de marche",
             "Un coup du bâton poli par des siècles de pente.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.chapelet-de-dents", "Chapelet de dents",
             "Égrène.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Repentir" : la doc décrit -10% PV max sur soi en plus du buff — la vitalité
@@ -3863,13 +3863,13 @@ public sealed partial class CatalogSeedRunner
         // aucune réduction en cours de combat n'est possible ; seul le buff est câblé.
         await UpsertSkillAsync("canon.skill.repentir", "Repentir",
             "La faute oubliée exige quand même son prix.",
-            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 6, TicksPerTurn * 3, Stat: "MagicAttack") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.encens-inverse", "Encens inversé",
             "Ce qui rôde respire mieux.",
-            "Debuff", "AllEnemies", "Debuff", mana: 10, power: 0, cancellationToken,
+            "Debuff", "AllEnemies", "Debuff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "MagicDefense") },
             category: "Magic");
 
@@ -3881,7 +3881,7 @@ public sealed partial class CatalogSeedRunner
         // sans le pourcentage conditionnel.
         await UpsertSkillAsync("canon.skill.oraison-cousue", "Oraison cousue",
             "Le drain accompli.",
-            "Damage", "SingleEnemy", "Damage", mana: 14, power: 18, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 18, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("HealOverTime", null, 10, TicksPerTurn, TickInterval: TicksPerTurn,
@@ -3895,14 +3895,14 @@ public sealed partial class CatalogSeedRunner
         // (aucun compteur d'utilisation par sort côté moteur).
         await UpsertSkillAsync("canon.skill.derniere-priere", "Dernière prière",
             "Le nom exact de ce que Him'Lit n'aime pas.",
-            "Drain", "SingleEnemy", "Debuff", mana: 20, power: 18, cancellationToken,
+            "Drain", "SingleEnemy", "Debuff", mana: 20, power: 18, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -8, TicksPerTurn * 3, Stat: "Defense") },
             category: "Magic");
 
         // "Posture finale" réduit temporairement Vitesse et Focus.
         await UpsertSkillAsync("canon.skill.posture-finale", "Posture finale",
             "Elle a vu.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:tempo", -12, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true),
@@ -3915,7 +3915,7 @@ public sealed partial class CatalogSeedRunner
         // famille Chimères) ; dégâts seuls.
         await UpsertSkillAsync("canon.skill.griffe-de-recul", "Griffe de recul",
             "Frappe en reculant.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertEnemyAsync(
@@ -3976,12 +3976,12 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.salut-de-chapeau", "Salut de chapeau",
             "Le bord du chapeau est une lame.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.conversation-tranquille", "Conversation tranquille",
             "Ça n'a ni début ni fin.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
             category: "Magic");
 
@@ -3990,17 +3990,17 @@ public sealed partial class CatalogSeedRunner
         // approximé par une garde instantanée.
         await UpsertSkillAsync("canon.skill.pas-de-promenade", "Pas de promenade",
             "Toutes les quarante secondes, exactement.",
-            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken,
+            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.sifflotement", "Sifflotement",
             "Le souffle bouclé, projeté.",
-            "Damage", "AllEnemies", "Damage", mana: 6, power: 8, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 6, power: 8, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.secateur", "Sécateur",
             "Il taille les tiges et les tendons avec le même soin.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Émondage" : la doc ajoute la purge de TOUS les buffs de la cible — aucun
@@ -4008,7 +4008,7 @@ public sealed partial class CatalogSeedRunner
         // Copistes) ; dégâts seuls.
         await UpsertSkillAsync("canon.skill.emondage", "Émondage",
             "Ce qui dépasse est coupé.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 11, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 11, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Greffe" : la doc décrit le vol du dernier buff purgé, réappliqué à un
@@ -4017,7 +4017,7 @@ public sealed partial class CatalogSeedRunner
         // assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.greffe", "Greffe",
             "Rien ne se perd au jardin.",
-            "Buff", "SingleAlly", "Buff", mana: 12, power: 0, cancellationToken,
+            "Buff", "SingleAlly", "Buff", mana: 12, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
@@ -4025,7 +4025,7 @@ public sealed partial class CatalogSeedRunner
         // d'immunité n'existe côté moteur ; seule la garde est câblée.
         await UpsertSkillAsync("canon.skill.paillage", "Paillage",
             "Le massif est protégé pour l'hiver.",
-            "Buff", "SingleAlly", "Guard", mana: 8, power: 8, cancellationToken,
+            "Buff", "SingleAlly", "Guard", mana: 8, power: 8, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -4071,17 +4071,17 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.poing-de-crystal", "Poing de crystal",
             "Le poids d'un âge entier dans un seul coup.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 17, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 17, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.refraction", "Réfraction",
             "Renvoie la lumière ancestrale.",
-            "Damage", "SingleEnemy", "Damage", mana: 12, power: 15, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 15, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.stase", "Stase",
             "Elle rejoint, un instant, les objets en suspension.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken, audience: "Enemy",
             effects: new[]
             {
                 new SkillEffectSpec("Silence", "canon.skill.stase:silence", 0, TicksPerTurn * 2),
@@ -4091,13 +4091,13 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.facette", "Facette",
             "La lumière cherche l'angle.",
-            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 15, TicksPerTurn * 2, Stat: "MagicDamageBonus") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.pulsation", "Pulsation",
             "Le battement se propage.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         // "Prisme" : la doc décrit une répartition des dégâts du prochain sort
@@ -4107,7 +4107,7 @@ public sealed partial class CatalogSeedRunner
         // assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.prisme", "Prisme",
             "La lumière ne s'arrête pas, elle se partage.",
-            "Buff", "Self", "Guard", mana: 14, power: 12, cancellationToken,
+            "Buff", "Self", "Guard", mana: 14, power: 12, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -4158,7 +4158,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.eclat-echo-colere", "Éclat",
             "Le poing retombe, enfin.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // "Constat sec" : la doc décrit +15% dégâts DE CET ÉCHO SPÉCIFIQUEMENT sur la
@@ -4167,24 +4167,24 @@ public sealed partial class CatalogSeedRunner
         // tous les attaquants, est disponible) ; approximé par un débuff de Défense.
         await UpsertSkillAsync("canon.skill.constat-sec", "Constat sec",
             "Elle subit +15% dégâts de l'Écho.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.montee", "Montée",
             "Ça monte. Personne ne calmera rien.",
-            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 3, Stat: "AttackPower") },
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.explosion", "Explosion",
             "Ça devait éclater.",
-            "Damage", "AllEnemies", "Damage", mana: 16, power: 20, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 16, power: 20, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.frisson", "Frisson",
             "Quelque chose a bougé derrière vous.",
-            "Damage", "SingleEnemy", "Damage", mana: 6, power: 9, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 9, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
@@ -4192,7 +4192,7 @@ public sealed partial class CatalogSeedRunner
         // (pas de système de rang) ; seul le débuff de Focus est câblé.
         await UpsertSkillAsync("canon.skill.porte-fermee", "Porte fermée",
             "Il n'y a pas de sortie.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 2, Stat: "Focus") },
             category: "Magic");
 
@@ -4200,12 +4200,12 @@ public sealed partial class CatalogSeedRunner
         // côté moteur ; approximé par une garde instantanée.
         await UpsertSkillAsync("canon.skill.saccade", "Saccade",
             "Là où vous regardez, il n'est déjà plus.",
-            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken,
+            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertSkillAsync("canon.skill.poids", "Poids",
             "Tout devient un peu plus loin.",
-            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
@@ -4215,12 +4215,12 @@ public sealed partial class CatalogSeedRunner
         // assumer/affiner plus tard.
         await UpsertSkillAsync("canon.skill.constat-tardif", "Constat tardif",
             "Toujours en retard, toujours exact.",
-            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken, audience: "Enemy",
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.silence-partage", "Silence partagé",
             "Une onde de silence traverse toute la salle et n'épargne aucun camp.",
-            "Damage", "AllEnemies", "Damage", mana: 12, power: 8, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 12, power: 8, cancellationToken, allowedArchetypes: new[] { "Hybrid" },
             category: "Magic");
 
         await UpsertEnemyAsync(
@@ -4276,13 +4276,13 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.maree-montante", "Marée montante",
             "La falaise se rétrécit.",
-            "Debuff", "AllEnemies", "Debuff", mana: 14, power: 0, cancellationToken,
+            "Debuff", "AllEnemies", "Debuff", mana: 14, power: 0, cancellationToken, audience: "Enemy",
             effects: new[] { new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.lame-de-fond", "Lame de fond",
             "La mer achève ce qu'elle a commencé.",
-            "Damage", "SingleEnemy", "Damage", mana: 18, power: 26, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 26, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         // Variante "+50% sur cible sous 2+ DoT" de Lame de fond : le moteur ne
@@ -4293,7 +4293,7 @@ public sealed partial class CatalogSeedRunner
         // dynamique.
         await UpsertSkillAsync("canon.skill.lame-de-fond-renforcee", "Lame de fond (renforcée)",
             "La mer achève ce qu'elle a commencé — plus fort encore.",
-            "Damage", "SingleEnemy", "Damage", mana: 18, power: 39, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 39, cancellationToken, audience: "Enemy",
             category: "Physical");
 
         await UpsertEnemyAsync(
@@ -4323,7 +4323,14 @@ public sealed partial class CatalogSeedRunner
     bool requiresLineOfSight = false,
     int cooldown = 0,
     bool isUltimate = false,
-    string emotionalRegister = "Neutral")
+    string emotionalRegister = "Neutral",
+    // Who can use this skill: "Player" (default), "Enemy"-exclusive, or "Any". Keeps
+    // enemy-only skills out of the player-facing Grimoire (ListActiveSkillDefinitionsQuery)
+    // while enemy AI kits keep resolving skills directly by key regardless of audience.
+    string audience = "Player",
+    // Player archetypes allowed to equip this skill (empty = unrestricted). Only
+    // meaningful for Audience "Player"/"Any" — enforced by SkillArchetypeGate at equip time.
+    IReadOnlyCollection<string>? allowedArchetypes = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -4332,6 +4339,7 @@ public sealed partial class CatalogSeedRunner
         tacticalAreaShape = tacticalContract.AreaShape;
         requiresLineOfSight = tacticalContract.RequiresLineOfSight;
         var effectsJson = JsonSerializer.Serialize(effects ?? [], J);
+        var allowedArchetypesJson = JsonSerializer.Serialize(allowedArchetypes ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is not null)
             return;
@@ -4364,6 +4372,8 @@ public sealed partial class CatalogSeedRunner
             Cooldown = cooldown,
             IsUltimate = isUltimate,
             EmotionalRegister = emotionalRegister,
+            Audience = audience,
+            AllowedArchetypesJson = allowedArchetypesJson,
             BaseWeight = 1,
             EffectsJson = effectsJson,
             CreatedAtUtc = now,

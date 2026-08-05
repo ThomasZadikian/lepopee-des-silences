@@ -31,6 +31,15 @@ public interface ISkillDefinition : ICatalogContent
 
     string EmotionalRegister { get; }
 
+    /// <summary>Who this skill is meant for: "Player", "Enemy" or "Any". Filters the
+    /// player-facing Grimoire so enemy-exclusive skills never surface there, and lets
+    /// enemy AI skill pools keep drawing from the same shared skill table unaffected.</summary>
+    string Audience { get; }
+
+    /// <summary>Player archetypes allowed to equip this skill. Empty = unrestricted
+    /// (any archetype). Only meaningful for Audience "Player"/"Any" skills.</summary>
+    IReadOnlyList<string> AllowedArchetypes { get; }
+
     IReadOnlyList<SkillEffectSpec> Effects { get; }
 
     bool BasePowerIsPercentOfMaxVitality { get; }

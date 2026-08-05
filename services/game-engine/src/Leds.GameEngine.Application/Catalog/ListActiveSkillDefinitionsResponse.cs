@@ -24,7 +24,12 @@ public sealed record SkillDefinitionView(
     // way as CombatantSkillRuntimeDto.EmotionalType — see EmotionalTypeProfileProvider.
     // Null for basic attacks and any skill without a declared type; distinct from
     // EmotionalRegister above, which is a near-always-"Neutral" catalog seed field.
-    string? EmotionalType = null);
+    string? EmotionalType = null,
+    // Player archetypes allowed to equip this skill — empty means unrestricted. Enforced
+    // server-side by SkillArchetypeGate; surfaced here so the Grimoire can grey out
+    // incompatible skills instead of only failing on submit. This response only ever
+    // contains Audience "Player"/"Any" skills — see ListActiveSkillDefinitionsQueryHandler.
+    IReadOnlyCollection<string>? AllowedArchetypes = null);
 
 public sealed record SkillEffectView(
     string Kind,

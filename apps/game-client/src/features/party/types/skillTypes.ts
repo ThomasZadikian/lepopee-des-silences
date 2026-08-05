@@ -34,4 +34,6 @@ export type SkillDefinitionView = {
   /** The spell's own intrinsic "élément" — see EmotionalTypeProfileProvider. Null for
    * basic attacks and untyped spells; distinct from emotionalRegister above. */
   emotionalType?: string | null;
+  /** Player archetypes allowed to equip this skill — empty/absent means unrestricted. */
+  allowedArchetypes?: string[] | null;
 };

@@ -15,7 +15,9 @@ public sealed record SkillDefinitionDto(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral")
+    string EmotionalRegister = "Neutral",
+    string Audience = "Player",
+    IReadOnlyCollection<string>? AllowedArchetypes = null)
 {
     public static SkillDefinitionDto FromDomain(ISkillDefinition d) => new(
         d.Id.Value, d.Key.Value, d.Name.Value, d.Description.Value, d.Version.Value, d.Status.ToString(),
@@ -28,7 +30,9 @@ public sealed record SkillDefinitionDto(
         d.RequiresLineOfSight,
         d.Cooldown,
         d.IsUltimate,
-        d.EmotionalRegister);
+        d.EmotionalRegister,
+        d.Audience,
+        d.AllowedArchetypes);
 }
 
 public sealed record SkillEffectSpecDto(

@@ -5,12 +5,17 @@ import { categoryLabel, formatEffect } from './grimoireDisplay';
 import { emotionalTypeMeta } from '../../../../shared/theme/typeColors';
 import EmotionalTypeBadge from '../../../combat/components/EmotionalTypeBadge.vue';
 
-const props = defineProps<{
-  skill: SkillDefinitionView;
-  isKnown: boolean;
-  isEquipped: boolean;
-  disabled: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    skill: SkillDefinitionView;
+    isKnown: boolean;
+    isEquipped: boolean;
+    disabled: boolean;
+    /** True when this skill's archetype restriction excludes the current character. */
+    archetypeIncompatible?: boolean;
+  }>(),
+  { archetypeIncompatible: false },
+);
 
 const emit = defineEmits<{ toggleEquip: [key: string] }>();
 
@@ -51,6 +56,9 @@ const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
     </div>
 
     <template v-if="isKnown">
+      <p v-if="archetypeIncompatible" class="grimoire-archetype-hint">
+        Réservé à un autre archétype.
+      </p>
       <button
         type="button"
         class="grimoire-toggle"
@@ -163,6 +171,13 @@ const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
   font-size: 11px;
   font-style: italic;
   color: var(--ink-4);
+}
+
+.grimoire-archetype-hint {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--danger-dim);
 }
 
 .grimoire-toggle {

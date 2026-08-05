@@ -29,7 +29,9 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         bool requiresLineOfSight,
         int cooldown,
         bool isUltimate,
-        string emotionalRegister)
+        string emotionalRegister,
+        string audience,
+        IReadOnlyList<string> allowedArchetypes)
         : base(id, key, name, description, version, status)
     {
         SkillType = skillType;
@@ -47,6 +49,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         Cooldown = cooldown;
         IsUltimate = isUltimate;
         EmotionalRegister = emotionalRegister;
+        Audience = audience;
+        AllowedArchetypes = allowedArchetypes;
     }
 
     public string SkillType { get; }
@@ -68,6 +72,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
     public int Cooldown { get; }
     public bool IsUltimate { get; }
     public string EmotionalRegister { get; }
+    public string Audience { get; }
+    public IReadOnlyList<string> AllowedArchetypes { get; }
     public IReadOnlyList<SkillEffectSpec> Effects { get; }
     /// <summary>When true, BasePower is a percentage of the target's MaxVitality (instant
     /// heal), not a flat amount — e.g. Mané's "Favorite de Elise" (+15% PV instantly).</summary>
@@ -93,7 +99,9 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = "Neutral",
+        string audience = "Player",
+        IReadOnlyList<string>? allowedArchetypes = null)
     {
         if (string.IsNullOrWhiteSpace(skillType))
         {
@@ -146,6 +154,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             throw new DomainException("Skill definition emotional register is required.");
         }
 
+        var normalizedAudience = string.IsNullOrWhiteSpace(audience) ? "Player" : audience.Trim();
+        if (normalizedAudience is not ("Player" or "Enemy" or "Any"))
+        {
+            throw new DomainException("Skill definition audience must be Player, Enemy or Any.");
+        }
+
         var desc = CatalogContentDescription.From(description);
 
         if (desc.IsEmpty)
@@ -174,6 +188,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister.Trim());
+            emotionalRegister.Trim(),
+            normalizedAudience,
+            allowedArchetypes ?? []);
     }
 }

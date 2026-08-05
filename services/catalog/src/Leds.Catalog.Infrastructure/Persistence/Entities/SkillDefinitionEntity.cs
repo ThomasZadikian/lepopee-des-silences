@@ -35,6 +35,9 @@ public sealed class SkillDefinitionEntity
     public bool RequiresLineOfSight { get; set; }
     public bool IsUltimate { get; set; }
     public string EmotionalRegister { get; set; } = "Neutral";
+    public string Audience { get; set; } = "Player";
+    // JSON string array of allowed player archetypes; empty/null = unrestricted.
+    public string? AllowedArchetypesJson { get; set; }
     public Guid? EffectSetId { get; set; }
     public int BaseWeight { get; set; } = 1;
     public string? SelectionGroup { get; set; }

@@ -10,7 +10,9 @@ public sealed record CatalogSkillDefinitionHttpResponse(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral");
+    string EmotionalRegister = "Neutral",
+    string Audience = "Player",
+    IReadOnlyCollection<string>? AllowedArchetypes = null);
 
 public sealed record CatalogSkillEffectSpecHttpResponse(
     string Kind,

@@ -909,7 +909,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             RequiresLineOfSight: source.RequiresLineOfSight,
             Cooldown: source.Cooldown,
             IsUltimate: source.IsUltimate,
-            EmotionalRegister: source.EmotionalRegister);
+            EmotionalRegister: source.EmotionalRegister,
+            Audience: source.Audience,
+            AllowedArchetypes: source.AllowedArchetypes ?? []);
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(

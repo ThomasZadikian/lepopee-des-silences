@@ -31,7 +31,13 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
         var acquisitionHints = BuildAcquisitionHints(npcs, items);
 
         return new ListActiveSkillDefinitionsResponse(
-            definitions.Select(d => new SkillDefinitionView(
+            definitions
+                // Enemy-exclusive skills never surface in the player-facing Grimoire —
+                // enemy AI kits keep resolving skills directly by key regardless (see
+                // EnemyDefinition.SkillKeys / CombatEncounterDraftGenerator), unaffected
+                // by this filter.
+                .Where(d => !string.Equals(d.Audience, "Enemy", StringComparison.OrdinalIgnoreCase))
+                .Select(d => new SkillDefinitionView(
                 d.Key,
                 d.DisplayName,
                 d.Description,
@@ -63,7 +69,8 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                 d.EmotionalRegister,
                 EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, out var emotionalType)
                     ? emotionalType.ToString()
-                    : null)).ToArray());
+                    : null,
+                d.AllowedArchetypes)).ToArray());
     }
 
     /// <summary>

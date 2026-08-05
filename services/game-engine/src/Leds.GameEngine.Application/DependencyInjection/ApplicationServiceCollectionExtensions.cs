@@ -60,6 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<PlayerSkillMerger>();
         services.AddScoped<PlayerStatMerger>();
+        services.AddScoped<SkillArchetypeGate>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddSingleton<Combats.Tactical.ITacticalCombatFactory, Combats.Tactical.TacticalCombatFactory>();
