@@ -65,5 +65,6 @@ defineEmits<{ close: [] }>();
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  padding: var(--space-6) var(--space-6) var(--space-8);
 }
 </style>

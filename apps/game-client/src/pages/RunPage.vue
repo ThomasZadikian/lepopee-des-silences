@@ -532,10 +532,9 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       </template>
 
       <!-- ── Micro-menu (Équipe/Statistiques/Grimoire/Équipement) ── -->
-      <!-- Kept visible during combat too: équiper un objet permanent doit rester
-           accessible pendant toute la run, combat compris. -->
+      <!-- Masqué en combat : ne doit apparaître qu'en exploration. -->
       <Teleport to="body">
-        <TeamMicroMenu />
+        <TeamMicroMenu v-if="!isCombatPhase" />
       </Teleport>
 
       <!-- ── Abandon confirmation diptych ── -->
