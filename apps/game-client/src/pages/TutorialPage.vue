@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRouter } from 'vue-router';
 
-import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
-import RuleOrnament from '../shared/components/RuleOrnament.vue';
+import LivingWalls from '../shared/components/LivingWalls.vue';
 
 const router = useRouter();
 const props = defineProps<{ embedded?: boolean }>();
@@ -16,7 +15,7 @@ type TutorialSection = {
 const sections: TutorialSection[] = [
   {
     title: 'Le tour de jeu — le combat tactique',
-    color: 'var(--gold)',
+    color: 'var(--mint-dim)',
     paragraphs: [
       "Chaque round annonce son ordre d'initiative. La Vitesse décide qui agit en premier ; quand tous les combattants encore debout ont joué, un nouveau round commence.",
       "À son tour, un combattant dispose d'un déplacement et d'une action indépendants. Il peut les effectuer dans l'ordre de son choix, ou renoncer à l'un sans perdre l'autre.",
@@ -26,7 +25,7 @@ const sections: TutorialSection[] = [
   },
   {
     title: 'La matrice de Markov — un Palais sans plan fixe',
-    color: 'var(--frost)',
+    color: 'var(--mint-dim)',
     paragraphs: [
       "Le Palais ne suit aucun plan prédéfini : à chaque nouvelle salle, la suivante est tirée au sort selon des probabilités de transition depuis la salle courante — une chaîne de Markov. Certaines salles ont plus de chances de s'enchaîner que d'autres, selon leurs affinités thématiques.",
       "Une salle à « chaîne stricte » déjà visitée voit sa probabilité de réapparition chuter fortement à chaque nouveau passage — sans jamais tomber à zéro. Revenir sur ses pas reste possible, juste improbable.",
@@ -35,7 +34,7 @@ const sections: TutorialSection[] = [
   },
   {
     title: 'Génération des salles — profondeur, risque, climats',
-    color: 'var(--sap)',
+    color: 'var(--mint-dim)',
     paragraphs: [
       "La profondeur mesure votre progression dans le Palais ; le niveau de risque d'une salle influence le nombre et la puissance des ennemis qui s'y trouvent.",
       "Chaque salle peut porter un climat passager (Gris, Pluie, Canicule, Grêle) qui module temporairement la puissance des ennemis ou la garde de départ des combattants.",
@@ -45,7 +44,7 @@ const sections: TutorialSection[] = [
   },
   {
     title: 'Réputation et blessures des habitants du Palais',
-    color: 'oklch(0.66 0.19 38)',
+    color: 'var(--mint-dim)',
     paragraphs: [
       "Chaque choix fait à un PNJ ajuste un score de relation propre à cette rencontre. Ce score, en franchissant certains seuils, fait basculer l'état de ses blessures : Latent, Tendu, puis Rompu.",
       "Certaines blessures se referment si l'on répare le lien (réversibles) ; d'autres restent ouvertes pour le reste de la traversée une fois rompues (irréversibles).",
@@ -54,7 +53,7 @@ const sections: TutorialSection[] = [
   },
   {
     title: 'Catégories de sorts — Physique et Magique',
-    color: 'oklch(0.78 0.13 78)',
+    color: 'var(--mint-dim)',
     paragraphs: [
       "Chaque sort appartient à l'une de deux catégories : Physique ou Magique.",
       "Les sorts Magiques bénéficient du bonus de dégâts magiques (accordé par certains équipements ou sorts d'équipe) et sont amoindris par la réduction de dégâts magiques de leur cible. Les sorts Physiques ignorent totalement ces deux effets.",
@@ -64,18 +63,15 @@ const sections: TutorialSection[] = [
 </script>
 
 <template>
-  <main class="tutorial-page" :class="{ 'tutorial-page--embedded': props.embedded }" data-mood="palais">
-    <PalaceAtmosphere v-if="!props.embedded" />
+  <main class="tutorial-page" :class="{ 'tutorial-page--embedded': props.embedded }">
+    <LivingWalls v-if="!props.embedded" />
 
     <div class="tutorial-page__content">
-      <button v-if="!props.embedded" class="tutorial-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="tutorial-page__back" @click="router.back()">← sommaire</button>
 
-      <span class="es-kicker">Système · comprendre le Palais</span>
-      <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">
-        Tutoriel &amp; explications
-      </h1>
-      <RuleOrnament style="width: 150px; margin: 16px 0" />
-      <p class="es-lede es-dim" style="max-width: 58ch">
+      <span class="tutorial-page__kicker">Système · comprendre le Palais</span>
+      <h1 class="tutorial-page__title">Tutoriel &amp; explications</h1>
+      <p class="tutorial-page__lede">
         Ce que le Palais ne vous dit jamais directement — le fonctionnement, sous la surface, de ses
         systèmes les plus obscurs. Pour le détail des altérations de combat (poison, silence, étourdissement…),
         consultez la page <RouterLink to="/statuts">Statuts</RouterLink>.
@@ -94,35 +90,25 @@ const sections: TutorialSection[] = [
 <style scoped>
 .tutorial-page {
   position: relative;
-  height: 100dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap), transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, var(--bg) 0%, var(--bg-2) 48%, var(--void) 100%);
+  min-height: 100dvh;
+  background: var(--void);
   color: var(--ink);
   font-family: var(--font);
 }
 
-.tutorial-page--embedded {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
-}
+.tutorial-page--embedded { min-height: 0; }
 
 .tutorial-page__content {
   position: relative;
-  z-index: 5;
+  z-index: 2;
   max-width: 860px;
   margin: 0 auto;
-  padding: 64px 4vw 90px;
+  padding: 48px 40px 96px;
 }
 
 .tutorial-page--embedded .tutorial-page__content {
-  padding: 40px 4vw 48px;
+  padding: 0;
+  max-width: none;
 }
 
 .tutorial-page__back {
@@ -130,21 +116,45 @@ const sections: TutorialSection[] = [
   cursor: pointer;
   display: block;
   margin-bottom: 24px;
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-4);
+  transition: color .3s;
+}
+.tutorial-page__back:hover { color: var(--mint-dim); }
+
+.tutorial-page__kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
-  transition: color 0.2s;
 }
-.tutorial-page__back:hover { color: var(--gold); }
+
+.tutorial-page__title {
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 38px;
+  color: var(--ink);
+}
+
+.tutorial-page__lede {
+  max-width: 58ch;
+  margin: 16px 0 0;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.6;
+}
 
 .tutorial-section {
   margin-top: 50px;
 }
 
 .tutorial-section__title {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;

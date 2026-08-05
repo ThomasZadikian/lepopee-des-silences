@@ -75,7 +75,7 @@ describe('ReputationPage', () => {
     expect(wrapper.text()).toContain('300');
   });
 
-  it('shows offering unlock status', async () => {
+  it('does not expose the offerings list to the player', async () => {
     vi.mocked(reputationApi.getRunReputation).mockResolvedValueOnce({
       runId: 'run-1',
       npcs: [makeNpc()],
@@ -84,10 +84,20 @@ describe('ReputationPage', () => {
     const wrapper = mount(ReputationPage);
     await flushPromises();
 
-    const offerings = wrapper.findAll('.reputation-offering');
-    expect(offerings).toHaveLength(2);
-    expect(offerings[0].text()).toContain('Atteint');
-    expect(offerings[1].text()).toContain('Non atteint');
+    expect(wrapper.findAll('.reputation-offering')).toHaveLength(0);
+  });
+
+  it('shows a progress bar and the numeric score', async () => {
+    vi.mocked(reputationApi.getRunReputation).mockResolvedValueOnce({
+      runId: 'run-1',
+      npcs: [makeNpc()],
+    });
+
+    const wrapper = mount(ReputationPage);
+    await flushPromises();
+
+    expect(wrapper.find('.reputation-card__bar-track').exists()).toBe(true);
+    expect(wrapper.text()).toContain('+300');
   });
 
   it('shows an empty state when no NPC has been met', async () => {

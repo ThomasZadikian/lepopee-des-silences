@@ -2,9 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
-import RuleOrnament from '../shared/components/RuleOrnament.vue';
-import SealGlyph from '../shared/components/SealGlyph.vue';
+import LivingWalls from '../shared/components/LivingWalls.vue';
 import EmotionalTypeBadge from '../features/combat/components/EmotionalTypeBadge.vue';
 import { reputationApi } from '../features/reputation/api/reputationApi';
 import type { NpcReputationDto } from '../features/reputation/types/reputationTypes';
@@ -27,48 +25,24 @@ const STATE_LABELS: Record<string, string> = {
   Rompu: 'Rompu',
 };
 
-const STATE_TONES: Record<string, string> = {
-  Latent: 'var(--sap)',
-  Tendu: 'var(--gold)',
-  Rompu: 'var(--blood)',
-};
-
-const OFFERING_KIND_LABELS: Record<string, string> = {
-  Item: 'Objet',
-  Skill: 'Sort',
-  StatPoint: 'Point de compétence',
-};
-
 function stateLabel(state: string): string {
   return STATE_LABELS[state] ?? state;
 }
 
-function stateTone(state: string): string {
-  return STATE_TONES[state] ?? 'var(--ink-4)';
+// Latent = pas encore engagé (neutre), Tendu = lien vivant mais fragile (mauve — jamais
+// une alerte), Rompu = irrévocable (danger — c'est un véritable point de non-retour).
+function stateClass(state: string): string {
+  if (state === 'Rompu') return 'reputation-card__state--danger';
+  if (state === 'Tendu') return 'reputation-card__state--mauve';
+  return '';
 }
 
-function offeringKindLabel(kind: string): string {
-  return OFFERING_KIND_LABELS[kind] ?? kind;
-}
-
-// Le sceau lit l'état comme un verdict plutôt qu'une simple étiquette : Latent n'a encore
-// rien à sceller (dormant), Tendu est le seul état encore vivant/en mouvement (l'anneau de
-// tampon rejoue à chaque affichage), Rompu est aussi définitif qu'une loi gravée au Tome —
-// irrévocable, donc scellé.
-const STATE_SEAL_TONES: Record<string, 'sap' | 'gold' | 'blood'> = {
-  Latent: 'sap',
-  Tendu: 'gold',
-  Rompu: 'blood',
-};
-
-function stateSealTone(state: string): 'sap' | 'gold' | 'blood' | 'ink' {
-  return STATE_SEAL_TONES[state] ?? 'ink';
-}
-
-function stateSealState(state: string): 'idle' | 'confirming' | 'confirmed' {
-  if (state === 'Rompu') return 'confirmed';
-  if (state === 'Tendu') return 'confirming';
-  return 'idle';
+// Le score n'a pas de borne fixe côté moteur (les seuils Tendu/Rompu sont propres à chaque
+// PNJ et non exposés au client) — la barre utilise donc une courbe à saturation douce plutôt
+// qu'un pourcentage d'un maximum inventé : elle reste lisible quelle que soit l'ampleur du score.
+function scoreFillPercent(score: number): number {
+  const magnitude = Math.abs(score);
+  return Math.round((magnitude / (magnitude + 10)) * 100);
 }
 
 onMounted(async () => {
@@ -91,16 +65,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="reputation-page" :class="{ 'reputation-page--embedded': props.embedded }" data-mood="palais">
-    <PalaceAtmosphere v-if="!props.embedded" />
+  <main class="reputation-page" :class="{ 'reputation-page--embedded': props.embedded }">
+    <LivingWalls v-if="!props.embedded" />
 
     <div class="reputation-page__content">
-      <button v-if="!props.embedded" class="reputation-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="reputation-page__back" @click="router.back()">← sommaire</button>
 
-      <span class="es-kicker">Système · liens avec les habitants du Palais</span>
-      <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Réputation</h1>
-      <RuleOrnament style="width: 150px; margin: 16px 0" />
-      <p class="es-lede es-dim" style="max-width: 56ch">
+      <h1 class="reputation-page__title">Réputation</h1>
+      <p class="reputation-page__lede">
         Chaque rencontre laisse une trace — un score qui monte ou se rompt, une blessure qui se referme ou
         s'ouvre. Ce que vous avez semé avec chacun d'eux, durant cette traversée.
       </p>
@@ -116,59 +88,27 @@ onMounted(async () => {
           <header class="reputation-card__head">
             <div class="reputation-card__title">
               <span class="reputation-card__name">{{ npc.displayName }}</span>
-              <EmotionalTypeBadge :type="npc.emotionalRegister" />
+              <EmotionalTypeBadge :type="npc.emotionalRegister" compact />
             </div>
-            <div class="reputation-card__verdict">
-              <SealGlyph
-                kind="pnj"
-                :tone="stateSealTone(npc.aggregateState)"
-                :size="46"
-                :sigil-size="19"
-                :sigil-stroke-width="1.5"
-                :state="stateSealState(npc.aggregateState)"
-              />
-              <span
-                class="reputation-card__state"
-                :style="{ '--state-color': stateTone(npc.aggregateState) }"
-              >
-                {{ stateLabel(npc.aggregateState) }}
-              </span>
-            </div>
+            <span class="reputation-card__state" :class="stateClass(npc.aggregateState)">
+              {{ stateLabel(npc.aggregateState) }}
+            </span>
           </header>
 
-          <div class="reputation-card__stats">
-            <span class="reputation-card__stat">
-              <span class="reputation-card__stat-k">Score</span>
-              <span class="reputation-card__stat-v">{{ npc.relationshipScore }}</span>
-            </span>
-            <span class="reputation-card__stat">
-              <span class="reputation-card__stat-k">Rencontres</span>
-              <span class="reputation-card__stat-v">{{ npc.timesMet }}</span>
+          <div class="reputation-card__bar-row">
+            <div class="reputation-card__bar-track">
+              <div
+                class="reputation-card__bar-fill"
+                :class="npc.relationshipScore < 0 ? 'reputation-card__bar-fill--neg' : 'reputation-card__bar-fill--pos'"
+                :style="{ width: scoreFillPercent(npc.relationshipScore) + '%' }"
+              />
+            </div>
+            <span class="reputation-card__score">
+              {{ npc.relationshipScore > 0 ? '+' : '' }}{{ npc.relationshipScore }}
             </span>
           </div>
 
-          <div v-if="npc.offerings.length" class="reputation-card__offerings">
-            <span class="es-label">Offrandes</span>
-            <ul class="reputation-offering-list">
-              <li
-                v-for="offering in npc.offerings"
-                :key="offering.key"
-                class="reputation-offering"
-                :class="{ 'reputation-offering--met': offering.scoreThresholdMet }"
-              >
-                <span class="reputation-offering__kind">{{ offeringKindLabel(offering.kind) }}</span>
-                <span class="reputation-offering__req">
-                  <template v-if="offering.requiredRelationshipScore !== null">
-                    Seuil {{ offering.requiredRelationshipScore }}
-                  </template>
-                  <template v-else>Sans seuil de score</template>
-                </span>
-                <span class="reputation-offering__status">
-                  {{ offering.scoreThresholdMet ? 'Atteint' : 'Non atteint' }}
-                </span>
-              </li>
-            </ul>
-          </div>
+          <span class="reputation-card__meetings">{{ npc.timesMet }} rencontre{{ npc.timesMet > 1 ? 's' : '' }}</span>
         </article>
       </section>
     </div>
@@ -178,35 +118,25 @@ onMounted(async () => {
 <style scoped>
 .reputation-page {
   position: relative;
-  height: 100dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap), transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, var(--bg) 0%, var(--bg-2) 48%, var(--void) 100%);
+  min-height: 100dvh;
+  background: var(--void);
   color: var(--ink);
   font-family: var(--font);
 }
 
-.reputation-page--embedded {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
-}
+.reputation-page--embedded { min-height: 0; }
 
 .reputation-page__content {
   position: relative;
-  z-index: 5;
-  max-width: 1100px;
+  z-index: 2;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 64px 4vw 90px;
+  padding: 48px 40px 96px;
 }
 
 .reputation-page--embedded .reputation-page__content {
-  padding: 40px 4vw 48px;
+  padding: 0;
+  max-width: none;
 }
 
 .reputation-page__back {
@@ -214,42 +144,58 @@ onMounted(async () => {
   cursor: pointer;
   display: block;
   margin-bottom: 24px;
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--ink-4);
-  transition: color 0.2s;
+  transition: color .3s;
 }
-.reputation-page__back:hover { color: var(--gold); }
+.reputation-page__back:hover { color: var(--mint-dim); }
+
+.reputation-page__title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 38px;
+  color: var(--ink);
+}
+
+.reputation-page--embedded .reputation-page__title { margin-top: 0; }
+
+.reputation-page__lede {
+  max-width: 56ch;
+  margin: 0 0 32px;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.6;
+}
 
 .reputation-page__status {
-  margin-top: 40px;
-  font-family: var(--font-caps);
+  margin-top: 24px;
+  font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: .08em;
   color: var(--ink-4);
 }
 
 .reputation-page__status--error {
-  color: var(--blood);
+  color: var(--danger-dim);
 }
 
 .reputation-list {
-  margin-top: 44px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
 }
 
 .reputation-card {
   border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  padding: 20px 22px;
-  background: oklch(0.24 0.015 283 / 0.35);
+  padding: 18px 20px;
+  background: var(--panel);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .reputation-card__head {
@@ -268,101 +214,57 @@ onMounted(async () => {
 
 .reputation-card__name {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-style: italic;
+  font-size: 18px;
   color: var(--ink);
   line-height: 1.2;
 }
 
-.reputation-card__verdict {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
 .reputation-card__state {
-  font-family: var(--font-caps);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--state-color);
-}
-
-.reputation-card__stats {
-  display: flex;
-  gap: 20px;
-}
-
-.reputation-card__stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.reputation-card__stat-k {
-  font-family: var(--font-caps);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-5);
-}
-
-.reputation-card__stat-v {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  color: var(--ink-2);
-}
-
-.reputation-card__offerings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.reputation-offering-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.reputation-offering {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
   color: var(--ink-4);
 }
 
-.reputation-offering__kind {
-  font-family: var(--font-caps);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+.reputation-card__state--mauve { color: var(--mauve-dim); }
+.reputation-card__state--danger { color: var(--danger-dim); }
+
+.reputation-card__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.reputation-offering__req {
+.reputation-card__bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--line-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.reputation-card__bar-fill {
+  height: 100%;
+  transition: width .3s ease;
+}
+
+.reputation-card__bar-fill--pos { background: var(--mint-dim); }
+.reputation-card__bar-fill--neg { background: var(--mauve-dim); }
+
+.reputation-card__score {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-5);
+  font-size: 13px;
+  color: var(--ink-2);
+  min-width: 3.5ch;
+  text-align: right;
 }
 
-.reputation-offering__status {
-  font-family: var(--font-caps);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.reputation-card__meetings {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--ink-5);
-}
-
-.reputation-offering--met .reputation-offering__status {
-  color: var(--sap);
 }
 </style>

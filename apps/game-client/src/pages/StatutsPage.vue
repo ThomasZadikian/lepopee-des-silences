@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 
-import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
-import RuleOrnament from '../shared/components/RuleOrnament.vue';
+import LivingWalls from '../shared/components/LivingWalls.vue';
 import StatusEffectToken from '../shared/components/StatusEffectToken.vue';
 import type { StatusEffectKind } from '../features/combat/types/combatContracts';
 
@@ -27,7 +26,7 @@ type StatusGroup = {
 const groups: StatusGroup[] = [
   {
     title: "Altérations — par tick",
-    color: 'var(--sap)',
+    color: 'var(--mint-dim)',
     items: [
       {
         kind: 'DamageOverTime',
@@ -47,7 +46,7 @@ const groups: StatusGroup[] = [
   },
   {
     title: 'Modificateurs — tant que l’état dure',
-    color: 'var(--gold)',
+    color: 'var(--mint-dim)',
     items: [
       {
         kind: 'StatModifier',
@@ -69,7 +68,7 @@ const groups: StatusGroup[] = [
   },
   {
     title: "Entraves — privation d’action",
-    color: 'oklch(0.78 0.12 300)',
+    color: 'var(--mint-dim)',
     items: [
       {
         kind: 'Stun',
@@ -91,16 +90,14 @@ const groups: StatusGroup[] = [
 </script>
 
 <template>
-  <main class="statuts-page" :class="{ 'statuts-page--embedded': props.embedded }" data-mood="palais">
-    <PalaceAtmosphere v-if="!props.embedded" />
+  <main class="statuts-page" :class="{ 'statuts-page--embedded': props.embedded }">
+    <LivingWalls v-if="!props.embedded" />
 
     <div class="statuts-page__content">
-      <button v-if="!props.embedded" class="statuts-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="statuts-page__back" @click="router.back()">← sommaire</button>
 
-      <span class="es-kicker">Système · altérations de l’esprit</span>
-      <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Les statuts</h1>
-      <RuleOrnament style="width: 150px; margin: 16px 0" />
-      <p class="es-lede es-dim" style="max-width: 52ch">
+      <h1 class="statuts-page__title">Les statuts</h1>
+      <p class="statuts-page__lede">
         Les effets s’accumulent en <em>stacks</em> et se résorbent au fil des tours tactiques.
       </p>
 
@@ -127,35 +124,25 @@ const groups: StatusGroup[] = [
 <style scoped>
 .statuts-page {
   position: relative;
-  height: 100dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap), transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, var(--bg) 0%, var(--bg-2) 48%, var(--void) 100%);
+  min-height: 100dvh;
+  background: var(--void);
   color: var(--ink);
   font-family: var(--font);
 }
 
-.statuts-page--embedded {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
-}
+.statuts-page--embedded { min-height: 0; }
 
 .statuts-page__content {
   position: relative;
-  z-index: 5;
+  z-index: 2;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 64px 4vw 90px;
+  padding: 48px 40px 96px;
 }
 
 .statuts-page--embedded .statuts-page__content {
-  padding: 40px 4vw 48px;
+  padding: 0;
+  max-width: none;
 }
 
 .statuts-page__back {
@@ -163,19 +150,37 @@ const groups: StatusGroup[] = [
   cursor: pointer;
   display: block;
   margin-bottom: 24px;
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--ink-4);
-  transition: color 0.2s;
+  transition: color .3s;
 }
-.statuts-page__back:hover { color: var(--gold); }
+.statuts-page__back:hover { color: var(--mint-dim); }
+
+.statuts-page__title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 38px;
+  color: var(--ink);
+}
+
+.statuts-page--embedded .statuts-page__title { margin-top: 0; }
+
+.statuts-page__lede {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.6;
+}
 
 .statuts-group { margin-top: 50px; }
 
 .statuts-group__title {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;

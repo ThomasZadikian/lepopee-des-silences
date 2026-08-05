@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 
 import EmotionalTypeBadge from '../features/combat/components/EmotionalTypeBadge.vue';
 import type { EmotionalType } from '../features/combat/types/combatContracts';
-import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
+import LivingWalls from '../shared/components/LivingWalls.vue';
 
 const router = useRouter();
 const props = defineProps<{ embedded?: boolean }>();
@@ -100,10 +100,10 @@ const bosses: BossEntry[] = [
 ];
 
 const THREAT_COLOR: Record<BossEntry['threat'], string> = {
-  'modérée': 'var(--frost)',
-  'élevée': 'var(--gold)',
-  'instable': 'var(--ember)',
-  'le saigneur': 'var(--blood)',
+  'modérée': 'var(--ink-3)',
+  'élevée': 'var(--mauve-dim)',
+  'instable': 'var(--mauve)',
+  'le saigneur': 'var(--danger-dim)',
 };
 
 const selectedIndex = ref(0);
@@ -111,16 +111,14 @@ const selected = computed(() => bosses[selectedIndex.value]);
 </script>
 
 <template>
-  <main class="manif-page" :class="{ 'manif-page--embedded': props.embedded }" data-mood="palais">
-    <PalaceAtmosphere v-if="!props.embedded" />
+  <main class="manif-page" :class="{ 'manif-page--embedded': props.embedded }">
+    <LivingWalls v-if="!props.embedded" />
 
     <div class="manif-page__content">
-      <button v-if="!props.embedded" class="manif-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="manif-page__back" @click="router.back()">← sommaire</button>
 
-      <span class="es-kicker">Bestiaire · gardiens des salles</span>
-      <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">
-        Les Manifestations majeures
-      </h1>
+      <span class="manif-page__kicker">Bestiaire · gardiens des salles</span>
+      <h1 class="manif-page__title">Les Manifestations majeures</h1>
 
       <div class="manif-layout">
         <div class="manif-list">
@@ -176,7 +174,7 @@ const selected = computed(() => bosses[selectedIndex.value]);
               <div class="manif-detail__mech">
                 <div class="es-label" style="margin-bottom: 7px">Mécaniques</div>
                 <div v-for="(line, i) in selected.mech" :key="i" class="manif-detail__mech-line">
-                  <span :style="{ color: 'var(--gold)' }">—</span>{{ line }}
+                  <span class="manif-detail__mech-mark">—</span>{{ line }}
                 </div>
               </div>
             </div>
@@ -192,35 +190,25 @@ const selected = computed(() => bosses[selectedIndex.value]);
 <style scoped>
 .manif-page {
   position: relative;
-  height: 100dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap), transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, var(--bg) 0%, var(--bg-2) 48%, var(--void) 100%);
+  min-height: 100dvh;
+  background: var(--void);
   color: var(--ink);
   font-family: var(--font);
 }
 
-.manif-page--embedded {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
-}
+.manif-page--embedded { min-height: 0; }
 
 .manif-page__content {
   position: relative;
-  z-index: 5;
+  z-index: 2;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 64px 4vw 90px;
+  padding: 48px 40px 96px;
 }
 
 .manif-page--embedded .manif-page__content {
-  padding: 40px 4vw 48px;
+  padding: 0;
+  max-width: none;
 }
 
 .manif-page__back {
@@ -228,14 +216,30 @@ const selected = computed(() => bosses[selectedIndex.value]);
   cursor: pointer;
   display: block;
   margin-bottom: 24px;
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-4);
+  transition: color .3s;
+}
+.manif-page__back:hover { color: var(--mint-dim); }
+
+.manif-page__kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
-  transition: color 0.2s;
 }
-.manif-page__back:hover { color: var(--gold); }
+
+.manif-page__title {
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 38px;
+  color: var(--ink);
+}
 
 .manif-layout {
   margin-top: 42px;
@@ -258,15 +262,14 @@ const selected = computed(() => bosses[selectedIndex.value]);
   align-items: center;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
   background: transparent;
   padding: 12px 14px;
   transition: border-color 0.2s, background 0.2s;
 }
 
 .manif-list__item--sel {
-  border-color: var(--edge-frost);
-  background: linear-gradient(150deg, oklch(0.30 0.04 62 / 0.88), oklch(0.20 0.024 56 / 0.9));
+  border-color: var(--mint-dim);
+  background: var(--panel-2);
 }
 
 .manif-list__name {
@@ -279,7 +282,7 @@ const selected = computed(() => bosses[selectedIndex.value]);
 .manif-list__item--sel .manif-list__name { color: var(--ink); }
 
 .manif-list__salle {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -289,8 +292,7 @@ const selected = computed(() => bosses[selectedIndex.value]);
 
 .manif-detail {
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: linear-gradient(160deg, var(--panel), var(--void));
+  background: var(--panel);
   overflow: hidden;
   display: grid;
   grid-template-columns: 210px 1fr;
@@ -300,22 +302,21 @@ const selected = computed(() => bosses[selectedIndex.value]);
   position: relative;
   min-height: 260px;
   border-right: 1px solid var(--line);
-  background: radial-gradient(120% 84% at 50% 24%, oklch(0.38 0.05 60) 0%, oklch(0.28 0.032 58) 52%, oklch(0.22 0.026 56) 100%);
+  background: var(--panel-2);
   display: flex;
   align-items: flex-end;
   padding: 14px;
 }
 
 .manif-detail__tag {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-4);
   border: 1px solid var(--line);
-  border-radius: 3px;
   padding: 4px 9px;
-  background: oklch(0.20 0.022 56 / 0.85);
+  background: var(--panel);
 }
 
 .manif-detail__body { padding: 28px 30px; }
@@ -366,12 +367,14 @@ const selected = computed(() => bosses[selectedIndex.value]);
   line-height: 1.7;
 }
 
+.manif-detail__mech-mark { color: var(--mint-dim); }
+
 .manif-detail__quote {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 18px;
   line-height: 1.45;
-  color: var(--gold);
+  color: var(--mint-dim);
   margin: 24px 0 0;
   max-width: 42ch;
 }
