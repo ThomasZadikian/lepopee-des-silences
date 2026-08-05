@@ -4342,7 +4342,17 @@ public sealed partial class CatalogSeedRunner
         var allowedArchetypesJson = JsonSerializer.Serialize(allowedArchetypes ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is not null)
+        {
+            // Audience/AllowedArchetypes/EmotionalRegister are tuned iteratively (design
+            // balancing), unlike the rest of this row which is treated as immutable once
+            // seeded — without this, a skill already present in an existing DB would never
+            // pick up a later re-tag (e.g. an enemy-only skill would keep leaking into the
+            // player-facing Grimoire until the whole database was wiped and reseeded).
+            existing.Audience = audience;
+            existing.AllowedArchetypesJson = allowedArchetypesJson;
+            existing.EmotionalRegister = emotionalRegister;
             return;
+        }
         _ctx.SkillDefinitions.Add(new SkillDefinitionEntity
         {
             Id = Guid.NewGuid(),

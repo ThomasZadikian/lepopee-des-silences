@@ -29,7 +29,11 @@ public sealed record SkillDefinitionView(
     // server-side by SkillArchetypeGate; surfaced here so the Grimoire can grey out
     // incompatible skills instead of only failing on submit. This response only ever
     // contains Audience "Player"/"Any" skills — see ListActiveSkillDefinitionsQueryHandler.
-    IReadOnlyCollection<string>? AllowedArchetypes = null);
+    IReadOnlyCollection<string>? AllowedArchetypes = null,
+    // "Player"/"Enemy"/"Any" — always non-"Enemy" here (already filtered out server-side).
+    // Surfaced anyway so the Grimoire can defensively re-filter without depending solely on
+    // this endpoint's own filter staying correct.
+    string Audience = "Player");
 
 public sealed record SkillEffectView(
     string Kind,

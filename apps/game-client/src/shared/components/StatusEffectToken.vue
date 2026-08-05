@@ -256,7 +256,7 @@ const statModifierLine = computed(() => {
         v-if="isHovered"
         class="sigil__bubble sigil__bubble--teleported"
         role="tooltip"
-        :style="{ left: bubbleStyle.left, bottom: bubbleStyle.bottom }"
+        :style="{ '--bubble-left': bubbleStyle.left, '--bubble-bottom': bubbleStyle.bottom }"
       >
         <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
         <div v-if="statModifierLine" class="sigil__bubble-line">{{ statModifierLine }}</div>
@@ -425,11 +425,18 @@ const statModifierLine = computed(() => {
 
 <!-- Unscoped: teleported to <body>, outside this component's scoped-style DOM subtree — same
      pattern as DefeatedEnemyRow's `.del-pop`. Overrides the scoped `.sigil__bubble` base rule's
-     position/opacity/visibility, which still applies here since Teleport moves the DOM node but
-     keeps its scope attribute. -->
+     position/opacity/visibility/left/bottom, which still applies here since Teleport moves the
+     DOM node but keeps its scope attribute — left/bottom/top are read from CSS custom properties
+     (set per-instance via :style) rather than plain left/bottom, so this rule's `!important`
+     unambiguously wins over the scoped rule's un-important `left: 50%; bottom: 100%` instead of
+     depending on inline-style-vs-stylesheet specificity (which is what actually placed the
+     bubble below its trigger instead of above it). -->
 <style>
 .sigil__bubble--teleported {
   position: fixed !important;
+  top: auto !important;
+  left: var(--bubble-left) !important;
+  bottom: var(--bubble-bottom) !important;
   opacity: 1 !important;
   visibility: visible !important;
   transform: none !important;

@@ -70,7 +70,8 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                 EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, d.EmotionalRegister, out var emotionalType)
                     ? emotionalType.ToString()
                     : null,
-                d.AllowedArchetypes)).ToArray());
+                d.AllowedArchetypes,
+                d.Audience)).ToArray());
     }
 
     /// <summary>

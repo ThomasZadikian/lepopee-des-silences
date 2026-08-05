@@ -36,4 +36,7 @@ export type SkillDefinitionView = {
   emotionalType?: string | null;
   /** Player archetypes allowed to equip this skill — empty/absent means unrestricted. */
   allowedArchetypes?: string[] | null;
+  /** "Player"/"Enemy"/"Any" — the Grimoire filters out "Enemy" defensively even though the
+   * server is also supposed to exclude them. */
+  audience?: string;
 };

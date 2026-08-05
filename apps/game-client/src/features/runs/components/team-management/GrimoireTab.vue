@@ -26,7 +26,9 @@ async function loadSkills() {
   loadError.value = null;
   try {
     const response = await skillsApi.listActive();
-    allSkills.value = response.skills;
+    // Défensif : le serveur exclut déjà les sorts Audience "Enemy" de cette réponse, mais le
+    // Grimoire ne doit jamais dépendre uniquement de ce filtre pour rester correct côté joueur.
+    allSkills.value = response.skills.filter((skill) => skill.audience !== 'Enemy');
   } catch (caught) {
     loadError.value = caught instanceof Error ? caught.message : 'Chargement du grimoire impossible.';
   } finally {
