@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import GameTopBar from '../../features/run-shell/GameTopBar.vue';
-import PalaceAtmosphere from '../../shared/components/PalaceAtmosphere.vue';
+import LivingWalls from '../../shared/components/LivingWalls.vue';
 
 defineProps<{
   hideTopBar?: boolean;
@@ -8,8 +8,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="game-shell" data-mood="palais">
-    <PalaceAtmosphere />
+  <div class="game-shell">
+    <LivingWalls />
 
     <GameTopBar v-if="!hideTopBar" />
 
@@ -26,6 +26,7 @@ defineProps<{
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  background: var(--void);
 }
 
 .game-shell__main {

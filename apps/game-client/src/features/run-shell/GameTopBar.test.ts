@@ -125,12 +125,12 @@ describe('GameTopBar', () => {
     expect(wrapper.text()).toContain('Active');
   });
 
-  it('applies blood color for Failed status', async () => {
+  it('applies the danger tone for Failed status', async () => {
     const wrapper = await mountExpandedTopBar({
       currentRun: { status: 'Failed' },
     });
     const statusEl = wrapper.findAll('.es-seg__v').find((el) => el.text().includes('Failed'));
-    expect(statusEl?.attributes('style')).toContain('var(--blood)');
+    expect(statusEl?.attributes('style')).toContain('var(--danger-dim)');
   });
 
   it('maps Map phase to EXPLORATION', async () => {

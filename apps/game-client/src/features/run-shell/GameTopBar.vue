@@ -50,7 +50,7 @@ const status = computed(() => run.value?.status ?? '—');
 
 const lawsLabel   = computed(() => String(activeLaws.value).padStart(2, '0'))
 const statusColor = computed(() =>
-  status.value === 'Failed' ? 'var(--blood)' : 'var(--frost)')
+  status.value === 'Failed' ? 'var(--danger-dim)' : 'var(--mint-dim)')
 </script>
 
 <template>
@@ -80,7 +80,7 @@ const statusColor = computed(() =>
     <!-- Seed -->
     <div class="es-seg">
       <span class="es-seg__k">Seed</span>
-      <span class="es-seg__v es-gold">{{ seed }}</span>
+      <span class="es-seg__v es-mint">{{ seed }}</span>
     </div>
 
     <!-- Lois -->
@@ -97,7 +97,7 @@ const statusColor = computed(() =>
     <!-- Phase -->
     <div class="es-seg" style="align-items: flex-end">
       <span class="es-seg__k">Phase</span>
-      <span class="es-seg__v es-gold">● {{ phase }}</span>
+      <span class="es-seg__v es-mint">● {{ phase }}</span>
     </div>
 
     <!-- État -->
@@ -150,15 +150,14 @@ const statusColor = computed(() =>
   height: 22px;
   margin: 4px;
   border: 1px solid var(--line-soft);
-  border-radius: 4px;
-  background: oklch(0.20 0.04 272 / 0.85);
+  background: var(--panel);
   color: var(--ink-3);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .es-runbar-tab:hover {
-  color: var(--frost);
+  color: var(--mint-dim);
 }
 
 .es-runbar--overlay {
@@ -170,7 +169,7 @@ const statusColor = computed(() =>
   top: 0;
   left: 0;
   right: 0;
-  background: oklch(0.16 0.03 272 / 0.94);
+  background: var(--panel);
   backdrop-filter: blur(8px);
 }
 
@@ -184,7 +183,7 @@ const statusColor = computed(() =>
 }
 
 .es-runbar__collapse:hover {
-  color: var(--frost);
+  color: var(--mint-dim);
 }
 
 .es-runbar__refs {
@@ -208,7 +207,7 @@ const statusColor = computed(() =>
 }
 
 .es-runbar__ref-link:hover {
-  color: var(--gold);
+  color: var(--mint-dim);
 }
 
 .es-system-notice {

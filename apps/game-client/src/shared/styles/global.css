@@ -324,10 +324,12 @@ button {
 }
 
 /* ── couleurs utilitaires standalone ── */
-.es-gold  { color: var(--gold); }
-.es-frost { color: var(--frost); }
-.es-blood { color: var(--blood); }
-.es-dim   { color: var(--ink-3); }
+.es-gold   { color: var(--gold); }
+.es-frost  { color: var(--frost); }
+.es-blood  { color: var(--blood); }
+.es-mint   { color: var(--mint-dim); }
+.es-danger { color: var(--danger-dim); }
+.es-dim    { color: var(--ink-3); }
 
 /* ── runbar ── */
 .es-runbar {
@@ -337,9 +339,8 @@ button {
   box-shadow: 0 12px 28px -18px oklch(0.10 0.03 60 / 0.7);
 }
 .es-runbar::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; filter: blur(0.5px);
-  background: linear-gradient(90deg, transparent, var(--frost-dim) 30%, var(--frost-dim) 70%, transparent);
-  opacity: calc(0.7 * var(--tw-gilt));
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--line);
 }
 .es-seg {
   display: flex; flex-direction: column; justify-content: center; gap: 3px;
