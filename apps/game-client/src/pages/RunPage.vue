@@ -28,6 +28,7 @@ import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import TeamMicroMenu from '../features/runs/components/TeamMicroMenu.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
+import NodeOverlay from '../shared/components/NodeOverlay.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 
 const route = useRoute();
@@ -136,6 +137,22 @@ const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');
 
+// ── Node resolution overlay ─────────────────────────────────────────────────
+// Present (NPC), Marchand, Loi, Malédiction, Repos, Objet, Souvenir no longer replace the
+// map — it stays mounted underneath, darkened and blocked, while the resolution appears as
+// a superposition (see docs/design/brief-superposition-noeuds.md). Combat, changement de
+// salle et états de fin de run gardent leur traitement plein cadre.
+const NODE_OVERLAY_PHASES = ['NpcDialogue', 'EventOutcome', 'EventChoiceResult', 'Reward'];
+const isNodeOverlayPhase = computed(() => NODE_OVERLAY_PHASES.includes(runStore.gameplayPhase));
+const showMapCanvas = computed(() => isMapPhase.value || isNodeOverlayPhase.value);
+const eventOutcomeOverlaySize = computed(() =>
+  runStore.lastOutcome?.resolutionKind === 'TradeOffered' ? 'wide' : 'card',
+);
+
+watch(isNodeOverlayPhase, (active) => {
+  if (active) uiStore.closeDrawer();
+});
+
 watch(
   () => runStore.gameplayPhase,
   (phase, previous) => {
@@ -216,9 +233,9 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         />
       </Teleport>
 
-      <!-- ── Map phase: map dominates ── -->
-      <template v-if="isMapPhase">
-        <div class="phase-map">
+      <!-- ── Map phase: map dominates, and stays mounted (darkened) under node overlays ── -->
+      <template v-if="showMapCanvas">
+        <div class="phase-map" :class="{ 'phase-map--blocked': isNodeOverlayPhase }">
           <!-- Map canvas -->
           <div class="phase-map__canvas">
             <TacticalGridMap
@@ -342,6 +359,88 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             <JournalModal v-if="showJournalModal" @close="uiStore.closeDrawer" />
           </Teleport>
         </div>
+
+        <!-- ── Node resolution superposition — la carte reste visible, assombrie ── -->
+
+        <!-- Synthetic "Choix accompli" transition (priorité sur la phase sous-jacente) -->
+        <NodeOverlay v-if="showingTransition && transitionResult" size="echo">
+          <EventChoiceResultPanel
+            :result="transitionResult"
+            :is-loading="runStore.isLoading"
+            @continue="handleTransitionContinue"
+          />
+        </NodeOverlay>
+
+        <!-- Présence (PNJ) — forme A, dialogue -->
+        <NodeOverlay v-else-if="runStore.gameplayPhase === 'NpcDialogue'" size="dialogue">
+          <NpcDialoguePanel
+            :dialogue="runStore.npcDialogue"
+            :echoes="runStore.npcDialogueEchoes"
+            :ended="runStore.npcDialogueEnded"
+            :is-loading="runStore.isLoading"
+            @select-choice="runStore.selectNpcDialogueChoice"
+            @continue="runStore.continueAfterNpcDialogue"
+          />
+        </NodeOverlay>
+
+        <!-- Marchand, Loi, Malédiction, Repos, Souvenir — forme B, résolution -->
+        <NodeOverlay
+          v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome"
+          :size="eventOutcomeOverlaySize"
+        >
+          <LawResolutionPanel
+            v-if="runStore.lastOutcome.resolutionKind === 'PalaceLawOffered'"
+            :outcome="runStore.lastOutcome"
+            :is-loading="runStore.isLoading"
+            :active-laws="runStore.currentRun.activePalaceLaws"
+            @continue="handleEventContinue"
+            @select-choice="handleSelectChoice"
+          />
+          <MerchantPanel
+            v-else-if="runStore.lastOutcome.resolutionKind === 'TradeOffered'"
+            :outcome="runStore.lastOutcome"
+            :is-loading="runStore.isLoading"
+            @continue="handleEventContinue"
+            @select-choice="handleSelectChoice"
+          />
+          <EventOutcomePanel
+            v-else
+            :outcome="runStore.lastOutcome"
+            :is-loading="runStore.isLoading"
+            @continue="handleEventContinue"
+            @select-choice="handleSelectChoice"
+          />
+        </NodeOverlay>
+
+        <!-- Suite de Marchand/Loi/Malédiction/Repos/Souvenir — forme C, écho -->
+        <NodeOverlay
+          v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult"
+          size="echo"
+        >
+          <EventChoiceResultPanel
+            :result="runStore.lastChoiceResult"
+            :is-loading="runStore.isLoading"
+            @continue="runStore.continueAfterChoiceResult"
+          />
+        </NodeOverlay>
+
+        <!-- Objet — forme B, résolution (grille de récompenses) -->
+        <NodeOverlay v-else-if="runStore.gameplayPhase === 'Reward'" size="wide">
+          <RewardOfferPanel
+            v-if="runStore.pendingRewardOffer"
+            :offer="runStore.pendingRewardOffer"
+            :is-loading="runStore.isLoading"
+            :error-message="runStore.error"
+            :palace-shard-count="playerStore.profile?.progression.palaceShardCount ?? 0"
+            :him-lit-shard-count="playerStore.profile?.progression.himLitShardCount ?? 0"
+            @select-reward="runStore.selectReward"
+          />
+          <section v-else class="phase-center">
+            <p class="es-kicker">Récompense</p>
+            <h3 class="es-h2">Une résonance demeure.</h3>
+            <p class="es-lede es-dim">Le Palais rassemble ce que tu peux emporter.</p>
+          </section>
+        </NodeOverlay>
       </template>
 
       <!-- ── Combat phase ── -->
@@ -366,24 +465,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         </section>
       </template>
 
-      <!-- ── Reward phase ── -->
-      <template v-else-if="runStore.gameplayPhase === 'Reward'">
-        <RewardOfferPanel
-          v-if="runStore.pendingRewardOffer"
-          :offer="runStore.pendingRewardOffer"
-          :is-loading="runStore.isLoading"
-          :error-message="runStore.error"
-          :palace-shard-count="playerStore.profile?.progression.palaceShardCount ?? 0"
-          :him-lit-shard-count="playerStore.profile?.progression.himLitShardCount ?? 0"
-          @select-reward="runStore.selectReward"
-        />
-        <section v-else class="phase-center">
-          <p class="es-kicker">Récompense</p>
-          <h3 class="es-h2">Une résonance demeure.</h3>
-          <p class="es-lede es-dim">Le Palais rassemble ce que tu peux emporter.</p>
-        </section>
-      </template>
-
       <!-- ── Interlude phase ── -->
       <template v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude">
         <InterludePanel
@@ -405,63 +486,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :current-room-index="runStore.currentRun.currentRoomIndex"
           :is-loading="runStore.isEnteringInterlude"
           @enter-interlude="runStore.enterInterlude"
-        />
-      </template>
-
-      <!-- ── Synthetic "Choix accompli" transition ── -->
-      <template v-else-if="showingTransition && transitionResult">
-        <EventChoiceResultPanel
-          :result="transitionResult"
-          :is-loading="runStore.isLoading"
-          @continue="handleTransitionContinue"
-        />
-      </template>
-
-            <!-- ── NPC dialogue ── -->
-      <template v-else-if="runStore.gameplayPhase === 'NpcDialogue'">
-        <NpcDialoguePanel
-          :dialogue="runStore.npcDialogue"
-          :echoes="runStore.npcDialogueEchoes"
-          :ended="runStore.npcDialogueEnded"
-          :is-loading="runStore.isLoading"
-          @select-choice="runStore.selectNpcDialogueChoice"
-          @continue="runStore.continueAfterNpcDialogue"
-        />
-      </template>
-
-      <!-- ── Event outcome ── -->
-      <template v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome">
-        <LawResolutionPanel
-          v-if="runStore.lastOutcome.resolutionKind === 'PalaceLawOffered'"
-          :outcome="runStore.lastOutcome"
-          :is-loading="runStore.isLoading"
-          :active-laws="runStore.currentRun.activePalaceLaws"
-          :active-curses="runStore.currentRun.activeCurses"
-          @continue="handleEventContinue"
-          @select-choice="handleSelectChoice"
-        />
-        <MerchantPanel
-          v-else-if="runStore.lastOutcome.resolutionKind === 'TradeOffered'"
-          :outcome="runStore.lastOutcome"
-          :is-loading="runStore.isLoading"
-          @continue="handleEventContinue"
-          @select-choice="handleSelectChoice"
-        />
-        <EventOutcomePanel
-          v-else
-          :outcome="runStore.lastOutcome"
-          :is-loading="runStore.isLoading"
-          @continue="handleEventContinue"
-          @select-choice="handleSelectChoice"
-        />
-      </template>
-
-      <!-- ── Event choice result (real backend result) ── -->
-      <template v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult">
-        <EventChoiceResultPanel
-          :result="runStore.lastChoiceResult"
-          :is-loading="runStore.isLoading"
-          @continue="runStore.continueAfterChoiceResult"
         />
       </template>
 
@@ -569,6 +593,10 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 .phase-map {
   position: relative;
   height: 100%;
+}
+
+.phase-map--blocked {
+  pointer-events: none;
 }
 
 .phase-map__canvas {
