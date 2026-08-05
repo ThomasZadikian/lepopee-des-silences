@@ -120,8 +120,10 @@ export type FloatingNumber = {
   bornAt: number;
   /** `guard` paints a small shield glyph beside the number (see TacticalCombatScene's
    * paintFloatingNumbers) — what Garde absorbed reads as a distinct event from a real hit,
-   * never as a duller version of the same one. */
-  kind?: 'damage' | 'guard';
+   * never as a duller version of the same one. `effectiveness` is the Faiblesse/Résistance/
+   * Immunisé label from the type system, painted higher up so it never overlaps the
+   * damage number it explains. */
+  kind?: 'damage' | 'guard' | 'effectiveness';
 };
 
 export type ImpactEffect = {
@@ -155,6 +157,25 @@ const MISS_COLOR = '#c3c0d6';
 /** Jaune franc, associé au petit bouclier peint à côté (voir paintFloatingNumbers) — jamais
  * confondu avec ENEMY_HIT_COLOR malgré la parenté de teinte, l'icône fait la différence. */
 const GUARD_COLOR = '#ffcc33';
+/** Rouge vif : une Faiblesse amplifie les dégâts, elle doit lire comme une bonne nouvelle
+ * pour qui frappe. */
+const WEAKNESS_COLOR = '#ff5c4d';
+/** Bleu froid : une Résistance atténue les dégâts, à l'opposé de la Faiblesse. */
+const RESISTANT_COLOR = '#7fb2e0';
+/** Gris neutre, même famille que MISS_COLOR : une immunité n'est pas un chiffre non plus. */
+const IMMUNE_COLOR = '#c3c0d6';
+
+const EFFECTIVENESS_LABELS: Record<'Weak' | 'Resistant' | 'Immune', string> = {
+  Weak: 'Faiblesse',
+  Resistant: 'Résistance',
+  Immune: 'Immunisé',
+};
+
+const EFFECTIVENESS_COLORS: Record<'Weak' | 'Resistant' | 'Immune', string> = {
+  Weak: WEAKNESS_COLOR,
+  Resistant: RESISTANT_COLOR,
+  Immune: IMMUNE_COLOR,
+};
 
 export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
@@ -353,6 +374,25 @@ export function useCombatPlayback() {
     ];
   }
 
+  /** Le petit mot "Faiblesse"/"Résistance"/"Immunisé" du système de types émotionnels — un
+   * float à part, jamais fondu dans le chiffre de dégâts qu'il explique. */
+  function pushEffectivenessFloat(
+    x: number, y: number, effectiveness: 'Weak' | 'Resistant' | 'Immune', now: number,
+  ) {
+    floats.value = [
+      ...floats.value,
+      {
+        id: (floatSeq += 1),
+        x,
+        y,
+        text: EFFECTIVENESS_LABELS[effectiveness],
+        color: EFFECTIVENESS_COLORS[effectiveness],
+        bornAt: now,
+        kind: 'effectiveness',
+      },
+    ];
+  }
+
   /**
    * Allume la zone du geste à venir, laisse au joueur le temps de la lire, puis l'éteint.
    *
@@ -521,6 +561,9 @@ export function useCombatPlayback() {
             // que le chiffre de garde ci-dessus ne dise déjà mieux.
             if (impact.missed || impact.vitalityDelta !== 0) {
               pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            }
+            if (impact.effectiveness) {
+              pushEffectivenessFloat(impact.x, impact.y, impact.effectiveness, at);
             }
             // La barre ne s'effondre qu'ici, au moment exact où ce coup précis atterrit —
             // jamais avant, quel que soit l'ordre dans lequel `combat.value` a déjà tout reçu.

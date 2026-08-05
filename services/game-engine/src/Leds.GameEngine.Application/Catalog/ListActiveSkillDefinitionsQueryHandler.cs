@@ -67,7 +67,7 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                 d.Cooldown,
                 d.IsUltimate,
                 d.EmotionalRegister,
-                EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, out var emotionalType)
+                EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, d.EmotionalRegister, out var emotionalType)
                     ? emotionalType.ToString()
                     : null,
                 d.AllowedArchetypes)).ToArray());

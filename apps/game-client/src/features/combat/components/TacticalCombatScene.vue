@@ -1468,14 +1468,24 @@ function paintFloatingNumbers(ctx: CanvasRenderingContext2D, timestamp: number) 
     const { screenX, screenY } = projectToScreen(float.x, float.y, projectionParams.value);
     const lift = elevationLiftPx(elevationAt(float.x, float.y));
 
+    const isEffectiveness = float.kind === 'effectiveness';
+
     ctx.save();
     ctx.globalAlpha = Math.max(0, 1 - progress);
-    ctx.font = `600 ${Math.max(13, Math.round(destW * 0.17))}px ui-monospace, monospace`;
+    ctx.font = isEffectiveness
+      // Petit mot en capitales, distinct du chiffre de dégâts qu'il explique — jamais
+      // confondu avec une quantité.
+      ? `700 ${Math.max(10, Math.round(destW * 0.11))}px ui-monospace, monospace`
+      : `600 ${Math.max(13, Math.round(destW * 0.17))}px ui-monospace, monospace`;
     ctx.textAlign = 'center';
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = 'rgba(4, 5, 10, 0.9)';
 
-    const y = screenY - lift - (destW * 0.5) - (progress * FLOAT_RISE_PX);
+    // Un cran plus haut que le chiffre de dégâts : les deux montent ensemble sans jamais
+    // se chevaucher, la Faiblesse/Résistance se lit comme un commentaire au-dessus du coup.
+    const y = isEffectiveness
+      ? screenY - lift - (destW * 0.9) - (progress * FLOAT_RISE_PX)
+      : screenY - lift - (destW * 0.5) - (progress * FLOAT_RISE_PX);
 
     if (float.kind === 'guard') {
       const shieldSize = Math.max(12, Math.round(destW * 0.16));
@@ -1484,9 +1494,10 @@ function paintFloatingNumbers(ctx: CanvasRenderingContext2D, timestamp: number) 
       drawShieldGlyph(ctx, screenX - (textWidth / 2) - gap - (shieldSize / 2), y, shieldSize, float.color);
     }
 
-    ctx.strokeText(float.text, screenX, y);
+    const text = isEffectiveness ? float.text.toUpperCase() : float.text;
+    ctx.strokeText(text, screenX, y);
     ctx.fillStyle = float.color;
-    ctx.fillText(float.text, screenX, y);
+    ctx.fillText(text, screenX, y);
     ctx.restore();
   }
 }

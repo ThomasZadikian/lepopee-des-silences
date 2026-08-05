@@ -20,7 +20,14 @@ public sealed record TacticalImpactDto(
     /// action sans effet que ne l'est un coup manqué, mais avec la mauvaise cause affichée
     /// (rien ne dirait que la Garde a fait son travail).
     /// </summary>
-    int GuardAbsorbed = 0);
+    int GuardAbsorbed = 0,
+    /// <summary>
+    /// "Weak", "Resistant" ou "Immune" — le résultat du système faiblesse/résistance
+    /// (voir DamageCalculator/EmotionalTypeProfileProvider), cross-référencé depuis les
+    /// entrées de journal WeaknessHit/ResistedHit/ImmuneHit (TacticalImpactRecorder.Diff).
+    /// Null quand l'effet fut neutre (ni faiblesse, ni résistance, ni immunité).
+    /// </summary>
+    string? Effectiveness = null);
 
 /// <summary>Une case du trajet, dans l'ordre où elle est foulée.</summary>
 public sealed record TacticalStepDto(int X, int Y);

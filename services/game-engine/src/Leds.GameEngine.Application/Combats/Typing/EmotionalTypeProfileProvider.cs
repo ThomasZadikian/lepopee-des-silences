@@ -57,21 +57,18 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
                 weak: [EmotionalType.Effroi],
                 resist: [EmotionalType.Silence]),
 
-            // ── Enemy archetypes ──────────────────────────────────────────────
-            ["Trauma"] = Profile(
-                EmotionalType.Memoire,
-                weak: [EmotionalType.Memoire],
-                resist: [EmotionalType.Effroi]),
+            // ── Enemy archetypes (CatalogSeedRunner.UpsertEnemyAsync's `archetype`
+            // param) — every distinct value actually used by the bestiary, plus
+            // "Fragile" kept as a generic example/test fixture (not currently seeded). ──
+            ["Fragile"] = Profile(
+                EmotionalType.Melancolie,
+                weak: [EmotionalType.Rupture],
+                resist: [EmotionalType.Melancolie]),
 
             ["Shadow"] = Profile(
                 EmotionalType.Effroi,
                 weak: [EmotionalType.Silence],
                 resist: [EmotionalType.Deni]),
-
-            ["Fragile"] = Profile(
-                EmotionalType.Melancolie,
-                weak: [EmotionalType.Rupture],
-                resist: [EmotionalType.Melancolie]),
 
             ["Guard"] = Profile(
                 EmotionalType.Rupture,
@@ -82,6 +79,60 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
                 EmotionalType.Rupture,
                 weak: [EmotionalType.Melancolie],
                 resist: [EmotionalType.Effroi]),
+
+            ["Memory"] = Profile(
+                EmotionalType.Memoire,
+                weak: [EmotionalType.Rupture],
+                resist: [EmotionalType.Silence]),
+
+            ["Support"] = Profile(
+                EmotionalType.Deni,
+                weak: [EmotionalType.Melancolie],
+                resist: [EmotionalType.Folie]),
+
+            ["Disruptor"] = Profile(
+                EmotionalType.Folie,
+                weak: [EmotionalType.Memoire],
+                resist: [EmotionalType.Deni]),
+
+            ["Skirmisher"] = Profile(
+                EmotionalType.Silence,
+                weak: [EmotionalType.Folie],
+                resist: [EmotionalType.Rupture]),
+
+            // Literal "Rupture" archetype (distinct role bucket from Guard/Bruiser,
+            // both of which also attack with Rupture but carry different affinities).
+            ["Rupture"] = Profile(
+                EmotionalType.Rupture,
+                weak: [EmotionalType.Memoire],
+                resist: [EmotionalType.Deni]),
+
+            // ── Named bosses (by SourceKey = EnemyDefinition.Key) — each gets a
+            // bespoke profile instead of sharing the generic "Boss" archetype bucket.
+            ["canon.enemy.grand-cardinal"] = Profile(
+                EmotionalType.Deni,
+                weak: [EmotionalType.Folie],
+                resist: [EmotionalType.Melancolie]),
+
+            ["canon.enemy.imperatrice-vipere"] = Profile(
+                EmotionalType.Folie,
+                weak: [EmotionalType.Memoire],
+                resist: [EmotionalType.Rupture]),
+
+            ["canon.enemy.homoncule-roi"] = Profile(
+                EmotionalType.Rupture,
+                weak: [EmotionalType.Silence],
+                resist: [EmotionalType.Deni]),
+
+            ["canon.enemy.pape-louis-xvii"] = Profile(
+                EmotionalType.Effroi,
+                weak: [EmotionalType.Deni],
+                resist: [EmotionalType.Silence]),
+
+            ["canon.enemy.himlit"] = Profile(
+                EmotionalType.Folie,
+                weak: [EmotionalType.Memoire],
+                resist: [EmotionalType.Effroi, EmotionalType.Silence]),
         };
 
     public CombatantTypeProfile Resolve(Combatant combatant)
@@ -137,15 +188,15 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
     }
 
     /// <summary>
-    /// Resolves a skill's OWN elemental identity — a tag override or its entry in
-    /// <see cref="SkillTypesByKey"/> — independently of any caster. Used both by
-    /// <see cref="ResolveAttackType"/> (which then falls back to the caster's type)
-    /// and by <see cref="Dtos.CombatantSkillRuntimeDto.FromDomain"/> to surface a
-    /// skill's "élément" badge in the UI for true spells (basic attacks correctly
+    /// Resolves a skill's OWN elemental identity — a tag override, its entry in
+    /// <see cref="SkillTypesByKey"/>, or its catalog <c>EmotionalRegister</c> — independently
+    /// of any caster. Used both by <see cref="ResolveAttackType"/> (which then falls back to
+    /// the caster's type) and by <see cref="Dtos.CombatantSkillRuntimeDto.FromDomain"/> to
+    /// surface a skill's "élément" badge in the UI for true spells (basic attacks correctly
     /// return false — see the doc comment on <see cref="SkillTypesByKey"/>).
     /// </summary>
     public static bool TryResolveIntrinsicType(CombatantSkill? skill, out EmotionalType type)
-        => TryResolveIntrinsicType(skill?.Key, skill?.Tags, out type);
+        => TryResolveIntrinsicType(skill?.Key, skill?.Tags, skill?.EmotionalRegister, out type);
 
     /// <summary>
     /// Key/tags-only overload of <see cref="TryResolveIntrinsicType(CombatantSkill?, out EmotionalType)"/>,
@@ -153,7 +204,7 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
     /// same "élément" without needing a runtime <see cref="CombatantSkill"/> instance.
     /// </summary>
     public static bool TryResolveIntrinsicType(
-        string? skillKey, IReadOnlyCollection<string>? tags, out EmotionalType type)
+        string? skillKey, IReadOnlyCollection<string>? tags, string? emotionalRegister, out EmotionalType type)
     {
         // 1) Explicit per-skill override via a tag, e.g. "emotype:rupture".
         if (tags is { Count: > 0 })
@@ -175,10 +226,21 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
             }
         }
 
-        // 2) Intrinsic spell type (belongs to the spell, not the caster).
+        // 2) A handful of pre-catalog special cases (kept for skills authored before the
+        // EmotionalRegister column existed / not seeded through UpsertSkillAsync).
         if (skillKey is not null && SkillTypesByKey.TryGetValue(skillKey, out var spellType))
         {
             type = spellType;
+            return true;
+        }
+
+        // 3) The skill's own catalog EmotionalRegister — the primary, per-skill source of
+        // truth now that every seeded skill declares one (see CatalogSeedRunner).
+        if (!string.IsNullOrWhiteSpace(emotionalRegister)
+            && !string.Equals(emotionalRegister, "Neutral", StringComparison.OrdinalIgnoreCase)
+            && Enum.TryParse<EmotionalType>(emotionalRegister, ignoreCase: true, out var registerType))
+        {
+            type = registerType;
             return true;
         }
 

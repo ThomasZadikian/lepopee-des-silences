@@ -24,6 +24,15 @@ public static class TacticalImpactRecorder
     /// <summary>Type de ligne de journal émis par le noyau de résolution sur un jet raté.</summary>
     private const string MissLogType = "AttackMissed";
 
+    /// <summary>Types de ligne de journal émis par CombatSkillEffectResolver.AddEffectivenessLog.</summary>
+    private static readonly IReadOnlyDictionary<string, string> EffectivenessLogTypes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["WeaknessHit"] = "Weak",
+            ["ResistedHit"] = "Resistant",
+            ["ImmuneHit"] = "Immune",
+        };
+
     /// <summary>
     /// Compare l'état relevé à l'état courant et produit un impact par cible réellement touchée.
     /// Une cible inchangée n'en produit aucun : un chiffre « 0 » qui s'envole au-dessus d'une
@@ -49,6 +58,13 @@ public static class TacticalImpactRecorder
                 .SelectMany(e => e.TargetIds)
                 .ToHashSet();
 
+        var effectivenessByTargetId = logEntries is null
+            ? new Dictionary<Guid, string>()
+            : logEntries
+                .Where(e => EffectivenessLogTypes.ContainsKey(e.Type))
+                .SelectMany(e => e.TargetIds.Select(id => (id, effectiveness: EffectivenessLogTypes[e.Type])))
+                .ToDictionary(x => x.id, x => x.effectiveness);
+
         var impacts = new List<TacticalImpactDto>();
 
         foreach (var snapshot in before)
@@ -67,17 +83,21 @@ public static class TacticalImpactRecorder
             // Manquée ET intacte : une cible qu'un second effet de la même compétence a
             // touchée a bien perdu de la vitalité, et c'est ce chiffre-là qui doit s'afficher.
             var missed = delta == 0 && guardAbsorbed == 0 && missedIds.Contains(snapshot.CombatantId);
+            effectivenessByTargetId.TryGetValue(snapshot.CombatantId, out var effectiveness);
 
             // Un coup entièrement absorbé laisse la vitalité intacte (delta == 0) mais n'est
             // pas rien : la Garde a fait exactement ce pour quoi elle existe, et guardAbsorbed
-            // porte seul la preuve qu'il s'est passé quelque chose.
-            if (delta == 0 && !newlyDefeated && !missed && guardAbsorbed == 0)
+            // porte seul la preuve qu'il s'est passé quelque chose. Une immunité laisse aussi
+            // la vitalité intacte (dégâts annulés à zéro) mais reste un événement à afficher —
+            // sans cette clause, un coup immunisé ne produirait aucun impact du tout.
+            if (delta == 0 && !newlyDefeated && !missed && guardAbsorbed == 0 && effectiveness != "Immune")
                 continue;
 
             var position = combat.PositionOf(snapshot.CombatantId);
 
             impacts.Add(new TacticalImpactDto(
-                snapshot.CombatantId, position.X, position.Y, delta, newlyDefeated, missed, guardAbsorbed));
+                snapshot.CombatantId, position.X, position.Y, delta, newlyDefeated, missed, guardAbsorbed,
+                effectiveness));
         }
 
         return impacts;

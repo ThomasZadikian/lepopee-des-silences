@@ -264,6 +264,11 @@ export type TacticalImpactDto = {
    * toute réponse serveur antérieure à ce champ.
    */
   guardAbsorbed?: number;
+  /**
+   * "Weak" | "Resistant" | "Immune" — résultat du système faiblesse/résistance émotionnel
+   * (voir DamageCalculator côté serveur). Absent/null quand l'effet fut neutre.
+   */
+  effectiveness?: 'Weak' | 'Resistant' | 'Immune' | null;
 };
 
 /**
