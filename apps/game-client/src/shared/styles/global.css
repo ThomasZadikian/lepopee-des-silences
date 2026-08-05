@@ -181,6 +181,16 @@ button {
   border-color: color-mix(in oklch, var(--blood), transparent 50%);
 }
 
+.es-btn--mint {
+  color: var(--mint-dim);
+  border-color: var(--mint-dim);
+}
+
+.es-btn--mint:hover {
+  background: var(--panel-2);
+  color: var(--mint);
+}
+
 .es-btn--lg {
   padding: var(--space-3) var(--space-6);
   font-size: 0.82rem;
@@ -212,6 +222,7 @@ button {
 .es-chip--frost { color: var(--frost); border-color: var(--edge-frost); }
 .es-chip--blood { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
 .es-chip--mint { color: var(--mint-dim); border-color: var(--mint-dim); }
+.es-chip--danger { color: var(--danger-dim); border-color: var(--danger-dim); }
 .es-chip--sap { color: var(--sap); border-color: color-mix(in oklch, var(--sap), transparent 50%); }
 
 /* ── Bars ── */

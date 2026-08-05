@@ -30,16 +30,7 @@ const lawOutcome: EventOutcomeDto = {
 
 function mountPanel(outcome: EventOutcomeDto = lawOutcome, isLoading = false) {
   return mount(LawResolutionPanel, {
-    props: { outcome, isLoading, activeLaws: [], activeCurses: [] },
-    global: {
-      stubs: {
-        ChipBadge: { template: '<span><slot /></span>' },
-        EliseComment: { template: '<div><slot /></div>' },
-        LawsPopover: { template: '<aside />' },
-        RuleOrnament: { template: '<hr />' },
-        SigilIcon: { template: '<svg />' },
-      },
-    },
+    props: { outcome, isLoading, activeLaws: [] },
   });
 }
 
@@ -59,14 +50,13 @@ describe('LawResolutionPanel', () => {
   it('does not render decision buttons because laws cannot be refused', () => {
     const wrapper = mountPanel();
 
-    expect(wrapper.findAll('.vlo-choice-card').length).toBe(0);
     expect(wrapper.text()).not.toContain('Refuser la Loi');
     expect(wrapper.text()).toContain('Cette Loi ne peut pas être refusée');
   });
 
   it('can seal immediately when the server provides an application choice', () => {
     const wrapper = mountPanel();
-    const sealButton = wrapper.find('.es-btn--gold');
+    const sealButton = wrapper.find('.vlo-seal-btn');
 
     expect((sealButton.element as HTMLButtonElement).disabled).toBe(false);
   });
@@ -75,10 +65,10 @@ describe('LawResolutionPanel', () => {
     vi.useFakeTimers();
     const wrapper = mountPanel();
 
-    await wrapper.find('.es-btn--gold').trigger('click');
+    await wrapper.find('.vlo-seal-btn').trigger('click');
     vi.advanceTimersByTime(460);
     await nextTick();
-    await wrapper.find('.es-btn--frost').trigger('click');
+    await wrapper.find('.vlo-proceed-btn').trigger('click');
 
     const events = wrapper.emitted('selectChoice') as string[][];
     expect(events).toBeDefined();

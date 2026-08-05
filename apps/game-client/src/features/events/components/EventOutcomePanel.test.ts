@@ -93,24 +93,24 @@ describe('EventOutcomePanel', () => {
   it('emits continue on direct continue button click', async () => {
     const outcome = { ...baseOutcome, choices: [] };
     const wrapper = mountPanel(outcome);
-    await wrapper.findAll('.es-btn').find((b) => b.text().includes('Continuer'))!.trigger('click');
+    await wrapper.findAll('.eo-btn').find((b) => b.text().includes('Continuer'))!.trigger('click');
     expect(wrapper.emitted('continue')).toHaveLength(1);
   });
 
   it('opens drawer on choice opener click', async () => {
     const wrapper = mountPanel(baseOutcome);
-    const btn = wrapper.findAll('.es-btn').find((b) => b.text().includes('Que fais-tu'));
+    const btn = wrapper.findAll('.eo-btn').find((b) => b.text().includes('Que fais-tu'));
     if (btn) await btn.trigger('click');
     expect(wrapper.text()).toContain('Que fais-tu ?');
   });
 
   it('emits selectChoice when choice is confirmed', async () => {
     const wrapper = mountPanel(baseOutcome);
-    const btn = wrapper.findAll('.es-btn').find((b) => b.text().includes('Que fais-tu'));
+    const btn = wrapper.findAll('.eo-btn').find((b) => b.text().includes('Que fais-tu'));
     if (btn) await btn.trigger('click');
-    const selectBtn = wrapper.findAll('.es-btn').find((b) => b.text().includes('Sélectionner ce geste'));
+    const selectBtn = wrapper.findAll('.eo-btn').find((b) => b.text().includes('Sélectionner ce geste'));
     if (selectBtn) await selectBtn.trigger('click');
-    const confirmBtn = wrapper.findAll('.es-btn').find((b) => b.text().includes('Valider'));
+    const confirmBtn = wrapper.findAll('.eo-btn').find((b) => b.text().includes('Valider'));
     if (confirmBtn) await confirmBtn.trigger('click');
     expect(wrapper.emitted('selectChoice')).toBeDefined();
   });
@@ -122,25 +122,10 @@ describe('EventOutcomePanel', () => {
     expect(disabledButtons.length).toBeGreaterThan(0);
   });
 
-  it('applies blood tone for combat-related outcomes', () => {
-    const outcome = { ...baseOutcome, resolutionKind: 'CombatVictory' };
-    const wrapper = mountPanel(outcome);
-    const chip = wrapper.find('.eo-top-row .es-chip');
-    expect(chip.classes()).toContain('es-chip--blood');
-  });
-
-  it('applies gold tone for reward-related outcomes', () => {
-    const outcome = { ...baseOutcome, resolutionKind: 'RewardGranted' };
-    const wrapper = mountPanel(outcome);
-    const chip = wrapper.find('.eo-top-row .es-chip');
-    expect(chip.classes()).toContain('es-chip--gold');
-  });
-
-  it('applies sap tone for rest-related outcomes', () => {
-    const outcome = { ...baseOutcome, resolutionKind: 'RestCompleted' };
-    const wrapper = mountPanel(outcome);
-    const chip = wrapper.find('.eo-top-row .es-chip');
-    expect(chip.classes()).toContain('es-chip--sap');
+  it('shows the outcome family chip', () => {
+    const wrapper = mountPanel(baseOutcome);
+    const chip = wrapper.find('.eo-top-row .eo-chip');
+    expect(chip.text()).toBe('Narrative');
   });
 
   it('renders body fragments beyond the first', () => {

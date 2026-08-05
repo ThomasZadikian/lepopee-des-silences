@@ -20,27 +20,8 @@ watch(() => props.outcome.nodeId, () => {
   openChoiceIds.value = new Set()
 })
 
-function familyTone(): 'frost' | 'gold' | 'blood' | 'sap' {
-  const k = props.outcome.resolutionKind ?? ''
-  if (k.includes('Combat') || k.includes('Encounter') || k.includes('Boss') || k.includes('Curse')) return 'blood'
-  if (k.includes('Reward') || k.includes('Rare') || k.includes('Tome') || k.includes('Law')) return 'gold'
-  if (k.includes('Rest')) return 'sap'
-  return 'frost'
-}
-
-function familyColor(): string {
-  const t = familyTone()
-  if (t === 'blood') return 'var(--blood, oklch(0.52 0.15 20))'
-  if (t === 'gold')  return 'var(--gold, oklch(0.72 0.1 85))'
-  if (t === 'sap')   return 'var(--sap, oklch(0.68 0.1 130))'
-  return 'var(--frost, oklch(0.6 0.1 195))'
-}
-
 const eliseQuote = computed(() =>
   props.outcome.narrativeFragments?.[0]?.text ?? props.outcome.description ?? ''
-)
-const eliseLabel = computed(() =>
-  props.outcome.narrativeFragments?.[0]?.speaker ?? 'Élise'
 )
 
 const bodyFragments = computed(() =>
@@ -67,193 +48,94 @@ function confirmChoice() {
 </script>
 
 <template>
-  <div class="eo-root" :style="{ '--family-color': familyColor() }">
-    <!-- Atmospheric backdrop -->
-    <div class="eo-atmos" aria-hidden="true" />
-
-    <!-- Two-column layout -->
-    <div class="eo-layout">
-      <!-- ── LEFT: Elise column ── -->
-      <aside class="eo-left">
-        <!-- Portrait placeholder -->
-        <div class="eo-portrait">
-          <div class="eo-portrait__inner">
-            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-              <circle cx="28" cy="20" r="10" stroke="var(--family-color)" stroke-width="1" opacity=".45"/>
-              <path d="M8 52c0-11 8.95-20 20-20s20 8.95 20 20" stroke="var(--family-color)" stroke-width="1" opacity=".35"/>
-            </svg>
-            <span class="eo-portrait__label es-label">Portraiture</span>
-          </div>
-        </div>
-
-        <!-- Elise dialogue -->
-        <div class="eo-elise-block">
-          <div class="eo-elise-name">
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="var(--family-color)" aria-hidden="true">
-              <circle cx="4.5" cy="4.5" r="3.5"/>
-            </svg>
-            <span class="es-label" style="color: var(--family-color);">{{ eliseLabel }}</span>
-          </div>
-          <p class="eo-elise-text">{{ eliseQuote }}</p>
-        </div>
-      </aside>
-
-      <!-- ── RIGHT: Narrative column ── -->
-      <section class="eo-right">
-        <!-- Corner accents -->
-        <span class="es-corner tl" />
-        <span class="es-corner tr" />
-        <span class="es-corner bl" />
-        <span class="es-corner br" />
-
-        <!-- Chip + resolution kind -->
-        <div class="eo-top-row">
-          <span
-            class="es-chip"
-            :class="{
-              'es-chip--frost': familyTone() === 'frost',
-              'es-chip--gold':  familyTone() === 'gold',
-              'es-chip--blood': familyTone() === 'blood',
-              'es-chip--sap':   familyTone() === 'sap',
-            }"
-          >{{ outcomeFamily }}</span>
-          <span class="es-label" style="color: var(--ink-4);">{{ outcome.resolutionKind }}</span>
-        </div>
-
-        <!-- Title -->
-        <h2 class="eo-title">{{ outcome.title }}</h2>
-
-        <!-- Illustration slot -->
-        <div class="eo-illus">
-          <span class="es-label eo-illus__label">Souvenir</span>
-        </div>
-
-        <!-- Description -->
-        <p v-if="outcome.description" class="es-lede eo-desc">{{ outcome.description }}</p>
-
-        <!-- Additional fragments (index 1+) -->
-        <template v-if="bodyFragments.length">
-          <article
-            v-for="(frag, i) in bodyFragments"
-            :key="i"
-            class="eo-fragment"
-          >
-            <span class="es-label eo-fragment__speaker">{{ frag.speaker }}</span>
-            <p class="es-body">{{ frag.text }}</p>
-          </article>
-        </template>
-
-        <!-- Spacer -->
-        <div style="flex: 1;" />
-
-        <!-- Footer -->
-        <div class="eo-footer">
-          <span class="es-label" style="color: var(--gold-dim, oklch(.65 .09 84 / .55));">
-            ◆ Loi du Silence — conséquences voilées
-          </span>
-          <!-- Choice opener -->
-          <button
-            v-if="requiresChoice"
-            class="es-btn es-btn--frost"
-            :disabled="isLoading"
-            @click="drawerOpen = true"
-          >
-            Que fais-tu ? ↓
-          </button>
-          <!-- Direct continue for non-choice -->
-          <button
-            v-else
-            class="es-btn es-btn--frost es-btn--lg"
-            :disabled="isLoading"
-            @click="$emit('continue')"
-          >
-            {{ isLoading ? 'Résolution…' : 'Continuer →' }}
-          </button>
-        </div>
-      </section>
+  <div class="eo-root">
+    <div class="eo-top-row">
+      <span class="eo-chip">{{ outcomeFamily }}</span>
+      <span class="eo-kind">{{ outcome.resolutionKind }}</span>
     </div>
 
-    <!-- ── BOTTOM DRAWER ── -->
+    <h2 class="eo-title">{{ outcome.title }}</h2>
+
+    <p v-if="eliseQuote" class="eo-quote">{{ eliseQuote }}</p>
+
+    <div v-if="bodyFragments.length" class="eo-fragments">
+      <article
+        v-for="(frag, i) in bodyFragments"
+        :key="i"
+        class="eo-fragment"
+      >
+        <span class="eo-fragment__speaker">{{ frag.speaker }}</span>
+        <p>{{ frag.text }}</p>
+      </article>
+    </div>
+
+    <footer class="eo-footer">
+      <button
+        v-if="requiresChoice"
+        class="eo-btn"
+        :disabled="isLoading"
+        @click="drawerOpen = true"
+      >
+        Que fais-tu ? ↓
+      </button>
+      <button
+        v-else
+        class="eo-btn"
+        :disabled="isLoading"
+        @click="$emit('continue')"
+      >
+        {{ isLoading ? 'Résolution…' : 'Continuer →' }}
+      </button>
+    </footer>
+
+    <!-- ── Choice drawer ── -->
     <Transition name="eo-drawer">
       <div v-if="drawerOpen && requiresChoice" class="eo-drawer">
-        <div class="eo-drawer__inner">
-          <!-- Drawer header -->
-          <div class="eo-drawer__header">
-            <span class="es-label" style="color: var(--ink-3);">Que fais-tu ?</span>
-            <button class="eo-drawer__close" @click="drawerOpen = false" aria-label="Fermer">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <path d="M3 3l8 8M11 3l-8 8"/>
-              </svg>
-            </button>
-          </div>
+        <div class="eo-drawer__header">
+          <span class="eo-drawer__title">Que fais-tu ?</span>
+          <button class="eo-drawer__close" @click="drawerOpen = false" aria-label="Fermer">✕</button>
+        </div>
 
-          <!-- Choice accordions -->
-          <div class="eo-drawer__choices">
-            <div
-              v-for="choice in choices"
-              :key="choice.id"
-              class="eo-choice"
-              :class="{
-                'eo-choice--selected': selectedChoiceId === choice.id,
-                'eo-choice--disabled': !choice.isEnabled,
-              }"
+        <div class="eo-drawer__choices">
+          <div
+            v-for="choice in choices"
+            :key="choice.id"
+            class="eo-choice"
+            :class="{
+              'eo-choice--selected': selectedChoiceId === choice.id,
+              'eo-choice--disabled': !choice.isEnabled,
+            }"
+          >
+            <button
+              class="eo-choice__hd"
+              :disabled="!choice.isEnabled"
+              @click="toggleChoice(choice.id)"
             >
-              <!-- Choice header (accordion toggle) -->
-              <button
-                class="eo-choice__hd"
-                :disabled="!choice.isEnabled"
-                @click="toggleChoice(choice.id)"
-              >
-                <svg
-                  class="eo-choice__chevron"
-                  :class="{ 'eo-choice__chevron--open': openChoiceIds.has(choice.id) }"
-                  width="12" height="12" viewBox="0 0 12 12" fill="none"
-                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4 2l4 4-4 4"/>
-                </svg>
+              <span class="eo-choice__title">{{ choice.label }}</span>
+              <span v-if="selectedChoiceId === choice.id" class="eo-choice__sel">Sélectionné</span>
+            </button>
 
-                <span class="eo-choice__title">{{ choice.label }}</span>
-
-                <span
-                  v-if="selectedChoiceId === choice.id"
-                  class="es-chip es-chip--frost eo-choice__sel-chip"
-                >Sélectionné</span>
+            <div
+              class="eo-choice__body"
+              :class="{ 'eo-choice__body--open': openChoiceIds.has(choice.id) }"
+            >
+              <p class="eo-choice__desc">{{ choice.description }}</p>
+              <button class="eo-btn eo-btn--ghost" @click="selectAndClose(choice.id)">
+                Sélectionner ce geste
               </button>
-
-              <!-- Choice body (collapsible) -->
-              <div
-                class="eo-choice__body"
-                :class="{ 'eo-choice__body--open': openChoiceIds.has(choice.id) }"
-              >
-                <p class="es-body eo-choice__desc">{{ choice.description }}</p>
-                <button
-                  class="es-btn es-btn--ghost"
-                  @click="selectAndClose(choice.id)"
-                >
-                  Sélectionner ce geste
-                </button>
-              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Drawer footer -->
-          <div class="eo-drawer__footer">
-            <button
-              class="es-btn es-btn--ghost"
-              @click="drawerOpen = false"
-            >
-              ← Revenir
-            </button>
-            <button
-              class="es-btn es-btn--frost"
-              :disabled="isLoading || !selectedChoiceId"
-              @click="confirmChoice"
-            >
-              {{ isLoading ? 'Résolution…' : 'Valider ce choix →' }}
-            </button>
-          </div>
+        <div class="eo-drawer__footer">
+          <button class="eo-btn eo-btn--ghost" @click="drawerOpen = false">← Revenir</button>
+          <button
+            class="eo-btn"
+            :disabled="isLoading || !selectedChoiceId"
+            @click="confirmChoice"
+          >
+            {{ isLoading ? 'Résolution…' : 'Valider ce choix →' }}
+          </button>
         </div>
       </div>
     </Transition>
@@ -261,289 +143,187 @@ function confirmChoice() {
 </template>
 
 <style scoped>
-/* ── Root ── */
 .eo-root {
-  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  gap: 14px;
+  padding: 36px 40px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font);
 }
 
-/* ── Atmos ── */
-.eo-atmos {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 70% 50% at 20% 60%, oklch(.28 .04 260 / .35) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 80% 30%, oklch(.22 .03 290 / .25) 0%, transparent 60%);
-  z-index: 0;
-}
-
-/* ── Two-column layout ── */
-.eo-layout {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* ── LEFT column ── */
-.eo-left {
-  width: 380px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .4));
-  display: flex;
-  flex-direction: column;
-  padding: 40px 32px;
-  gap: 28px;
-  overflow-y: auto;
-}
-
-.eo-portrait {
-  border: 1px solid var(--line, oklch(0.38 0.02 275 / .3));
-  border-radius: 4px;
-  background: linear-gradient(160deg, oklch(0.18 0.025 270 / .9), oklch(0.14 0.02 268 / .95));
-  height: 260px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.eo-portrait__inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.eo-portrait__label {
-  color: var(--ink-4);
-}
-
-.eo-elise-block {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.eo-elise-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.eo-elise-text {
-  font-family: var(--font, serif);
-  font-style: italic;
-  font-size: 14.5px;
-  line-height: 1.65;
-  color: var(--ink-2, oklch(0.72 0.018 70));
-  margin: 0;
-}
-
-/* ── RIGHT column ── */
-.eo-right {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 40px 44px 32px;
-  overflow-y: auto;
-}
-
-/* ── Top row: chip + label ── */
 .eo-top-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 18px;
+  gap: 10px;
 }
 
-/* ── Title ── */
-.eo-title {
-  font-family: var(--display, serif);
-  font-size: 44px;
-  font-weight: 400;
-  line-height: 1.04;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-  margin: 0 0 22px;
+.eo-chip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint-dim);
 }
 
-/* ── Illustration slot ── */
-.eo-illus {
-  height: 180px;
-  margin-bottom: 22px;
-  border: 1px solid var(--line, oklch(0.38 0.02 275 / .3));
-  border-radius: 4px;
-  background: linear-gradient(160deg, oklch(0.18 0.025 270 / .9), oklch(0.14 0.02 268 / .95));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.eo-illus__label {
+.eo-kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
   color: var(--ink-4);
 }
 
-/* ── Description ── */
-.eo-desc {
-  margin-bottom: 14px;
+.eo-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--ink);
 }
 
-/* ── Body fragments (index 1+) ── */
+.eo-quote {
+  margin: 0;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.eo-fragments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .eo-fragment {
-  padding: 12px 14px;
-  background: var(--card-soft, oklch(0.24 0.025 270));
+  padding: 10px 12px;
+  background: var(--panel-2);
   border: 1px solid var(--line-soft);
-  border-radius: 4px;
-  margin-bottom: 8px;
 }
 
 .eo-fragment__speaker {
   display: block;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
   margin-bottom: 4px;
 }
 
-/* ── Footer ── */
+.eo-fragment p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
 .eo-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 18px;
-  border-top: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .4));
-  margin-top: 22px;
+  justify-content: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
 }
 
-/* ── DRAWER ── */
+.eo-btn {
+  padding: 10px 22px;
+  background: transparent;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+
+.eo-btn:hover:not(:disabled) { opacity: .8; }
+.eo-btn:disabled { color: var(--ink-5); border-color: var(--line); cursor: not-allowed; }
+
+.eo-btn--ghost {
+  border-color: var(--line-soft);
+  color: var(--ink-3);
+}
+
+/* ── Drawer ── */
 .eo-drawer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  height: 380px;
-  background: var(--panel, oklch(0.20 0.025 270));
-  border-top: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .4));
-  box-shadow: 0 -16px 48px -8px oklch(0.08 0.02 270 / .7);
   display: flex;
   flex-direction: column;
-}
-
-.eo-drawer__inner {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0 44px;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
 }
 
 .eo-drawer__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .35));
-  flex-shrink: 0;
+  padding-bottom: 8px;
+}
+
+.eo-drawer__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .eo-drawer__close {
-  background: none;
-  border: none;
+  all: unset;
   cursor: pointer;
   color: var(--ink-4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 12px;
   padding: 4px;
-  border-radius: 3px;
   transition: color .15s;
 }
-.eo-drawer__close:hover { color: var(--ink); }
+.eo-drawer__close:hover { color: var(--mint-dim); }
 
 .eo-drawer__choices {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.eo-drawer__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 0;
-  border-top: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .35));
-  flex-shrink: 0;
-}
-
-/* ── Choice accordion ── */
 .eo-choice {
-  border: 1px solid var(--line-soft, oklch(0.38 0.02 275 / .3));
-  border-radius: 4px;
-  overflow: hidden;
+  border: 1px solid var(--line-soft);
   transition: border-color .18s;
 }
 
-.eo-choice--selected {
-  border-color: var(--frost, oklch(0.6 0.1 195));
-}
-
-.eo-choice--disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
+.eo-choice--selected { border-color: var(--mint-dim); }
+.eo-choice--disabled { opacity: 0.4; pointer-events: none; }
 
 .eo-choice__hd {
+  all: unset;
   width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: none;
-  border: none;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
   cursor: pointer;
-  text-align: left;
   color: var(--ink-2);
-  transition: background .15s, color .15s;
+  transition: color .15s;
 }
-.eo-choice__hd:hover {
-  background: oklch(0.26 0.02 270 / .5);
-  color: var(--ink);
-}
-.eo-choice--selected .eo-choice__hd {
-  background: oklch(0.28 0.03 232 / .2);
-}
+.eo-choice__hd:hover { color: var(--ink); }
 
-.eo-choice__chevron {
+.eo-choice__title { font-size: 13px; }
+
+.eo-choice__sel {
   flex-shrink: 0;
-  color: var(--ink-4);
-  transition: transform .2s ease, color .15s;
-}
-.eo-choice__chevron--open {
-  transform: rotate(90deg);
-  color: var(--family-color, var(--frost));
-}
-
-.eo-choice__title {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.eo-choice__sel-chip {
+  font-family: var(--font-mono);
   font-size: 9px;
-  padding: 2px 8px;
-  flex-shrink: 0;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--mint-dim);
 }
 
 .eo-choice__body {
@@ -552,29 +332,34 @@ function confirmChoice() {
   opacity: 0;
   transition: max-height .28s ease, opacity .22s ease;
 }
-.eo-choice__body--open {
-  max-height: 200px;
-  opacity: 1;
-}
+.eo-choice__body--open { max-height: 200px; opacity: 1; }
 
 .eo-choice__desc {
-  padding: 8px 16px 12px 40px;
+  padding: 0 14px 10px 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--ink-3);
 }
 
-.eo-choice__body .es-btn {
-  margin: 0 16px 14px 40px;
+.eo-choice__body .eo-btn {
+  margin: 0 14px 12px;
+  padding: 6px 14px;
+  font-size: 10px;
 }
 
-/* ── Drawer transition ── */
+.eo-drawer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
 .eo-drawer-enter-active,
 .eo-drawer-leave-active {
-  transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+  transition: opacity .2s ease;
 }
 .eo-drawer-enter-from,
 .eo-drawer-leave-to {
-  transform: translateY(100%);
+  opacity: 0;
 }
 </style>

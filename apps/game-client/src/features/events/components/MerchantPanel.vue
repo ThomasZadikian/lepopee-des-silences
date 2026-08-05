@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
-import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import { computed, ref } from 'vue'
 import type { EventOutcomeDto } from '../types/eventTypes'
@@ -45,25 +44,20 @@ function decline() {
 
 <template>
   <div class="mrc-root">
-    <!-- Atmosphere -->
-    <div class="es-atmos" />
-    <div class="es-vignette" />
-    <div class="es-grain" />
-
     <div class="mrc-content">
 
       <!-- ── Header ── -->
       <div class="mrc-header">
         <div class="mrc-header__sigil">
-          <SigilIcon kind="marchand" :size="32" :stroke-width="1.2" style="color: var(--gold)" />
+          <SigilIcon kind="marchand" :size="32" :stroke-width="1.2" style="color: var(--mint-dim)" />
         </div>
         <div class="mrc-header__text">
-          <span class="es-kicker" style="color: var(--gold-dim); display: block; margin-bottom: 6px">◆ Marchand du Palais</span>
+          <span class="es-kicker" style="color: var(--mint-dim); display: block; margin-bottom: 6px">Marchand du Palais</span>
           <h2 class="es-h2" style="font-size: 30px; color: var(--ink)">
             {{ outcome.title ?? 'Le Marchand vous attend' }}
           </h2>
         </div>
-        <ChipBadge tone="gold">TradeOffered</ChipBadge>
+        <ChipBadge tone="mint">TradeOffered</ChipBadge>
       </div>
 
       <!-- Description -->
@@ -77,9 +71,7 @@ function decline() {
 
       <!-- Separator -->
       <div class="mrc-separator">
-        <RuleOrnament style="flex: 1" />
-        <span class="es-kicker" style="color: var(--gold-dim); padding: 0 16px">Que souhaitez-vous acquérir ?</span>
-        <RuleOrnament style="flex: 1" />
+        <span class="mrc-separator__label">Que souhaitez-vous acquérir ?</span>
       </div>
 
       <!-- ── Items grid or empty state ── -->
@@ -90,19 +82,11 @@ function decline() {
           :class="['mrc-item', selectedId === choice.id && 'mrc-item--sel', !choice.isEnabled && 'mrc-item--disabled']"
           @click="choice.isEnabled && selectItem(choice.id)"
         >
-          <!-- Selection corner decorations -->
-          <template v-if="selectedId === choice.id">
-            <span class="es-corner tl" />
-            <span class="es-corner tr" />
-            <span class="es-corner bl" />
-            <span class="es-corner br" />
-          </template>
-
           <!-- Selection indicator -->
           <div
             class="mrc-item__pick"
             :style="selectedId === choice.id
-              ? { borderColor: 'var(--frost)', color: 'var(--frost)', boxShadow: '0 0 12px -2px var(--frost)' }
+              ? { borderColor: 'var(--mint-dim)', color: 'var(--mint-dim)' }
               : {}"
           >
             <svg
@@ -115,12 +99,12 @@ function decline() {
           </div>
 
           <!-- Icon circle -->
-          <div class="mrc-item__icon" :style="{ borderColor: selectedId === choice.id ? 'var(--frost)' : 'var(--line)' }">
+          <div class="mrc-item__icon" :style="{ borderColor: selectedId === choice.id ? 'var(--mint-dim)' : 'var(--line)' }">
             <SigilIcon
               kind="objet"
               :size="34"
               :stroke-width="1.3"
-              :style="{ color: selectedId === choice.id ? 'var(--frost)' : 'var(--ink-3)' }"
+              :style="{ color: selectedId === choice.id ? 'var(--mint-dim)' : 'var(--ink-3)' }"
             />
           </div>
 
@@ -171,7 +155,7 @@ function decline() {
             Passer
           </button>
           <button
-            class="es-btn es-btn--frost es-btn--lg"
+            class="es-btn es-btn--mint es-btn--lg"
             :disabled="!selectedId || isLoading"
             :style="{ opacity: !selectedId ? 0.4 : 1, minWidth: '180px' }"
             @click="confirm"
@@ -189,12 +173,8 @@ function decline() {
 .mrc-root {
   position: relative;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background:
-    radial-gradient(65% 50% at 30% 15%, oklch(0.72 0.1 84 / 0.07), transparent 60%),
-    radial-gradient(55% 55% at 75% 80%, oklch(0.55 0.08 84 / 0.06), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.27 0.044 270) 0%, var(--bg) 50%, var(--void) 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -203,11 +183,9 @@ function decline() {
 /* ── Content layout ── */
 .mrc-content {
   position: relative;
-  z-index: 5;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 28px 56px;
+  padding: 32px 40px;
   gap: 16px;
 }
 
@@ -224,8 +202,8 @@ function decline() {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: oklch(0.72 0.1 84 / 0.08);
-  border: 1px solid var(--gold-dim);
+  background: var(--panel-2);
+  border: 1px solid var(--mint-dim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,19 +216,27 @@ function decline() {
 
 /* ── Separator ── */
 .mrc-separator {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
   flex: 0 0 auto;
+}
+
+.mrc-separator__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
 }
 
 /* ── Items grid ── */
 .mrc-grid {
-  flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 18px;
   align-content: start;
+  max-height: 52vh;
   overflow-y: auto;
 }
 
@@ -258,8 +244,7 @@ function decline() {
 .mrc-item {
   position: relative;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: linear-gradient(180deg, oklch(0.28 0.03 268 / 0.55), oklch(0.23 0.025 270 / 0.45));
+  background: var(--panel-2);
   padding: 22px 18px;
   display: flex;
   flex-direction: column;
@@ -271,16 +256,12 @@ function decline() {
 }
 
 .mrc-item:hover {
-  border-color: var(--frost-dim);
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px -16px oklch(0.1 0.03 272 / 0.7);
+  border-color: var(--mint-dim);
 }
 
 .mrc-item--sel {
-  border-color: var(--frost);
-  background: linear-gradient(180deg, oklch(0.30 0.04 232 / 0.2), oklch(0.24 0.03 268 / 0.45));
-  box-shadow: 0 0 30px -8px oklch(0.6 0.1 195 / 0.4);
-  transform: translateY(-5px);
+  border-color: var(--mint-dim);
+  background: var(--panel);
 }
 
 .mrc-item--disabled {

@@ -56,21 +56,21 @@ describe('EventChoiceResultPanel', () => {
     expect(wrapper.find('.ecr-spinner').exists()).toBe(true);
   });
 
-  it('applies blood tone for failure outcomes', () => {
+  it('applies the danger tone for failure outcomes', () => {
     const wrapper = mountPanel({ ...baseResult, outcomeKind: 'Failure' });
-    const chip = wrapper.find('.es-chip--blood');
+    const chip = wrapper.find('.es-chip--danger');
     expect(chip.exists()).toBe(true);
   });
 
-  it('applies gold tone for success/gain outcomes', () => {
+  it('applies the mint tone for success/gain outcomes', () => {
     const wrapper = mountPanel({ ...baseResult, outcomeKind: 'Reward' });
-    const chip = wrapper.find('.es-chip--gold');
+    const chip = wrapper.find('.es-chip--mint');
     expect(chip.exists()).toBe(true);
   });
 
-  it('applies frost tone for neutral outcomes', () => {
+  it('applies the mint tone for neutral outcomes', () => {
     const wrapper = mountPanel({ ...baseResult, outcomeKind: 'Neutral' });
-    const chip = wrapper.find('.es-chip--frost');
+    const chip = wrapper.find('.es-chip--mint');
     expect(chip.exists()).toBe(true);
   });
 
@@ -97,13 +97,5 @@ describe('EventChoiceResultPanel', () => {
   it('handles null outcomeKind gracefully', () => {
     const wrapper = mountPanel({ ...baseResult, outcomeKind: null });
     expect(wrapper.exists()).toBe(true);
-  });
-
-  it('renders all decorative elements', () => {
-    const wrapper = mountPanel(baseResult);
-    expect(wrapper.find('.ecr-bg').exists()).toBe(true);
-    expect(wrapper.find('.ecr-particles').exists()).toBe(true);
-    expect(wrapper.find('.ecr-grain').exists()).toBe(true);
-    expect(wrapper.findAll('.ecr-corner').length).toBe(4);
   });
 });

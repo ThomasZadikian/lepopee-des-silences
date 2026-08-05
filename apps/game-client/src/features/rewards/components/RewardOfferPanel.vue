@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
-import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SealGlyph from '@/shared/components/SealGlyph.vue'
 import { computed, ref, watch } from 'vue'
 import DefeatedEnemyList from './DefeatedEnemyList.vue'
@@ -160,8 +159,8 @@ function sigilKind(tone: 'gold' | 'frost' | null): string {
   return 'recompense'
 }
 
-function sealTone(tone: 'gold' | 'frost' | null): 'gold' | 'frost' | 'ink' {
-  return tone ?? 'ink'
+function sealTone(tone: 'gold' | 'frost' | null): 'mint' | 'ink' {
+  return tone ? 'mint' : 'ink'
 }
 
 // Choisir une carte n'est qu'une intention (déjà lisible via rop-card--sel) ; le sceau ne
@@ -173,24 +172,11 @@ function sealState(card: NormalizedCard): 'idle' | 'confirming' | 'confirmed' {
   return 'idle'
 }
 
-function cardShadow(card: NormalizedCard, selected: boolean): string {
-  if (!selected) return 'none'
-  return card.tone === 'gold'
-    ? '0 0 46px -12px oklch(0.74 0.12 84 / 0.6), var(--shadow-deep, 0 12px 40px -18px oklch(0.05 0 0 / 0.8))'
-    : '0 0 46px -12px var(--wash-frost, oklch(0.6 0.1 195 / 0.45)), var(--shadow-deep, 0 12px 40px -18px oklch(0.05 0 0 / 0.8))'
-}
-
-const confirmBtnClass = computed(() =>
-  chosen.value?.tone === 'gold' ? 'es-btn--gold' : 'es-btn--frost'
-)
+const confirmBtnClass = 'es-btn--mint'
 </script>
 
 <template>
   <div class="rop-screen">
-    <div class="es-atmos" />
-    <div class="es-vignette" />
-    <div class="es-grain" />
-
     <div class="rop-content" :class="{ 'rop-content--with-sidebar': defeatedEnemies.length > 0 }">
 
       <DefeatedEnemyList
@@ -208,14 +194,13 @@ const confirmBtnClass = computed(() =>
             {{ offer.state === 'Selected' ? 'Sélectionné' : 'Expiré' }}
           </span>
           <span v-if="hasAnyCost" class="rop-currency">
-            <span class="rop-currency__value rop-currency__value--gold">{{ palaceShardCount }}</span> Éclats du Palais
+            <span class="rop-currency__value">{{ palaceShardCount }}</span> Éclats du Palais
             <span class="rop-currency__sep">·</span>
-            <span class="rop-currency__value rop-currency__value--frost">{{ himLitShardCount }}</span> Éclats de Him'Lit
+            <span class="rop-currency__value">{{ himLitShardCount }}</span> Éclats de Him'Lit
           </span>
         </div>
         <span class="es-kicker">Une faveur, une seule</span>
-        <RuleOrnament :frost="true" style="width: 150px; margin: 12px auto 10px" />
-        <h2 class="es-h2" style="font-size: 33px">
+        <h2 class="es-h2" style="font-size: 33px; margin-top: 12px">
           {{ offer.title ?? 'Le Palais reconnaît ta traversée' }}
         </h2>
         <p v-if="offer.description" class="es-body" style="margin-top: 8px; color: var(--ink-3); max-width: 560px; margin-left: auto; margin-right: auto">
@@ -245,27 +230,17 @@ const confirmBtnClass = computed(() =>
               selectedId === card.id && card.tone === 'gold' && 'rop-card--gold',
               isExpiredOrSelected && 'rop-card--frozen',
             ]"
-            :style="{ boxShadow: cardShadow(card, selectedId === card.id) }"
             @click="selectCard(card.id)"
           >
-            <template v-if="selectedId === card.id">
-              <span class="es-corner tl" />
-              <span class="es-corner tr" />
-              <span class="es-corner bl" />
-              <span class="es-corner br" />
-            </template>
-
             <div
               class="rop-card__pick"
               :style="selectedId === card.id
-                ? card.tone === 'gold'
-                  ? { borderColor: 'var(--gold)', color: 'var(--gold)', boxShadow: '0 0 14px -2px var(--gold)' }
-                  : { borderColor: 'var(--frost)', color: 'var(--frost)', boxShadow: '0 0 14px -2px var(--frost)' }
+                ? { borderColor: 'var(--mint-dim)', color: 'var(--mint-dim)' }
                 : {}"
             >{{ selectedId === card.id ? '✦' : '' }}</div>
 
             <div class="es-row" style="margin-bottom: 18px; flex-wrap: wrap; row-gap: 6px">
-              <ChipBadge :tone="card.tone">
+              <ChipBadge :tone="card.tone ? 'mint' : null">
                 {{ rewardTypeLabel(card.rewardType) }}
               </ChipBadge>
               <span v-if="card.sourceEnemyDisplayName" class="rop-card__source">
@@ -307,7 +282,7 @@ const confirmBtnClass = computed(() =>
             <p
               v-if="costLabel(card)"
               class="es-label"
-              style="text-align: center; margin-top: 12px; color: var(--gold)"
+              style="text-align: center; margin-top: 12px; color: var(--mint-dim)"
             >
               {{ costLabel(card) }}
             </p>
@@ -353,14 +328,8 @@ const confirmBtnClass = computed(() =>
 .rop-screen {
   position: relative;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap),   transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold),  transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 60) 0%, var(--bg) 48%, var(--void) 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -368,11 +337,9 @@ const confirmBtnClass = computed(() =>
 
 .rop-content {
   position: relative;
-  z-index: 5;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 60px 80px;
+  padding: 32px 40px;
   gap: 8px;
 }
 
@@ -408,44 +375,36 @@ const confirmBtnClass = computed(() =>
 }
 
 .rop-source-chip {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-4);
   border: 1px solid var(--line-soft);
-  border-radius: 3px;
   padding: 2px 8px;
-  background: oklch(0.22 0.03 60 / 0.6);
 }
 
 .rop-state-chip {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
-  border: 1px solid oklch(0.72 0.09 82 / 0.4);
-  border-radius: 3px;
+  color: var(--mint-dim);
+  border: 1px solid var(--mint-dim);
   padding: 2px 8px;
-  background: oklch(0.55 0.08 85 / 0.1);
 }
 
 .rop-currency {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.02em;
   color: var(--ink-4);
   border: 1px solid var(--line-soft);
-  border-radius: 3px;
   padding: 2px 9px;
-  background: oklch(0.22 0.03 60 / 0.6);
 }
 
 .rop-currency__sep { margin: 0 4px; opacity: 0.5; }
-.rop-currency__value { font-weight: 600; }
-.rop-currency__value--gold { color: var(--gold); }
-.rop-currency__value--frost { color: var(--frost); }
+.rop-currency__value { color: var(--ink-2); }
 
 /* ── Cards grid (wraps for 4-6 loot cards, single row for 3 or fewer) ── */
 .rop-cards__grid {
@@ -461,30 +420,22 @@ const confirmBtnClass = computed(() =>
 .rop-card {
   position: relative;
   width: 100%;
-  border-radius: 6px;
   padding: 26px 24px;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-2, oklch(0.28 0.03 60 / 0.6)), var(--panel, oklch(0.24 0.025 60)));
-  transition: border-color 0.24s, transform 0.24s, box-shadow 0.24s, background 0.24s;
+  background: var(--panel-2);
+  transition: border-color 0.24s, background 0.24s;
 }
 
 .rop-card:hover:not(.rop-card--frozen) {
-  transform: translateY(-5px);
-  border-color: var(--frost-dim);
-  box-shadow: 0 22px 44px -26px oklch(0.1 0.03 60 / 0.85);
+  border-color: var(--mint-dim);
 }
 
 .rop-card--sel {
-  transform: translateY(-7px);
-  border-color: var(--frost);
-  background: linear-gradient(180deg, var(--raise, oklch(0.32 0.04 60 / 0.7)), var(--panel, oklch(0.24 0.025 60)));
-}
-
-.rop-card--sel.rop-card--gold {
-  border-color: var(--gold);
+  border-color: var(--mint-dim);
+  background: var(--panel);
 }
 
 .rop-card--frozen {
@@ -529,13 +480,13 @@ const confirmBtnClass = computed(() =>
 
 .rop-purchase-error {
   text-align: center;
-  color: var(--blood, oklch(.52 .15 20));
+  color: var(--danger-dim);
   font-size: 0.8rem;
   margin: 4px 0 0;
 }
 
 .rop-resolved-note {
-  font-family: var(--font-caps);
+  font-family: var(--font-mono);
   font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;

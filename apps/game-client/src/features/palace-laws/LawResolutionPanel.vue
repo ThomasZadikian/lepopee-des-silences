@@ -1,21 +1,15 @@
 <script setup lang="ts">
-import ChipBadge from '@/shared/components/ChipBadge.vue'
-import EliseComment from '@/shared/components/EliseComment.vue'
-import RuleOrnament from '@/shared/components/RuleOrnament.vue'
-import SealGlyph from '@/shared/components/SealGlyph.vue'
-import SigilIcon from '@/shared/components/SigilIcon.vue'
-import LawsPopover from './LawsPopover.vue'
+import SealGlyph from '../../shared/components/SealGlyph.vue'
 import { computed, ref } from 'vue'
 import type { EventOutcomeDto } from '../events/types/eventTypes'
 import { getOutcomeChoices, isChoiceOutcome } from '../events/types/eventTypes'
-import type { ActivePalaceLawDto, ActiveCurseDto } from '../runs/types/runTypes'
+import type { ActivePalaceLawDto } from '../runs/types/runTypes'
 
 // ── Props & Emits ─────────────────────────────────────────────────────────
 const props = defineProps<{
   outcome: EventOutcomeDto
   isLoading: boolean
   activeLaws?: ActivePalaceLawDto[] | null
-  activeCurses?: ActiveCurseDto[] | null
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +20,6 @@ const emit = defineEmits<{
 // ── State ─────────────────────────────────────────────────────────────────
 const sealed = ref(false)
 const stamping = ref(false)
-const showDrawer = ref(false)
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const choices = computed(() => getOutcomeChoices(props.outcome))
@@ -48,22 +41,6 @@ const sealButtonText = computed(() => {
 const sealState = computed<'idle' | 'confirming' | 'confirmed'>(() =>
   sealed.value ? 'confirmed' : stamping.value ? 'confirming' : 'idle',
 )
-
-const openFragments = ref<Set<number>>(new Set([0]))
-function toggleFragment(i: number) {
-  if (openFragments.value.has(i)) openFragments.value.delete(i)
-  else openFragments.value.add(i)
-  openFragments.value = new Set(openFragments.value)
-}
-
-// ── Domain chip tone from primaryEventType ────────────────────────────────
-function domainTone(type: string): 'gold' | 'frost' | 'blood' | null {
-  const t = (type ?? '').toLowerCase()
-  if (t.includes('combat') || t.includes('confron')) return 'blood'
-  if (t.includes('mem') || t.includes('narr') || t.includes('récit')) return 'frost'
-  if (t.includes('loi') || t.includes('édit') || t.includes('law')) return 'gold'
-  return null
-}
 
 // ── Actions ───────────────────────────────────────────────────────────────
 function applySeal() {
@@ -91,380 +68,210 @@ function proceed() {
 
 <template>
   <div class="vlo-root">
-    <div class="es-atmos" />
-    <div class="es-vignette" />
-    <div class="es-grain" />
+    <span class="vlo-kicker">{{ sealed ? 'Promulguée · scellée au Tome' : 'Édit du Palais · loi proposée' }}</span>
 
-    <!-- Influences drawer (opens when "Lois en vigueur" is clicked) -->
-    <Transition name="slide">
-      <LawsPopover
-        v-if="showDrawer"
-        :laws="activeLaws"
-        :curses="activeCurses"
-        @close="showDrawer = false"
-      />
-    </Transition>
+    <SealGlyph
+      kind="loi"
+      tone="mint"
+      :size="150"
+      :sigil-size="60"
+      top-text="Édit du Palais"
+      :bottom-text="`v${outcome.riskLevel ?? '1'}.0`"
+      :state="sealState"
+    />
 
-    <div class="vlo-layout">
+    <h1 class="vlo-title">{{ outcome.title }}</h1>
 
-      <!-- ── LEFT COLUMN ── -->
-      <div class="vlo-left">
-        <span class="es-kicker" style="color: var(--gold-dim); margin-bottom: 24px">
-          {{ sealed ? '◆ Promulguée · scellée au Tome' : '◆ Loi proposée · à inscrire' }}
-        </span>
+    <p v-if="outcome.description" class="vlo-desc">{{ outcome.description }}</p>
 
-        <!-- Seal circle -->
-        <SealGlyph
-          kind="loi"
-          tone="gold"
-          :size="218"
-          :sigil-size="86"
-          top-text="Édit du Palais"
-          :bottom-text="`v${outcome.riskLevel ?? '1'}.0`"
-          :state="sealState"
-        />
+    <section class="vlo-law-detail" aria-labelledby="law-detail-title">
+      <span class="vlo-law-detail__kicker">Loi proposée</span>
+      <h2 id="law-detail-title" class="vlo-law-detail__title">{{ outcome.title }}</h2>
+      <p v-if="outcome.description" class="vlo-law-detail__description">
+        {{ outcome.description }}
+      </p>
+      <p class="vlo-law-detail__note">
+        Cette Loi ne peut pas être refusée. Elle sera appliquée par le serveur après apposition du sceau.
+      </p>
+    </section>
 
-        <!-- Law title -->
-        <h3 class="es-h3" style="font-size: 27px; text-align: center; margin-top: 22px; margin-bottom: 14px; color: var(--gold)">
-          {{ outcome.title }}
-        </h3>
+    <p v-if="missingLawApplicationChoice" class="vlo-choice-empty">
+      Aucune instruction d'application de loi n'a été fournie par le serveur.
+    </p>
 
-        <!-- Domain chips -->
-        <div class="es-row" style="gap: 8px; justify-content: center; margin-bottom: 20px">
-          <ChipBadge :tone="domainTone(outcome.primaryEventType)">
-            {{ outcome.primaryEventType ?? 'Loi' }}
-          </ChipBadge>
-          <ChipBadge v-if="outcome.rewardProfile" tone="gold">
-            {{ outcome.rewardProfile }}
-          </ChipBadge>
-        </div>
-
-        <!-- Info block -->
-        <div class="es-panel vlo-info">
-          <div class="vlo-info__row">
-            <span class="es-label" style="color: var(--ink-4)">Portée</span>
-            <span class="es-mono" style="font-size: 12px; color: var(--ink-2)">{{ outcome.resolutionKind }}</span>
-          </div>
-          <div class="vlo-info__row">
-            <span class="es-label" style="color: var(--ink-4)">Risque</span>
-            <span class="es-mono" style="font-size: 12px; color: var(--gold)">{{ outcome.riskLevel ?? '—' }}</span>
-          </div>
-          <div class="vlo-info__row">
-            <span class="es-label" style="color: var(--ink-4)">Registre</span>
-            <span class="es-mono" style="font-size: 12px" :style="{ color: sealed ? 'var(--gold)' : 'var(--ink-4)' }">
-              {{ sealed ? 'Inscrite' : 'En attente' }}
-            </span>
-          </div>
-        </div>
-
-        <div style="flex: 1" />
-
-        <!-- Elise comment -->
-        <EliseComment tell="grave">
-          Une loi de plus pèse sur le Palais. Celle-ci, tu l'as voulue — souviens-t'en quand elle te frappera.
-        </EliseComment>
-      </div>
-
-      <!-- ── RIGHT COLUMN ── -->
-      <div class="vlo-right">
-
-        <!-- Header row -->
-        <div class="es-row" style="align-items: center; justify-content: space-between; margin-bottom: 24px; flex: 0 0 auto">
-          <div class="es-row" style="align-items: center; gap: 10px">
-            <SigilIcon kind="loi" :size="18" :stroke-width="1.4" style="color: var(--gold)" />
-            <span class="es-kicker" style="color: var(--gold-dim)">Édit du Palais · loi proposée</span>
-          </div>
-          <span class="es-label" style="color: var(--ink-4)">PalaceLawOffered</span>
-        </div>
-
-        <!-- Plate content -->
-        <div class="es-plate es-plate--inset vlo-plate">
-          <!-- Corner decorations -->
-          <span class="es-corner tl" />
-          <span class="es-corner tr" />
-          <span class="es-corner bl" />
-          <span class="es-corner br" />
-
-          <!-- Title -->
-          <h1 class="es-h2" style="font-size: 40px; margin-bottom: 16px; color: var(--ink)">
-            {{ outcome.title }}
-          </h1>
-
-          <!-- Description as italic quote -->
-          <p
-            v-if="outcome.description"
-            style="font-family: var(--display); font-style: italic; font-size: 22px; line-height: 1.5; color: var(--ink-2); margin-bottom: 24px"
-          >
-            {{ outcome.description }}
-          </p>
-
-          <!-- Decorative rule -->
-          <RuleOrnament :frost="true" style="margin: 8px 0 24px" />
-
-          <!-- Explicit law detail block -->
-          <section class="vlo-law-detail" aria-labelledby="law-detail-title">
-            <span class="es-kicker vlo-law-detail__kicker">Loi proposée</span>
-            <h2 id="law-detail-title" class="vlo-law-detail__title">{{ outcome.title }}</h2>
-            <p v-if="outcome.description" class="vlo-law-detail__description">
-              {{ outcome.description }}
-            </p>
-            <p class="vlo-law-detail__note">
-              Cette Loi ne peut pas être refusée. Elle sera appliquée par le serveur après apposition du sceau.
-            </p>
-          </section>
-
-          <p v-if="missingLawApplicationChoice" class="vlo-choice-empty">
-            Aucune instruction d'application de loi n'a été fournie par le serveur.
-          </p>
-
-          <!-- Narrative fragments accordion -->
-          <div
-            v-if="outcome.narrativeFragments && outcome.narrativeFragments.length"
-            class="vlo-fragments"
-          >
-            <div
-              v-for="(frag, i) in outcome.narrativeFragments"
-              :key="'frag-' + i"
-              class="vlo-frag"
-            >
-              <button
-                class="vlo-frag__hd"
-                :aria-expanded="openFragments.has(i)"
-                @click="toggleFragment(i)"
-              >
-                <svg
-                  class="vlo-chevron"
-                  :class="{ 'vlo-chevron--open': openFragments.has(i) }"
-                  width="11" height="11" viewBox="0 0 11 11" fill="none"
-                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                >
-                  <path d="M3.5 2L7.5 5.5L3.5 9" />
-                </svg>
-                <span class="es-label">{{ frag.speaker }}</span>
-              </button>
-              <div
-                class="vlo-frag__body"
-                :class="{ 'vlo-frag__body--open': openFragments.has(i) }"
-              >
-                <p class="es-body" style="font-size: 13.5px; line-height: 1.6; padding: 6px 0 14px 22px; margin: 0; color: var(--ink-3)">
-                  {{ frag.text }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="es-row" style="justify-content: space-between; flex: 0 0 auto; margin-top: 16px; align-items: center">
-          <!-- Laws drawer trigger -->
-          <button
-            class="es-btn es-btn--ghost"
-            @click="showDrawer = !showDrawer"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z" />
-            </svg>
-            Lois en vigueur
-          </button>
-
-          <!-- Seal / proceed -->
-          <button
-            v-if="!sealed"
-            class="es-btn es-btn--gold es-btn--lg"
-            :disabled="!canSealDecision"
-            @click="applySeal"
-          >
-            {{ sealButtonText }}
-          </button>
-          <button
-            v-else
-            class="es-btn es-btn--frost es-btn--lg"
-            :disabled="isLoading"
-            @click="proceed"
-          >
-            ✓ Loi scellée · Poursuivre →
-          </button>
-        </div>
-      </div>
+    <div v-if="outcome.narrativeFragments?.length" class="vlo-fragments">
+      <p
+        v-for="(frag, i) in outcome.narrativeFragments"
+        :key="'frag-' + i"
+        class="vlo-fragment"
+      >
+        <span class="vlo-fragment__speaker">{{ frag.speaker }}</span>
+        {{ frag.text }}
+      </p>
     </div>
+
+    <footer class="vlo-footer">
+      <button
+        v-if="!sealed"
+        class="vlo-seal-btn"
+        :disabled="!canSealDecision"
+        @click="applySeal"
+      >
+        {{ sealButtonText }}
+      </button>
+      <button
+        v-else
+        class="vlo-proceed-btn"
+        :disabled="isLoading"
+        @click="proceed"
+      >
+        ✓ Loi scellée · Poursuivre →
+      </button>
+    </footer>
   </div>
 </template>
 
 <style scoped>
-/* ── Root ── */
 .vlo-root {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background:
-    radial-gradient(60% 55% at 15% 20%, var(--wash-gold), transparent 60%),
-    radial-gradient(55% 50% at 85% 75%, oklch(0.5 0.07 84 / 0.07), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.28 0.048 268) 0%, var(--bg) 50%, var(--void) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 40px 36px;
+  background: var(--panel);
+  border: 1px solid var(--line);
   color: var(--ink);
   font-family: var(--font);
-  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Two-column layout ── */
-.vlo-layout {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  flex-direction: row;
-  height: 100%;
+.vlo-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mint-dim);
+  margin-bottom: 8px;
 }
 
-/* ── Left column ── */
-.vlo-left {
-  flex: 0 0 462px;
-  border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 34px 30px;
+.vlo-title {
+  margin: 12px 0 4px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 30px;
+  color: var(--ink);
 }
 
-/* ── Info panel ── */
-.vlo-info {
-  width: 100%;
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+.vlo-desc {
+  margin: 0 0 8px;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 48ch;
 }
 
-.vlo-info__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* ── Right column ── */
-.vlo-right {
-  flex: 1;
-  padding: 28px 46px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* ── Plate ── */
-.vlo-plate {
-  flex: 1;
-  overflow-y: auto;
-  padding: 30px 34px;
-  position: relative;
-}
-
-/* ── Narrative fragments ── */
 .vlo-law-detail {
-  margin-bottom: 22px;
-  padding: 18px 20px;
-  border: 1px solid oklch(0.72 0.12 84 / 0.28);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, oklch(0.72 0.12 84 / 0.09), transparent 52%),
-    oklch(0.18 0.035 265 / 0.42);
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-2);
+  text-align: left;
 }
 
 .vlo-law-detail__kicker {
   display: block;
-  color: var(--gold-dim);
-  margin-bottom: 9px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: 8px;
 }
 
 .vlo-law-detail__title {
-  margin: 0 0 10px;
-  font-family: var(--display);
-  font-size: 24px;
-  color: var(--gold);
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink);
 }
 
 .vlo-law-detail__description {
   margin: 0;
-  color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1.65;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 
 .vlo-law-detail__note {
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   color: var(--ink-4);
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.5;
 }
 
 .vlo-choice-empty {
-  margin: 0 0 24px;
+  margin: 0;
   color: var(--ink-4);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .vlo-fragments {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin-bottom: 20px;
-}
-
-.vlo-frag {
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.vlo-frag__hd {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--ink-2);
+  gap: 8px;
   text-align: left;
-  transition: color 0.16s;
 }
 
-.vlo-frag__hd:hover {
-  color: var(--ink);
+.vlo-fragment {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  font-style: italic;
 }
 
-.vlo-chevron {
-  flex-shrink: 0;
+.vlo-fragment__speaker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-style: normal;
   color: var(--ink-4);
-  transition: transform 0.22s ease;
+  margin-bottom: 2px;
 }
 
-.vlo-chevron--open {
-  transform: rotate(90deg);
-  color: var(--gold);
+.vlo-footer {
+  margin-top: 12px;
 }
 
-.vlo-frag__body {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.28s ease, opacity 0.22s ease;
+.vlo-seal-btn,
+.vlo-proceed-btn {
+  padding: 11px 26px;
+  background: transparent;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .15s;
 }
 
-.vlo-frag__body--open {
-  max-height: 400px;
-  opacity: 1;
-}
+.vlo-seal-btn:hover:not(:disabled),
+.vlo-proceed-btn:hover:not(:disabled) { opacity: .8; }
 
-/* ── Réécriture / choices ── */
-.vlo-rewrite {
-  margin-top: 20px;
-}
-
-.vlo-choice {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.vlo-choice:last-child {
-  border-bottom: none;
+.vlo-seal-btn:disabled {
+  color: var(--ink-5);
+  border-color: var(--line);
+  cursor: not-allowed;
 }
 </style>
