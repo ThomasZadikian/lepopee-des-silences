@@ -2665,12 +2665,20 @@ onBeforeUnmount(() => {
    rapetissait au survol à chaque changement de case (la ligne de grille "hud" suivait la
    hauteur de ce paragraphe qui apparaissait/disparaissait). --empty le rend invisible sans
    collapser l'espace réservé. */
+/* Hauteur FIXE (pas min-height) et overflow masqué : le contenu varie de case en case pendant
+   le ciblage (interception, hauteur, précision…), et un simple plancher ne suffisait pas — un
+   ancien calcul en em relatif à la propre font-size de l'élément (2.1em ≈ 1.4rem, plus petit
+   qu'une seule ligne avec son padding) laissait encore passer un débordement à 2 lignes, d'où
+   le petit "zoom" résiduel du plateau au survol. Ici la hauteur est calée en rem sur le
+   line-height/padding réels, pour deux lignes garanties quel que soit le contenu. */
 .tbattle__preview {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
   gap: 0.35rem 0.75rem;
-  min-height: 2.1em;
+  height: 2.85rem;
+  overflow: hidden;
+  line-height: 1.3;
   margin: 0;
   padding: 0.35rem 0.5rem;
   border-radius: 4px;

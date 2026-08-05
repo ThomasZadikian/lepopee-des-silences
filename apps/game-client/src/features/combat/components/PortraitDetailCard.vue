@@ -157,6 +157,7 @@ const STAT_ROWS: { key: 'attackPower' | 'defense' | 'speed' | 'magicAttack' | 'm
                 :stacks="status.stacks"
                 :px="32"
                 meta
+                teleport-bubble
                 :per-tick-amount="status.perTickAmount"
                 :ticks-remaining="status.ticksRemaining"
                 :is-permanent="status.isPermanent"

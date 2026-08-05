@@ -554,8 +554,12 @@ export function useCombatPlayback() {
             ];
           }
 
-          // O-018: Temps de settle plus long pour les ennemis
-          const settleMs = actorIsAlly ? SETTLE_MS / 2 : SETTLE_MS * ENEMY_SETTLE_MULTIPLIER;
+          // O-018: Temps de settle plus long pour les ennemis. L'allié gardait la moitié du
+          // temps de base (le joueur "sait déjà" ce qu'il vient de faire) — mais divisé par
+          // deux plutôt que simplement égal au temps de base, l'écart avec l'ennemi (×1.5)
+          // atteignait un facteur 3 : le coup du héros se lisait bien plus vite que celui d'un
+          // ennemi même après le ralenti global (PACE). Retour au temps de base, sans réduction.
+          const settleMs = actorIsAlly ? SETTLE_MS : SETTLE_MS * ENEMY_SETTLE_MULTIPLIER;
           await wait(settleMs);
           actionBanner.value = null;
         }
