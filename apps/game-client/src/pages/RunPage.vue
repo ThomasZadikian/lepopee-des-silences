@@ -499,7 +499,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             Pour l'instant, tu peux démarrer une seed inédite.
           </p>
           <button
-            class="es-btn es-btn--gold es-btn--lg"
+            class="es-btn es-btn--mint es-btn--lg"
             :disabled="runStore.isLoading"
             @click="startNewRun"
           >
@@ -525,7 +525,11 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <p class="es-lede es-dim">
             {{ runStore.currentRun.status === 'Failed' ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.' : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
           </p>
-          <button class="es-btn es-btn--blood" @click="handleLeaveRun">
+          <button
+            class="es-btn"
+            :class="runStore.currentRun.status === 'Failed' ? 'es-btn--danger' : 'es-btn--mint'"
+            @click="handleLeaveRun"
+          >
             Quitter la run
           </button>
         </section>

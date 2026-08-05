@@ -27,7 +27,7 @@ function getRoomTypeLabel(roomType: string): string {
 <template>
   <section class="room-cleared">
     <header class="room-cleared__header">
-      <p class="system-label">Salle {{ currentRoomIndex + 1 }} · {{ getRoomTypeLabel(room.roomType) }}</p>
+      <p class="room-cleared__label">Salle {{ currentRoomIndex + 1 }} · {{ getRoomTypeLabel(room.roomType) }}</p>
 
       <h2 class="room-cleared__title">Salle terminée</h2>
 
@@ -37,7 +37,7 @@ function getRoomTypeLabel(roomType: string): string {
     </header>
 
     <div class="room-cleared__boss-summary">
-      <p class="system-label">Gardien vaincu</p>
+      <p class="room-cleared__label">Gardien vaincu</p>
       <strong>{{ room.bossPreview?.name ?? '—' }}</strong>
     </div>
 
@@ -45,7 +45,7 @@ function getRoomTypeLabel(roomType: string): string {
 
     <footer class="room-cleared__actions">
       <button
-        class="ghost-button room-cleared__cta"
+        class="room-cleared__cta"
         :disabled="isLoading"
         @click="$emit('enterInterlude')"
       >
@@ -70,12 +70,22 @@ function getRoomTypeLabel(roomType: string): string {
   gap: var(--space-2);
 }
 
+.room-cleared__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin: 0;
+}
+
 .room-cleared__title {
   margin: 0;
-  color: var(--frost);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink);
   font-size: clamp(1.8rem, 3.5vw, 3rem);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .room-cleared__sub {
@@ -93,7 +103,9 @@ function getRoomTypeLabel(roomType: string): string {
 .room-cleared__boss-summary strong {
   display: block;
   margin-top: var(--space-1);
-  color: var(--gold);
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--mint-dim);
   font-size: 1.1rem;
 }
 
@@ -108,18 +120,23 @@ function getRoomTypeLabel(roomType: string): string {
 }
 
 .room-cleared__cta {
-  border-color: var(--frost);
-  color: var(--frost);
+  background: transparent;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint-dim);
   padding: var(--space-3) var(--space-6);
-  font-size: 1rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .15s;
 }
 
-.room-cleared__cta:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--frost), transparent 88%);
-}
+.room-cleared__cta:hover:not(:disabled) { opacity: .8; }
 
 .room-cleared__cta:disabled {
-  opacity: 0.55;
+  color: var(--ink-5);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 </style>

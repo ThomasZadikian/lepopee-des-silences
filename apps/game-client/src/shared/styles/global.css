@@ -191,6 +191,16 @@ button {
   color: var(--mint);
 }
 
+.es-btn--danger {
+  color: var(--danger-dim);
+  border-color: var(--danger-dim);
+}
+
+.es-btn--danger:hover {
+  background: var(--panel-2);
+  color: var(--danger);
+}
+
 .es-btn--lg {
   padding: var(--space-3) var(--space-6);
   font-size: 0.82rem;

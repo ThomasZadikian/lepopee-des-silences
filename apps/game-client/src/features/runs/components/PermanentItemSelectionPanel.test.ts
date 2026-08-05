@@ -43,7 +43,7 @@ describe('PermanentItemSelectionPanel', () => {
     await cards[0].trigger('click');
     await cards[1].trigger('click');
 
-    await wrapper.find('.es-btn--gold').trigger('click');
+    await wrapper.find('.es-btn--mint').trigger('click');
 
     expect(wrapper.emitted('confirm')).toHaveLength(1);
     const [emittedKeys] = wrapper.emitted('confirm')![0] as [string[]];
@@ -55,13 +55,13 @@ describe('PermanentItemSelectionPanel', () => {
 
   it('emits confirm with an empty array when nothing is selected', async () => {
     const wrapper = mountPanel();
-    await wrapper.find('.es-btn--gold').trigger('click');
+    await wrapper.find('.es-btn--mint').trigger('click');
 
     expect(wrapper.emitted('confirm')![0]).toEqual([[]]);
   });
 
   it('disables the confirm button while loading', () => {
     const wrapper = mountPanel(candidates, true);
-    expect(wrapper.find('.es-btn--gold').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('.es-btn--mint').attributes('disabled')).toBeDefined();
   });
 });
