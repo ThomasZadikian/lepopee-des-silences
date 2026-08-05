@@ -293,31 +293,6 @@ public sealed class TacticalCombat : ICombatContext
     }
 
     /// <summary>
-    /// Recalcule immédiatement tout l'ordre après une variation de Vitesse effective.
-    /// Le curseur repart au premier combattant et chaque activation redevient disponible :
-    /// un combattant déjà joué peut donc rejouer, conformément au contrat canonique.
-    /// </summary>
-    public void RecalculateInitiativeAfterSpeedChange()
-    {
-        EnsureActive();
-        _turnStates.Clear();
-        RebuildInitiativeOrder();
-        BeginActiveActivation();
-    }
-
-    public IReadOnlyDictionary<Guid, int> CaptureEffectiveSpeeds() =>
-        AllCombatants.ToDictionary(c => c.Id.Value, c => c.EffectiveSpeed);
-
-    public bool HaveEffectiveSpeedsChanged(IReadOnlyDictionary<Guid, int> before)
-    {
-        ArgumentNullException.ThrowIfNull(before);
-
-        return AllCombatants.Any(c =>
-            !before.TryGetValue(c.Id.Value, out var previous)
-            || previous != c.EffectiveSpeed);
-    }
-
-    /// <summary>
     /// Réanime un allié sur la première case libre trouvée par anneaux autour de
     /// l'utilisateur, puis reconstruit immédiatement toute l'initiative.
     /// </summary>
@@ -464,67 +439,38 @@ public sealed class TacticalCombat : ICombatContext
         BeginActiveActivation();
     }
 
-    /// <summary>
-    /// Plafond de sécurité sur les réactivations enchaînées quand la Vitesse change en cours
-    /// d'activation (un statut qui expire au tic peut faire bouger l'ordre). Un cas réel n'en
-    /// redemande qu'une poignée ; ce garde-fou n'existe que pour qu'un statut mal réglé (Vitesse
-    /// qui se réapplique elle-même à chaque tic, par exemple) échoue franchement au lieu de
-    /// boucler indéfiniment dans une requête HTTP — même logique que
-    /// <c>TacticalEnemyTurnDriver.MaxChainedEnemyTurns</c>.
-    /// </summary>
-    private const int MaxSpeedSettleRetries = 64;
-
     private void BeginActiveActivation()
     {
-        Guid combatantId;
-        Combatant combatant;
-        var guard = 0;
+        if (ActiveCombatantId is not { } combatantId)
+            return;
 
-        while (true)
+        _activationCounts[combatantId] = _activationCounts.GetValueOrDefault(combatantId) + 1;
+        CurrentTick++;
+
+        foreach (var key in _skillCooldowns.Keys
+                     .Where(key => key.CombatantId == combatantId)
+                     .ToArray())
         {
-            if (ActiveCombatantId is not { } activeId)
-                return;
-            combatantId = activeId;
+            var remaining = _skillCooldowns[key] - 1;
+            if (remaining <= 0)
+                _skillCooldowns.Remove(key);
+            else
+                _skillCooldowns[key] = remaining;
+        }
 
-            _activationCounts[combatantId] = _activationCounts.GetValueOrDefault(combatantId) + 1;
-            CurrentTick++;
-
-            foreach (var key in _skillCooldowns.Keys
-                         .Where(key => key.CombatantId == combatantId)
-                         .ToArray())
-            {
-                var remaining = _skillCooldowns[key] - 1;
-                if (remaining <= 0)
-                    _skillCooldowns.Remove(key);
-                else
-                    _skillCooldowns[key] = remaining;
-            }
-
-            combatant = RequireCombatant(combatantId);
-            var speedsBefore = CaptureEffectiveSpeeds();
-            var wasAlive = !combatant.IsDefeated;
-            var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
-            _lastActivationCombatantId = combatantId;
-            _lastActivationStatusTicks = statusTicks;
-            AwardPeriodicCharge(combatant, statusTicks, wasAlive);
-            if (combatant.IsDefeated)
-            {
-                RegisterCombatantDefeated();
-                OnCombatantDefeated(combatantId);
-                CompleteIfAllEnemiesDefeated();
-                FailIfAllAlliesDefeated();
-                return;
-            }
-
-            if (!HaveEffectiveSpeedsChanged(speedsBefore))
-                break;
-
-            if (++guard > MaxSpeedSettleRetries)
-                throw new InvalidOperationException(
-                    "Tactical combatant activation did not settle after repeated speed changes; aborting to avoid an endless loop.");
-
-            _turnStates.Clear();
-            RebuildInitiativeOrder();
+        var combatant = RequireCombatant(combatantId);
+        var wasAlive = !combatant.IsDefeated;
+        var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
+        _lastActivationCombatantId = combatantId;
+        _lastActivationStatusTicks = statusTicks;
+        AwardPeriodicCharge(combatant, statusTicks, wasAlive);
+        if (combatant.IsDefeated)
+        {
+            RegisterCombatantDefeated();
+            OnCombatantDefeated(combatantId);
+            CompleteIfAllEnemiesDefeated();
+            FailIfAllAlliesDefeated();
+            return;
         }
 
         if (HasEquippedItem(combatantId, "item.gants-service-muet")

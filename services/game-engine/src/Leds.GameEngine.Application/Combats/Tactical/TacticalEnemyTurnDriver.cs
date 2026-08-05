@@ -179,7 +179,6 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         }
 
         var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(action.Targets);
-        var speedsBefore = combat.CaptureEffectiveSpeeds();
         if (combat.PresentationsEnabled && !actor.HasActedThisCombat)
         {
             log.Add(new CombatLogEntryDto(
@@ -216,9 +215,6 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             combat.MarkOnceSkillUsed(action.Skill.Key);
 
         combat.MarkActiveCombatantActed(action.Skill);
-
-        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
-            combat.RecalculateInitiativeAfterSpeedChange();
 
         events.Add(TacticalCombatEventDto.Skill(
             actorId,

@@ -171,7 +171,6 @@ public sealed class UseTacticalSkillCommandHandler
 
         // Relevé avant résolution : le noyau partagé n'annonce pas ses chiffres, on les mesure.
         var before = TacticalImpactRecorder.Capture(targets);
-        var speedsBefore = combat.CaptureEffectiveSpeeds();
 
         if (combat.NextActionRestrictedToBasicAttack)
             combat.ConsumeBasicAttackRestriction();
@@ -257,9 +256,6 @@ public sealed class UseTacticalSkillCommandHandler
             combat.MarkOnceSkillUsed(skill.Key);
 
         combat.MarkActiveCombatantActed(skill);
-
-        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
-            combat.RecalculateInitiativeAfterSpeedChange();
 
         var rewardOffer = await SettleAsync(run, combat, cancellationToken);
 
