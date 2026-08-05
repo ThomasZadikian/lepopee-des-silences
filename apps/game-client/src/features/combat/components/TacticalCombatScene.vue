@@ -47,6 +47,7 @@ import {
 } from '../composables/useTacticalBattlePlan';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
+import { EMOTIONAL_TYPE_META } from '../../../shared/theme/typeColors';
 import PortraitDetailCard from './PortraitDetailCard.vue';
 import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
@@ -334,18 +335,10 @@ function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
 // la puce complète, qui ferait doublon avec la bordure teintée du bouton). Un sort sans
 // registre (attaque de base) reste neutre : la couleur porte une vraie information, elle
 // n'est pas décorative.
-const SKILL_TYPE_META: Record<string, { glyph: string; color: string }> = {
-  Effroi: { glyph: '✶', color: 'oklch(0.62 0.20 18)' },
-  Deni: { glyph: '◇', color: 'oklch(0.78 0.13 78)' },
-  Melancolie: { glyph: '❍', color: 'oklch(0.70 0.11 248)' },
-  Rupture: { glyph: '⟡', color: 'oklch(0.66 0.19 38)' },
-  Memoire: { glyph: '◈', color: 'oklch(0.84 0.11 86)' },
-  Silence: { glyph: '○', color: 'oklch(0.80 0.02 272)' },
-  Folie: { glyph: '✳', color: 'oklch(0.64 0.22 340)' },
-};
-
 function skillTypeMeta(skill: CombatantSkillRuntimeDto): { glyph: string; color: string } | null {
-  return skill.emotionalType ? SKILL_TYPE_META[skill.emotionalType] ?? null : null;
+  return skill.emotionalType && skill.emotionalType !== 'Neutral'
+    ? EMOTIONAL_TYPE_META[skill.emotionalType] ?? null
+    : null;
 }
 
 function skillAccent(skill: CombatantSkillRuntimeDto): string {
@@ -2541,7 +2534,7 @@ onBeforeUnmount(() => {
 /* Emplacements numérotés façon hotbar (XCOM/BG3) plutôt qu'une rangée de boutons texte qui
    s'enroule : largeur commune, badge de rang toujours au même endroit — l'œil retrouve un sort
    au même emplacement d'un tour à l'autre. Chaque carte porte la couleur de son registre
-   émotionnel (voir SKILL_TYPE_META) en bordure gauche ET en fond très atténué — un sort sans
+   émotionnel (voir EMOTIONAL_TYPE_META) en bordure gauche ET en fond très atténué — un sort sans
    registre (attaque de base) reste délibérément neutre, la couleur est une information, pas
    un décor systématique. */
 .tbattle__skill,

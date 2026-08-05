@@ -19,7 +19,12 @@ public sealed record SkillDefinitionView(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral");
+    string EmotionalRegister = "Neutral",
+    // The skill's OWN "élément" (registre émotionnel intrinsèque), resolved the exact same
+    // way as CombatantSkillRuntimeDto.EmotionalType — see EmotionalTypeProfileProvider.
+    // Null for basic attacks and any skill without a declared type; distinct from
+    // EmotionalRegister above, which is a near-always-"Neutral" catalog seed field.
+    string? EmotionalType = null);
 
 public sealed record SkillEffectView(
     string Kind,

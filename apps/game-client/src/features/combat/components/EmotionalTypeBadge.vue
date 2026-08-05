@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import type { EmotionalType } from '../types/combatContracts';
+import { EMOTIONAL_TYPE_META } from '../../../shared/theme/typeColors';
 
 const props = withDefaults(
   defineProps<{
@@ -12,20 +13,7 @@ const props = withDefaults(
   { compact: false },
 );
 
-type TypeMeta = { label: string; glyph: string; color: string };
-
-const TYPE_META: Record<string, TypeMeta> = {
-  Effroi: { label: 'Effroi', glyph: '✶', color: 'oklch(0.62 0.20 18)' },
-  Deni: { label: 'Déni', glyph: '◇', color: 'oklch(0.78 0.13 78)' },
-  Melancolie: { label: 'Mélancolie', glyph: '❍', color: 'oklch(0.70 0.11 248)' },
-  Rupture: { label: 'Rupture', glyph: '⟡', color: 'oklch(0.66 0.19 38)' },
-  Memoire: { label: 'Mémoire', glyph: '◈', color: 'oklch(0.84 0.11 86)' },
-  Silence: { label: 'Silence', glyph: '○', color: 'oklch(0.80 0.02 272)' },
-  Folie: { label: 'Folie', glyph: '✳', color: 'oklch(0.64 0.22 340)' },
-  Neutral: { label: 'Neutre', glyph: '·', color: 'oklch(0.58 0.02 272)' },
-};
-
-const meta = computed<TypeMeta>(() => TYPE_META[props.type] ?? TYPE_META.Neutral);
+const meta = computed(() => EMOTIONAL_TYPE_META[props.type] ?? EMOTIONAL_TYPE_META.Neutral);
 const isNeutral = computed(() => (props.type ?? 'Neutral') === 'Neutral');
 </script>
 

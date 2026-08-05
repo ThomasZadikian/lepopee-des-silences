@@ -31,4 +31,7 @@ export type SkillDefinitionView = {
   cooldown?: number;
   isUltimate?: boolean;
   emotionalRegister?: string;
+  /** The spell's own intrinsic "élément" — see EmotionalTypeProfileProvider. Null for
+   * basic attacks and untyped spells; distinct from emotionalRegister above. */
+  emotionalType?: string | null;
 };

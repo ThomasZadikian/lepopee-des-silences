@@ -5,6 +5,7 @@ import { usePlayerStore } from '../../features/party/stores/playerStore';
 import type { RunItemDto } from '../../features/runs/types/runTypes';
 import { inventoryApi } from '../../features/inventory/api/inventoryApi';
 import { itemsApi } from '../../features/party/api/itemsApi';
+import { itemTypeMeta } from '../theme/typeColors';
 import BookReader from './BookReader.vue';
 
 /**
@@ -286,7 +287,12 @@ async function toggleEquip() {
             :key="item.id"
             type="button"
             class="bp-cell"
-            :style="{ borderLeftColor: rarityColor(item.rarity), background: item.id === selectedItemId ? 'var(--panel-2)' : 'var(--panel)' }"
+            :style="{
+              borderLeftColor: itemTypeMeta(item.type).color,
+              background: item.id === selectedItemId
+                ? 'var(--panel-2)'
+                : `color-mix(in oklch, ${itemTypeMeta(item.type).color}, var(--panel) 92%)`,
+            }"
             @click="selectItem(item)"
           >
             <div class="bp-cell__top">
@@ -305,7 +311,9 @@ async function toggleEquip() {
         <span class="bp-sheet__rarity" :style="{ color: rarityColor(selectedItem.rarity) }">{{ rarityLabel(selectedItem.rarity) }}</span>
         <span v-if="selectedItem.quantity > 1" class="bp-sheet__qty">×{{ selectedItem.quantity }}</span>
       </div>
-      <span class="bp-sheet__type">{{ selectedItem.type }}</span>
+      <span class="bp-sheet__type" :style="{ color: itemTypeMeta(selectedItem.type).color }">
+        {{ itemTypeMeta(selectedItem.type).glyph }} {{ itemTypeMeta(selectedItem.type).label }}
+      </span>
       <p class="bp-sheet__desc">{{ selectedItem.description }}</p>
 
       <div v-if="effectLabel(selectedItem)" class="bp-sheet__effect">{{ effectLabel(selectedItem) }}</div>

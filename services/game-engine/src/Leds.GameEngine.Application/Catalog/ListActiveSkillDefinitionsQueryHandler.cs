@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Typing;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Catalog;
@@ -59,7 +60,10 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                 d.RequiresLineOfSight,
                 d.Cooldown,
                 d.IsUltimate,
-                d.EmotionalRegister)).ToArray());
+                d.EmotionalRegister,
+                EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, out var emotionalType)
+                    ? emotionalType.ToString()
+                    : null)).ToArray());
     }
 
     /// <summary>

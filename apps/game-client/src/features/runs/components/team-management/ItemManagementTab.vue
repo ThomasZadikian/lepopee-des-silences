@@ -5,6 +5,7 @@ import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
 import { itemsApi } from '../../../party/api/itemsApi';
 import { useRunStore } from '../../stores/runStore';
+import { itemTypeMeta } from '../../../../shared/theme/typeColors';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
 
@@ -24,6 +25,10 @@ onMounted(async () => {
 
 function itemDisplayName(itemKey: string): string {
   return allItems.value.find((i) => i.key === itemKey)?.displayName ?? itemKey;
+}
+
+function itemTypeAccent(itemKey: string) {
+  return itemTypeMeta(allItems.value.find((i) => i.key === itemKey)?.itemType);
 }
 
 function weaponContract(itemKey: string): string | null {
@@ -169,6 +174,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
           :key="slot.key"
           class="imk-slot"
           :class="{ 'imk-slot--empty': !slot.item }"
+          :style="slot.item ? { borderLeftColor: itemTypeAccent(slot.item.itemKey).color } : undefined"
         >
           <span class="imk-slot__label">{{ slot.label }}</span>
           <template v-if="slot.item">
@@ -210,6 +216,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
           v-for="permanentItem in equippablePermanentItems"
           :key="permanentItem.itemDefinitionKey"
           class="imk-row"
+          :style="{ borderLeftColor: itemTypeAccent(permanentItem.itemDefinitionKey).color }"
         >
           <div class="imk-row__info">
             <span class="imk-row__name">{{ itemDisplayName(permanentItem.itemDefinitionKey) }}</span>
@@ -334,6 +341,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
   min-height: 96px;
   padding: 10px;
   border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--line-soft);
   background: var(--panel-2);
   display: flex;
   flex-direction: column;
@@ -367,6 +375,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
+  border-left: 3px solid var(--line-soft);
   background: var(--panel-2);
 }
 

@@ -145,11 +145,20 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
     /// return false — see the doc comment on <see cref="SkillTypesByKey"/>).
     /// </summary>
     public static bool TryResolveIntrinsicType(CombatantSkill? skill, out EmotionalType type)
+        => TryResolveIntrinsicType(skill?.Key, skill?.Tags, out type);
+
+    /// <summary>
+    /// Key/tags-only overload of <see cref="TryResolveIntrinsicType(CombatantSkill?, out EmotionalType)"/>,
+    /// so out-of-combat catalog readers (e.g. the Grimoire's skill list) can resolve the exact
+    /// same "élément" without needing a runtime <see cref="CombatantSkill"/> instance.
+    /// </summary>
+    public static bool TryResolveIntrinsicType(
+        string? skillKey, IReadOnlyCollection<string>? tags, out EmotionalType type)
     {
         // 1) Explicit per-skill override via a tag, e.g. "emotype:rupture".
-        if (skill?.Tags is { Count: > 0 })
+        if (tags is { Count: > 0 })
         {
-            foreach (var tag in skill.Tags)
+            foreach (var tag in tags)
             {
                 if (string.IsNullOrWhiteSpace(tag))
                 {
@@ -167,7 +176,7 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         }
 
         // 2) Intrinsic spell type (belongs to the spell, not the caster).
-        if (skill is not null && SkillTypesByKey.TryGetValue(skill.Key, out var spellType))
+        if (skillKey is not null && SkillTypesByKey.TryGetValue(skillKey, out var spellType))
         {
             type = spellType;
             return true;

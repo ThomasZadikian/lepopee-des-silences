@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { SkillDefinitionView } from '../../../party/types/skillTypes';
 import { categoryLabel, formatEffect } from './grimoireDisplay';
+import { emotionalTypeMeta } from '../../../../shared/theme/typeColors';
+import EmotionalTypeBadge from '../../../combat/components/EmotionalTypeBadge.vue';
 
-defineProps<{
+const props = defineProps<{
   skill: SkillDefinitionView;
   isKnown: boolean;
   isEquipped: boolean;
@@ -10,15 +13,19 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ toggleEquip: [key: string] }>();
+
+const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
 </script>
 
 <template>
   <div
     class="grimoire-card"
     :class="{ 'grimoire-card--locked': !isKnown, 'grimoire-card--equipped': isEquipped }"
+    :style="typeMeta ? { '--type-color': typeMeta.color } : undefined"
   >
     <div class="grimoire-card__head">
       <span class="grimoire-card__name">{{ skill.displayName }}</span>
+      <EmotionalTypeBadge v-if="skill.emotionalType" :type="skill.emotionalType" compact />
       <span v-if="skill.isUltimate" class="grimoire-chip grimoire-chip--ultimate">Ultime</span>
       <span class="grimoire-chip">{{ categoryLabel(skill.effectType) }}</span>
       <span class="grimoire-chip grimoire-chip--muted">{{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}</span>
@@ -72,11 +79,24 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   gap: 8px;
   padding: 12px;
   border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--line-soft);
   background: var(--panel-2);
+}
+
+/* Sorts avec un registre émotionnel intrinsèque (voir EmotionalTypeProfileProvider)
+   portent l'accent pastel de leur type en bordure gauche ET en fond très atténué —
+   même principe que la hotbar de sorts en combat (TacticalCombatScene). */
+.grimoire-card[style*='--type-color'] {
+  border-left-color: color-mix(in oklch, var(--type-color), transparent 35%);
+  background: color-mix(in oklch, var(--type-color), var(--panel-2) 92%);
 }
 
 .grimoire-card--equipped {
   border-color: var(--mint-dim);
+}
+
+.grimoire-card--equipped[style*='--type-color'] {
+  border-left-color: color-mix(in oklch, var(--type-color), transparent 35%);
 }
 
 .grimoire-card--locked {
