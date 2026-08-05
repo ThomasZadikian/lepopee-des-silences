@@ -103,10 +103,25 @@ Le Palais est un corps qui respire, pas une machine :
 
 ## Suivi de la migration
 
-Écrans déjà validés sur cette direction (maquette Claude Design reçue) : Le Seuil, Exploration
-(chrome), Combat tactique (chrome — le HUD lui-même est à revoir, voir note séparée), Statuts,
-Manifestations, Réputation, Tutoriel, Équipe (+ pages liées), Superposition de nœuds, Salle
-nettoyée, Sélection d'objet permanent, Run terminée, Tiroirs et popovers.
+Implémentés dans le code (2026-08) : Le Seuil, le cadre persistant de la run (GameShellLayout,
+GameTopBar), la carte d'exploration (chrome), la superposition des nœuds (3 formes — Présence en
+bulles empilées, Marchand/Loi/Malédiction/Repos/Objet/Souvenir en carte centrée, Écho en médaillon
+compact), Statuts, Manifestations, Réputation (barre + score, offrandes retirées de la vue joueur),
+Tutoriel, Équipe fusionnée (Équipe/Statistiques/Grimoire/Équipement/Besace en un seul écran à
+onglets — `TeamHubPage.vue`), Salle nettoyée, Sélection d'objet permanent, Run terminée/suspendue,
+tous les tiroirs et popovers (Besace, Influences, Équipe-en-run, Journal, ruban de statut,
+micro-menu, overlay Elise, popup de réputation, diptyque de décision). Les sections Malédiction ont
+été retirées d'Influences et d'Équipe-en-run (retrait volontaire, confirmé).
 
-Écrans encore sur l'ancienne direction dans le code (à reprendre un par un, jamais en un seul
-balayage) : tous, à ce jour — l'implémentation n'a pas encore commencé.
+`PalaceAtmosphere.vue` et `RuleOrnament.vue` sont supprimés (plus aucun écran ne les utilise) ;
+`LivingWalls.vue` et les tokens `void/panel/mint/mauve/danger` sont la seule référence en vigueur
+pour tout ce qui précède.
+
+Encore sur l'ancienne direction, explicitement hors périmètre en attente d'un élément externe :
+- **Combat tactique (HUD)** — attend une maquette révisée (garde/mana/focus/statuts) ; le chrome des
+  panneaux Claude Design fournis est déjà obsolète sur ce point précis.
+- **Bestiaire en écran joueur** — attend un scoping (aujourd'hui un outil de production interne, pas
+  un écran destiné au joueur).
+- La grammaire de couleur fonctionnelle du combat elle-même (surbrillances de case, silhouettes,
+  registres de sorts, `StatusEffectToken` en combat) reste hors périmètre par nature, voir
+  « Ce qui ne bouge pas » ci-dessus — pas un report, une exclusion de fond.
