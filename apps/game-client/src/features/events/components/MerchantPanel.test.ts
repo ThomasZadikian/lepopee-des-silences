@@ -19,7 +19,6 @@ function mountPanel(outcome: EventOutcomeDto, isLoading = false) {
       stubs: {
         SigilIcon: { template: '<svg />' },
         ChipBadge: { template: '<span><slot /></span>' },
-        EliseComment: { template: '<div><slot /></div>' },
       },
     },
   });
@@ -128,8 +127,4 @@ describe('MerchantPanel', () => {
     expect(wrapper.text()).not.toContain('Un marchand');
   });
 
-  it('renders Elise comment in footer', () => {
-    const wrapper = mountPanel(baseOutcome);
-    expect(wrapper.text()).toContain('Le Palais vend ce dont il n\'a plus besoin');
-  });
 });

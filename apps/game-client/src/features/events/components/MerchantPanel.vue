@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import ChipBadge from '@/shared/components/ChipBadge.vue'
-import EliseComment from '@/shared/components/EliseComment.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import { computed, ref } from 'vue'
 import type { EventOutcomeDto } from '../types/eventTypes'
@@ -76,59 +75,21 @@ function decline() {
 
       <!-- ── Items grid or empty state ── -->
       <div v-if="hasChoices" class="mrc-grid">
-        <div
+        <button
           v-for="choice in choices"
           :key="choice.id"
+          type="button"
           :class="['mrc-item', selectedId === choice.id && 'mrc-item--sel', !choice.isEnabled && 'mrc-item--disabled']"
-          @click="choice.isEnabled && selectItem(choice.id)"
+          :disabled="!choice.isEnabled"
+          @click="selectItem(choice.id)"
         >
-          <!-- Selection indicator -->
-          <div
-            class="mrc-item__pick"
-            :style="selectedId === choice.id
-              ? { borderColor: 'var(--mint-dim)', color: 'var(--mint-dim)' }
-              : {}"
-          >
-            <svg
-              v-if="selectedId === choice.id"
-              width="12" height="12" viewBox="0 0 12 12" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-            >
-              <path d="M2 6l3 3 5-5" />
-            </svg>
+          <div class="mrc-item__top">
+            <span class="mrc-item__name">{{ choice.label }}</span>
+            <span v-if="selectedId === choice.id" class="mrc-item__pick">✓</span>
           </div>
-
-          <!-- Icon circle -->
-          <div class="mrc-item__icon" :style="{ borderColor: selectedId === choice.id ? 'var(--mint-dim)' : 'var(--line)' }">
-            <SigilIcon
-              kind="objet"
-              :size="34"
-              :stroke-width="1.3"
-              :style="{ color: selectedId === choice.id ? 'var(--mint-dim)' : 'var(--ink-3)' }"
-            />
-          </div>
-
-          <!-- Text -->
-          <h3
-            class="es-h3"
-            style="font-size: 17px; text-align: center; margin-bottom: 8px"
-            :style="{ color: selectedId === choice.id ? 'var(--ink)' : 'var(--ink-2)' }"
-          >
-            {{ choice.label }}
-          </h3>
-
-          <p
-            v-if="choice.description"
-            class="es-body"
-            style="font-size: 12.5px; text-align: center; color: var(--ink-4); flex: 1; margin: 0"
-          >
-            {{ choice.description }}
-          </p>
-
-          <div v-if="!choice.isEnabled" class="mrc-item__unavail">
-            <span class="es-label" style="color: var(--ink-4); font-size: 9px">Indisponible</span>
-          </div>
-        </div>
+          <p v-if="choice.description" class="mrc-item__desc">{{ choice.description }}</p>
+          <span v-if="!choice.isEnabled" class="mrc-item__unavail">Indisponible</span>
+        </button>
       </div>
 
       <!-- Empty state -->
@@ -139,30 +100,21 @@ function decline() {
 
       <!-- ── Footer ── -->
       <div class="mrc-footer">
-        <EliseComment
-          tell="à mi-voix"
-          style="flex: 1; max-width: 340px"
+        <button
+          class="es-btn es-btn--ghost es-btn--lg"
+          :disabled="isLoading"
+          @click="decline"
         >
-          Le Palais vend ce dont il n'a plus besoin. Méfie-toi des bonnes affaires.
-        </EliseComment>
-
-        <div class="es-row" style="gap: 12px">
-          <button
-            class="es-btn es-btn--ghost es-btn--lg"
-            :disabled="isLoading"
-            @click="decline"
-          >
-            Passer
-          </button>
-          <button
-            class="es-btn es-btn--mint es-btn--lg"
-            :disabled="!selectedId || isLoading"
-            :style="{ opacity: !selectedId ? 0.4 : 1, minWidth: '180px' }"
-            @click="confirm"
-          >
-            Acquérir →
-          </button>
-        </div>
+          Passer
+        </button>
+        <button
+          class="es-btn es-btn--mint es-btn--lg"
+          :disabled="!selectedId || isLoading"
+          :style="{ opacity: !selectedId ? 0.4 : 1, minWidth: '180px' }"
+          @click="confirm"
+        >
+          Acquérir →
+        </button>
       </div>
     </div>
   </div>
@@ -230,11 +182,12 @@ function decline() {
   color: var(--ink-4);
 }
 
-/* ── Items grid ── */
+/* ── Items grid — cartes compactes, un popup pas un écran ── */
 .mrc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 200px));
+  gap: 12px;
+  justify-content: center;
   align-content: start;
   max-height: 52vh;
   overflow-y: auto;
@@ -242,68 +195,55 @@ function decline() {
 
 /* ── Single item card ── */
 .mrc-item {
-  position: relative;
+  all: unset;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   background: var(--panel-2);
-  padding: 22px 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  gap: 6px;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-  user-select: none;
-}
-
-.mrc-item:hover {
-  border-color: var(--mint-dim);
-}
-
-.mrc-item--sel {
-  border-color: var(--mint-dim);
-  background: var(--panel);
-}
-
-.mrc-item--disabled {
-  opacity: 0.38;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* ── Selection indicator ── */
-.mrc-item__pick {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-/* ── Icon circle ── */
-.mrc-item__icon {
-  width: 74px;
-  height: 74px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
   transition: border-color 0.2s;
 }
 
-/* ── Unavailable badge ── */
+.mrc-item:hover:not(.mrc-item--disabled) { border-color: var(--mint-dim); }
+.mrc-item--sel { border-color: var(--mint-dim); background: var(--panel); }
+.mrc-item--disabled { opacity: 0.4; cursor: not-allowed; }
+
+.mrc-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mrc-item__name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.mrc-item__pick { color: var(--mint-dim); font-size: 13px; }
+
+.mrc-item__desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .mrc-item__unavail {
-  padding: 3px 9px;
-  border-radius: 3px;
-  background: var(--line-soft);
-  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-5);
 }
 
 /* ── Empty state ── */
@@ -319,9 +259,8 @@ function decline() {
 .mrc-footer {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--line-soft);
 }

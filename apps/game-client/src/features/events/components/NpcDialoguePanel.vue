@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { NpcDialogueViewDto, NarrativeFragmentDto } from '../../runs/types/runTypes';
 
 const props = defineProps<{
@@ -33,9 +33,17 @@ const bubbles = ref<Bubble[]>([]);
 let bubbleSeq = 0;
 let lastNpcKey: string | null | undefined;
 
+const historyEl = ref<HTMLElement | null>(null);
+function scrollToLatest() {
+  nextTick(() => {
+    if (historyEl.value) historyEl.value.scrollTop = historyEl.value.scrollHeight;
+  });
+}
+
 function pushBubble(kind: Bubble['kind'], text: string) {
   if (!text) return;
   bubbles.value = [...bubbles.value, { id: bubbleSeq++, kind, text }];
+  scrollToLatest();
 }
 
 // ── Typewriter (ligne en cours de frappe, pas encore une bulle scellée) ──────
@@ -55,6 +63,7 @@ function typeLine(text: string) {
   timer = setInterval(() => {
     i++;
     typingText.value = text.slice(0, i);
+    scrollToLatest();
     if (i >= text.length) {
       clearTimer();
       typing.value = false;
@@ -105,7 +114,7 @@ function pick(choiceId: string) {
 
 const hasMoreLines = computed(() => !typing.value && lineIndex.value < lines.value.length - 1);
 
-// ── Screen reactions on consequence ─────────────────────────────────────────
+// ── Reaction on consequence (kept minimal — no full-screen wash) ────────────
 const shakeKey = ref(0);
 const flashKind = ref<'none' | 'warm' | 'bad'>('none');
 const flashKey = ref(0);
@@ -145,10 +154,6 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
 
 <template>
   <div class="npc-root" :class="['mood-' + mood, { 'npc-shake': shakeKey }]" :key="shakeKey">
-    <div class="es-grain" />
-    <div class="npc-vignette" />
-    <div class="npc-aura" />
-
     <!-- The figure -->
     <div class="npc-figure">
       <svg viewBox="0 0 300 480" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
@@ -169,35 +174,28 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
           <circle class="npc-eyes" cx="9" cy="-2" r="2.6" />
         </g>
       </svg>
+      <span class="npc-figure__name">{{ speaker }}</span>
     </div>
 
-    <!-- Name -->
-    <div class="npc-name">
-      <div class="es-kicker npc-name__kick">Rencontre · une entité du Palais</div>
-      <h1 class="npc-name__title">{{ speaker }}</h1>
-    </div>
-
-    <!-- Bottom stack -->
+    <!-- Dialogue column, centered -->
     <div class="npc-wrap">
-      <div class="npc-box" @click="advance">
-        <div class="npc-history">
-          <div
-            v-for="(bubble, i) in bubbles"
-            :key="bubble.id"
-            class="npc-bubble"
-            :class="[
-              bubble.kind === 'player' ? 'npc-bubble--player' : 'npc-bubble--npc',
-              (i < bubbles.length - 1 || typing) && 'npc-bubble--dim',
-            ]"
-          >
-            <span class="npc-bubble__speaker">{{ bubble.kind === 'player' ? 'Toi' : speaker }}</span>
-            <p class="npc-bubble__text">{{ bubble.text }}</p>
-          </div>
+      <div ref="historyEl" class="npc-history" @click="advance">
+        <div
+          v-for="(bubble, i) in bubbles"
+          :key="bubble.id"
+          class="npc-bubble"
+          :class="[
+            bubble.kind === 'player' ? 'npc-bubble--player' : 'npc-bubble--npc',
+            (i < bubbles.length - 1 || typing) && 'npc-bubble--dim',
+          ]"
+        >
+          <span class="npc-bubble__speaker">{{ bubble.kind === 'player' ? 'Toi' : speaker }}</span>
+          <p class="npc-bubble__text">{{ bubble.text }}</p>
+        </div>
 
-          <div v-if="typing" class="npc-bubble npc-bubble--npc">
-            <span class="npc-bubble__speaker">{{ speaker }}</span>
-            <p class="npc-bubble__text">{{ typingText }}<span class="npc-caret">▌</span></p>
-          </div>
+        <div v-if="typing" class="npc-bubble npc-bubble--npc">
+          <span class="npc-bubble__speaker">{{ speaker }}</span>
+          <p class="npc-bubble__text">{{ typingText }}<span class="npc-caret">▌</span></p>
         </div>
 
         <div v-if="echoes && echoes.length" class="npc-echoes">
@@ -223,7 +221,6 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
           :disabled="isLoading"
           @click="pick(choice.choiceId)"
         >
-          <span class="npc-choice__g">◆</span>
           <span class="npc-choice__l">{{ choice.label }}</span>
           <span class="npc-choice__a">→</span>
         </button>
@@ -234,7 +231,6 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
                choice was filtered out by an unmet requirement), still offer
                a way out instead of a silent dead end. -->
           <button class="npc-exit" :disabled="isLoading" @click="emit('continue')">
-            <span class="npc-exit__g">◆</span>
             <span class="npc-exit__l">Se retirer du seuil</span>
             <span class="npc-exit__a">→</span>
           </button>
@@ -244,14 +240,13 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
       <!-- Ended -->
       <div v-else-if="ended" class="npc-end">
         <button class="npc-exit" :disabled="isLoading" @click="emit('continue')">
-          <span class="npc-exit__g">◆</span>
           <span class="npc-exit__l">Se retirer du seuil</span>
           <span class="npc-exit__a">→</span>
         </button>
       </div>
     </div>
 
-    <!-- Flash overlay -->
+    <!-- Reaction flash (kept minimal — a brief tint, not a wash) -->
     <div class="npc-flash" :class="['k-' + flashKind]" :key="'flash-' + flashKey" />
   </div>
 </template>
@@ -260,16 +255,6 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
 .npc-root {
   position: relative; width: 100%; height: 100%; overflow: hidden;
   color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(60% 55% at 20% 16%, rgba(125,92,255,.14), transparent 60%),
-    radial-gradient(55% 50% at 84% 84%, rgba(96,120,255,.10), transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, #221a38 0%, var(--bg) 52%, var(--void) 100%);
-  transition: background 1.1s ease;
-}
-.npc-root.mood-rompu {
-  background:
-    radial-gradient(70% 60% at 50% 24%, rgba(255,60,60,.20), transparent 70%),
-    radial-gradient(150% 130% at 50% -10%, #2a1622 0%, #120810 55%, var(--void) 100%);
 }
 .npc-root.npc-shake { animation: npcShake .5s; }
 @keyframes npcShake {
@@ -277,113 +262,110 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
   40% { transform: translate(5px,-4px); } 60% { transform: translate(-4px,-2px); } 80% { transform: translate(4px,3px); }
 }
 
-.npc-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 240px 60px rgba(0,0,0,.7); }
-.npc-aura { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .6; transition: opacity 1s ease; }
-.npc-root.mood-rompu .npc-aura { opacity: .9; animation: npcPulse 3.2s ease-in-out infinite; }
-@keyframes npcPulse { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
-
-/* Figure */
-.npc-figure { position: absolute; top: 6vh; left: 50%; transform: translateX(-50%); width: 280px; height: 60vh; z-index: 2; }
+/* Figure — asset du PNJ, un peu à gauche du centre */
+.npc-figure { position: absolute; top: 6vh; left: 30%; transform: translateX(-50%); width: 280px; height: 60vh; z-index: 2; display: flex; flex-direction: column; align-items: center; }
 .npc-figure svg { width: 100%; height: 100%; overflow: visible; }
 .npc-silhouette {
-  fill: url(#npcFigGrad); stroke: rgba(183,155,255,.5); stroke-width: 1;
-  filter: drop-shadow(0 0 40px rgba(125,92,255,.32));
+  fill: url(#npcFigGrad); stroke: var(--mint-dim); stroke-width: 1; opacity: .85;
   animation: npcSway 7s ease-in-out infinite; transform-origin: center bottom;
 }
-.mood-rompu .npc-silhouette { stroke: rgba(255,90,90,.6); filter: drop-shadow(0 0 46px rgba(255,60,60,.5)); animation-duration: 5s; }
+.mood-rompu .npc-silhouette { stroke: var(--danger-dim); }
 @keyframes npcSway { 0%,100% { transform: rotate(-.6deg) translateY(0); } 50% { transform: rotate(.6deg) translateY(-6px); } }
-.npc-mask { fill: none; stroke: var(--violet, #b79bff); stroke-width: 1.4; opacity: .9; filter: drop-shadow(0 0 14px rgba(183,155,255,.8)); animation: npcBreathe 4s ease-in-out infinite; }
-.mood-rompu .npc-mask { stroke: #ff5a5a; filter: drop-shadow(0 0 16px rgba(255,90,90,.9)); }
+.npc-mask { fill: none; stroke: var(--mint-dim); stroke-width: 1.4; opacity: .9; animation: npcBreathe 4s ease-in-out infinite; }
+.mood-rompu .npc-mask { stroke: var(--danger-dim); }
 @keyframes npcBreathe { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
-.npc-eyes { fill: #b79bff; filter: drop-shadow(0 0 8px #b79bff); }
-.mood-rompu .npc-eyes { fill: #ff5a5a; filter: drop-shadow(0 0 10px #ff5a5a); animation: npcFlicker .14s steps(2) infinite; }
+.npc-eyes { fill: var(--mint-dim); }
+.mood-rompu .npc-eyes { fill: var(--danger-dim); animation: npcFlicker .14s steps(2) infinite; }
 @keyframes npcFlicker { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
 
-/* Name */
-.npc-name { position: absolute; top: 4vh; left: 50%; transform: translateX(-50%); text-align: center; z-index: 4;
-  opacity: 0; animation: npcNameIn 1s ease .2s forwards; }
-@keyframes npcNameIn { from { opacity: 0; letter-spacing: .6em; filter: blur(6px); } to { opacity: 1; letter-spacing: .04em; filter: blur(0); } }
-.npc-name__kick { color: var(--ink-4); }
-.npc-name__title { margin: .3em 0 0; font-family: var(--display); font-size: 38px; font-weight: 400; color: var(--ink); letter-spacing: .04em; }
-
-/* Bottom wrap */
-.npc-wrap { position: relative; z-index: 5; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 0 5vh; gap: 14px; }
-
-/* Box */
-.npc-box {
-  position: relative; width: min(820px, 92vw); max-height: 46vh; padding: 30px 38px 28px; cursor: pointer;
-  overflow-y: auto;
-  background: linear-gradient(180deg, rgba(20,16,34,.86), rgba(12,9,22,.92));
-  border: 1px solid var(--line); border-radius: 18px;
-  box-shadow: 0 30px 80px -30px #000, inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter: blur(4px);
-  transition: border-color .5s ease, box-shadow .5s ease;
+.npc-figure__name {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
-.mood-rompu .npc-box { border-color: rgba(255,90,90,.4); box-shadow: 0 30px 80px -30px #000, 0 0 50px -18px rgba(255,60,60,.5); }
 
-.npc-history { display: flex; flex-direction: column; gap: 16px; }
+/* Dialogue column — centrée, sans fond hors la carte */
+.npc-wrap {
+  position: relative; z-index: 5; height: 100%; width: min(560px, 46vw);
+  margin-left: auto; margin-right: 8vw;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end;
+  padding: 0 0 6vh; gap: 14px;
+}
+
+.npc-history {
+  max-height: 50vh;
+  overflow-y: auto;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 .npc-bubble { transition: opacity .4s ease; }
-.npc-bubble--dim { opacity: .4; }
-.npc-bubble--player { align-self: flex-end; text-align: right; max-width: 80%; }
+.npc-bubble--dim { opacity: .45; }
+.npc-bubble--player { align-self: flex-end; text-align: right; max-width: 82%; }
 
-.npc-bubble__speaker { display: block; font-family: var(--caps, var(--display)); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: #b79bff; opacity: .85; margin-bottom: 8px; }
-.mood-rompu .npc-bubble__speaker { color: #ff5a5a; }
+.npc-bubble__speaker { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--mint-dim); opacity: .85; margin-bottom: 6px; }
+.mood-rompu .npc-bubble__speaker { color: var(--danger-dim); }
 .npc-bubble--player .npc-bubble__speaker { color: var(--ink-4); }
 
-.npc-bubble__text { margin: 0; font-family: var(--display); font-size: 22px; line-height: 1.5; color: var(--ink); font-style: italic; min-height: 1.4em; }
-.npc-bubble--player .npc-bubble__text { color: var(--ink-2); font-size: 16px; }
+.npc-bubble__text {
+  margin: 0; padding: 10px 14px;
+  background: rgba(12, 13, 18, 0.55);
+  font-family: var(--font-display); font-size: 18px; line-height: 1.5; color: var(--ink); font-style: italic; min-height: 1.4em;
+}
+.npc-bubble--player .npc-bubble__text { color: var(--ink-2); font-size: 14px; background: rgba(12, 13, 18, 0.4); }
 
-.npc-caret { display: inline-block; width: .5ch; color: #b79bff; animation: npcBlink 1s steps(1) infinite; }
-.mood-rompu .npc-caret { color: #ff5a5a; }
+.npc-caret { display: inline-block; width: .5ch; color: var(--mint-dim); animation: npcBlink 1s steps(1) infinite; }
+.mood-rompu .npc-caret { color: var(--danger-dim); }
 @keyframes npcBlink { 50% { opacity: 0; } }
-.npc-echoes { margin-top: 14px; }
-.npc-echo { margin: 0 0 6px; padding-left: 14px; border-left: 2px solid rgba(183,155,255,.45); color: var(--ink-3); font-size: 14.5px; line-height: 1.55; opacity: 0; animation: npcRise .5s ease forwards; }
-.npc-echo.warm { border-color: rgba(215,181,109,.6); color: #e7d6a8; }
-.npc-echo.bad { border-color: rgba(255,90,90,.6); color: #ffb0b0; }
-.npc-cont { position: absolute; right: 22px; bottom: 16px; color: var(--ink-4); font-size: 13px; animation: npcBob 1.4s ease-in-out infinite; }
+.npc-echoes { margin-top: 6px; }
+.npc-echo { margin: 0 0 6px; padding-left: 12px; border-left: 2px solid var(--mint-dim); color: var(--ink-3); font-size: 13px; line-height: 1.55; opacity: 0; animation: npcRise .5s ease forwards; }
+.npc-echo.bad { border-color: var(--danger-dim); color: var(--ink-2); }
+.npc-cont { align-self: flex-end; color: var(--ink-4); font-size: 12px; animation: npcBob 1.4s ease-in-out infinite; }
 @keyframes npcBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 
 /* Choices */
-.npc-choices { width: min(820px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.npc-choices { display: flex; flex-direction: column; gap: 8px; }
 .npc-choice {
-  display: flex; align-items: center; gap: 14px; width: 100%; padding: 15px 20px; cursor: pointer; text-align: left;
-  color: var(--ink-2); border: 1px solid var(--line); border-radius: 13px;
-  background: linear-gradient(135deg, rgba(125,92,255,.06), transparent 60%), rgba(18,14,30,.6);
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; cursor: pointer; text-align: left;
+  color: var(--ink-2); border: 1px solid var(--line); background: rgba(12, 13, 18, 0.55);
   opacity: 0; transform: translateY(10px); animation: npcRise .45s ease forwards;
-  transition: transform .16s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+  transition: border-color .2s ease, color .2s ease;
 }
-.npc-choice:hover:not(:disabled) { transform: translateX(6px); color: var(--ink); border-color: rgba(183,155,255,.6); box-shadow: 0 10px 30px -16px rgba(125,92,255,.8); }
-.mood-rompu .npc-choice:hover:not(:disabled) { border-color: rgba(255,90,90,.6); box-shadow: 0 10px 30px -16px rgba(255,60,60,.8); }
+.npc-choice:hover:not(:disabled) { color: var(--ink); border-color: var(--mint-dim); }
 .npc-choice:disabled { opacity: .5; cursor: default; }
-.npc-choice__g { color: #b79bff; font-size: 12px; }
-.mood-rompu .npc-choice__g { color: #ff5a5a; }
-.npc-choice__l { flex: 1; font-family: var(--display); font-size: 18px; }
+.npc-choice__l { flex: 1; font-family: var(--font-display); font-style: italic; font-size: 15px; }
 .npc-choice__a { color: var(--ink-4); transition: transform .16s ease; }
-.npc-choice:hover:not(:disabled) .npc-choice__a { transform: translateX(5px); color: #b79bff; }
+.npc-choice:hover:not(:disabled) .npc-choice__a { transform: translateX(5px); color: var(--mint-dim); }
 @keyframes npcRise { to { opacity: 1; transform: none; } }
 .npc-empty { color: var(--ink-4); font-style: italic; text-align: center; }
 
-.npc-end { width: min(820px, 92vw); display: flex; justify-content: center; }
+.npc-end { display: flex; justify-content: flex-end; }
 .npc-exit {
-  display: flex; align-items: center; justify-content: center; gap: 14px;
-  min-width: 280px; padding: 15px 28px; cursor: pointer; text-align: center;
-  color: var(--ink-2); border: 1px solid var(--line); border-radius: 13px;
-  background: linear-gradient(135deg, rgba(125,92,255,.06), transparent 60%), rgba(18,14,30,.6);
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 12px 22px; cursor: pointer; text-align: center;
+  color: var(--ink-2); border: 1px solid var(--line); background: rgba(12, 13, 18, 0.55);
   opacity: 0; transform: translateY(10px); animation: npcRise .45s ease forwards;
-  transition: transform .16s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+  transition: border-color .2s ease, color .2s ease;
 }
-.npc-exit:hover:not(:disabled) { transform: translateY(-2px); color: var(--ink); border-color: rgba(183,155,255,.6); box-shadow: 0 10px 30px -16px rgba(125,92,255,.8); }
-.mood-rompu .npc-exit:hover:not(:disabled) { border-color: rgba(255,90,90,.6); box-shadow: 0 10px 30px -16px rgba(255,60,60,.8); }
+.npc-exit:hover:not(:disabled) { color: var(--ink); border-color: var(--mint-dim); }
 .npc-exit:disabled { opacity: .5; cursor: default; }
-.npc-exit__g { color: #b79bff; font-size: 12px; }
-.mood-rompu .npc-exit__g { color: #ff5a5a; }
-.npc-exit__l { font-family: var(--display); font-size: 18px; font-style: italic; }
+.npc-exit__l { font-family: var(--font-display); font-size: 15px; font-style: italic; }
 .npc-exit__a { color: var(--ink-4); transition: transform .16s ease; }
-.npc-exit:hover:not(:disabled) .npc-exit__a { transform: translateX(5px); color: #b79bff; }
+.npc-exit:hover:not(:disabled) .npc-exit__a { transform: translateX(5px); color: var(--mint-dim); }
 
-/* Flash */
+/* Reaction flash — brief tint tied to a consequence, not an ambient wash */
 .npc-flash { position: absolute; inset: 0; z-index: 9; pointer-events: none; opacity: 0; }
-.npc-flash.k-warm { background: radial-gradient(circle at 50% 40%, rgba(215,181,109,.5), transparent 60%); animation: npcFlash .6s ease; }
-.npc-flash.k-bad { background: radial-gradient(circle at 50% 40%, rgba(255,60,60,.55), transparent 60%); animation: npcFlash .6s ease; }
+.npc-flash.k-warm { background: radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--mint), transparent 55%), transparent 60%); animation: npcFlash .6s ease; }
+.npc-flash.k-bad { background: radial-gradient(circle at 50% 40%, color-mix(in oklch, var(--danger), transparent 45%), transparent 60%); animation: npcFlash .6s ease; }
 @keyframes npcFlash { 0% { opacity: 0; } 30% { opacity: .55; } 100% { opacity: 0; } }
+
+@media (max-width: 900px) {
+  .npc-figure { left: 18%; width: 200px; }
+  .npc-wrap { width: min(460px, 60vw); margin-right: 4vw; }
+}
 </style>

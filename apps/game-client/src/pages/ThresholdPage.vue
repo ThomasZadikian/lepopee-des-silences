@@ -72,6 +72,7 @@ const TOTAL_ROOMS = 27;
       <div class="threshold-title-block">
         <span class="threshold-kicker">Le Palais</span>
         <h1 class="threshold-title">L'Épopée des Silences</h1>
+        <span class="threshold-subtitle">Le regard d'Elise</span>
         <div class="threshold-title-rule" />
       </div>
 
@@ -186,6 +187,13 @@ const TOTAL_ROOMS = 27;
   font-size: clamp(34px, 5vw, 50px);
   letter-spacing: 0.01em;
   color: var(--ink);
+}
+
+.threshold-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--mint-dim);
 }
 
 .threshold-title-rule {

@@ -35,8 +35,6 @@ function mountPanel(
     global: {
       stubs: {
         ChipBadge: { template: '<span><slot /></span>' },
-        EliseComment: { template: '<div />' },
-        SigilIcon: { template: '<svg />' },
       },
     },
   });
@@ -109,13 +107,13 @@ describe('RewardOfferPanel', () => {
     expect((btn.element as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('assigns frost tone to MemoryFragment rewardType', () => {
+  it('renders a card for a MemoryFragment rewardType without crashing', () => {
     const wrapper = mountPanel({
       ...baseOffer,
       choices: [{ id: 'c1', rewardType: 'MemoryFragment', label: 'Fragment', description: 'Un éclat.' }],
     });
-    // Frost-toned card won't have rop-card--gold class
-    expect(wrapper.find('.rop-card--gold').exists()).toBe(false);
+    expect(wrapper.find('.rop-card').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Fragment');
   });
 
   it('shows the state chip when offer is selected', () => {

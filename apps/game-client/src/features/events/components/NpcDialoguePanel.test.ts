@@ -134,7 +134,7 @@ describe('NpcDialoguePanel', () => {
 
   it('skips to full line on click while typing', async () => {
     const wrapper = mountPanel(baseDialogue);
-    await wrapper.find('.npc-box').trigger('click');
+    await wrapper.find('.npc-history').trigger('click');
     // Should show full first line
     expect(wrapper.text()).toContain('Bienvenue dans le Palais.');
   });

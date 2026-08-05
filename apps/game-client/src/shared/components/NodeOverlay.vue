@@ -1,14 +1,26 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
+
 withDefaults(defineProps<{
   /** Controls the stage's max width — echo (confirmation) < card (default resolution) < wide (grids) < dialogue (full-bleed, positions itself). */
   size?: 'echo' | 'card' | 'wide' | 'dialogue';
 }>(), { size: 'card' });
+
+// L'assombrissement de la carte se joue d'abord, seul — le contenu du nœud (dialogue,
+// carte de résolution...) n'apparaît, et ne démarre (typewriter, timers...), qu'une fois
+// cette transition terminée. Durée alignée sur .node-overlay__backdrop ci-dessous.
+const BACKDROP_MS = 400;
+const contentReady = ref(false);
+
+onMounted(() => {
+  setTimeout(() => { contentReady.value = true; }, BACKDROP_MS);
+});
 </script>
 
 <template>
   <div class="node-overlay" role="presentation">
     <div class="node-overlay__backdrop" aria-hidden="true" />
-    <div class="node-overlay__stage" :class="`node-overlay__stage--${size}`">
+    <div v-if="contentReady" class="node-overlay__stage" :class="`node-overlay__stage--${size}`">
       <slot />
     </div>
   </div>

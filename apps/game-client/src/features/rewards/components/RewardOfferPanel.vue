@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import ChipBadge from '@/shared/components/ChipBadge.vue'
-import EliseComment from '@/shared/components/EliseComment.vue'
-import SealGlyph from '@/shared/components/SealGlyph.vue'
 import { computed, ref, watch } from 'vue'
 import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
@@ -153,25 +151,6 @@ function rewardTypeLabel(rewardType?: string): string {
   return rewardType ? (REWARD_TYPE_LABELS[rewardType] ?? rewardType) : 'Faveur'
 }
 
-function sigilKind(tone: 'gold' | 'frost' | null): string {
-  if (tone === 'gold') return 'rare'
-  if (tone === 'frost') return 'memoire'
-  return 'recompense'
-}
-
-function sealTone(tone: 'gold' | 'frost' | null): 'mint' | 'ink' {
-  return tone ? 'mint' : 'ink'
-}
-
-// Choisir une carte n'est qu'une intention (déjà lisible via rop-card--sel) ; le sceau ne
-// s'anime qu'au moment où ce choix devient irréversible — le clic sur « Emporter ».
-function sealState(card: NormalizedCard): 'idle' | 'confirming' | 'confirmed' {
-  if (selectedId.value !== card.id) return 'idle'
-  if (isExpiredOrSelected.value) return 'confirmed'
-  if (taken.value) return 'confirming'
-  return 'idle'
-}
-
 const confirmBtnClass = 'es-btn--mint'
 </script>
 
@@ -187,7 +166,7 @@ const confirmBtnClass = 'es-btn--mint'
       <div class="rop-main">
 
       <!-- Header -->
-      <div style="flex: 0 0 auto; text-align: center; padding-top: 12px">
+      <div class="rop-header">
         <div class="rop-meta">
           <span v-if="sourceLabel" class="rop-source-chip">{{ sourceLabel }}</span>
           <span v-if="isExpiredOrSelected" class="rop-state-chip">
@@ -199,126 +178,58 @@ const confirmBtnClass = 'es-btn--mint'
             <span class="rop-currency__value">{{ himLitShardCount }}</span> Éclats de Him'Lit
           </span>
         </div>
-        <span class="es-kicker">Une faveur, une seule</span>
-        <h2 class="es-h2" style="font-size: 33px; margin-top: 12px">
-          {{ offer.title ?? 'Le Palais reconnaît ta traversée' }}
-        </h2>
-        <p v-if="offer.description" class="es-body" style="margin-top: 8px; color: var(--ink-3); max-width: 560px; margin-left: auto; margin-right: auto">
-          {{ offer.description }}
-        </p>
-        <p v-else class="es-body" style="margin-top: 8px; color: var(--ink-3); max-width: 560px; margin-left: auto; margin-right: auto">
-          Choisis-en une. Le reste se referme et retourne au silence.
-        </p>
+        <h2 class="rop-title">{{ offer.title ?? 'Le Palais reconnaît ta traversée' }}</h2>
       </div>
 
       <!-- Cartes -->
-      <div class="rop-cards" style="flex: 1; display: flex; align-items: center; justify-content: center">
-        <div
-          v-if="normalizedCards.length === 0"
-          style="text-align: center; color: var(--ink-4); padding: 48px"
+      <div v-if="normalizedCards.length === 0" class="rop-empty">
+        Aucune récompense disponible.
+      </div>
+
+      <div v-else class="rop-cards__grid">
+        <button
+          v-for="card in normalizedCards"
+          :key="card.id"
+          type="button"
+          :class="[
+            'rop-card',
+            selectedId === card.id && 'rop-card--sel',
+            isExpiredOrSelected && 'rop-card--frozen',
+          ]"
+          :disabled="isExpiredOrSelected"
+          @click="selectCard(card.id)"
         >
-          <span class="es-body">Aucune récompense disponible.</span>
-        </div>
-
-        <div v-else class="rop-cards__grid">
-          <div
-            v-for="card in normalizedCards"
-            :key="card.id"
-            :class="[
-              'rop-card',
-              selectedId === card.id && 'rop-card--sel',
-              selectedId === card.id && card.tone === 'gold' && 'rop-card--gold',
-              isExpiredOrSelected && 'rop-card--frozen',
-            ]"
-            @click="selectCard(card.id)"
-          >
-            <div
-              class="rop-card__pick"
-              :style="selectedId === card.id
-                ? { borderColor: 'var(--mint-dim)', color: 'var(--mint-dim)' }
-                : {}"
-            >{{ selectedId === card.id ? '✦' : '' }}</div>
-
-            <div class="es-row" style="margin-bottom: 18px; flex-wrap: wrap; row-gap: 6px">
-              <ChipBadge :tone="card.tone ? 'mint' : null">
-                {{ rewardTypeLabel(card.rewardType) }}
-              </ChipBadge>
-              <span v-if="card.sourceEnemyDisplayName" class="rop-card__source">
-                {{ card.sourceEnemyDisplayName }}
-              </span>
-            </div>
-
-            <div style="display: flex; justify-content: center; margin: 4px 0 20px">
-              <SealGlyph
-                :kind="sigilKind(card.tone)"
-                :tone="sealTone(card.tone)"
-                :size="92"
-                :sigil-size="38"
-                :sigil-stroke-width="1.3"
-                :state="sealState(card)"
-              />
-            </div>
-
-            <h3
-              class="es-h3"
-              :style="{
-                textAlign: 'center',
-                color: selectedId === card.id ? 'var(--ink)' : 'var(--ink-2)',
-              }"
-            >
-              {{ card.label }}
-            </h3>
-
-            <div class="es-label" style="text-align: center; margin-top: 6px; color: var(--ink-4)">
-              {{ rewardTypeLabel(card.rewardType) }}
-            </div>
-
-            <div class="es-divider" style="margin: 18px 0" />
-
-            <p class="es-body" style="font-size: 13.5px; text-align: center; flex: 1">
-              {{ card.description }}
-            </p>
-
-            <p
-              v-if="costLabel(card)"
-              class="es-label"
-              style="text-align: center; margin-top: 12px; color: var(--mint-dim)"
-            >
-              {{ costLabel(card) }}
-            </p>
+          <div class="rop-card__top">
+            <ChipBadge :tone="card.tone ? 'mint' : null">{{ rewardTypeLabel(card.rewardType) }}</ChipBadge>
+            <span v-if="selectedId === card.id" class="rop-card__pick">✓</span>
           </div>
-        </div>
+          <span v-if="card.sourceEnemyDisplayName" class="rop-card__source">{{ card.sourceEnemyDisplayName }}</span>
+          <h3 class="rop-card__name">{{ card.label }}</h3>
+          <p v-if="card.description" class="rop-card__desc">{{ card.description }}</p>
+          <p v-if="costLabel(card)" class="rop-card__cost">{{ costLabel(card) }}</p>
+        </button>
       </div>
 
       <p v-if="errorMessage" class="rop-purchase-error">{{ errorMessage }}</p>
 
       <!-- Footer actions -->
-      <div v-if="!isExpiredOrSelected" class="es-row" style="justify-content: center; gap: 14px; flex: 0 0 auto; margin-top: 8px">
+      <div v-if="!isExpiredOrSelected" class="rop-footer">
         <button
           :class="['es-btn', 'es-btn--lg', confirmBtnClass]"
           :disabled="selectedId == null || isLoading"
           :style="{
             opacity: selectedId == null ? 0.4 : 1,
             pointerEvents: selectedId == null ? 'none' : 'auto',
-            minWidth: '320px',
+            minWidth: '260px',
           }"
           @click="confirmChoice"
         >
           {{ taken ? '✓ ' : '' }}Emporter « {{ chosen?.label ?? '—' }} » {{ taken ? '' : '→' }}
         </button>
       </div>
-      <div v-else class="es-row" style="justify-content: center; flex: 0 0 auto; margin-top: 8px">
+      <div v-else class="rop-footer">
         <span class="rop-resolved-note">Cette récompense a déjà été résolue.</span>
       </div>
-
-      <!-- Elise -->
-      <EliseComment
-        tell="à voix basse"
-        style="position: absolute; bottom: 22px; right: 36px; max-width: 360px; z-index: 9"
-      >
-        Une relique porte toujours le nom de ce qu'on a tu.
-        <em>Tu es sûr de vouloir l'emporter avec toi&nbsp;?</em>
-      </EliseComment>
       </div>
     </div>
   </div>
@@ -339,8 +250,8 @@ const confirmBtnClass = 'es-btn--mint'
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 32px 40px;
-  gap: 8px;
+  padding: 28px 32px;
+  gap: 18px;
 }
 
 /* When enemies were defeated (combat rewards), lay the sidebar and the
@@ -358,12 +269,11 @@ const confirmBtnClass = 'es-btn--mint'
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Reward offers can carry more cards than fit a short viewport (merchant offers,
-     combat loot with the defeated-enemies sidebar) — scroll instead of clipping
-     content past the window edge. */
+  gap: 18px;
   overflow-y: auto;
 }
+
+.rop-header { text-align: center; }
 
 /* ── Meta row (source + state) ── */
 .rop-meta {
@@ -406,83 +316,106 @@ const confirmBtnClass = 'es-btn--mint'
 .rop-currency__sep { margin: 0 4px; opacity: 0.5; }
 .rop-currency__value { color: var(--ink-2); }
 
-/* ── Cards grid (wraps for 4-6 loot cards, single row for 3 or fewer) ── */
-.rop-cards__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
-  gap: 20px;
-  justify-content: center;
-  align-items: stretch;
-  max-width: 900px;
+.rop-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 26px;
+  color: var(--ink);
 }
 
-/* ── Reward card ── */
+.rop-empty {
+  text-align: center;
+  color: var(--ink-4);
+  font-size: 13px;
+  padding: 24px;
+}
+
+/* ── Cartes compactes — un popup, pas un écran ── */
+.rop-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 200px));
+  gap: 12px;
+  justify-content: center;
+  align-items: stretch;
+}
+
 .rop-card {
+  all: unset;
+  box-sizing: border-box;
   position: relative;
-  width: 100%;
-  padding: 26px 24px;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
   cursor: pointer;
   border: 1px solid var(--line);
   background: var(--panel-2);
-  transition: border-color 0.24s, background 0.24s;
+  transition: border-color 0.2s;
 }
 
-.rop-card:hover:not(.rop-card--frozen) {
-  border-color: var(--mint-dim);
+.rop-card:hover:not(.rop-card--frozen) { border-color: var(--mint-dim); }
+.rop-card--sel { border-color: var(--mint-dim); background: var(--panel); }
+.rop-card--frozen { cursor: default; opacity: 0.6; }
+
+.rop-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.rop-card--sel {
-  border-color: var(--mint-dim);
-  background: var(--panel);
-}
-
-.rop-card--frozen {
-  cursor: default;
-  opacity: 0.75;
+.rop-card__pick {
+  color: var(--mint-dim);
+  font-size: 13px;
 }
 
 /* Source-enemy tag: which enemy this loot dropped from (absent = generic/fallback) */
 .rop-card__source {
-  display: inline-block;
-  font-family: var(--font-caps);
-  font-size: 0.55rem;
-  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-4);
-  border: 1px solid var(--line-soft);
-  border-radius: 3px;
-  padding: 2px 7px;
-  background: oklch(0.22 0.03 60 / 0.6);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--ink-5);
 }
 
-/* Selection indicator dot */
-.rop-card__pick {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  color: transparent;
-  font-size: 12px;
-  transition: all 0.2s;
+.rop-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.rop-card__desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rop-card__cost {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--mint-dim);
 }
 
 .rop-purchase-error {
   text-align: center;
   color: var(--danger-dim);
   font-size: 0.8rem;
-  margin: 4px 0 0;
+  margin: 0;
+}
+
+.rop-footer {
+  display: flex;
+  justify-content: center;
 }
 
 .rop-resolved-note {

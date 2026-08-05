@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import TacticalCombatScene from '../features/combat/components/TacticalCombatScene.vue';
 import { useTacticalCombatStore } from '../features/combat/stores/useTacticalCombatStore';
-import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
 import MerchantPanel from '../features/events/components/MerchantPanel.vue';
@@ -309,9 +308,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             @open-influences="uiStore.toggleLaws"
             @open-journal="uiStore.toggleJournal"
           />
-
-          <!-- Elise overlay -->
-          <EliseOverlay :message="runStore.lastOutcome?.description" />
 
           <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
           <div>
