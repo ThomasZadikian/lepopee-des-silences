@@ -71,13 +71,12 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 6px;
   border: 1px solid var(--line-soft);
-  background: oklch(0.24 0.015 283 / 0.35);
+  background: var(--panel-2);
 }
 
 .grimoire-card--equipped {
-  border-color: var(--gold);
+  border-color: var(--mint-dim);
 }
 
 .grimoire-card--locked {
@@ -99,10 +98,9 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
 }
 
 .grimoire-chip {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 10px;
   padding: 1px 6px;
-  border-radius: 999px;
   border: 1px solid var(--line-soft);
   color: var(--ink-3);
 }
@@ -112,8 +110,8 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
 }
 
 .grimoire-chip--ultimate {
-  border-color: var(--gold);
-  color: var(--gold);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
 }
 
 .grimoire-card__desc {
@@ -127,7 +125,7 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   margin: 0;
   padding-left: 16px;
   font-size: 11px;
-  color: var(--frost, var(--ink-3));
+  color: var(--ink-3);
   line-height: 1.5;
 }
 
@@ -135,7 +133,7 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-3);
 }
@@ -149,12 +147,11 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
 
 .grimoire-toggle {
   align-self: flex-start;
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 4px 10px;
-  border-radius: 3px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-4);
@@ -173,8 +170,8 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
 }
 
 .grimoire-toggle--active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: oklch(0.55 0.08 85 / 0.12);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
+  background: var(--panel);
 }
 </style>

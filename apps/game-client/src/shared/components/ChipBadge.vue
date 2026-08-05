@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  tone?: 'gold' | 'frost' | 'blood' | 'sap' | null
+  tone?: 'gold' | 'frost' | 'blood' | 'sap' | 'mint' | null
 }>()
 </script>
 

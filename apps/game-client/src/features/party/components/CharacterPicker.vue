@@ -21,7 +21,7 @@ defineEmits<{ 'update:modelValue': [characterId: string] }>();
       @click="$emit('update:modelValue', character.id)"
     >
       {{ character.displayName }}
-      <ChipBadge v-if="character.characterType === 'Companion'" tone="gold">Compagnon</ChipBadge>
+      <ChipBadge v-if="character.characterType === 'Companion'" tone="mint">Compagnon</ChipBadge>
     </button>
   </div>
 </template>
@@ -38,16 +38,17 @@ defineEmits<{ 'update:modelValue': [characterId: string] }>();
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  border-radius: 999px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-3);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   cursor: pointer;
+  transition: color .15s, border-color .15s;
 }
 
 .character-picker__chip--active {
-  border-color: var(--frost);
-  color: var(--frost);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
 }
 </style>

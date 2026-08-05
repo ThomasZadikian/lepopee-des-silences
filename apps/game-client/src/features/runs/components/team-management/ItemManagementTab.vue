@@ -269,7 +269,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 }
 
 .imk-section__title {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -296,20 +296,20 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 
 .imk-row__effect {
   display: block;
-  color: var(--frost, var(--ink-3));
+  color: var(--mint-dim);
   font-size: 0.7rem;
 }
 
 .imk-row__cost {
   display: block;
-  color: var(--gold, var(--ink-3));
+  color: var(--ink-3);
   font-size: 0.7rem;
 }
 
 .imk-section__count {
   float: right;
-  font-family: var(--font-mono, monospace);
-  color: var(--gold);
+  font-family: var(--font-mono);
+  color: var(--mint-dim);
 }
 
 .imk-list {
@@ -334,8 +334,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
   min-height: 96px;
   padding: 10px;
   border: 1px solid var(--line-soft);
-  border-radius: 5px;
-  background: oklch(0.24 0.015 283 / 0.35);
+  background: var(--panel-2);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -348,11 +347,11 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 }
 
 .imk-slot__label {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--mint-dim);
 }
 
 .imk-slot__empty {
@@ -368,8 +367,7 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 4px;
-  background: oklch(0.24 0.015 283 / 0.35);
+  background: var(--panel-2);
 }
 
 .imk-row__info {
@@ -390,12 +388,11 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 
 .imk-toggle {
   flex-shrink: 0;
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 4px 10px;
-  border-radius: 3px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-4);
@@ -414,9 +411,9 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 }
 
 .imk-toggle--active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: oklch(0.55 0.08 85 / 0.12);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
+  background: var(--panel);
 }
 
 .imk-empty {
@@ -427,9 +424,9 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
 }
 
 .imk-error {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--blood);
+  color: var(--danger-dim);
   margin: 0;
 }
 </style>

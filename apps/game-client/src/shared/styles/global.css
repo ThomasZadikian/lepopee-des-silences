@@ -211,6 +211,7 @@ button {
 .es-chip--gold { color: var(--gold); border-color: var(--edge-gold); }
 .es-chip--frost { color: var(--frost); border-color: var(--edge-frost); }
 .es-chip--blood { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
+.es-chip--mint { color: var(--mint-dim); border-color: var(--mint-dim); }
 .es-chip--sap { color: var(--sap); border-color: color-mix(in oklch, var(--sap), transparent 50%); }
 
 /* ── Bars ── */

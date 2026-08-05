@@ -2,11 +2,7 @@
 import { computed, defineAsyncComponent, ref } from 'vue';
 import SigilIcon from '../../../shared/components/SigilIcon.vue';
 import PageOverlayModal from '../../../shared/components/PageOverlayModal.vue';
-import TeamPage from '../../../pages/TeamPage.vue';
-import StatsPage from '../../../pages/StatsPage.vue';
-import GrimoirePage from '../../../pages/GrimoirePage.vue';
-import EquipmentPage from '../../../pages/EquipmentPage.vue';
-import BesacePage from '../../../pages/BesacePage.vue';
+import TeamHubPage from '../../../pages/TeamHubPage.vue';
 import { useRunStore } from '../stores/runStore';
 import { useGameUiStore } from '../../../shared/stores/useGameUiStore';
 import { isDevToolsEnabled } from '../../devtools/utils/isDevToolsEnabled';
@@ -34,8 +30,8 @@ const DevToolsPanel = devToolsEnabled
   : null;
 const showDevTools = ref(false);
 
-// "Équipe" above opens the persistent character sheet (TeamPage — base stats, loadout).
-// This opens the run's own live vitals (current HP/mana/guard, active modifiers/curses —
+// "Équipe" above opens the persistent character sheet (TeamHubPage — base stats, loadout).
+// This opens the run's own live vitals (current HP/mana/guard, active modifiers —
 // see PartyDrawer.vue, rendered by RunPage.vue) — the window players were missing during
 // exploration. It already existed behind RunStatusRibbon's collapsed tab; this just puts it
 // somewhere always visible. PartyDrawer is deliberately combat-only-excluded (portraits cover
@@ -84,11 +80,7 @@ const isExploring = computed(() => runStore.gameplayPhase !== 'Combat');
 
   <Teleport to="body">
     <PageOverlayModal v-if="activeModal" @close="activeModal = null">
-      <TeamPage v-if="activeModal === 'equipe'" embedded />
-      <StatsPage v-else-if="activeModal === 'statistiques'" embedded />
-      <GrimoirePage v-else-if="activeModal === 'grimoire'" embedded />
-      <EquipmentPage v-else-if="activeModal === 'equipement'" embedded />
-      <BesacePage v-else-if="activeModal === 'besace'" embedded />
+      <TeamHubPage embedded :initial-tab="activeModal" />
     </PageOverlayModal>
 
     <component

@@ -203,9 +203,9 @@ function cancelChoices() {
 }
 
 .cst-points {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 20px;
-  color: var(--gold);
+  color: var(--mint-dim);
 }
 
 .cst-actions {
@@ -215,12 +215,11 @@ function cancelChoices() {
 }
 
 .cst-btn {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: 4px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-3);
@@ -239,12 +238,12 @@ function cancelChoices() {
 }
 
 .cst-btn--primary {
-  border-color: var(--gold);
-  color: var(--gold);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
 }
 
 .cst-btn--primary:not(:disabled):hover {
-  background: oklch(0.55 0.08 85 / 0.12);
+  background: var(--panel-2);
 }
 
 .cst-body {
@@ -266,13 +265,12 @@ function cancelChoices() {
   gap: 4px 12px;
   padding: 10px 12px;
   border: 1px solid var(--line-soft);
-  border-radius: 5px;
-  background: oklch(0.24 0.015 283 / 0.35);
+  background: var(--panel-2);
 }
 
 .cst-resource strong {
-  color: var(--gold);
-  font-family: var(--font-mono, monospace);
+  color: var(--mint-dim);
+  font-family: var(--font-mono);
 }
 
 .cst-resource small {
@@ -325,14 +323,14 @@ function cancelChoices() {
 }
 
 .cst-row__value {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 13px;
   color: var(--ink-3);
   white-space: nowrap;
 }
 
 .cst-row__pending {
-  color: var(--frost);
+  color: var(--mint-dim);
 }
 
 .cst-row__controls {
@@ -344,20 +342,19 @@ function cancelChoices() {
 .cst-row__staged {
   min-width: 14px;
   text-align: center;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--frost);
+  color: var(--mint-dim);
 }
 
 .cst-row__step {
   min-width: 28px;
   height: 28px;
   padding: 0 6px;
-  border-radius: 4px;
-  border: 1px solid var(--frost);
-  background: oklch(0.50 0.06 232 / 0.12);
-  color: var(--frost);
-  font-family: var(--font-mono, monospace);
+  border: 1px solid var(--mint-dim);
+  background: transparent;
+  color: var(--mint-dim);
+  font-family: var(--font-mono);
   font-size: 13px;
   cursor: pointer;
   transition: opacity 0.15s, background 0.15s;
@@ -369,13 +366,13 @@ function cancelChoices() {
 }
 
 .cst-row__step:not(:disabled):hover {
-  background: oklch(0.50 0.06 232 / 0.22);
+  background: var(--panel-2);
 }
 
 .cst-error {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--blood);
+  color: var(--danger-dim);
   margin: 0;
 }
 

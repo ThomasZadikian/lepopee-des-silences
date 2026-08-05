@@ -5,20 +5,18 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import TeamMicroMenu from './TeamMicroMenu.vue';
 
-function pageStub(name: string) {
-  return { name, props: ['embedded'], template: `<div class="stub-${name}" />` };
-}
+const teamHubStub = {
+  name: 'team-hub-page',
+  props: ['embedded', 'initialTab'],
+  template: `<div class="stub-team-hub" :data-tab="initialTab" />`,
+};
 
 function mountMenu() {
   return mount(TeamMicroMenu, {
     attachTo: document.body,
     global: {
       stubs: {
-        TeamPage: pageStub('team-page'),
-        StatsPage: pageStub('stats-page'),
-        GrimoirePage: pageStub('grimoire-page'),
-        EquipmentPage: pageStub('equipment-page'),
-        BesacePage: pageStub('besace-page'),
+        TeamHubPage: teamHubStub,
       },
     },
   });
@@ -56,34 +54,34 @@ describe('TeamMicroMenu', () => {
     expect(document.querySelector('.pom-backdrop')).toBeNull();
   });
 
-  it('opens the Équipe page as a modal overlay instead of navigating', async () => {
+  it('opens the fused Équipe hub on the Équipe tab', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[1].trigger('click');
-    expect(document.querySelector('.stub-team-page')).not.toBeNull();
+    expect(document.querySelector('.stub-team-hub')?.getAttribute('data-tab')).toBe('equipe');
   });
 
-  it('opens the Statistiques page as a modal overlay', async () => {
+  it('opens the fused Équipe hub on the Statistiques tab', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[2].trigger('click');
-    expect(document.querySelector('.stub-stats-page')).not.toBeNull();
+    expect(document.querySelector('.stub-team-hub')?.getAttribute('data-tab')).toBe('statistiques');
   });
 
-  it('opens the Grimoire page as a modal overlay', async () => {
+  it('opens the fused Équipe hub on the Grimoire tab', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[3].trigger('click');
-    expect(document.querySelector('.stub-grimoire-page')).not.toBeNull();
+    expect(document.querySelector('.stub-team-hub')?.getAttribute('data-tab')).toBe('grimoire');
   });
 
-  it('opens the Équipement page as a modal overlay', async () => {
+  it('opens the fused Équipe hub on the Équipement tab', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[4].trigger('click');
-    expect(document.querySelector('.stub-equipment-page')).not.toBeNull();
+    expect(document.querySelector('.stub-team-hub')?.getAttribute('data-tab')).toBe('equipement');
   });
 
-  it('opens the Besace page as a modal overlay', async () => {
+  it('opens the fused Équipe hub on the Besace tab', async () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[5].trigger('click');
-    expect(document.querySelector('.stub-besace-page')).not.toBeNull();
+    expect(document.querySelector('.stub-team-hub')?.getAttribute('data-tab')).toBe('besace');
   });
 
   it('marks the button for the currently open modal as active', async () => {
@@ -152,11 +150,7 @@ describe('TeamMicroMenu — DevTools entry (enabled)', () => {
       attachTo: document.body,
       global: {
         stubs: {
-          TeamPage: pageStub('team-page'),
-          StatsPage: pageStub('stats-page'),
-          GrimoirePage: pageStub('grimoire-page'),
-          EquipmentPage: pageStub('equipment-page'),
-          BesacePage: pageStub('besace-page'),
+          TeamHubPage: teamHubStub,
         },
       },
     });

@@ -330,7 +330,7 @@ function cancelChoices() {
 }
 
 .grimoire-title {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -342,8 +342,8 @@ function cancelChoices() {
 }
 
 .grimoire-count {
-  font-family: var(--font-mono, monospace);
-  color: var(--gold);
+  font-family: var(--font-mono);
+  color: var(--mint-dim);
   text-transform: none;
   letter-spacing: normal;
 }
@@ -354,12 +354,11 @@ function cancelChoices() {
 }
 
 .grimoire-btn {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: 4px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-3);
@@ -378,12 +377,12 @@ function cancelChoices() {
 }
 
 .grimoire-btn--primary {
-  border-color: var(--gold);
-  color: var(--gold);
+  border-color: var(--mint-dim);
+  color: var(--mint-dim);
 }
 
 .grimoire-btn--primary:not(:disabled):hover {
-  background: oklch(0.55 0.08 85 / 0.12);
+  background: var(--panel-2);
 }
 
 .grimoire-toolbar {
@@ -397,12 +396,11 @@ function cancelChoices() {
 .grimoire-search {
   flex: 1;
   min-width: 160px;
-  font-family: var(--font, sans-serif);
+  font-family: var(--font);
   font-size: 12px;
   padding: 6px 10px;
-  border-radius: 4px;
   border: 1px solid var(--line-soft);
-  background: var(--panel, oklch(0.20 0.025 270));
+  background: var(--panel);
   color: var(--ink-2);
 }
 
@@ -414,7 +412,7 @@ function cancelChoices() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -423,14 +421,13 @@ function cancelChoices() {
 }
 
 .grimoire-sort__select {
-  font-family: var(--font, sans-serif);
+  font-family: var(--font);
   font-size: 12px;
   text-transform: none;
   letter-spacing: normal;
   padding: 4px 8px;
-  border-radius: 4px;
   border: 1px solid var(--line-soft);
-  background: var(--panel, oklch(0.20 0.025 270));
+  background: var(--panel);
   color: var(--ink-2);
 }
 
@@ -447,7 +444,7 @@ function cancelChoices() {
 }
 
 .grimoire-section__title {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -456,7 +453,7 @@ function cancelChoices() {
 }
 
 .grimoire-section__count {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-4);
 }
@@ -475,9 +472,9 @@ function cancelChoices() {
 }
 
 .grimoire-error {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--blood);
+  color: var(--danger-dim);
   margin: 0;
 }
 </style>

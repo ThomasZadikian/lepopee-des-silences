@@ -35,12 +35,11 @@ const emit = defineEmits<{ previous: []; next: [] }>();
 }
 
 .grimoire-page-btn {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 6px 14px;
-  border-radius: 4px;
   border: 1px solid var(--line-soft);
   background: transparent;
   color: var(--ink-3);
@@ -59,7 +58,7 @@ const emit = defineEmits<{ previous: []; next: [] }>();
 }
 
 .grimoire-page-indicator {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-3);
 }

@@ -52,7 +52,7 @@ function itemSlotLabel(slot: string | undefined): string {
       <header class="tov-card__header">
         <span class="tov-card__name">
           {{ character.displayName }}
-          <ChipBadge v-if="character.characterType === 'Companion'" tone="gold">Compagnon</ChipBadge>
+          <ChipBadge v-if="character.characterType === 'Companion'" tone="mint">Compagnon</ChipBadge>
         </span>
         <span class="es-label">{{ character.definitionKey }}</span>
       </header>
@@ -125,8 +125,7 @@ function itemSlotLabel(slot: string | undefined): string {
 .tov-card {
   padding: 16px 18px;
   border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  background: oklch(0.24 0.015 283 / 0.4);
+  background: var(--panel-2);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -139,9 +138,9 @@ function itemSlotLabel(slot: string | undefined): string {
 }
 
 .tov-card__name {
-  font-family: var(--font-display, var(--font));
+  font-family: var(--font-display);
+  font-style: italic;
   font-size: 18px;
-  font-weight: 600;
   color: var(--ink);
   display: inline-flex;
   align-items: center;
@@ -159,8 +158,7 @@ function itemSlotLabel(slot: string | undefined): string {
   justify-content: space-between;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 4px;
-  background: oklch(0.20 0.02 270 / 0.4);
+  background: var(--panel);
 }
 
 .tov-stat__label {
@@ -169,17 +167,14 @@ function itemSlotLabel(slot: string | undefined): string {
 }
 
 .tov-stat__value {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-2);
 }
 
-.tov-stat--tactical {
-  border: 1px solid oklch(0.65 0.08 85 / 0.35);
-}
-
+.tov-stat--tactical,
 .tov-stat--resource {
-  border: 1px solid oklch(0.55 0.08 232 / 0.35);
+  border: 1px solid var(--line-soft);
 }
 
 .tov-card__skills {
@@ -202,12 +197,12 @@ function itemSlotLabel(slot: string | undefined): string {
 
 .tov-card__chip-meta {
   opacity: 0.6;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 9px;
 }
 
 .tov-card__equipment-chip {
-  border-color: oklch(0.65 0.08 85 / 0.45);
+  border-color: var(--mint-dim);
 }
 
 .tov-empty {

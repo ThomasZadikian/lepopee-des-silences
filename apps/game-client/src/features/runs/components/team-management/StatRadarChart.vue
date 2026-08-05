@@ -156,28 +156,28 @@ const previewPoints = computed(() =>
 }
 
 .stat-radar__polygon--current {
-  fill: oklch(0.55 0.08 85 / 0.14);
-  stroke: var(--gold);
+  fill: color-mix(in oklch, var(--mint) 14%, transparent);
+  stroke: var(--mint-dim);
   stroke-width: 2;
   stroke-linejoin: round;
 }
 
 .stat-radar__polygon--preview {
   fill: none;
-  stroke: var(--frost);
+  stroke: var(--ink-3);
   stroke-width: 2;
   stroke-dasharray: 4 3;
   stroke-linejoin: round;
 }
 
 .stat-radar__marker {
-  fill: var(--gold);
+  fill: var(--mint-dim);
   stroke: var(--panel);
   stroke-width: 2;
 }
 
 .stat-radar__label {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.04em;
   fill: var(--ink-4);

@@ -1,14 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-import BesacePage from '../../pages/BesacePage.vue';
-import EquipmentPage from '../../pages/EquipmentPage.vue';
-import GrimoirePage from '../../pages/GrimoirePage.vue';
 import ManifestationsPage from '../../pages/ManifestationsPage.vue';
 import ReputationPage from '../../pages/ReputationPage.vue';
 import RunPage from '../../pages/RunPage.vue';
-import StatsPage from '../../pages/StatsPage.vue';
 import StatutsPage from '../../pages/StatutsPage.vue';
-import TeamPage from '../../pages/TeamPage.vue';
+import TeamHubPage from '../../pages/TeamHubPage.vue';
 import ThresholdPage from '../../pages/ThresholdPage.vue';
 import TutorialPage from '../../pages/TutorialPage.vue';
 
@@ -48,27 +44,32 @@ export const router = createRouter({
     {
       path: '/equipe',
       name: 'equipe',
-      component: TeamPage,
+      component: TeamHubPage,
+      props: { initialTab: 'equipe' },
     },
     {
       path: '/statistiques',
       name: 'statistiques',
-      component: StatsPage,
+      component: TeamHubPage,
+      props: { initialTab: 'statistiques' },
     },
     {
       path: '/grimoire',
       name: 'grimoire',
-      component: GrimoirePage,
+      component: TeamHubPage,
+      props: { initialTab: 'grimoire' },
     },
     {
       path: '/equipement',
       name: 'equipement',
-      component: EquipmentPage,
+      component: TeamHubPage,
+      props: { initialTab: 'equipement' },
     },
     {
       path: '/besace',
       name: 'besace',
-      component: BesacePage,
+      component: TeamHubPage,
+      props: { initialTab: 'besace' },
     },
   ],
 });
