@@ -28,6 +28,7 @@ import TeamMicroMenu from '../features/runs/components/TeamMicroMenu.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import NodeOverlay from '../shared/components/NodeOverlay.vue';
+import { useClickOutside } from '../shared/composables/useClickOutside';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 
 const route = useRoute();
@@ -135,6 +136,19 @@ const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');
+
+// Besace/Équipe/Lois n'ont pas de fond assombri (le reste du jeu doit rester lisible et
+// jouable derrière) — un clic en dehors des trois doit quand même refermer celui qui est
+// ouvert, comme n'importe quelle autre fenêtre. closeAll (pas closeDrawer) : Lois vit sur son
+// propre drapeau (isLawsOpen), indépendant d'activeDrawer — voir useGameUiStore.toggleLaws.
+// Ignore la ribbon du bas (ses propres boutons gèrent déjà ouverture/fermeture) et les autres
+// fenêtres teleportées vers <body> qui gèrent déjà leur propre fermeture (Journal, Équipe/
+// Statistiques/Grimoire/Équipement du micro-menu) : sans ça, cliquer À L'INTÉRIEUR de l'une
+// d'elles se lirait comme "en dehors" de celle-ci et la refermerait aussitôt.
+const drawersEl = ref<HTMLElement | null>(null);
+useClickOutside(drawersEl, () => uiStore.closeAll(), {
+  ignoreSelectors: ['.status-ribbon', '.status-ribbon-tab', '.jm-backdrop', '.pom-backdrop'],
+});
 
 // ── Node resolution overlay ─────────────────────────────────────────────────
 // Present (NPC), Marchand, Loi, Malédiction, Repos, Objet, Souvenir no longer replace the
@@ -310,7 +324,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           />
 
           <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
-          <div>
+          <div ref="drawersEl">
             <!-- Inventory drawer -->
             <Transition name="slide">
               <InventoryDrawer

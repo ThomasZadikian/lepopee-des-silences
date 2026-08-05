@@ -242,7 +242,11 @@ function temporarySkill(
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: var(--z-drawer, 30);
+  /* Pas --z-drawer (20) : TacticalGridMap.vue peint sa propre barre d'onglets (Exploration
+     tactique/Lois/Difficulté) à z-index 120 et ses popovers de nœud à 220, dans le même
+     contexte d'empilement — ce tiroir, un panneau global fixe, passait dessous (visuellement
+     coupé, et son bouton fermer parfois inatteignable si les onglets s'étendent par-dessus). */
+  z-index: 300;
   width: 380px;
   display: flex;
   flex-direction: column;
