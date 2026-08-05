@@ -48,6 +48,7 @@ import {
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
 import PortraitDetailCard from './PortraitDetailCard.vue';
+import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
@@ -123,6 +124,15 @@ const inspectedSkill = ref<SkillDefinitionView | null>(null);
 function openSkillDetail(skillKey: string | null) {
   if (!skillKey) return;
   inspectedSkill.value = skillCatalog.value.get(skillKey) ?? null;
+}
+
+// Objets utilisables en combat : une modale dédiée plutôt que mêlés aux sorts dans la hotbar —
+// choisir une ligne arme l'objet exactement comme un clic de sort (le ciblage suit sur la grille).
+const isItemMenuOpen = ref(false);
+
+function selectUsableItem(itemId: string) {
+  store.selectItem(itemId);
+  isItemMenuOpen.value = false;
 }
 
 // Hover description for a skill button — teleported to <body> (like the loot popover) because
@@ -357,21 +367,6 @@ function skillUnavailable(skill: CombatantSkillRuntimeDto): boolean {
     || (store.combat?.usedOnceSkillKeys.includes(skill.key) ?? false)
     || remainingCooldown(skill) > 0
     || (actor?.combatant.charge ?? 0) < skill.chargeCost;
-}
-
-function facingLabel(facing: 'North' | 'East' | 'South' | 'West' | undefined): string {
-  switch (facing) {
-    case 'North': return 'nord';
-    case 'East': return 'est';
-    case 'South': return 'sud';
-    case 'West': return 'ouest';
-    default: return '—';
-  }
-}
-
-function riskTierLabel(tier: string | undefined): string {
-  if (tier === 'Dangereux' || tier === 'Perilleux') return 'Sombre';
-  return tier ?? 'Calme';
 }
 
 const STAT_MODIFIER_LABELS: Record<string, string> = {
@@ -1737,65 +1732,9 @@ onBeforeUnmount(() => {
           </span>
         </li>
       </ol>
-    </aside>
 
-    <!-- ── Central board ── -->
-    <div class="tbattle__board">
-      <!-- Deux temps dans le même bandeau : « X prépare Y » pendant que sa zone s'allume, puis
-           « X — Y » pendant que le coup retombe. L'annonce prime, c'est elle qui est urgente. -->
-      <Transition name="tbattle-banner">
-        <p
-          v-if="store.playback.telegraph || store.playback.actionBanner"
-          class="tbattle__banner"
-          :class="{ 'tbattle__banner--telegraph': store.playback.telegraph }"
-        >
-          {{ store.playback.telegraph?.label ?? store.playback.actionBanner }}
-        </p>
-      </Transition>
-
-      <Transition name="tbattle-toast">
-        <p v-if="errorToast" class="tbattle__toast" role="alert">
-          {{ errorToast }}
-        </p>
-      </Transition>
-
-      <canvas
-        ref="canvasEl"
-        class="tbattle__canvas"
-        @click="onCanvasClick"
-        @mousemove="onCanvasMove"
-        @mouseleave="hoveredCell = null"
-      />
-    </div>
-
-    <!-- ── Action log (right) ── -->
-    <aside class="tbattle__log-rail">
-      <div class="tbattle__log">
-        <p
-          v-for="(entry, index) in store.logEntries.slice(-10)"
-          :key="index"
-          class="tbattle__log-entry"
-        >
-          {{ entry.message }}
-          <button
-            v-if="entry.skillKey"
-            type="button"
-            class="tbattle__log-skill-link"
-            title="Voir le descriptif du sort"
-            @click="openSkillDetail(entry.skillKey)"
-          >
-            ⓘ
-          </button>
-        </p>
-      </div>
-    </aside>
-
-    <SkillDetailModal :skill="inspectedSkill" @close="inspectedSkill = null" />
-    <PortraitDetailCard :detail="inspectedPortraitDetail" @close="closePortraitDetail" />
-
-    <!-- ── Bottom bar: portraits + skills — ancrée, jamais flottante ── -->
-    <footer class="tbattle__bottom">
-      <!-- Portrait cards : toujours visibles, cliquables pour le détail complet -->
+      <!-- Portraits : section dédiée, cliquables pour le détail complet -->
+      <span class="tbattle__rail-label">Combattants</span>
       <div class="tbattle__portraits">
         <button
           v-for="unit in store.initiativeQueue"
@@ -1874,53 +1813,73 @@ onBeforeUnmount(() => {
           </div>
         </button>
       </div>
+    </aside>
 
+    <!-- ── Central board ── -->
+    <div class="tbattle__board">
+      <!-- Deux temps dans le même bandeau : « X prépare Y » pendant que sa zone s'allume, puis
+           « X — Y » pendant que le coup retombe. L'annonce prime, c'est elle qui est urgente. -->
+      <Transition name="tbattle-banner">
+        <p
+          v-if="store.playback.telegraph || store.playback.actionBanner"
+          class="tbattle__banner"
+          :class="{ 'tbattle__banner--telegraph': store.playback.telegraph }"
+        >
+          {{ store.playback.telegraph?.label ?? store.playback.actionBanner }}
+        </p>
+      </Transition>
+
+      <Transition name="tbattle-toast">
+        <p v-if="errorToast" class="tbattle__toast" role="alert">
+          {{ errorToast }}
+        </p>
+      </Transition>
+
+      <canvas
+        ref="canvasEl"
+        class="tbattle__canvas"
+        @click="onCanvasClick"
+        @mousemove="onCanvasMove"
+        @mouseleave="hoveredCell = null"
+      />
+    </div>
+
+    <!-- ── Action log (right) ── -->
+    <aside class="tbattle__log-rail">
+      <div class="tbattle__log">
+        <p
+          v-for="(entry, index) in store.logEntries.slice(-10)"
+          :key="index"
+          class="tbattle__log-entry"
+        >
+          {{ entry.message }}
+          <button
+            v-if="entry.skillKey"
+            type="button"
+            class="tbattle__log-skill-link"
+            title="Voir le descriptif du sort"
+            @click="openSkillDetail(entry.skillKey)"
+          >
+            ⓘ
+          </button>
+        </p>
+      </div>
+    </aside>
+
+    <SkillDetailModal :skill="inspectedSkill" @close="inspectedSkill = null" />
+    <PortraitDetailCard :detail="inspectedPortraitDetail" @close="closePortraitDetail" />
+    <CombatItemMenu
+      :open="isItemMenuOpen"
+      :items="store.usableItems"
+      :selected-item-id="store.selectedItemId"
+      @select="selectUsableItem"
+      @close="isItemMenuOpen = false"
+    />
+
+    <!-- ── Bottom bar: sorts + objets — ancrée, jamais flottante ── -->
+    <footer class="tbattle__bottom">
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
-        <div class="tbattle__active-info">
-          <strong class="tbattle__active-name">
-            {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
-          </strong>
-          <div v-if="store.activeCombatant" class="tbattle__active-resource" title="Mana">
-            <span class="tbattle__active-resource-label">Mana</span>
-            <div class="tbattle__active-resource-bar">
-              <div
-                class="tbattle__active-resource-fill tbattle__active-resource-fill--mana"
-                :style="{ width: `${manaPercent(store.activeCombatant.combatant)}%` }"
-              />
-            </div>
-            <span class="tbattle__active-resource-text">
-              {{ store.activeCombatant.combatant.mana }}/{{ store.activeCombatant.combatant.maxMana }}
-            </span>
-          </div>
-          <span v-if="store.activeCombatant?.combatant?.focus !== undefined" class="tbattle__active-stat">
-            Focus {{ store.activeCombatant.combatant.focus }}
-          </span>
-          <span class="tbattle__active-stat">
-            Charge {{ store.activeCombatant?.combatant?.charge ?? '—' }} / 5
-          </span>
-          <span class="tbattle__active-stat">
-            Face {{ facingLabel(store.activeCombatant?.facing) }}
-          </span>
-          <span class="tbattle__risk-tier">
-            Palier {{ riskTierLabel(store.combat?.riskTier) }}
-          </span>
-          <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasMoved }">
-            {{
-              store.activeCombatant
-                ? (store.activeCombatant.hasMoved ? 'Déplacé' : `Déplacement ${store.activeCombatant.movementBudget}`)
-                : '—'
-            }}
-          </span>
-          <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasActed }">
-            {{
-              store.activeCombatant
-                ? (store.activeCombatant.hasActed ? 'A agi' : 'Action')
-                : '—'
-            }}
-          </span>
-        </div>
-
         <div
           v-if="store.activeCombatant && displayedStatusEffects(store.activeCombatant).length"
           class="tbattle__statuses"
@@ -1971,18 +1930,24 @@ onBeforeUnmount(() => {
               </span>
             </button>
             <button
-              v-for="(item, index) in store.usableItems"
-              :key="item.itemId"
+              v-if="store.usableItems.length"
               type="button"
               class="tbattle__skill tbattle__item"
-              :class="{ 'tbattle__item--armed': item.itemId === store.selectedItemId }"
+              :class="{ 'tbattle__item--armed': !!store.selectedItemId }"
               :disabled="(store.activeCombatant?.hasActed ?? true) || store.isLoading"
-              :title="`${item.displayName} — ${itemMeta(item)}`"
-              @click="store.selectItem(item.itemId)"
+              @click="isItemMenuOpen = true"
             >
-              <span class="tbattle__skill-slot">{{ store.activeSkills.length + index + 1 }}</span>
-              <span class="tbattle__skill-name">{{ item.displayName }}</span>
-              <span class="tbattle__skill-meta">{{ itemMeta(item) }}</span>
+              <span class="tbattle__skill-slot">{{ store.activeSkills.length + 1 }}</span>
+              <span class="tbattle__skill-name">
+                {{ store.selectedItem ? store.selectedItem.displayName : 'Objets' }}
+              </span>
+              <span class="tbattle__skill-meta">
+                {{
+                  store.selectedItem
+                    ? itemMeta(store.selectedItem)
+                    : `${store.usableItems.length} disponible${store.usableItems.length > 1 ? 's' : ''}`
+                }}
+              </span>
             </button>
           </template>
           <!-- Même structure qu'un vrai bouton de compétence (nom + méta + coût), juste
@@ -2031,23 +1996,28 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <p
-        v-if="targetPreview"
+      <!-- Toujours rendu (hauteur réservée via min-height), simplement invisible sans cible
+           survolée : sinon le plateau grandit et rapetisse à chaque case, la ligne de grille
+           de la barre basse ("hud") variant avec ce paragraphe qui apparaît/disparaît. -->
+      <div
         class="tbattle__preview"
+        :class="{ 'tbattle__preview--empty': !targetPreview }"
         aria-live="polite"
       >
-        <strong>{{ targetPreview.target }}</strong>
-        <span v-if="targetPreview.interception" class="tbattle__preview-warning">
-          {{ targetPreview.interception }}
-        </span>
-        <span>Position {{ targetPreview.position }}</span>
-        <span v-if="targetPreview.height">Hauteur +5 % dégâts · +4 critique</span>
-        <span>Affinité {{ targetPreview.affinity }}</span>
-        <span v-if="targetPreview.accuracy !== null">Précision {{ targetPreview.accuracy }} %</span>
-        <span v-if="targetPreview.critical !== null">Critique {{ targetPreview.critical }} %</span>
-        <span v-if="targetPreview.damage">Dégâts {{ targetPreview.damage }}</span>
-        <span v-if="targetPreview.effect">{{ targetPreview.effect }}</span>
-      </p>
+        <template v-if="targetPreview">
+          <strong>{{ targetPreview.target }}</strong>
+          <span v-if="targetPreview.interception" class="tbattle__preview-warning">
+            {{ targetPreview.interception }}
+          </span>
+          <span>Position {{ targetPreview.position }}</span>
+          <span v-if="targetPreview.height">Hauteur +5 % dégâts · +4 critique</span>
+          <span>Affinité {{ targetPreview.affinity }}</span>
+          <span v-if="targetPreview.accuracy !== null">Précision {{ targetPreview.accuracy }} %</span>
+          <span v-if="targetPreview.critical !== null">Critique {{ targetPreview.critical }} %</span>
+          <span v-if="targetPreview.damage">Dégâts {{ targetPreview.damage }}</span>
+          <span v-if="targetPreview.effect">{{ targetPreview.effect }}</span>
+        </template>
+      </div>
 
       <p
         v-if="store.isPlayerTurn && (store.selectedSkillKey || store.selectedItemId)"
@@ -2150,6 +2120,16 @@ onBeforeUnmount(() => {
 .tbattle__initiative-rank { opacity: 0.45; width: 1.1em; font-size: 0.65rem; }
 .tbattle__initiative-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .tbattle__initiative-hp { opacity: 0.5; font-variant-numeric: tabular-nums; font-size: 0.65rem; }
+
+.tbattle__rail-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--line-soft);
+}
 
 /* ── Central board ──────────────────────────────────────────────────────── */
 .tbattle__board {
@@ -2267,7 +2247,7 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
-/* ── Bottom bar: portraits + skills — ancrée en ligne de grille, jamais en survol libre ── */
+/* ── Bottom bar: sorts + objets — ancrée en ligne de grille, jamais en survol libre ── */
 .tbattle__bottom {
   grid-area: hud;
   width: 100%;
@@ -2283,10 +2263,11 @@ onBeforeUnmount(() => {
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .35);
 }
 
+/* ── Portraits : section dédiée du rail d'initiative, empilée verticalement ── */
 .tbattle__portraits {
   display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .tbattle__portrait {
@@ -2299,7 +2280,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-width: 80px;
+  width: 100%;
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -2472,71 +2453,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-.tbattle__active-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  row-gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-/* Mana : même vocabulaire visuel que la barre de PV des portraits (fond sombre, remplissage
-   coloré, texte discret dessous), en un peu plus large pour rester lisible à cette échelle. */
-.tbattle__active-resource {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.tbattle__active-resource-label {
-  font-size: 0.72rem;
-  opacity: 0.75;
-  white-space: nowrap;
-}
-
-.tbattle__active-resource-bar {
-  width: 72px;
-  height: 6px;
-  background: var(--line-soft);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.tbattle__active-resource-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 200ms ease;
-}
-
-.tbattle__active-resource-fill--mana { background: #7ec4e8; }
-
-.tbattle__active-resource-text {
-  font-size: 0.72rem;
-  opacity: 0.65;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.tbattle__active-name { color: var(--tactical-cursor); font-size: 0.85rem; }
-
-.tbattle__active-stat {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
-}
-
-.tbattle__active-stat--spent { opacity: 0.35; text-decoration: line-through; }
-
-.tbattle__risk-tier {
-  padding: 0.12rem 0.38rem;
-  border: 1px solid color-mix(in oklch, var(--tactical-cursor), transparent 65%);
-  border-radius: 999px;
-  color: var(--tactical-cursor);
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .tbattle__statuses {
   display: flex;
   flex-wrap: wrap;
@@ -2636,10 +2552,18 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__hint { margin: 0; font-size: 0.72rem; opacity: 0.45; }
+
+/* Toujours dans le flux, hauteur plancher sur deux lignes : le contenu varie de case en case
+   pendant le ciblage (interception, hauteur, précision…), sans quoi le plateau grandissait et
+   rapetissait au survol à chaque changement de case (la ligne de grille "hud" suivait la
+   hauteur de ce paragraphe qui apparaissait/disparaissait). --empty le rend invisible sans
+   collapser l'espace réservé. */
 .tbattle__preview {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 0.35rem 0.75rem;
+  min-height: 2.1em;
   margin: 0;
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
@@ -2647,6 +2571,7 @@ onBeforeUnmount(() => {
   color: var(--ink-2);
   font-size: 0.68rem;
 }
+.tbattle__preview--empty { visibility: hidden; }
 .tbattle__preview strong { color: var(--ink); }
 .tbattle__preview-warning { color: var(--danger); }
 .tbattle__waiting { opacity: 0.6; font-style: italic; margin: 0; font-size: 0.8rem; }
