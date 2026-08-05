@@ -47,6 +47,7 @@ import {
 } from '../composables/useTacticalBattlePlan';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
+import PortraitDetailCard from './PortraitDetailCard.vue';
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
@@ -87,12 +88,33 @@ const sortEffects = useSortEffects();
 const playback = useCombatPlayback();
 
 const canvasEl = ref<HTMLCanvasElement | null>(null);
-const battleEl = ref<HTMLElement | null>(null);
-const panelEl = ref<HTMLElement | null>(null);
 const canvasSize = ref({ width: 0, height: 0 });
 const hoveredCell = ref<{ x: number; y: number } | null>(null);
-const panelPosition = ref({ x: 190, y: 24 });
-const panelWasDragged = ref(false);
+
+// Fiche de détail : ouverte au clic sur un portrait, ferme au clic dehors ou sur Échap
+// (gérée dans PortraitDetailCard lui-même, même convention que DecisionDiptych). Les valeurs
+// dérivées (vitalité affichée, pourcentages, statuts) sont calculées ici pour que la fiche
+// reste un composant de présentation pur, sans dépendre du store.
+const inspectedPortraitId = ref<string | null>(null);
+const inspectedPortraitDetail = computed(() => {
+  const unit = store.initiativeQueue.find((u) => u.combatant.id === inspectedPortraitId.value);
+  if (!unit) return null;
+  return {
+    unit,
+    displayedVitality: displayedVitality(unit),
+    vitalityPercent: vitalityPercent(unit),
+    guardPercent: guardPercent(unit),
+    statusEffects: displayedStatusEffects(unit),
+  };
+});
+
+function openPortraitDetail(combatantId: string) {
+  inspectedPortraitId.value = combatantId;
+}
+
+function closePortraitDetail() {
+  inspectedPortraitId.value = null;
+}
 
 // Journal : clic sur une entrée liée à un sort ouvre son descriptif complet.
 const skillCatalog = ref<Map<string, SkillDefinitionView>>(new Map());
@@ -104,7 +126,7 @@ function openSkillDetail(skillKey: string | null) {
 }
 
 // Hover description for a skill button — teleported to <body> (like the loot popover) because
-// the action bar lives inside the draggable panel, which clips overflow on both axes.
+// the docked action bar scrolls internally when it overflows, which would otherwise clip it.
 const hoveredSkillKey = ref<string | null>(null);
 const skillTooltipStyle = ref<{ left: string; bottom: string }>({ left: '0px', bottom: '0px' });
 const hoveredSkill = computed<CombatantSkillRuntimeDto | null>(() =>
@@ -145,7 +167,6 @@ const deployStartedAt = ref<number | null>(null);
 
 let frameHandle = 0;
 let observer: ResizeObserver | null = null;
-let stopPanelDrag: (() => void) | null = null;
 
 const prefersReducedMotion =
   typeof globalThis.matchMedia === 'function'
@@ -163,69 +184,8 @@ const projectionParams = computed(() => ({
   gridHeight: battlefield.value?.height ?? 1,
 }));
 
-const panelStyle = computed(() => ({
-  left: `${panelPosition.value.x}px`,
-  top: `${panelPosition.value.y}px`,
-}));
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function placePanelNearActive(force = false) {
-  if (panelWasDragged.value && !force) return;
-  const host = battleEl.value;
-  const active = store.activeCombatant;
-  if (!host || !active || canvasSize.value.width <= 0) return;
-
-  const projected = projectToScreen(active.x, active.y, projectionParams.value);
-  const panelWidth = Math.min(720, Math.max(360, host.clientWidth - 380));
-  const panelHeight = panelEl.value?.offsetHeight ?? 190;
-  const desiredX = 170 + projected.screenX + 32;
-  const desiredY = projected.screenY - (panelHeight / 2);
-
-  panelPosition.value = {
-    x: clamp(desiredX, 178, Math.max(178, host.clientWidth - panelWidth - 188)),
-    y: clamp(desiredY, 12, Math.max(12, host.clientHeight - panelHeight - 12)),
-  };
-  panelWasDragged.value = false;
-}
-
-function beginPanelDrag(event: PointerEvent) {
-  if (event.button !== 0 || !battleEl.value || !panelEl.value) return;
-  event.preventDefault();
-
-  const hostBounds = battleEl.value.getBoundingClientRect();
-  const panelBounds = panelEl.value.getBoundingClientRect();
-  const offsetX = event.clientX - panelBounds.left;
-  const offsetY = event.clientY - panelBounds.top;
-
-  const move = (next: PointerEvent) => {
-    if (!battleEl.value || !panelEl.value) return;
-    panelPosition.value = {
-      x: clamp(
-        next.clientX - hostBounds.left - offsetX,
-        0,
-        Math.max(0, battleEl.value.clientWidth - panelEl.value.offsetWidth),
-      ),
-      y: clamp(
-        next.clientY - hostBounds.top - offsetY,
-        0,
-        Math.max(0, battleEl.value.clientHeight - panelEl.value.offsetHeight),
-      ),
-    };
-    panelWasDragged.value = true;
-  };
-  const end = () => {
-    globalThis.removeEventListener('pointermove', move);
-    globalThis.removeEventListener('pointerup', end);
-    stopPanelDrag = null;
-  };
-
-  stopPanelDrag?.();
-  stopPanelDrag = end;
-  globalThis.addEventListener('pointermove', move);
-  globalThis.addEventListener('pointerup', end, { once: true });
 }
 
 const spriteDest = computed(() => {
@@ -1721,22 +1681,6 @@ watch(
   { immediate: true },
 );
 
-// N'auto-replace le panneau que si le joueur ne l'a pas déplacé lui-même
-// (placePanelNearActive s'auto-garde déjà sur panelWasDragged) — un déplacement
-// ou une fin de tour ne doit jamais annuler un positionnement manuel.
-watch(
-  [
-    () => store.combat?.activeCombatantId,
-    () => store.activeCombatant?.x,
-    () => store.activeCombatant?.y,
-    () => canvasSize.value.width,
-    () => canvasSize.value.height,
-  ],
-  () => {
-    globalThis.requestAnimationFrame(() => placePanelNearActive());
-  },
-);
-
 onMounted(() => {
   skillsApi.listActive()
     .then((response) => {
@@ -1762,7 +1706,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   globalThis.cancelAnimationFrame(frameHandle);
-  stopPanelDrag?.();
   observer?.disconnect();
   observer = null;
 });
@@ -1771,7 +1714,6 @@ onBeforeUnmount(() => {
 <template>
   <section
     v-if="store.combat"
-    ref="battleEl"
     class="tbattle"
     :class="{ 'tbattle--transitioning': playback.isTransitioning }"
   >
@@ -1849,20 +1791,24 @@ onBeforeUnmount(() => {
     </aside>
 
     <SkillDetailModal :skill="inspectedSkill" @close="inspectedSkill = null" />
+    <PortraitDetailCard :detail="inspectedPortraitDetail" @close="closePortraitDetail" />
 
-    <!-- ── Bottom bar: portraits + skills ── -->
-    <footer ref="panelEl" class="tbattle__bottom" :style="panelStyle">
-      <!-- Portrait cards : toujours visibles -->
+    <!-- ── Bottom bar: portraits + skills — ancrée, jamais flottante ── -->
+    <footer class="tbattle__bottom">
+      <!-- Portrait cards : toujours visibles, cliquables pour le détail complet -->
       <div class="tbattle__portraits">
-        <div
+        <button
           v-for="unit in store.initiativeQueue"
           :key="unit.combatant.id"
+          type="button"
           class="tbattle__portrait"
           :class="{
             'tbattle__portrait--active': unit.combatant.id === store.combat.activeCombatantId,
             'tbattle__portrait--enemy': unit.combatant.side === 'Enemy',
             'tbattle__portrait--downed': unit.combatant.status === 'Defeated',
           }"
+          :title="`Voir le détail de ${unit.combatant.displayName}`"
+          @click="openPortraitDetail(unit.combatant.id)"
         >
           <div class="tbattle__portrait-frame">
             <span class="tbattle__portrait-initial">
@@ -1926,17 +1872,12 @@ onBeforeUnmount(() => {
               :is-permanent="status.isPermanent"
             />
           </div>
-        </div>
+        </button>
       </div>
 
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
-        <div
-          class="tbattle__active-info"
-          title="Faire glisser le panneau"
-          @pointerdown="beginPanelDrag"
-        >
-          <span class="tbattle__drag-handle" aria-hidden="true">⠿</span>
+        <div class="tbattle__active-info">
           <strong class="tbattle__active-name">
             {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
           </strong>
@@ -1978,16 +1919,6 @@ onBeforeUnmount(() => {
                 : '—'
             }}
           </span>
-          <button
-            v-if="panelWasDragged"
-            type="button"
-            class="tbattle__panel-reset"
-            title="Replacer près de l’unité active"
-            @pointerdown.stop
-            @click="placePanelNearActive(true)"
-          >
-            Recentrer
-          </button>
         </div>
 
         <div
@@ -2013,7 +1944,7 @@ onBeforeUnmount(() => {
         <div class="tbattle__skills">
           <template v-if="store.isPlayerTurn">
             <button
-              v-for="skill in store.activeSkills"
+              v-for="(skill, index) in store.activeSkills"
               :key="skill.key"
               type="button"
               class="tbattle__skill"
@@ -2029,6 +1960,7 @@ onBeforeUnmount(() => {
               @blur="hideSkillTooltip"
               @click="store.selectSkill(skill.key)"
             >
+              <span class="tbattle__skill-slot">{{ index + 1 }}</span>
               <span class="tbattle__skill-name">
                 {{ skill.isUltimate ? 'Ultime · ' : '' }}{{ skill.displayName }}
               </span>
@@ -2039,7 +1971,7 @@ onBeforeUnmount(() => {
               </span>
             </button>
             <button
-              v-for="item in store.usableItems"
+              v-for="(item, index) in store.usableItems"
               :key="item.itemId"
               type="button"
               class="tbattle__skill tbattle__item"
@@ -2048,6 +1980,7 @@ onBeforeUnmount(() => {
               :title="`${item.displayName} — ${itemMeta(item)}`"
               @click="store.selectItem(item.itemId)"
             >
+              <span class="tbattle__skill-slot">{{ store.activeSkills.length + index + 1 }}</span>
               <span class="tbattle__skill-name">{{ item.displayName }}</span>
               <span class="tbattle__skill-meta">{{ itemMeta(item) }}</span>
             </button>
@@ -2058,6 +1991,7 @@ onBeforeUnmount(() => {
                empilent 3 lignes de texte, un espace réservé plus court les faisait
                "sauter" au tour suivant. -->
           <div v-else class="tbattle__skill tbattle__skill--phantom" aria-hidden="true">
+            <span class="tbattle__skill-slot">&nbsp;</span>
             <span class="tbattle__skill-name">&nbsp;</span>
             <span class="tbattle__skill-meta">&nbsp;</span>
             <span class="tbattle__skill-cost">&nbsp;</span>
@@ -2130,13 +2064,28 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Rails d'initiative et de journal pleine hauteur ; le plateau cède sa hauteur basse à la
+   barre d'action, qui vit désormais comme une ligne de grille ancrée — jamais en survol
+   libre du plateau (voir .tbattle__bottom).
+
+   Le chrome (fonds, bordures, texte) suit la direction "Le Palais respire" (tokens.css) —
+   voir docs/design/direction-visuelle-palais-respire.md. La grammaire fonctionnelle du
+   combat (allié / ennemi / curseur de tour / attaque engagée) reste un système à part,
+   défini ici en quatre teintes locales : ce ne sont pas des tokens de décor, chacune porte
+   une seule signification tactique et n'est jamais réutilisée pour autre chose. */
 .tbattle {
+  --tactical-ally: #7fa0d6;
+  --tactical-enemy: #cf6a5c;
+  --tactical-cursor: #d9b465;
+  --tactical-attack: #e0916f;
+
   position: relative;
   display: grid;
   grid-template-columns: 170px 1fr 180px;
-  grid-template-rows: 1fr;
+  grid-template-rows: 1fr auto;
   grid-template-areas:
-    "initiative board log";
+    "initiative board   log"
+    "initiative hud      log";
   height: 100%;
   min-height: 0;
   gap: 0;
@@ -2154,20 +2103,20 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.6rem 0.5rem;
-  border-right: 1px solid rgb(255 255 255 / 10%);
-  background: rgb(9 11 22 / 55%);
+  border-right: 1px solid var(--line-soft);
+  background: color-mix(in oklch, var(--void), transparent 30%);
   overflow-y: auto;
 }
 
 .tbattle__round {
-  font-family: var(--font-caps, monospace);
-  font-variant: small-caps;
+  font-family: var(--font-mono);
   letter-spacing: 0.08em;
-  font-size: 0.82rem;
-  color: #e6c273;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--tactical-cursor);
   white-space: nowrap;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .tbattle__initiative {
@@ -2184,18 +2133,18 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.3rem;
   padding: 0.2rem 0.35rem;
-  border: 1px solid rgb(255 255 255 / 15%);
+  border: 1px solid var(--line);
   border-radius: 3px;
   font-size: 0.72rem;
   white-space: nowrap;
   transition: background 120ms ease;
 }
 
-.tbattle__initiative-entry--enemy { border-color: #8e2b32; }
+.tbattle__initiative-entry--enemy { border-color: color-mix(in oklch, var(--tactical-enemy), transparent 30%); }
 
 .tbattle__initiative-entry--active {
-  background: rgb(230 194 115 / 18%);
-  border-color: #e6c273;
+  background: color-mix(in oklch, var(--tactical-cursor), transparent 82%);
+  border-color: var(--tactical-cursor);
 }
 
 .tbattle__initiative-rank { opacity: 0.45; width: 1.1em; font-size: 0.65rem; }
@@ -2223,10 +2172,10 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
   margin: 0;
   padding: 0.35rem 1rem;
-  border: 1px solid rgb(230 194 115 / 40%);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: rgb(9 11 22 / 85%);
-  color: #f4f1ff;
+  background: color-mix(in oklch, var(--void), transparent 12%);
+  color: var(--ink);
   font-variant: small-caps;
   letter-spacing: 0.05em;
   font-size: 0.85rem;
@@ -2237,8 +2186,8 @@ onBeforeUnmount(() => {
 
 /* L'annonce se distingue du compte rendu : bord rouge, elle prévient au lieu de raconter. */
 .tbattle__banner--telegraph {
-  border-color: rgb(224 96 94 / 65%);
-  color: #ffd8d0;
+  border-color: color-mix(in oklch, var(--tactical-attack), transparent 20%);
+  color: var(--ink);
 }
 
 .tbattle-banner-enter-active,
@@ -2259,10 +2208,10 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
   margin: 0;
   padding: 0.35rem 1rem;
-  border: 1px solid rgb(224 96 94 / 45%);
+  border: 1px solid color-mix(in oklch, var(--danger), transparent 45%);
   border-radius: 999px;
-  background: rgb(14 5 7 / 90%);
-  color: #f0a0a0;
+  background: color-mix(in oklch, var(--void), transparent 6%);
+  color: var(--danger);
   font-size: 0.82rem;
   white-space: nowrap;
   pointer-events: none;
@@ -2285,8 +2234,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.5rem;
-  border-left: 1px solid rgb(255 255 255 / 10%);
-  background: rgb(9 11 22 / 55%);
+  border-left: 1px solid var(--line-soft);
+  background: color-mix(in oklch, var(--void), transparent 30%);
   overflow-y: auto;
 }
 
@@ -2309,7 +2258,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   margin-left: 4px;
   font-size: 0.72rem;
-  color: var(--gold);
+  color: var(--mint-dim);
   opacity: 0.8;
 }
 
@@ -2318,22 +2267,20 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
-/* ── Bottom bar: portraits + skills ─────────────────────────────────────── */
+/* ── Bottom bar: portraits + skills — ancrée en ligne de grille, jamais en survol libre ── */
 .tbattle__bottom {
-  position: absolute;
-  z-index: 8;
-  width: min(760px, calc(100% - 380px));
-  max-height: min(46vh, 550px);
+  grid-area: hud;
+  width: 100%;
+  max-height: min(42vh, 480px);
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   padding: 0.75rem 1rem;
-  border: 1px solid rgb(230 194 115 / 28%);
-  border-radius: 8px;
-  background: rgb(9 11 22 / 90%);
+  border-top: 1px solid var(--line);
+  background: rgba(12, 13, 18, .92);
   backdrop-filter: blur(12px);
-  box-shadow: 0 14px 44px rgb(0 0 0 / 45%);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, .35);
 }
 
 .tbattle__portraits {
@@ -2343,24 +2290,39 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__portrait {
+  /* Reset des styles UA de <button> : la carte de portrait est un bouton pour l'accessibilité
+     (clic + clavier natifs), mais visuellement identique à l'ancienne <div>. */
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   min-width: 80px;
   padding: 0.45rem 0.55rem;
-  border: 1px solid rgb(255 255 255 / 12%);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: rgb(255 255 255 / 4%);
+  background: var(--panel-2);
   transition: border-color 120ms ease, background 120ms ease;
 }
 
-.tbattle__portrait--active {
-  border-color: #e6c273;
-  background: rgb(230 194 115 / 10%);
+.tbattle__portrait:hover,
+.tbattle__portrait:focus-visible {
+  border-color: var(--line-strong);
 }
 
-.tbattle__portrait--enemy { border-color: rgb(142 43 50 / 50%); }
+.tbattle__portrait:focus-visible {
+  outline: 2px solid var(--mint-dim);
+  outline-offset: 1px;
+}
+
+.tbattle__portrait--active {
+  border-color: var(--tactical-cursor);
+  background: color-mix(in oklch, var(--tactical-cursor), var(--panel-2) 82%);
+}
+
+.tbattle__portrait--enemy { border-color: color-mix(in oklch, var(--tactical-enemy), transparent 45%); }
 .tbattle__portrait--downed { opacity: 0.35; }
 
 .tbattle__portrait-frame {
@@ -2368,11 +2330,11 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1.5px solid rgb(255 255 255 / 20%);
+  border: 1.5px solid var(--line-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(255 255 255 / 6%);
+  background: var(--panel);
 }
 
 /* Un chiffre lisible directement sur le cadre — la garde doit se voir sans avoir à croiser
@@ -2385,9 +2347,9 @@ onBeforeUnmount(() => {
   height: 15px;
   padding: 0 3px;
   border-radius: 8px;
-  background: #ffcc33;
+  background: #e8c65c;
   color: #221a05;
-  border: 1px solid rgb(9 11 22 / 90%);
+  border: 1px solid var(--void);
   font-size: 0.56rem;
   font-weight: 700;
   line-height: 13px;
@@ -2396,8 +2358,8 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__portrait--enemy .tbattle__portrait-frame {
-  border-color: rgb(224 96 94 / 40%);
-  background: rgb(224 96 94 / 10%);
+  border-color: color-mix(in oklch, var(--tactical-enemy), transparent 60%);
+  background: color-mix(in oklch, var(--tactical-enemy), var(--panel) 88%);
 }
 
 .tbattle__portrait-initial {
@@ -2427,7 +2389,7 @@ onBeforeUnmount(() => {
   display: flex;
   width: 100%;
   height: 3px;
-  background: rgb(255 255 255 / 10%);
+  background: var(--line-soft);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2439,14 +2401,14 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__portrait-hp-fill--low {
-  background: #e0605e;
+  background: var(--danger);
 }
 
-/* Garde : un segment jaune accolé à la vitalité, dans la même barre — visible d'un coup
+/* Garde : un segment ambré accolé à la vitalité, dans la même barre — visible d'un coup
    d'œil sans devoir lire un second chiffre séparé (voir aussi le badge sur le cadre). */
 .tbattle__portrait-guard-fill {
   height: 100%;
-  background: #ffcc33;
+  background: #e8c65c;
   transition: width 200ms ease;
 }
 
@@ -2467,7 +2429,7 @@ onBeforeUnmount(() => {
 .tbattle__portrait-mana-bar {
   width: 100%;
   height: 3px;
-  background: rgb(255 255 255 / 10%);
+  background: var(--line-soft);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2516,13 +2478,7 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   row-gap: 0.4rem;
   flex-wrap: wrap;
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
 }
-
-.tbattle__active-info:active { cursor: grabbing; }
-.tbattle__drag-handle { color: #e6c273; opacity: 0.65; }
 
 /* Mana : même vocabulaire visuel que la barre de PV des portraits (fond sombre, remplissage
    coloré, texte discret dessous), en un peu plus large pour rester lisible à cette échelle. */
@@ -2541,7 +2497,7 @@ onBeforeUnmount(() => {
 .tbattle__active-resource-bar {
   width: 72px;
   height: 6px;
-  background: rgb(255 255 255 / 10%);
+  background: var(--line-soft);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -2561,16 +2517,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.tbattle__panel-reset {
-  border: 0;
-  background: transparent;
-  color: #e6c273;
-  cursor: pointer;
-  font-size: 0.65rem;
-  margin-left: auto;
-}
-
-.tbattle__active-name { color: #e6c273; font-size: 0.85rem; }
+.tbattle__active-name { color: var(--tactical-cursor); font-size: 0.85rem; }
 
 .tbattle__active-stat {
   font-size: 0.75rem;
@@ -2582,9 +2529,9 @@ onBeforeUnmount(() => {
 
 .tbattle__risk-tier {
   padding: 0.12rem 0.38rem;
-  border: 1px solid rgb(230 194 115 / 35%);
+  border: 1px solid color-mix(in oklch, var(--tactical-cursor), transparent 65%);
   border-radius: 999px;
-  color: #e6c273;
+  color: var(--tactical-cursor);
   font-size: 0.65rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2602,55 +2549,90 @@ onBeforeUnmount(() => {
   align-items: baseline;
   gap: 0.2rem;
   padding: 0.15rem 0.35rem;
-  border: 1px solid rgb(230 194 115 / 30%);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgb(230 194 115 / 8%);
-  color: #eee9dc;
+  background: var(--panel-2);
+  color: var(--ink-2);
   font-size: 0.65rem;
 }
 
 .tbattle__status small { opacity: 0.6; }
 
-.tbattle__skills { display: flex; gap: 0.50rem; flex-wrap: wrap; align-items: center; }
+.tbattle__skills { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: stretch; }
 
+/* Emplacements numérotés façon hotbar (XCOM/BG3) plutôt qu'une rangée de boutons texte qui
+   s'enroule : largeur minimale commune, badge de rang toujours au même endroit — l'œil
+   retrouve un sort au même emplacement d'un tour à l'autre. */
 .tbattle__skill,
 .tbattle__end-turn {
-  padding: 0.25rem 0.6rem;
-  border: 1px solid rgb(255 255 255 / 22%);
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: transparent;
+  background: var(--panel-2);
   color: inherit;
   cursor: pointer;
   font-size: 0.78rem;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
 .tbattle__skill {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.1rem;
+  min-width: 108px;
+  padding-left: 1.5rem;
 }
 
-.tbattle__skill--armed { background: rgb(224 96 94 / 22%); border-color: #e0605e; }
-.tbattle__skill--ultimate { border-color: rgb(230 194 115 / 55%); }
-.tbattle__skill--sacrifice:not(:disabled) { border-color: rgb(224 96 94 / 70%); }
-.tbattle__item { border-color: rgb(102 185 171 / 45%); }
-.tbattle__item--armed { background: rgb(102 185 171 / 22%); border-color: #66b9ab; }
+.tbattle__skill-slot {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.tbattle__skill:hover:not(:disabled) { border-color: var(--line-strong); }
+
+/* Le sort armé = l'attaque sur le point d'être engagée : seule teinte de ce groupe à porter
+   la couleur "attaque" de la grammaire tactique. */
+.tbattle__skill--armed {
+  background: color-mix(in oklch, var(--tactical-attack), var(--panel-2) 74%);
+  border-color: var(--tactical-attack);
+}
+
+/* Ultime = interaction spéciale mise en avant, pas une info tactique de grille : suit
+   l'accent mint réservé aux interactions actives. */
+.tbattle__skill--ultimate { border-color: var(--mint-dim); }
+.tbattle__skill--ultimate .tbattle__skill-slot { color: var(--mint-dim); }
+
+.tbattle__skill--sacrifice:not(:disabled) { border-color: color-mix(in oklch, var(--danger), transparent 25%); }
+
+.tbattle__item { border-color: color-mix(in oklch, var(--mint-dim), transparent 45%); }
+.tbattle__item--armed {
+  background: color-mix(in oklch, var(--mint-dim), var(--panel-2) 78%);
+  border-color: var(--mint-dim);
+}
+
 .tbattle__skill:disabled { opacity: 0.35; cursor: not-allowed; }
 .tbattle__skill-name { font-weight: 600; }
 .tbattle__skill-meta { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
-.tbattle__skill-cost { font-size: 0.62rem; color: #e6c273; font-variant-numeric: tabular-nums; }
-.tbattle__skill-warning { font-size: 0.62rem; color: #e0605e; font-variant-numeric: tabular-nums; }
+.tbattle__skill-cost { font-size: 0.62rem; color: var(--tactical-cursor); font-variant-numeric: tabular-nums; }
+.tbattle__skill-warning { font-size: 0.62rem; color: var(--danger); font-variant-numeric: tabular-nums; }
 .tbattle__skill--phantom { visibility: hidden; }
 
 .tbattle__end-turn {
   font-weight: 600;
-  color: #e6c273;
-  border-color: rgb(230 194 115 / 35%);
+  color: var(--mint);
+  border-color: var(--mint-dim);
+  background: transparent;
 }
 
 .tbattle__end-turn:hover:not(:disabled) {
-  background: rgb(230 194 115 / 12%);
+  background: color-mix(in oklch, var(--mint-dim), transparent 82%);
 }
 
 .tbattle__hint { margin: 0; font-size: 0.72rem; opacity: 0.45; }
@@ -2661,19 +2643,19 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
-  background: rgb(255 255 255 / 5%);
-  color: rgb(244 241 255 / 72%);
+  background: var(--panel-2);
+  color: var(--ink-2);
   font-size: 0.68rem;
 }
-.tbattle__preview strong { color: #f4f1ff; }
-.tbattle__preview-warning { color: #e0605e; }
+.tbattle__preview strong { color: var(--ink); }
+.tbattle__preview-warning { color: var(--danger); }
 .tbattle__waiting { opacity: 0.6; font-style: italic; margin: 0; font-size: 0.8rem; }
-.tbattle__error { color: #e0605e; margin: 0; font-size: 0.8rem; }
+.tbattle__error { color: var(--danger); margin: 0; font-size: 0.8rem; }
 </style>
 
 <!-- Unscoped: teleported to <body>, outside this component's scoped-style DOM subtree — the
-     draggable action panel (.tbattle__bottom) clips overflow on both axes, so this tooltip has
-     to live outside it entirely rather than merely escape it visually. -->
+     docked action bar (.tbattle__bottom) scrolls internally when it overflows, so this
+     tooltip has to live outside it entirely rather than merely escape it visually. -->
 <style>
 .tbattle__skill-tooltip {
   position: fixed;
@@ -2681,11 +2663,11 @@ onBeforeUnmount(() => {
   width: 260px;
   padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid rgb(230 194 115 / 35%);
-  background: rgb(9 11 22 / 96%);
+  border: 1px solid var(--line-strong, rgba(190, 190, 190, .38));
+  background: var(--panel, #15171a);
   backdrop-filter: blur(12px);
-  box-shadow: 0 14px 44px rgb(0 0 0 / 45%);
-  color: rgb(244 241 255 / 88%);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .45);
+  color: var(--ink-2, #d6d3cc);
   font-family: var(--font, serif);
   pointer-events: none;
 }
@@ -2693,7 +2675,7 @@ onBeforeUnmount(() => {
 .tbattle__skill-tooltip-title {
   font-weight: 600;
   font-size: 0.85rem;
-  color: #e6c273;
+  color: var(--mint, #bfe3e0);
   margin-bottom: 4px;
 }
 
@@ -2701,18 +2683,18 @@ onBeforeUnmount(() => {
   margin: 0 0 6px;
   font-size: 0.75rem;
   line-height: 1.45;
-  color: rgb(244 241 255 / 72%);
+  color: var(--ink-2, #d6d3cc);
 }
 
 .tbattle__skill-tooltip-meta {
   font-size: 0.68rem;
   letter-spacing: 0.02em;
-  color: rgb(244 241 255 / 55%);
+  color: var(--ink-3, #a6a39c);
 }
 
 .tbattle__skill-tooltip-warning {
   margin-top: 4px;
   font-size: 0.68rem;
-  color: #e0605e;
+  color: var(--danger, #c07268);
 }
 </style>
