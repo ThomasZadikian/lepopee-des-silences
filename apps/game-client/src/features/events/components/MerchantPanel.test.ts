@@ -20,7 +20,6 @@ function mountPanel(outcome: EventOutcomeDto, isLoading = false) {
         SigilIcon: { template: '<svg />' },
         ChipBadge: { template: '<span><slot /></span>' },
         EliseComment: { template: '<div><slot /></div>' },
-        RuleOrnament: { template: '<hr />' },
       },
     },
   });

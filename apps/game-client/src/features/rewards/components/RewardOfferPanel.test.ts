@@ -36,7 +36,6 @@ function mountPanel(
       stubs: {
         ChipBadge: { template: '<span><slot /></span>' },
         EliseComment: { template: '<div />' },
-        RuleOrnament: { template: '<hr />' },
         SigilIcon: { template: '<svg />' },
       },
     },
