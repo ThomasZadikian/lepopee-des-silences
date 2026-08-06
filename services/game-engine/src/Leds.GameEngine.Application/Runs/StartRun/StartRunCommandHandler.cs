@@ -263,6 +263,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 characterId: character.CharacterId,
                 definitionKey: character.DefinitionKey,
                 displayName: character.DisplayName,
+                emotionalRegisterCode: CharacterEmotionalRegisterCode.ResolveRequired(character.DefinitionKey),
                 statBlock: statSnapshot,
                 skills: skillSnapshots,
                 equippedItemKeys: character.EquippedItems));

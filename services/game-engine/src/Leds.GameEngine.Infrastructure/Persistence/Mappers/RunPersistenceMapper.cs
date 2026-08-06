@@ -282,6 +282,7 @@ public static class RunPersistenceMapper
             RunId = runId,
             PlayerId = snapshot.PlayerId,
             DisplayName = snapshot.DisplayName,
+            EmotionalRegisterCode = snapshot.EmotionalRegisterCode,
             CreatedAtUtc = snapshot.CreatedAtUtc.UtcDateTime,
             Characters = snapshot.Characters
                 .Select((c, index) => ToCharacterSnapshotEntity(c, index))
@@ -791,7 +792,8 @@ public static class RunPersistenceMapper
                 ? []
                 : entity.EquippedItemKeysCsv.Split(
                     ';',
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            entity.EmotionalRegisterCode);
     }
 
     private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)

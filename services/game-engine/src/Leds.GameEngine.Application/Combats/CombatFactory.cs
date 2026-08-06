@@ -198,7 +198,10 @@ public sealed class CombatFactory : ICombatFactory
                         focus: focus,
                         maxMana: maxMana,
                         magicAttack: magicAttack,
-                        magicDefense: magicDefense);
+                        magicDefense: magicDefense,
+                        naturalEmotionalType: EmotionalTypeCode.ParseRequired(
+                            ally.EmotionalRegister,
+                            $"Ally '{ally.AllyKey}' natural emotional register"));
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
@@ -262,7 +265,10 @@ public sealed class CombatFactory : ICombatFactory
                     maxMana: ally.Mana,
                     magicAttack: ally.MagicAttack,
                     magicDefense: ally.MagicDefense,
-                    movement: ally.Movement);
+                    movement: ally.Movement,
+                    naturalEmotionalType: EmotionalTypeCode.ParseRequired(
+                        ally.EmotionalRegister,
+                        $"Ally '{ally.AllyKey}' natural emotional register"));
 
                 // Companions keep their own emotional type (no item override).
                 companion.ApplyAttackTypeOverride(null);
@@ -311,7 +317,8 @@ public sealed class CombatFactory : ICombatFactory
                     focus: (int)Math.Round(ally.BaseStatSnapshot.Focus * MirrorCombatCopyStatMultiplier),
                     maxMana: ally.MaxMana,
                     magicAttack: (int)Math.Round(ally.BaseStatSnapshot.MagicAttack * MirrorCombatCopyStatMultiplier),
-                    magicDefense: (int)Math.Round(ally.BaseStatSnapshot.MagicDefense * MirrorCombatCopyStatMultiplier)))
+                    magicDefense: (int)Math.Round(ally.BaseStatSnapshot.MagicDefense * MirrorCombatCopyStatMultiplier),
+                    naturalEmotionalType: ally.NaturalEmotionalType))
                 .ToArray();
 
             if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderReverse && !m.IsConsumed))
@@ -436,6 +443,9 @@ public sealed class CombatFactory : ICombatFactory
                         magicAttack: scaledMagicAttack,
                         magicDefense: scaledMagicDefense,
                         movement: enemy.Movement,
+                        naturalEmotionalType: EmotionalTypeCode.ParseRequired(
+                            enemy.EmotionalRegister,
+                            $"Enemy '{enemy.EnemyKey}' natural emotional register"),
                         // Base Mana = 85% of (scaled) Vitality — enemies "cast freely" (see
                         // CombatSkillEffectResolver.ConsumeResources), so this is purely
                         // informational, but stays consistent with the player-side rule

@@ -13,12 +13,14 @@ public sealed class RunCharacterSnapshot
         string displayName,
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
-        IReadOnlyCollection<string>? equippedItemKeys = null)
+        IReadOnlyCollection<string>? equippedItemKeys = null,
+        string emotionalRegisterCode = "neutral")
     {
         Id = id;
         CharacterId = characterId;
         DefinitionKey = definitionKey;
         DisplayName = displayName;
+        EmotionalRegisterCode = NormalizeEmotionalRegisterCode(emotionalRegisterCode);
         StatBlock = statBlock;
         _skills.AddRange(skills);
         EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
@@ -28,6 +30,7 @@ public sealed class RunCharacterSnapshot
     public Guid CharacterId { get; }
     public string DefinitionKey { get; }
     public string DisplayName { get; }
+    public string EmotionalRegisterCode { get; }
     public RunCharacterStatSnapshot StatBlock { get; }
     public IReadOnlyCollection<RunCharacterSkillSnapshot> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<string> EquippedItemKeys { get; private set; }
@@ -38,7 +41,8 @@ public sealed class RunCharacterSnapshot
         string displayName,
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
-        IReadOnlyCollection<string>? equippedItemKeys = null)
+        IReadOnlyCollection<string>? equippedItemKeys = null,
+        string emotionalRegisterCode = "neutral")
     {
         if (characterId == Guid.Empty)
             throw new DomainException("Character id is required.");
@@ -59,7 +63,8 @@ public sealed class RunCharacterSnapshot
             displayName.Trim(),
             statBlock,
             skills,
-            equippedItemKeys);
+            equippedItemKeys,
+            emotionalRegisterCode);
     }
 
     /// <summary>
@@ -97,6 +102,14 @@ public sealed class RunCharacterSnapshot
             .ToArray();
     }
 
+    private static string NormalizeEmotionalRegisterCode(string emotionalRegisterCode)
+    {
+        if (string.IsNullOrWhiteSpace(emotionalRegisterCode))
+            throw new DomainException("Character emotional register code is required.");
+
+        return emotionalRegisterCode.Trim().ToLowerInvariant();
+    }
+
     public static RunCharacterSnapshot Rehydrate(
         Guid id,
         Guid characterId,
@@ -104,9 +117,10 @@ public sealed class RunCharacterSnapshot
         string displayName,
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
-        IReadOnlyCollection<string>? equippedItemKeys = null)
+        IReadOnlyCollection<string>? equippedItemKeys = null,
+        string emotionalRegisterCode = "neutral")
     {
         return new RunCharacterSnapshot(
-            id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys);
+            id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys, emotionalRegisterCode);
     }
 }

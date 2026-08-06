@@ -12,6 +12,7 @@ public sealed class Combatant
         string displayName,
         CombatantSide side,
         string archetype,
+        EmotionalType naturalEmotionalType,
         int maxVitality,
         int currentVitality,
         int guard,
@@ -30,6 +31,7 @@ public sealed class Combatant
         DisplayName = displayName;
         Side = side;
         Archetype = archetype;
+        NaturalEmotionalType = naturalEmotionalType;
         MaxVitality = maxVitality;
         CurrentVitality = currentVitality;
         Guard = guard;
@@ -49,6 +51,7 @@ public sealed class Combatant
     public string DisplayName { get; }
     public CombatantSide Side { get; }
     public string Archetype { get; }
+    public EmotionalType NaturalEmotionalType { get; }
     public int MaxVitality { get; }
     public int CurrentVitality { get; private set; }
     public int Guard { get; private set; }
@@ -302,7 +305,8 @@ public sealed class Combatant
         string archetype,
         int maxVitality,
         int baseGuard = 0,
-        IReadOnlyCollection<CombatantSkill>? skills = null)
+        IReadOnlyCollection<CombatantSkill>? skills = null,
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -326,6 +330,7 @@ public sealed class Combatant
             displayName,
             CombatantSide.Player,
             archetype,
+            naturalEmotionalType,
             maxVitality,
             currentVitality: maxVitality,
             guard: baseGuard,
@@ -353,7 +358,8 @@ public sealed class Combatant
         int magicAttack = 0,
         int magicDefense = 0,
         int mana = 0,
-        int movement = 4)
+        int movement = 4,
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -382,6 +388,7 @@ public sealed class Combatant
             displayName,
             CombatantSide.Enemy,
             archetype,
+            naturalEmotionalType,
             maxVitality,
             currentVitality: maxVitality,
             guard: startingGuard,
@@ -415,7 +422,8 @@ public sealed class Combatant
         int? maxMana = null,
         int magicAttack = 0,
         int magicDefense = 0,
-        int movement = 4)
+        int movement = 4,
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -476,6 +484,7 @@ public sealed class Combatant
             displayName.Trim(),
             side,
             archetype,
+            naturalEmotionalType,
             maxVitality,
             currentVitality,
             guard,
@@ -603,7 +612,8 @@ public sealed class Combatant
         int dotDamageBonusPercent = 0,
         int maxMana = int.MaxValue,
         int healingBonusPercent = 0,
-        bool hasActedThisCombat = false)
+        bool hasActedThisCombat = false,
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -628,7 +638,7 @@ public sealed class Combatant
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, naturalEmotionalType, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(

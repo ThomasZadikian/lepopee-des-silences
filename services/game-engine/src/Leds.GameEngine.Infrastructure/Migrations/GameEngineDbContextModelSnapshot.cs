@@ -726,6 +726,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
 
+                    b.Property<string>("NaturalEmotionalRegister")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Neutral")
+                        .HasColumnName("natural_emotional_register");
+
                     b.Property<string>("Side")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1955,6 +1963,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<string>("EquippedItemKeysCsv")
                         .HasColumnType("text")
                         .HasColumnName("equipped_item_keys_csv");
+
+                    b.Property<string>("EmotionalRegisterCode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("neutral")
+                        .HasColumnName("emotional_register_code");
 
                     b.Property<Guid>("PlayerSnapshotId")
                         .HasColumnType("uuid")

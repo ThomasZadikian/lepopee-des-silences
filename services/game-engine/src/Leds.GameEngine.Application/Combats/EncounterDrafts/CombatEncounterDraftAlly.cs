@@ -18,4 +18,5 @@ public sealed record CombatEncounterDraftAlly(
     IReadOnlyCollection<CombatEncounterDraftSkill>? Skills = null,
     int MagicAttack = 0,
     int MagicDefense = 0,
-    int Movement = 4);
+    int Movement = 4,
+    string EmotionalRegister = "neutral");

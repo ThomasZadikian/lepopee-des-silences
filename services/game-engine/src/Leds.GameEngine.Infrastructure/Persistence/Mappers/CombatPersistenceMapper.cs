@@ -25,6 +25,7 @@ public static class CombatPersistenceMapper
             DisplayName = combatant.DisplayName,
             Side = combatant.Side.ToString(),
             Archetype = combatant.Archetype,
+            NaturalEmotionalRegister = combatant.NaturalEmotionalType.ToString(),
             MaxVitality = combatant.MaxVitality,
             CurrentVitality = combatant.CurrentVitality,
             Guard = combatant.Guard,
@@ -280,7 +281,10 @@ public static class CombatPersistenceMapper
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
             dotDamageBonusPercent: entity.DotDamageBonusPercent,
             healingBonusPercent: entity.HealingBonusPercent,
-            hasActedThisCombat: entity.HasActedThisCombat);
+            hasActedThisCombat: entity.HasActedThisCombat,
+            naturalEmotionalType: EmotionalTypeCode.ParseRequired(
+                entity.NaturalEmotionalRegister,
+                $"Combatant '{entity.SourceKey}' natural emotional register"));
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

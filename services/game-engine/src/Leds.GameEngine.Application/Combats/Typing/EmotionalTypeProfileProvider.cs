@@ -4,62 +4,11 @@ using Leds.GameEngine.Domain.Combats.Typing;
 namespace Leds.GameEngine.Application.Combats.Typing;
 
 /// <summary>
-/// Resolves a combatant's natural register, then derives all defensive affinities
-/// from the single global matrix. Identity mappings are transitional snapshots of
-/// Catalog definitions; they never redefine weakness, resistance or immunity.
+/// Derives every defensive affinity from the combatant's snapshotted natural register.
+/// Character keys and tactical archetypes never participate in affinity resolution.
 /// </summary>
 public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 {
-    private static readonly IReadOnlyDictionary<string, CombatantTypeProfile> ProfilesByKey =
-        new Dictionary<string, CombatantTypeProfile>(StringComparer.OrdinalIgnoreCase)
-        {
-            // ── Hero (by SourceKey) ───────────────────────────────────────────
-            // In combat the hero's SourceKey is the draft AllyKey "player.self";
-            // "character.player.self" is the catalog/definition key. Both map here.
-            ["player.self"] = Profile(EmotionalType.Memoire),
-            ["character.player.self"] = Profile(EmotionalType.Memoire),
-            ["character.thomas"] = Profile(EmotionalType.Silence),
-            ["character.mane"] = Profile(EmotionalType.Rupture),
-            ["character.mina"] = Profile(EmotionalType.Folie),
-            ["character.elise"] = Profile(EmotionalType.Melancolie),
-            ["character.john"] = Profile(EmotionalType.Deni),
-
-            // ── Enemy archetypes (CatalogSeedRunner.UpsertEnemyAsync's `archetype`
-            // param) — every distinct value actually used by the bestiary, plus
-            // "Fragile" kept as a generic example/test fixture (not currently seeded). ──
-            ["Fragile"] = Profile(EmotionalType.Melancolie),
-
-            ["Shadow"] = Profile(EmotionalType.Effroi),
-
-            ["Guard"] = Profile(EmotionalType.Rupture),
-
-            ["Bruiser"] = Profile(EmotionalType.Rupture),
-
-            ["Memory"] = Profile(EmotionalType.Memoire),
-
-            ["Support"] = Profile(EmotionalType.Deni),
-
-            ["Disruptor"] = Profile(EmotionalType.Folie),
-
-            ["Skirmisher"] = Profile(EmotionalType.Silence),
-
-            // Literal "Rupture" archetype (distinct role bucket from Guard/Bruiser,
-            // both of which also attack with Rupture but carry different affinities).
-            ["Rupture"] = Profile(EmotionalType.Rupture),
-
-            // ── Named bosses (by SourceKey = EnemyDefinition.Key) — each gets a
-            // bespoke profile instead of sharing the generic "Boss" archetype bucket.
-            ["canon.enemy.grand-cardinal"] = Profile(EmotionalType.Deni),
-
-            ["canon.enemy.imperatrice-vipere"] = Profile(EmotionalType.Folie),
-
-            ["canon.enemy.homoncule-roi"] = Profile(EmotionalType.Rupture),
-
-            ["canon.enemy.pape-louis-xvii"] = Profile(EmotionalType.Effroi),
-
-            ["canon.enemy.himlit"] = Profile(EmotionalType.Folie),
-        };
-
     public CombatantTypeProfile Resolve(Combatant combatant)
     {
         if (combatant is null)
@@ -67,7 +16,7 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
             return CombatantTypeProfile.Neutral;
         }
 
-        var baseProfile = ResolveBaseProfile(combatant);
+        var baseProfile = Profile(combatant.NaturalEmotionalType);
 
         // An item-driven attack type override changes the offensive type only;
         // the combatant keeps its innate weaknesses / resistances / immunities.
@@ -81,23 +30,6 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         }
 
         return baseProfile;
-    }
-
-    private static CombatantTypeProfile ResolveBaseProfile(Combatant combatant)
-    {
-        if (!string.IsNullOrWhiteSpace(combatant.SourceKey)
-            && ProfilesByKey.TryGetValue(combatant.SourceKey, out var bySource))
-        {
-            return bySource;
-        }
-
-        if (!string.IsNullOrWhiteSpace(combatant.Archetype)
-            && ProfilesByKey.TryGetValue(combatant.Archetype, out var byArchetype))
-        {
-            return byArchetype;
-        }
-
-        return CombatantTypeProfile.Neutral;
     }
 
     public EmotionalType ResolveAttackType(Combatant attacker, CombatantSkill skill)
@@ -149,6 +81,11 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 
     private static CombatantTypeProfile Profile(EmotionalType naturalRegister)
     {
+        if (naturalRegister == EmotionalType.Neutral)
+        {
+            return CombatantTypeProfile.Neutral;
+        }
+
         var (weak, resistant, immune) = naturalRegister switch
         {
             EmotionalType.Effroi => (EmotionalType.Memoire, EmotionalType.Rupture, EmotionalType.Silence),

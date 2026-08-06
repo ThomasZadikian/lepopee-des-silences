@@ -7,6 +7,7 @@ public sealed class RunCharacterSnapshotEntity
     public Guid CharacterId { get; set; }
     public string DefinitionKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    public string EmotionalRegisterCode { get; set; } = "neutral";
     public int SnapshotOrder { get; set; }
     public string? EquippedItemKeysCsv { get; set; }
     public RunPlayerSnapshotEntity? PlayerSnapshot { get; set; }

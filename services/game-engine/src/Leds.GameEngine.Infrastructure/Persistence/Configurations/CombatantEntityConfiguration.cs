@@ -18,6 +18,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
         builder.Property(c => c.Side).HasColumnName("side").HasMaxLength(32).IsRequired();
         builder.Property(c => c.Archetype).HasColumnName("archetype").HasMaxLength(128).IsRequired();
+        builder.Property(c => c.NaturalEmotionalRegister).HasColumnName("natural_emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
         builder.Property(c => c.MaxVitality).HasColumnName("max_vitality");
         builder.Property(c => c.CurrentVitality).HasColumnName("current_vitality");
         builder.Property(c => c.Guard).HasColumnName("guard");
