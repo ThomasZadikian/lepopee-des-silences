@@ -133,9 +133,11 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
     {
         // Catalog is the sole authoring source. Tags and skill keys are intentionally
         // ignored: accepting them as overrides allowed contradictory definitions.
-        if (!string.IsNullOrWhiteSpace(emotionalRegister)
-            && !string.Equals(emotionalRegister, "Neutral", StringComparison.OrdinalIgnoreCase)
-            && Enum.TryParse<EmotionalType>(emotionalRegister, ignoreCase: true, out var registerType))
+        var registerType = EmotionalTypeCode.ParseRequired(
+            emotionalRegister,
+            $"Skill '{skillKey ?? "<unknown>"}' EmotionalRegister");
+
+        if (registerType != EmotionalType.Neutral)
         {
             type = registerType;
             return true;

@@ -13,7 +13,8 @@ public sealed record CombatEncounterDraftEnemyDto(
     int MaxRiskLevel,
     IReadOnlyCollection<string> Tags,
     IReadOnlyCollection<string> SkillKeys,
-    IReadOnlyCollection<CombatEncounterDraftSkillDto> Skills)
+    IReadOnlyCollection<CombatEncounterDraftSkillDto> Skills,
+    string EmotionalRegister)
 {
     public static CombatEncounterDraftEnemyDto FromDomain(CombatEncounterDraftEnemy enemy)
     {
@@ -28,6 +29,7 @@ public sealed record CombatEncounterDraftEnemyDto(
             MaxRiskLevel: enemy.MaxRiskLevel,
             Tags: enemy.Tags,
             SkillKeys: enemy.SkillKeys,
+            EmotionalRegister: enemy.EmotionalRegister,
             Skills: enemy.Skills
                 .Select(CombatEncounterDraftSkillDto.FromDomain)
                 .ToArray());

@@ -104,6 +104,23 @@ public sealed class EmotionalTypeProfileProviderTests
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unknown-register")]
+    public void Invalid_catalog_register_is_rejected_instead_of_inheriting_from_caster(string? register)
+    {
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        var skill = CombatantSkill.Rehydrate(
+            "skill.invalid", "Invalid", "Damage", "SingleEnemy", "Damage", 0, 0, 10, [],
+            emotionalRegister: register!);
+
+        var act = () => _provider.ResolveAttackType(hero, skill);
+
+        act.Should().Throw<Leds.GameEngine.Domain.Common.DomainException>()
+            .WithMessage("*EmotionalRegister*");
+    }
+
     [Fact]
     public void Attack_type_override_replaces_basic_attack_type()
     {

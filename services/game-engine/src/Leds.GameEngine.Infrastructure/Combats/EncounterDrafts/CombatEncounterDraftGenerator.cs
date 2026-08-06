@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 
@@ -113,6 +114,9 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                     MagicDefense: ScaleStat(e.MagicDefense, statMultiplier),
                     Mana: e.Mana,
                     Movement: e.Movement,
+                    EmotionalRegister: EmotionalTypeCode.ParseRequired(
+                        e.Registre,
+                        $"Enemy '{e.Key}' Registre").ToString(),
                     Skills: e.SkillKeys
                         .Select(sk => skillLookup.GetValueOrDefault(sk))
                         .Where(s => s is not null)
