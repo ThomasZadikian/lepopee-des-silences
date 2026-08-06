@@ -16,9 +16,9 @@ public sealed class CombatSkillEffectResolverTypingTests
     [Fact]
     public void Weakness_amplifies_damage_and_logs()
     {
-        // Fragile enemy is weak to Rupture; hero attacks with a Rupture-tagged skill.
+        // Fragile enemy is weak to Rupture; Catalog declares the skill as Rupture.
         var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Fragile");
-        var skill = DamageSkill("skill.rupture", power: 10, tag: "emotype:rupture");
+        var skill = DamageSkill("skill.rupture", power: 10, emotionalRegister: "Rupture");
 
         var result = _resolver.Resolve(combat, hero, skill, [enemy]);
 
@@ -33,7 +33,7 @@ public sealed class CombatSkillEffectResolverTypingTests
     {
         // Guard resists Rupture.
         var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Guard");
-        var skill = DamageSkill("skill.rupture", power: 10, tag: "emotype:rupture");
+        var skill = DamageSkill("skill.rupture", power: 10, emotionalRegister: "Rupture");
 
         var result = _resolver.Resolve(combat, hero, skill, [enemy]);
 
@@ -48,7 +48,7 @@ public sealed class CombatSkillEffectResolverTypingTests
     {
         // Unknown hero archetype + no type tag => Neutral => x1.0, no crit (Focus 0).
         var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Guard");
-        var skill = DamageSkill("skill.plain", power: 10, tag: null);
+        var skill = DamageSkill("skill.plain", power: 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, hero, skill, [enemy]);
 
@@ -69,7 +69,7 @@ public sealed class CombatSkillEffectResolverTypingTests
         return (combat, hero, enemy);
     }
 
-    private static CombatantSkill DamageSkill(string key, int power, string? tag)
+    private static CombatantSkill DamageSkill(string key, int power, string emotionalRegister)
     {
         return CombatantSkill.Create(
             key,
@@ -80,6 +80,6 @@ public sealed class CombatSkillEffectResolverTypingTests
             0,
             0,
             power,
-            tag is null ? null : new[] { tag });
+            emotionalRegister: emotionalRegister);
     }
 }

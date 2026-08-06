@@ -15,7 +15,7 @@ public sealed record CombatantSkillRuntimeDto(
     IReadOnlyCollection<string> Tags,
     string Category = "Physical",
     // The skill's OWN "élément" (registre émotionnel) — null for basic attacks and
-    // any skill without a declared type (see EmotionalTypeProfileProvider.SkillTypesByKey).
+    // attacks explicitly declared Neutral by Catalog.
     string? EmotionalType = null,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
@@ -26,12 +26,7 @@ public sealed record CombatantSkillRuntimeDto(
 {
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {
-        // L'"élément" affiché à l'UI vient de la résolution intrinsèque (tag emotype:
-        // ou table SkillTypesByKey) — voir la doc de TryResolveIntrinsicType, qui indique
-        // explicitement que c'est la source destinée à FromDomain. skill.EmotionalRegister
-        // (champ du seed catalogue, presque toujours "Neutral") ne représente pas ça : il
-        // n'était pas branché ici, ce qui faisait passer pour "sans registre" jusqu'à des
-        // sorts déclarés typés (ex. "Plongée dans la folie" → Folie).
+        // Catalog's EmotionalRegister is the sole source surfaced to the client.
         var emotionalType = EmotionalTypeProfileProvider.TryResolveIntrinsicType(skill, out var type)
             ? type.ToString()
             : null;

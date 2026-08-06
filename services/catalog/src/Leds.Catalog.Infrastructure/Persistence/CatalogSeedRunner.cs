@@ -1495,7 +1495,7 @@ public sealed partial class CatalogSeedRunner
     {
         var persona = new NpcPersona(
             "La première projection de l'Architecte — et de toutes, celle qui lui ressemble le plus. Calme, très équilibré, il a une conscience parfaite de ce qu'est le Palais et a fait la paix avec son propre statut. Il erre désormais dans l'objectif d'aider les aventuriers qui croisent sa route.",
-            EmotionalRegister.Memoire,
+            EmotionalRegister.Silence,
             new[] { "l'architecture du Palais", "le premier architecte", "aider les aventuriers" },
             new[] { "qu'on critique l'architecture du Palais" });
 
@@ -1573,7 +1573,7 @@ public sealed partial class CatalogSeedRunner
 
         return await UpsertNpcAsync("npc.thomas", "Thomas",
             "La première projection de l'Architecte, et celle qui lui ressemble le plus. Calme, équilibré, conscient de ce qu'est le Palais — il a fait la paix avec son statut et aide désormais les aventuriers qui croisent sa route.",
-            "1.1", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            "1.1", EmotionalRegister.Silence, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -2015,7 +2015,7 @@ public sealed partial class CatalogSeedRunner
     {
         var persona = new NpcPersona(
             "Une petite fille née dans le Palais, la seconde de ses habitants. Elle ne connaît pas ses parents et les cherche sans relâche, partout où elle passe — Him'Lit veille sur elle de si près que le Palais ne semble jamais vraiment l'atteindre",
-            EmotionalRegister.Memoire,
+            EmotionalRegister.Folie,
             new[] { "chercher ses parents", "Mané, Araran, Margot et Erika", "être protégée" },
             new[] { "qu'on lui dise que ses parents sont morts", "qu'on lui dise qu'ils n'ont jamais existé", "être laissée seule" });
 
@@ -2107,7 +2107,7 @@ public sealed partial class CatalogSeedRunner
 
         return await UpsertNpcAsync("npc.mina", "Mina",
             "Une petite fille née dans le Palais, la seconde de ses habitants. Ses parents restent inconnus ; elle les cherche partout, sous la surveillance protectrice de Him'Lit, qui la tient à l'écart de toutes les influences du Palais.",
-            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            "1.0", EmotionalRegister.Folie, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -2121,7 +2121,7 @@ public sealed partial class CatalogSeedRunner
     {
         var persona = new NpcPersona(
             "Aussi ancienne que l'Enfant. Elle connaît chaque pierre, chaque couloir, chaque loi du Palais — et ne dit jamais rien de ce qu'elle sait. Apprendre seul, ici, n'est pas une punition : c'est la seule voie qu'elle reconnaît.",
-            EmotionalRegister.Silence,
+            EmotionalRegister.Melancolie,
             new[] { "accompagner sans guider", "le silence", "regarder apprendre" },
             Array.Empty<string>());
 
@@ -2201,7 +2201,7 @@ public sealed partial class CatalogSeedRunner
 
         return await UpsertNpcAsync("npc.elise", "Elise",
             "L'accompagnatrice du Palais, aussi ancienne que l'Enfant. Elle connaît toutes les connaissances du Palais et guide les aventuriers dans sa traversée — sans jamais répondre à une question, puisqu'il faut apprendre seul, ici. Totalement apathique.",
-            "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct,
+            "1.0", EmotionalRegister.Melancolie, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -2214,7 +2214,7 @@ public sealed partial class CatalogSeedRunner
     {
         var persona = new NpcPersona(
             "Un ancien voleur, méfiant et amer, mais rusé et débrouillard — il a survécu des années dans le Palais en volant ce qu'il fallait. Il aime l'indépendance et profiter d'une faille ; il déteste l'autorité, être enfermé, et par-dessus tout, Him'Lit.",
-            EmotionalRegister.Rupture,
+            EmotionalRegister.Deni,
             new[] { "l'indépendance", "profiter d'une faille", "voler ce dont il a besoin" },
             new[] { "Him'Lit", "l'autorité", "être enfermé" });
 
@@ -2298,7 +2298,7 @@ public sealed partial class CatalogSeedRunner
 
         return await UpsertNpcAsync("npc.john", "John",
             "Un ancien voleur qui, en pillant d'anciennes ruines, a fini par traverser la faille du Palais. Il y a survécu des années en volant, jusqu'à ce que le Palais l'envoie « digérer » via l'arrestation de Him'Lit — qu'il déteste depuis, tout comme la seule mention de son nom.",
-            "1.0", EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
+            "1.0", EmotionalRegister.Deni, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -2325,7 +2325,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "meute", "elite" },
             skillKeys: new[] { "skill.basic.strike" },
             vitality: 40, attack: 10, defense: 9, guard: 4, speed: 11, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.lamiz", "Lamiz",
@@ -2336,7 +2336,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "meute" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 16, attack: 5, defense: 0, guard: 0, speed: 14, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.uguiro", "Uguiro",
@@ -2347,7 +2347,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "monstre", "elite" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 48, attack: 12, defense: 12, guard: 5, speed: 8, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.ombres-tentaculaires", "Ombres tentaculaires",
@@ -2358,7 +2358,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "ambiance", "brume" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 18, attack: 5, defense: 3, guard: 0, speed: 12, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.oeil-du-visionnaire", "L'Œil du Visionnaire animé",
@@ -2369,7 +2369,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "lituisme", "surveillance", "motif" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 24, attack: 7, defense: 6, guard: 2, speed: 16, focus: 6,
-            cancellationToken);
+            cancellationToken, registre: "Memoire");
 
         await UpsertEnemyAsync(
             "canon.enemy.goule-anxiete", "La Goule",
@@ -2388,7 +2388,7 @@ public sealed partial class CatalogSeedRunner
                 "canon.skill.se-taire"
             },
             vitality: 38, attack: 9, defense: 6, guard: 3, speed: 12, focus: 3,
-            cancellationToken);
+            cancellationToken, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.homoncule", "L'Homoncule",
@@ -2399,7 +2399,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "alchimie", "homoncule", "elite", "weak.fire" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 52, attack: 13, defense: 15, guard: 6, speed: 7, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Rupture");
 
         // ── Ennemis canon additionnels (renfort du bestiaire, mêmes familles/thèmes) ──
         await UpsertEnemyAsync(
@@ -2411,7 +2411,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "fossoyeur" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.brume" },
             vitality: 18, attack: 7, defense: 3, guard: 0, speed: 14, focus: 0,
-            cancellationToken);
+            cancellationToken, registre: "Rupture");
 
         await UpsertEnemyAsync(
             "canon.enemy.enfant-argile", "L'Enfant d'argile",
@@ -2422,7 +2422,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "alchimie", "argile", "enfant" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.transmutation" },
             vitality: 16, attack: 4, defense: 6, guard: 2, speed: 9, focus: 3,
-            cancellationToken);
+            cancellationToken, registre: "Rupture");
     }
 
     // riskMin/riskMax are compared at runtime against ResolveCurrentEventCommandHandler's
@@ -2642,8 +2642,7 @@ public sealed partial class CatalogSeedRunner
             category: "Magic");
 
         // "Frayeur organique" (Ethan) : une peur qui vient du corps, pas de la voix —
-        // type Effroi intrinsèque au sort (voir EmotionalTypeProfileProvider.SkillTypesByKey),
-        // indépendant de qui le lance.
+        // type Effroi intrinsèque déclaré ici, dans le Catalog, indépendamment du lanceur.
         await UpsertSkillAsync("canon.skill.frayeur-organique", "Frayeur organique",
             "Une peur qui ne vient pas de la voix — elle sourd de lui, brute, organique, sans qu'il ait besoin de dire un mot.",
             "Damage", "SingleEnemy", "Damage", mana: 14, power: 16, cancellationToken, emotionalRegister: "Effroi", audience: "Any",
@@ -2750,7 +2749,7 @@ public sealed partial class CatalogSeedRunner
             effects: new[] { new SkillEffectSpec("Silence", null, 0, TicksPerTurn) },
             category: "Magic");
 
-        // Type émotionnel intrinsèque (Mémoire) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        // Type émotionnel intrinsèque (Mémoire) déclaré dans le Catalog.
         await UpsertSkillAsync("canon.skill.sursaut-memoriel", "Sursaut mémoriel",
             "La mémoire est une réalité qu'il faut trop souvent fuir. Mais rappelez-vous, et souffrez pour accepter.",
             "Damage", "SingleEnemy", "Damage", mana: 20, power: 12, cancellationToken, emotionalRegister: "Memoire", audience: "Enemy",
@@ -2774,27 +2773,26 @@ public sealed partial class CatalogSeedRunner
             category: "Magic",
             basePowerIsPercentOfMaxVitality: true);
 
-        // Type émotionnel intrinsèque (Déni) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        // Type émotionnel intrinsèque (Déni) déclaré dans le Catalog.
         await UpsertSkillAsync("canon.skill.anagramme", "Anagramme",
             "Inverse les lettres, change les mots, change de personne et attaque sous une nouvelle identité.",
             "Damage", "SingleEnemy", "Damage", mana: 14, power: 17, cancellationToken, emotionalRegister: "Deni", audience: "Enemy",
             category: "Magic");
 
-        // Type émotionnel intrinsèque (Silence) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        // Type émotionnel intrinsèque (Silence) déclaré dans le Catalog.
         await UpsertSkillAsync("canon.skill.lecture-des-silences", "Lecture des silences",
             "Lire des passages du tome de silence n'est pas donné à tous, mais ceux qui y arrivent font peser le silence sur les ennemis.",
             "Damage", "SingleEnemy", "Damage", mana: 14, power: 15, cancellationToken, emotionalRegister: "Silence", audience: "Enemy",
             category: "Magic");
 
-        // Type émotionnel intrinsèque (Effroi) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        // Type émotionnel intrinsèque (Effroi) déclaré dans le Catalog.
         await UpsertSkillAsync("canon.skill.nevrose", "Névrose",
             "Plonger son ennemi dans une névrose profonde, lui dictant des passages du tome des silences.",
             "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken, emotionalRegister: "Effroi", audience: "Enemy",
             effects: new[] { new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 10, TickInterval: TicksPerTurn) },
             category: "Magic");
 
-        // Type émotionnel intrinsèque (Folie, nouveau registre) déclaré dans
-        // EmotionalTypeProfileProvider.SkillTypesByKey. Malédiction à double tranchant :
+        // Type émotionnel intrinsèque (Folie) déclaré dans le Catalog. Malédiction à double tranchant :
         // la cible devient plus forte (Attaque/Vitesse/Focus +7%) tout en se consumant
         // (DoT), les deux durant la même fenêtre de 15 tours.
         await UpsertSkillAsync("canon.skill.plongee-dans-la-folie", "Plongée dans la folie",

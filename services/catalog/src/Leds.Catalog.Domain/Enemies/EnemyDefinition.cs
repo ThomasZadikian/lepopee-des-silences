@@ -1,6 +1,8 @@
 using Leds.Catalog.Domain.Abstractions;
 using Leds.Catalog.Domain.CatalogContent;
 using Leds.Catalog.Domain.Errors;
+using Leds.Catalog.Domain.Gameplay;
+using Leds.Catalog.Domain.Npcs;
 
 namespace Leds.Catalog.Domain.Enemies;
 
@@ -233,6 +235,13 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             throw new DomainException("Enemy definition rarity is required.");
         }
 
+        var hasKnownRegister = EmotionalRegisterCatalog.TryParse(registre, out var parsedRegister);
+
+        if (status == CatalogContentStatus.Active && !hasKnownRegister)
+        {
+            throw new DomainException("Active enemy definition emotional register must reference a known Catalog register.");
+        }
+
         var distinctRoomTypes = compatibleRoomTypes is null || compatibleRoomTypes.Count == 0
             ? throw new DomainException("Enemy definition must have at least one compatible room type.")
             : compatibleRoomTypes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -273,7 +282,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             magicDefense,
             menace,
             rarity.Trim(),
-            string.IsNullOrWhiteSpace(registre) ? null : registre.Trim(),
+            hasKnownRegister ? parsedRegister.ToString() : null,
             distinctBoundRoomKeys,
             movement);
     }

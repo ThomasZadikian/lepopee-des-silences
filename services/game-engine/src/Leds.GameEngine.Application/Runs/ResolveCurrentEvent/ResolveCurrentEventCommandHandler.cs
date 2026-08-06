@@ -458,7 +458,11 @@ public sealed class ResolveCurrentEventCommandHandler
         foreach (var companion in characters.Skip(1).Take(Run.MaxPartySize - 1))
         {
             allies.Add(new CombatEncounterDraftAlly(
-                AllyKey: $"companion.{companion.CharacterId:N}",
+                // The combatant source key is the immutable Catalog definition key.
+                // CharacterId remains the instance identity in the run snapshot; replacing
+                // DefinitionKey here used to make emotional profiles and equipment lookup
+                // impossible for every companion.
+                AllyKey: companion.DefinitionKey,
                 DisplayName: companion.DisplayName,
                 Role: "Companion",
                 Tags: new[] { "companion" },

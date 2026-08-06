@@ -2,6 +2,7 @@ using Leds.Catalog.Domain.Abstractions;
 using Leds.Catalog.Domain.CatalogContent;
 using Leds.Catalog.Domain.Errors;
 using Leds.Catalog.Domain.Gameplay;
+using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.Skills;
 
 namespace Leds.Catalog.Domain.Skills.Definitions;
@@ -154,6 +155,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             throw new DomainException("Skill definition emotional register is required.");
         }
 
+        var parsedRegister = EmotionalRegisterCatalog.Parse(emotionalRegister);
+
         var normalizedAudience = string.IsNullOrWhiteSpace(audience) ? "Player" : audience.Trim();
         if (normalizedAudience is not ("Player" or "Enemy" or "Any"))
         {
@@ -188,7 +191,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister.Trim(),
+            parsedRegister.ToString(),
             normalizedAudience,
             allowedArchetypes ?? []);
     }

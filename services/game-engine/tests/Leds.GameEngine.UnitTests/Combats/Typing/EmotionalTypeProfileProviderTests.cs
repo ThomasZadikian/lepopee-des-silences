@@ -17,7 +17,9 @@ public sealed class EmotionalTypeProfileProviderTests
         var profile = _provider.Resolve(fragile);
 
         profile.AttackType.Should().Be(EmotionalType.Melancolie);
-        profile.WeakTo.Should().Contain(EmotionalType.Rupture);
+        profile.WeakTo.Should().Contain(EmotionalType.Silence);
+        profile.ResistantTo.Should().Contain(EmotionalType.Memoire);
+        profile.ImmuneTo.Should().Contain(EmotionalType.Effroi);
     }
 
     [Fact]
@@ -28,7 +30,9 @@ public sealed class EmotionalTypeProfileProviderTests
         var profile = _provider.Resolve(hero);
 
         profile.AttackType.Should().Be(EmotionalType.Memoire);
-        profile.WeakTo.Should().Contain(EmotionalType.Effroi);
+        profile.WeakTo.Should().Contain(EmotionalType.Deni);
+        profile.ResistantTo.Should().Contain(EmotionalType.Folie);
+        profile.ImmuneTo.Should().Contain(EmotionalType.Rupture);
     }
 
     [Fact]
@@ -40,16 +44,17 @@ public sealed class EmotionalTypeProfileProviderTests
     }
 
     [Fact]
-    public void Skill_tag_overrides_attack_type()
+    public void Catalog_register_defines_attack_type()
     {
         var attacker = Combatant.CreateEnemy("enemy.x", "X", "Guard", 50); // profile attack = Rupture
-        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10, ["emotype:silence"]);
+        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            emotionalRegister: "Silence");
 
         _provider.ResolveAttackType(attacker, skill).Should().Be(EmotionalType.Silence);
     }
 
     [Fact]
-    public void Attack_type_falls_back_to_profile_when_no_tag()
+    public void Neutral_catalog_register_inherits_profile()
     {
         var attacker = Combatant.CreateEnemy("enemy.x", "X", "Guard", 50);
         var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
@@ -69,10 +74,11 @@ public sealed class EmotionalTypeProfileProviderTests
     [Fact]
     public void Spell_uses_its_intrinsic_type_regardless_of_caster()
     {
-        // skill-shadow-bite is registered as an intrinsic spell type (Silence).
+        // Catalog declares skill-shadow-bite as Silence.
         // Cast by a hero whose character type is Memoire, it still deals Silence.
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
-        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35,
+            emotionalRegister: "Silence");
 
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
     }
@@ -82,19 +88,20 @@ public sealed class EmotionalTypeProfileProviderTests
     {
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
         var spell = CombatantSkill.Create(
-            "canon.skill.frayeur-organique", "Frayeur organique", "Damage", "SingleEnemy", "Damage", 0, 0, 20);
+            "canon.skill.frayeur-organique", "Frayeur organique", "Damage", "SingleEnemy", "Damage", 0, 0, 20,
+            emotionalRegister: "Effroi");
 
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Effroi);
     }
 
     [Fact]
-    public void Skill_tag_overrides_intrinsic_spell_type()
+    public void Tags_cannot_override_catalog_register()
     {
-        // A tag, if ever present, wins over the registry entry.
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
-        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35, ["emotype:rupture"]);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35,
+            tags: ["emotype:rupture"], emotionalRegister: "Silence");
 
-        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Rupture);
+        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
     }
 
     [Fact]
@@ -116,7 +123,23 @@ public sealed class EmotionalTypeProfileProviderTests
         var profile = _provider.Resolve(hero);
 
         profile.AttackType.Should().Be(EmotionalType.Rupture);
-        profile.WeakTo.Should().Contain(EmotionalType.Effroi);
+        profile.WeakTo.Should().Contain(EmotionalType.Deni);
+        profile.ImmuneTo.Should().Contain(EmotionalType.Rupture);
+    }
+
+    [Theory]
+    [InlineData("character.thomas", EmotionalType.Silence)]
+    [InlineData("character.mane", EmotionalType.Rupture)]
+    [InlineData("character.mina", EmotionalType.Folie)]
+    [InlineData("character.elise", EmotionalType.Melancolie)]
+    [InlineData("character.john", EmotionalType.Deni)]
+    public void Resolves_companion_natural_register_from_definition_key(
+        string definitionKey,
+        EmotionalType expected)
+    {
+        var companion = Combatant.CreateAlly(definitionKey, "Companion", "AnyRole", 100);
+
+        _provider.Resolve(companion).AttackType.Should().Be(expected);
     }
 
     [Fact]
@@ -124,7 +147,8 @@ public sealed class EmotionalTypeProfileProviderTests
     {
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
         hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
-        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35,
+            emotionalRegister: "Silence");
 
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
     }

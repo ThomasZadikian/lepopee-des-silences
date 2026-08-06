@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.Catalog.Application.Npcs.Definitions.Ports;
 using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Gameplay;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Infrastructure.Persistence;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
@@ -39,9 +40,9 @@ public sealed class EfNpcDefinitionReadStore : INpcDefinitionReadStore
         var compatiblePalaceRoomStates = JsonSerializer.Deserialize<List<string>>(entity.CompatiblePalaceRoomStatesJson) ?? [];
         var compatibleRoomClimates = JsonSerializer.Deserialize<List<string>>(entity.CompatibleRoomClimatesJson) ?? [];
 
-        var affinity = Enum.TryParse<EmotionalRegister>(entity.EmotionalAffinity, ignoreCase: true, out var parsed)
-            ? parsed
-            : EmotionalRegister.Neutral;
+        // Persisted Catalog content is authoritative. Invalid data must not silently
+        // turn into Neutral, otherwise an authoring error changes combat semantics.
+        var affinity = EmotionalRegisterCatalog.Parse(entity.EmotionalAffinity);
 
         var persona = DeserializeOrNull<NpcPersona>(entity.PersonaJson);
         var dialogueGraph = DeserializeOrNull<NpcDialogueGraph>(entity.DialogueGraphJson);

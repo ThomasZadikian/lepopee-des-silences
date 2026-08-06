@@ -684,7 +684,7 @@ public sealed class CombatSkillEffectResolverTests
         ally.ApplyTypedDamageReductions(new Dictionary<EmotionalType, int> { [EmotionalType.Memoire] = 15 });
         var skill = CombatantSkill.Create(
             "skill.enemy.memoire-strike", "Frappe mémorielle", "Damage", "SingleAlly", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 20, tags: new[] { "emotype:memoire" });
+            manaCost: 0, chargeCost: 0, basePower: 20, emotionalRegister: "Memoire");
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
