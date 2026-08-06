@@ -25,8 +25,8 @@ beforeEach(() => {
   useEmotionalRegisterCatalog().install('test-1', definitions);
 });
 
-function mountBadge(type: string, compact = false) {
-  return mount(EmotionalTypeBadge, { props: { type, compact } });
+function mountBadge(type: string) {
+  return mount(EmotionalTypeBadge, { props: { type } });
 }
 
 describe('EmotionalTypeBadge', () => {
@@ -83,24 +83,10 @@ describe('EmotionalTypeBadge', () => {
     expect(wrapper.find('.type-badge__glyph').text()).toBe('✶');
   });
 
-  it('displays label in non-compact mode', () => {
-    const wrapper = mountBadge('Effroi', false);
-    expect(wrapper.find('.type-badge__label').exists()).toBe(true);
-  });
-
-  it('hides label in compact mode', () => {
-    const wrapper = mountBadge('Effroi', true);
-    expect(wrapper.find('.type-badge__label').exists()).toBe(false);
-  });
-
-  it('applies compact class when compact is true', () => {
-    const wrapper = mountBadge('Effroi', true);
-    expect(wrapper.find('.type-badge').classes()).toContain('type-badge--compact');
-  });
-
-  it('does not apply compact class when compact is false', () => {
-    const wrapper = mountBadge('Effroi', false);
-    expect(wrapper.find('.type-badge').classes()).not.toContain('type-badge--compact');
+  it('always displays the label next to the glyph', () => {
+    const wrapper = mountBadge('Effroi');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('✶');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Effroi');
   });
 
   it('sets title attribute with type label', () => {

@@ -4,6 +4,13 @@ import { ROSTER } from '../../palace-map/composables/bestiaire';
 import { fallbackPropFor, figureIdFor } from './useCombatantSprites';
 
 describe('combatant sprite bridge', () => {
+  it.each(['player.self', 'character.player.self'])(
+    'keeps the protagonist asset for source key %s',
+    (sourceKey) => {
+      expect(figureIdFor(sourceKey, 'Thomas')).toBe('porteur');
+    },
+  );
+
   it.each(
     Object.entries(ROSTER)
       .filter(([, entry]) => entry.catalogKey)

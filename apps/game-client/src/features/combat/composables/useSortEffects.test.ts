@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SORTS } from '../../palace-map/composables/sorts';
-import { fallbackSortId, sortIdForSkillKey } from './useSortEffects';
+import { fallbackSortId, sortIdForSkillKey, useSortEffects } from './useSortEffects';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const MAPPED_SKILLS = [
   'canon.skill.fondations-de-thomas',
@@ -21,6 +25,46 @@ const MAPPED_SKILLS = [
 ] as const;
 
 describe('tactical spell effects', () => {
+  it('resolves only when the painted effect has completed', async () => {
+    vi.useFakeTimers();
+    const effects = useSortEffects();
+    let completed = false;
+
+    const running = effects.launchSort(
+      'fondations',
+      0,
+      0,
+      { width: 1, height: 1, elevation: [0], floor: [true] },
+      { canvasWidth: 800, canvasHeight: 600, gridWidth: 1, gridHeight: 1 },
+    ).then(() => { completed = true; });
+
+    expect(effects.activeSorts.value).toHaveLength(1);
+    expect(completed).toBe(false);
+
+    await vi.runAllTimersAsync();
+    await running;
+
+    expect(completed).toBe(true);
+    expect(effects.activeSorts.value).toHaveLength(0);
+  });
+
+  it('resolves a running effect when the scene is reset', async () => {
+    vi.useFakeTimers();
+    const effects = useSortEffects();
+    const running = effects.launchSort(
+      'fondations',
+      0,
+      0,
+      { width: 1, height: 1, elevation: [0], floor: [true] },
+      { canvasWidth: 800, canvasHeight: 600, gridWidth: 1, gridHeight: 1 },
+    );
+
+    effects.reset();
+    await running;
+
+    expect(effects.activeSorts.value).toHaveLength(0);
+  });
+
   it.each(MAPPED_SKILLS)('maps %s to an existing painted effect', (skillKey) => {
     const sortId = sortIdForSkillKey(skillKey);
 

@@ -79,7 +79,7 @@ onMounted(async () => {
             :class="{ 'manif-list__item--sel': i === selectedIndex }"
             @click="selectedIndex = i"
           >
-            <div class="manif-list__badge"><EmotionalTypeBadge :type="boss.emotionalRegister" compact /></div>
+            <div class="manif-list__badge"><EmotionalTypeBadge :type="boss.emotionalRegister" /></div>
             <div>
               <div class="manif-list__name">{{ boss.displayName }}</div>
               <div class="manif-list__salle">{{ roomLabel(boss) }}</div>
@@ -110,7 +110,6 @@ onMounted(async () => {
                   v-for="affinity in selectedWeaknesses"
                   :key="affinity.incomingRegister"
                   :type="affinity.incomingRegister"
-                  compact
                 />
               </div>
               <div class="manif-detail__affinity">
@@ -119,7 +118,6 @@ onMounted(async () => {
                   v-for="affinity in selectedResistances"
                   :key="affinity.incomingRegister"
                   :type="affinity.incomingRegister"
-                  compact
                 />
               </div>
               <div v-if="selectedImmunities.length" class="manif-detail__affinity">
@@ -128,7 +126,6 @@ onMounted(async () => {
                   v-for="affinity in selectedImmunities"
                   :key="affinity.incomingRegister"
                   :type="affinity.incomingRegister"
-                  compact
                 />
               </div>
             </div>

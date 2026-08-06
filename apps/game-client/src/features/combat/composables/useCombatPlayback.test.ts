@@ -103,6 +103,54 @@ describe('annonce du geste adverse', () => {
   });
 });
 
+describe('file des animations de compétence', () => {
+  it('attend la transition de scène puis la fin du sort avant de terminer la lecture', async () => {
+    const playback = useCombatPlayback();
+    const allyId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const order: string[] = [];
+    let finishSort: (() => void) | null = null;
+
+    playback.setSceneTransitionWaiter(async () => {
+      order.push('transition');
+    });
+    playback.setSortAnimator(async (sort) => {
+      order.push(`sort:${sort.x},${sort.y}`);
+      await new Promise<void>((resolve) => { finishSort = resolve; });
+      order.push('sort-finished');
+    });
+
+    const running = playback.play(
+      [{
+        kind: 'Skill' as const,
+        actorId: allyId,
+        actorName: 'Thomas',
+        path: [],
+        skillKey: 'canon.skill.fondations-de-thomas',
+        skillName: 'Fondations',
+        targetX: 4,
+        targetY: 2,
+        telegraphCells: null,
+        impacts: [],
+      }],
+      {
+        allies: [{ combatant: { id: allyId, currentVitality: 100 } }],
+        enemies: [],
+      } as never,
+      () => 0,
+    );
+
+    await Promise.resolve();
+    expect(order).toEqual(['transition', 'sort:4,2']);
+    expect(playback.isPlaying.value).toBe(true);
+
+    finishSort!();
+    await running;
+
+    expect(order).toEqual(['transition', 'sort:4,2', 'sort-finished']);
+    expect(playback.isPlaying.value).toBe(false);
+  });
+});
+
 describe('vitalité affichée pendant la lecture', () => {
   const enemyAId = '55555555-5555-5555-5555-555555555555';
   const enemyBId = '66666666-6666-6666-6666-666666666666';

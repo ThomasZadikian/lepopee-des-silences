@@ -7,7 +7,7 @@
  * vidée de ses nœuds. Seuls le bandeau d'initiative et la barre d'action restent du DOM : ce
  * sont des commandes, pas de la scène.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import {
   GROUND_ANCHOR_RATIO,
@@ -53,7 +53,14 @@ import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
-import { FLOAT_MS, FLOAT_RISE_PX, IMPACT_MS, PACE, useCombatPlayback } from '../composables/useCombatPlayback';
+import {
+  FLOAT_MS,
+  FLOAT_RISE_PX,
+  IMPACT_MS,
+  PACE,
+  useCombatPlayback,
+  type PendingSort,
+} from '../composables/useCombatPlayback';
 import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
 import { ticksToTurns } from '../constants/combatTime';
 import {
@@ -90,6 +97,7 @@ const sortEffects = useSortEffects();
 const playback = useCombatPlayback();
 
 const canvasEl = ref<HTMLCanvasElement | null>(null);
+const bottomEl = ref<HTMLElement | null>(null);
 const canvasSize = ref({ width: 0, height: 0 });
 const hoveredCell = ref<{ x: number; y: number } | null>(null);
 
@@ -330,7 +338,11 @@ function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
   }
 }
 
-function skillTypeMeta(skill: CombatantSkillRuntimeDto): { glyph: string; color: string } | null {
+function skillTypeMeta(skill: CombatantSkillRuntimeDto): {
+  glyph: string;
+  color: string;
+  displayName: string;
+} | null {
   const definition = emotionalRegisters.definitionOf(skill.emotionalRegister);
   return definition?.code.toLowerCase() === 'neutral' ? null : definition;
 }
@@ -1409,36 +1421,52 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
 }
 
 function paintSorts(ctx: CanvasRenderingContext2D) {
+  sortEffects.renderSorts(ctx);
+}
+
+async function playSortAnimation(sort: PendingSort): Promise<void> {
   const field = battlefield.value;
   if (!field) return;
 
-  const pending = store.playback.consumeSorts();
-  for (const sort of pending) {
-    const def = skillCatalog.value.get(sort.skillKey);
-    const sortId = sortIdForSkillKey(sort.skillKey) ?? fallbackSortId(def?.category, def?.tacticalAreaShape);
-    const registerColor = def
-      ? emotionalRegisters.definitionOf(def.emotionalRegister)?.color
-      : undefined;
+  const def = skillCatalog.value.get(sort.skillKey);
+  const sortId = sortIdForSkillKey(sort.skillKey)
+    ?? fallbackSortId(def?.category, def?.tacticalAreaShape);
+  const registerColor = def
+    ? emotionalRegisters.definitionOf(def.emotionalRegister)?.color
+    : undefined;
 
-    sortEffects.launchSort(
-      sortId,
-      sort.x,
-      sort.y,
-      {
-        width: field.width,
-        height: field.height,
-        elevation: field.elevation,
-        floor: field.floor,
-      },
-      projectionParams.value,
-      sort.casterX,
-      sort.casterY,
-      def?.tacticalAreaShape,
-      registerColor,
-    );
-  }
+  await sortEffects.launchSort(
+    sortId,
+    sort.x,
+    sort.y,
+    {
+      width: field.width,
+      height: field.height,
+      elevation: field.elevation,
+      floor: field.floor,
+    },
+    projectionParams.value,
+    sort.casterX,
+    sort.casterY,
+    def?.tacticalAreaShape,
+    registerColor,
+  );
+}
 
-  sortEffects.renderSorts(ctx);
+/**
+ * Attend les transitions qui changent réellement la taille du plateau. `nextTick` pose la
+ * classe collapsed, la première frame matérialise les CSSAnimation, `finished` garantit leur
+ * fin ; la dernière frame laisse ResizeObserver publier la projection finale au canvas.
+ */
+async function waitForSceneTransition(): Promise<void> {
+  if (prefersReducedMotion) return;
+
+  await nextTick();
+  await new Promise<void>((resolve) => globalThis.requestAnimationFrame(() => resolve()));
+
+  const animations = bottomEl.value?.getAnimations?.() ?? [];
+  await Promise.allSettled(animations.map((animation) => animation.finished));
+  await new Promise<void>((resolve) => globalThis.requestAnimationFrame(() => resolve()));
 }
 
 // Même silhouette que le bouclier de SigilIcon ('equipement'), pour que « la Garde a absorbé »
@@ -1713,6 +1741,9 @@ watch(
 );
 
 onMounted(() => {
+  store.playback.setSortAnimator(playSortAnimation);
+  store.playback.setSceneTransitionWaiter(waitForSceneTransition);
+
   skillsApi.listActive()
     .then((response) => {
       skillCatalog.value = new Map(response.skills.map((skill) => [skill.key, skill]));
@@ -1736,6 +1767,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  store.playback.setSortAnimator(null);
+  store.playback.setSceneTransitionWaiter(null);
+  sortEffects.reset();
   globalThis.cancelAnimationFrame(frameHandle);
   observer?.disconnect();
   observer = null;
@@ -1916,7 +1950,7 @@ onBeforeUnmount(() => {
          pendant le tour adverse (rien à y montrer, le bandeau d'action au-dessus du plateau
          porte déjà l'annonce) : le plateau récupère tout l'espace, façon plan large cinématique
          sur l'action ennemie plutôt qu'un HUD figé en arrière-plan. ── -->
-    <footer class="tbattle__bottom" :class="{ 'tbattle__bottom--collapsed': !store.isPlayerTurn }">
+    <footer ref="bottomEl" class="tbattle__bottom" :class="{ 'tbattle__bottom--collapsed': !store.isPlayerTurn }">
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
         <div
@@ -1962,8 +1996,9 @@ onBeforeUnmount(() => {
             >
               <span class="tbattle__skill-slot">
                 <span class="tbattle__skill-slot-num">{{ index + 1 }}</span>
-                <span v-if="skillTypeMeta(skill)" class="tbattle__skill-glyph">
-                  {{ skillTypeMeta(skill)!.glyph }}
+                <span v-if="skillTypeMeta(skill)" class="tbattle__skill-type">
+                  <span class="tbattle__skill-glyph">{{ skillTypeMeta(skill)!.glyph }}</span>
+                  <span class="tbattle__skill-type-label">{{ skillTypeMeta(skill)!.displayName }}</span>
                 </span>
               </span>
               <span class="tbattle__skill-name">
@@ -2569,12 +2604,12 @@ onBeforeUnmount(() => {
   --skill-accent: var(--ink-4);
   position: relative;
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 62px 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 0.6rem;
   row-gap: 1px;
-  width: 184px;
+  width: 230px;
   border-left: 3px solid var(--skill-accent);
   background: color-mix(in oklch, var(--skill-accent), var(--panel-2) 90%);
 }
@@ -2587,6 +2622,18 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 3px;
+}
+
+.tbattle__skill-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--skill-accent);
+  font-family: var(--font-caps);
+  font-size: 0.48rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .tbattle__skill-slot-num {

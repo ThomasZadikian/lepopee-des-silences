@@ -3,14 +3,9 @@ import { computed } from 'vue';
 
 import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
 
-const props = withDefaults(
-  defineProps<{
-    type: string;
-    /** Compact omits the label and shows only the colored glyph. */
-    compact?: boolean;
-  }>(),
-  { compact: false },
-);
+const props = defineProps<{
+  type: string;
+}>();
 
 const registerStore = useEmotionalRegisterCatalog();
 const definition = computed(() => registerStore.definitionOf(props.type));
@@ -22,12 +17,12 @@ const color = computed(() => definition.value?.color ?? 'var(--danger-dim)');
 <template>
   <span
     class="type-badge"
-    :class="{ 'type-badge--compact': compact, 'type-badge--invalid': !definition }"
+    :class="{ 'type-badge--invalid': !definition }"
     :style="{ '--type-color': color }"
     :title="definition ? `Registre émotionnel : ${label}` : `Registre émotionnel inconnu : ${type}`"
   >
     <span class="type-badge__glyph">{{ glyph }}</span>
-    <span v-if="!compact" class="type-badge__label">{{ label }}</span>
+    <span class="type-badge__label">{{ label }}</span>
   </span>
 </template>
 
@@ -49,7 +44,6 @@ const color = computed(() => definition.value?.color ?? 'var(--danger-dim)');
   line-height: 1.4;
 }
 
-.type-badge--compact { padding: 1px 4px; font-size: 0.62rem; }
 .type-badge--invalid { border-style: dashed; }
 .type-badge__glyph { font-size: 0.7em; line-height: 1; }
 .type-badge__label { font-weight: 600; }

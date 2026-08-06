@@ -31,7 +31,7 @@ const typeMeta = computed(() => registerStore.definitionOf(props.skill.emotional
   >
     <div class="grimoire-card__head">
       <span class="grimoire-card__name">{{ skill.displayName }}</span>
-      <EmotionalTypeBadge :type="skill.emotionalRegister" compact />
+      <EmotionalTypeBadge :type="skill.emotionalRegister" />
       <span v-if="skill.isUltimate" class="grimoire-chip grimoire-chip--ultimate">Ultime</span>
       <span class="grimoire-chip">{{ categoryLabel(skill.effectType) }}</span>
       <span class="grimoire-chip grimoire-chip--muted">{{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}</span>

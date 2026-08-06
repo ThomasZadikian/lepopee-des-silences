@@ -17,8 +17,18 @@ import type { PropKind } from '../../palace-map/composables/useTerrainSprites';
  * Optimisé pour O-012 : Lazy Loading des sprites + cache.
  */
 
-/** Le protagoniste n'a pas de clé de catalogue : il porte la sienne, en dur côté moteur. */
-const PROTAGONIST_KEY = 'player.self';
+/**
+ * Les clés historiques et canonique du protagoniste.
+ *
+ * `player.self` était émise par l'ancien moteur. Depuis que Catalog est l'unique référentiel,
+ * le snapshot tactique porte `character.player.self`. Les deux désignent la même figure :
+ * garder explicitement l'alias historique permet aussi de reprendre une run antérieure sans
+ * transformer le joueur en silhouette générique.
+ */
+const PROTAGONIST_KEYS = new Set([
+  'player.self',
+  'character.player.self',
+]);
 const PROTAGONIST_FIGURE = 'porteur';
 
 /** Préfixes de domaine que le bestiaire ne connaît pas. */
@@ -76,7 +86,7 @@ const FILLER = /-(du|de|des|la|le|les|d|l|au|aux)-/g;
  * catalogue. L'appelant retombe alors sur une silhouette générique.
  */
 export function figureIdFor(sourceKey: string, displayName: string): string | null {
-  if (sourceKey === PROTAGONIST_KEY) return PROTAGONIST_FIGURE;
+  if (PROTAGONIST_KEYS.has(sourceKey)) return PROTAGONIST_FIGURE;
 
   const catalogFigure = figureByCatalogKey.get(sourceKey);
   if (catalogFigure) return catalogFigure;

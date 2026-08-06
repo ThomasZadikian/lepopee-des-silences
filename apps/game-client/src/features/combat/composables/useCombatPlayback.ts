@@ -142,6 +142,9 @@ export type PendingSort = {
   casterY: number;
 };
 
+type SortAnimator = (sort: PendingSort) => Promise<void>;
+type SceneTransitionWaiter = () => Promise<void>;
+
 export type WalkAnimation = {
   combatantId: string;
   path: Array<{ x: number; y: number }>;
@@ -181,7 +184,6 @@ export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
   const floats = ref<FloatingNumber[]>([]);
   const impacts = ref<ImpactEffect[]>([]);
-  const pendingSorts = ref<PendingSort[]>([]);
   const isPlaying = ref(false);
 
   const actionBanner = ref<string | null>(null);
@@ -223,6 +225,8 @@ export function useCombatPlayback() {
   let floatSeq = 0;
   let impactSeq = 0;
   let timers: ReturnType<typeof globalThis.setTimeout>[] = [];
+  let sortAnimator: SortAnimator | null = null;
+  let sceneTransitionWaiter: SceneTransitionWaiter | null = null;
 
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -237,12 +241,25 @@ export function useCombatPlayback() {
     displayVitals.value = {};
     displayStatusEffects.value = {};
     actionBanner.value = null;
-    pendingSorts.value = [];
     telegraph.value = null;
     isPlaying.value = false;
     // O-017: Réinitialiser l'état de transition
     isTransitioning.value = false;
     transitionPhase.value = null;
+  }
+
+  /**
+   * Branche la peinture canvas sur la chronologie métier. Le lecteur reste testable sans DOM,
+   * mais, dans la scène réelle, une compétence n'est considérée terminée qu'une fois son effet
+   * peint achevé.
+   */
+  function setSortAnimator(animator: SortAnimator | null) {
+    sortAnimator = animator;
+  }
+
+  /** Attend le repli/agrandissement réel du plateau avant de calculer la projection d'un FX. */
+  function setSceneTransitionWaiter(waiter: SceneTransitionWaiter | null) {
+    sceneTransitionWaiter = waiter;
   }
 
   /** La vitalité d'un combattant à cet instant : reconstruite pendant la lecture, réelle sinon. */
@@ -461,6 +478,11 @@ export function useCombatPlayback() {
     isPlaying.value = true;
 
     try {
+      // `isPlaying` rétracte le HUD et rend de la hauteur au canvas. La projection du sort ne
+      // doit être calculée qu'après cette transition : sinon son centre conserve les coordonnées
+      // de l'ancien plateau et l'effet paraît partir en retard ou à côté de la case choisie.
+      if (sceneTransitionWaiter) await sceneTransitionWaiter();
+
       for (const event of events) {
         const actorIsAlly = allyIds.has(event.actorId);
 
@@ -512,7 +534,10 @@ export function useCombatPlayback() {
             // l'autre, jamais tous d'un coup au même pixel — voir TICK_IMPACT_STAGGER_MS.
             if (i < tickImpacts.length - 1) await wait(TICK_IMPACT_STAGGER_MS);
           }
-          await wait(TICK_SETTLE_MS);
+          // Le tick suivant (ou le geste suivant) ne démarre pas pendant que les chiffres et
+          // impacts du dernier tick sont encore visibles : ils forment une seule animation de
+          // groupe, mais ce groupe doit être entièrement terminé avant la suite.
+          await wait(Math.max(TICK_SETTLE_MS, FLOAT_MS, IMPACT_MS));
           continue;
         }
 
@@ -553,6 +578,27 @@ export function useCombatPlayback() {
 
           const actorPos = pinned.value[event.actorId] ?? event.path[0] ?? null;
 
+          let sortCompletion = Promise.resolve();
+          if (
+            event.kind === 'Skill'
+              && event.skillKey
+              && typeof event.targetX === 'number'
+              && typeof event.targetY === 'number'
+          ) {
+            const sort = {
+              skillKey: event.skillKey,
+              x: event.targetX,
+              y: event.targetY,
+              casterX: actorPos?.x ?? event.targetX,
+              casterY: actorPos?.y ?? event.targetY,
+            };
+
+            // Sans scène (tests ou rendu non monté), aucune peinture n'est possible et la
+            // chronologie conserve simplement son temps de lisibilité. Dans la scène réelle,
+            // l'animateur est toujours branché au montage.
+            if (sortAnimator) sortCompletion = sortAnimator(sort);
+          }
+
           for (const impact of event.impacts) {
             const targetIsAlly = allyIds.has(impact.combatantId);
             const guardAbsorbed = impact.guardAbsorbed ?? 0;
@@ -578,32 +624,19 @@ export function useCombatPlayback() {
             if (!impact.missed) pushImpact(impact.x, impact.y, targetIsAlly, at);
           }
 
-          if (
-            event.kind === 'Skill'
-              &&
-            event.skillKey
-              && typeof event.targetX === 'number'
-              && typeof event.targetY === 'number'
-          ) {
-            pendingSorts.value = [
-              ...pendingSorts.value,
-              {
-                skillKey: event.skillKey,
-                x: event.targetX,
-                y: event.targetY,
-                casterX: actorPos?.x ?? event.targetX,
-                casterY: actorPos?.y ?? event.targetY,
-              },
-            ];
-          }
-
           // O-018: Temps de settle plus long pour les ennemis. L'allié gardait la moitié du
           // temps de base (le joueur "sait déjà" ce qu'il vient de faire) — mais divisé par
           // deux plutôt que simplement égal au temps de base, l'écart avec l'ennemi (×1.5)
           // atteignait un facteur 3 : le coup du héros se lisait bien plus vite que celui d'un
           // ennemi même après le ralenti global (PACE). Retour au temps de base, sans réduction.
           const settleMs = actorIsAlly ? SETTLE_MS : SETTLE_MS * ENEMY_SETTLE_MULTIPLIER;
-          await wait(settleMs);
+          // La pause de lisibilité et la peinture appartiennent à la même action. L'événement
+          // suivant attend la plus longue des deux, ce qui interdit tout chevauchement entre
+          // deux gestes sans ajouter leur durée l'une à l'autre artificiellement.
+          const impactCompletion = event.impacts.length > 0
+            ? wait(Math.max(FLOAT_MS, IMPACT_MS))
+            : Promise.resolve();
+          await Promise.all([sortCompletion, impactCompletion, wait(settleMs)]);
           actionBanner.value = null;
         }
       }
@@ -641,17 +674,10 @@ export function useCombatPlayback() {
     displayStatusEffects.value = statusPins;
   }
 
-  function consumeSorts(): PendingSort[] {
-    const sorts = pendingSorts.value;
-    pendingSorts.value = [];
-    return sorts;
-  }
-
   return {
     walk,
     floats,
     impacts,
-    pendingSorts,
     actionBanner,
     telegraph,
     isPlaying: computed(() => isPlaying.value),
@@ -662,7 +688,8 @@ export function useCombatPlayback() {
     statusEffectsOf,
     pruneFloats,
     pruneImpacts,
-    consumeSorts,
+    setSortAnimator,
+    setSceneTransitionWaiter,
     play,
     pinBefore,
     reset,

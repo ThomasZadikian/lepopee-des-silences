@@ -163,7 +163,7 @@ const STAT_ROWS: { key: 'attackPower' | 'defense' | 'speed' | 'magicAttack' | 'm
                     ? `${affinity.effectiveMultiplier.toFixed(2)}× · ${affinity.modifiers.map((modifier) => modifier.sourceKey).join(', ')}`
                     : `${affinity.effectiveMultiplier.toFixed(2)}×`"
                 >
-                  <EmotionalTypeBadge :type="affinity.incomingRegister" compact />
+                  <EmotionalTypeBadge :type="affinity.incomingRegister" />
                   <small v-if="affinity.modifierPercent !== 0">{{ affinity.effectiveMultiplier.toFixed(2) }}×</small>
                 </span>
               </span>

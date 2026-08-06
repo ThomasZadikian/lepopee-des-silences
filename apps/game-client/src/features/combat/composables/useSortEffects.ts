@@ -29,6 +29,8 @@ export type SortEffect = {
   duration: number;
   from: { x: number; y: number } | null;
   color: string;
+  timer: ReturnType<typeof globalThis.setTimeout>;
+  finish: () => void;
 };
 
 const SORT_DURATION_MS = Math.round(1500 * PACE);
@@ -45,6 +47,15 @@ export function useSortEffects() {
   const activeSorts = ref<SortEffect[]>([]);
   let effectSequence = 0;
 
+  function completeSort(id: number): void {
+    const effect = activeSorts.value.find((candidate) => candidate.id === id);
+    if (!effect) return;
+
+    globalThis.clearTimeout(effect.timer);
+    activeSorts.value = activeSorts.value.filter((candidate) => candidate.id !== id);
+    effect.finish();
+  }
+
   function launchSort(
     sortId: string,
     centerX: number,
@@ -60,8 +71,8 @@ export function useSortEffects() {
     casterY?: number,
     catalogShape?: string,
     catalogColor = '#8b9dcf',
-  ) {
-    if (!sortId || !(SORTS as Record<string, any>)[sortId]) return;
+  ): Promise<void> {
+    if (!sortId || !(SORTS as Record<string, any>)[sortId]) return Promise.resolve();
 
     const sort = (SORTS as Record<string, any>)[sortId];
     const shape = (catalogShape ?? sort.shape).toLowerCase();
@@ -106,30 +117,36 @@ export function useSortEffects() {
       ? projectToScreen(casterX, casterY, projection)
       : null;
 
-    activeSorts.value = [
-      ...activeSorts.value,
-      {
-        id: (effectSequence += 1),
+    const id = (effectSequence += 1);
+
+    return new Promise<void>((resolve) => {
+      const effect: SortEffect = {
+        id,
         sortId,
         cells,
         startedAt: performance.now(),
         duration: SORT_DURATION_MS,
         from: from ? { x: from.screenX, y: from.screenY } : null,
         color: catalogColor,
-      },
-    ];
+        timer: globalThis.setTimeout(() => completeSort(id), SORT_DURATION_MS),
+        finish: resolve,
+      };
+
+      activeSorts.value = [...activeSorts.value, effect];
+    });
   }
 
   function clearSorts() {
+    const running = activeSorts.value;
     activeSorts.value = [];
+    for (const effect of running) {
+      globalThis.clearTimeout(effect.timer);
+      effect.finish();
+    }
   }
 
   function renderSorts(ctx: CanvasRenderingContext2D): void {
     const now = performance.now();
-    activeSorts.value = activeSorts.value.filter(
-      (sort) => now - sort.startedAt < sort.duration,
-    );
-
     for (const sort of activeSorts.value) {
       const progress = (now - sort.startedAt) / sort.duration;
       renderPaintedSort(ctx, sort.sortId, sort.cells, progress, sort.from, sort.color);

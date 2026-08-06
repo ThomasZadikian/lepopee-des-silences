@@ -88,7 +88,7 @@ onMounted(async () => {
           <header class="reputation-card__head">
             <div class="reputation-card__title">
               <span class="reputation-card__name">{{ npc.displayName }}</span>
-              <EmotionalTypeBadge :type="npc.emotionalRegister" compact />
+              <EmotionalTypeBadge :type="npc.emotionalRegister" />
             </div>
             <span class="reputation-card__state" :class="stateClass(npc.aggregateState)">
               {{ stateLabel(npc.aggregateState) }}
