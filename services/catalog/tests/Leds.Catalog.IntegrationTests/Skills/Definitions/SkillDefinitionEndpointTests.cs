@@ -40,6 +40,7 @@ public sealed class SkillDefinitionEndpointTests
         payload.Definitions.Select(d => d.Key)
             .Should()
             .Contain("skill.basic.strike")
+            .And.Contain("skill.basic.guard")
             .And.Contain("canon.skill.flamme-froide")
             .And.Contain("canon.skill.brume");
     }

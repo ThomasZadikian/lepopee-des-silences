@@ -2528,6 +2528,11 @@ public sealed partial class CatalogSeedRunner
             "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
             category: "Physical", emotionalRegister: "Neutral");
 
+        await UpsertSkillAsync("skill.basic.guard", "Garde",
+            "Adopte une posture défensive et génère de la Garde.",
+            "Defense", "Self", "Guard", mana: 0, power: 5, cancellationToken,
+            category: "Physical", emotionalRegister: "Neutral");
+
         await UpsertSkillAsync("canon.skill.flamme-froide", "Flamme froide",
             "Bleu-violet, elle ne brûle pas la peau mais la chair, et le givre transperce l'os. Le sort de l'apothicaire.",
             "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken, emotionalRegister: "Melancolie", audience: "Enemy",

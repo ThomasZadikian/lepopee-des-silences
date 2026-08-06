@@ -9,6 +9,7 @@ internal static class CanonicalTacticalSkillContracts
         new Dictionary<string, CanonicalTacticalSkillContract>(StringComparer.Ordinal)
         {
             ["skill.basic.strike"] = new(1, "Single", false),
+            ["skill.basic.guard"] = new(0, "Single", false),
             ["canon.skill.flamme-froide"] = new(3, "Cross", true),
             ["canon.skill.priere-aspiration"] = new(4, "Single", true),
             ["canon.skill.transmutation"] = new(0, "Single", false),
