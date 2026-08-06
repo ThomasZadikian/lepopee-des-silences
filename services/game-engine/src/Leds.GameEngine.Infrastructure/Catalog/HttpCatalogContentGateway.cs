@@ -942,7 +942,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Key: source.Key,
             DisplayName: source.Name,
             Description: source.Description,
-            Archetype: source.Archetype,
+            Archetype: EnemyArchetypeCode.ParseRequired(
+                source.Archetype,
+                $"Catalog enemy '{source.Key}' Archetype"),
             CompatibleRoomTypes: source.CompatibleRoomTypes,
             BaseDifficulty: source.BaseDifficulty,
             MinRiskLevel: source.MinRiskLevel,

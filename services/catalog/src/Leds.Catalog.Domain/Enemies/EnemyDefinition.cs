@@ -160,10 +160,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             throw new DomainException("Enemy definition description is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(archetype))
-        {
-            throw new DomainException("Enemy definition archetype is required.");
-        }
+        var normalizedArchetype = EnemyArchetypeCatalog.Parse(archetype);
 
         if (baseDifficulty <= 0)
         {
@@ -265,7 +262,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             desc,
             CatalogContentVersion.From(version),
             status,
-            archetype.Trim(),
+            normalizedArchetype,
             baseDifficulty,
             minRiskLevel,
             maxRiskLevel,

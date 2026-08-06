@@ -42,8 +42,6 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         ["Elite"] = 4,
     };
 
-    private const int UnknownArchetypeCost = 2;
-
     private static readonly IReadOnlyDictionary<PalaceRoomState, string[]> ArchetypePreferenceByState =
         new Dictionary<PalaceRoomState, string[]>
         {
@@ -318,6 +316,15 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
     private static int GetArchetypeCost(string archetype)
     {
-        return ArchetypeCosts.GetValueOrDefault(archetype, UnknownArchetypeCost);
+        var canonical = EnemyArchetypeCode.ParseRequired(archetype, "Enemy archetype");
+        return ArchetypeCosts.TryGetValue(canonical, out var cost)
+            ? cost
+            : canonical switch
+            {
+                "Boss" => 4,
+                "Tank" => 3,
+                "Beast" or "Rupture" or "Shadow" or "Memory" or "Trauma" => 2,
+                _ => throw new DomainException($"Enemy archetype '{canonical}' has no encounter cost.")
+            };
     }
 }
