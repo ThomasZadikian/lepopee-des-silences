@@ -21,7 +21,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MinRiskLevel: 1,
         MaxRiskLevel: 2,
         Tags: new[] { "threshold", "fragile" },
-        SkillKeys: new[] { "skill.basic.strike" });
+        SkillKeys: new[] { "skill.basic.strike" },
+        Menace: 1);
 
     private static readonly CatalogEnemyDefinition ResistanceInterieure = new(
         Key: "enemy.threshold.inner-resistance",
@@ -33,7 +34,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MinRiskLevel: 2,
         MaxRiskLevel: 3,
         Tags: new[] { "threshold", "guard" },
-        SkillKeys: new[] { "skill.basic.strike", "skill.basic.shield" });
+        SkillKeys: new[] { "skill.basic.strike", "skill.basic.shield" },
+        Menace: 2);
 
     private static readonly CatalogSkillDefinition SkillStrike = new(
         Key: "skill.basic.strike",
@@ -45,7 +47,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         ManaCost: 5,
         ChargeCost: 0,
         BasePower: 10,
-        Tags: ["basic", "damage"]);
+        Tags: ["basic", "damage"],
+        EmotionalRegister: "neutral");
 
     private static readonly CatalogSkillDefinition SkillShield = new(
         Key: "skill.basic.shield",
@@ -57,7 +60,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         ManaCost: 4,
         ChargeCost: 0,
         BasePower: 0,
-        Tags: ["basic", "shield"]);
+        Tags: ["basic", "shield"],
+        EmotionalRegister: "neutral");
 
     private static readonly CatalogSkillDefinition SkillDisable = new(
         Key: "skill.basic.disable",
@@ -69,7 +73,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         ManaCost: 8,
         ChargeCost: 1,
         BasePower: 0,
-        Tags: ["basic", "disable"]);
+        Tags: ["basic", "disable"],
+        EmotionalRegister: "neutral");
 
     private static readonly IReadOnlyCollection<CatalogSkillDefinition> AllTestSkills =
         [SkillStrike, SkillShield, SkillDisable];

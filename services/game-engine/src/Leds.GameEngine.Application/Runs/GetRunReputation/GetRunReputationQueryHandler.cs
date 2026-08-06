@@ -61,12 +61,18 @@ public sealed class GetRunReputationQueryHandler
         return new NpcReputationDto(
             npc.Key,
             npc.DisplayName,
-            npc.EmotionalAffinity,
+            RequireEmotionalAffinity(npc),
             relationship.RelationshipScore,
             relationship.AggregateState.ToString(),
             relationship.TimesMet,
             offerings);
     }
+
+    private static string RequireEmotionalAffinity(CatalogNpcDefinition npc) =>
+        !string.IsNullOrWhiteSpace(npc.EmotionalAffinity)
+            ? npc.EmotionalAffinity
+            : throw new InvalidOperationException(
+                $"Catalog NPC '{npc.Key}' must declare an emotional register.");
 
     private static NpcOfferingReputationDto ToOfferingDto(CatalogNpcOffering offering, NpcRelationship relationship)
     {

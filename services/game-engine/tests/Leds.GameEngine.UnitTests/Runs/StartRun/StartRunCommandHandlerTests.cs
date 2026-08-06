@@ -405,7 +405,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(g => g.GetSkillDefinitionByKeyAsync("skill.granted.shield", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CatalogSkillDefinition(
                 "skill.granted.shield", "Bouclier accordé", "Un bouclier temporaire.",
-                "Defense", "Self", "Guard", 0, 0, 8, []));
+                "Defense", "Self", "Guard", 0, 0, 8, [], "neutral"));
 
         var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
@@ -605,7 +605,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(g => g.GetSkillDefinitionByKeyAsync("skill.mane.favorite-de-elise", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CatalogSkillDefinition(
                 "skill.mane.favorite-de-elise", "Favorite de Elise", "Un soin instantané.",
-                "Buff", "Self", "Heal", 0, 0, 15, [],
+                "Buff", "Self", "Heal", 0, 0, 15, [], "neutral",
                 BasePowerIsPercentOfMaxVitality: true));
 
         var playerProfileGateway = CreateProfileGateway(playerId);
