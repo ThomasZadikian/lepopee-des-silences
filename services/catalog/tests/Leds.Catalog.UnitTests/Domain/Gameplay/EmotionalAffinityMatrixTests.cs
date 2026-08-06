@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.Catalog.Domain.Errors;
 using Leds.Catalog.Domain.Gameplay;
+using Leds.Catalog.Domain.Npcs;
 
 namespace Leds.Catalog.UnitTests.Domain.Gameplay;
 

@@ -282,7 +282,6 @@ public static class RunPersistenceMapper
             RunId = runId,
             PlayerId = snapshot.PlayerId,
             DisplayName = snapshot.DisplayName,
-            EmotionalRegisterCode = snapshot.EmotionalRegisterCode,
             CreatedAtUtc = snapshot.CreatedAtUtc.UtcDateTime,
             Characters = snapshot.Characters
                 .Select((c, index) => ToCharacterSnapshotEntity(c, index))
@@ -773,9 +772,13 @@ public static class RunPersistenceMapper
 
     private static RunCharacterSnapshot ToDomainCharacterSnapshot(RunCharacterSnapshotEntity entity)
     {
-        var statBlock = entity.StatBlock is not null
-            ? ToDomainCharacterStatSnapshot(entity.StatBlock)
-            : null;
+        if (entity.StatBlock is null)
+        {
+            throw new InvalidOperationException(
+                $"Character snapshot '{entity.Id}' has no persisted stat block.");
+        }
+
+        var statBlock = ToDomainCharacterStatSnapshot(entity.StatBlock);
 
         var skills = entity.Skills
             .Select(ToDomainCharacterSkillSnapshot)
