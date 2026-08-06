@@ -728,10 +728,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<string>("NaturalEmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("natural_emotional_register");
 
                     b.Property<string>("Side")
@@ -1966,10 +1964,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<string>("EmotionalRegisterCode")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("neutral")
                         .HasColumnName("emotional_register_code");
 
                     b.Property<Guid>("PlayerSnapshotId")
