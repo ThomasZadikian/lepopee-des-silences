@@ -21,7 +21,7 @@ public sealed class CombatantSkillEntity
     public bool RequiresLineOfSight { get; set; }
     public int Cooldown { get; set; }
     public bool IsUltimate { get; set; }
-    public string EmotionalRegister { get; set; } = "Neutral";
+    public string EmotionalRegister { get; set; } = string.Empty;
 
     public CombatantEntity? Combatant { get; set; }
 }

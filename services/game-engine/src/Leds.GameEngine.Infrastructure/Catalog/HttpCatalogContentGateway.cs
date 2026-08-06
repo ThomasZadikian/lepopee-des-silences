@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 using System.Net.Http.Json;
@@ -927,7 +928,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             RequiresLineOfSight: source.RequiresLineOfSight,
             Cooldown: source.Cooldown,
             IsUltimate: source.IsUltimate,
-            EmotionalRegister: source.EmotionalRegister,
+            EmotionalRegister: EmotionalTypeCode.ParseRequired(
+                source.EmotionalRegister,
+                $"Catalog skill '{source.Key}' EmotionalRegister").ToString(),
             Audience: source.Audience,
             AllowedArchetypes: source.AllowedArchetypes ?? []);
     }
@@ -1228,7 +1231,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             CompatibleRoomClimates: source.CompatibleRoomClimates ?? [],
             MinDepth: source.MinDepth ?? 0,
             MaxDepth: source.MaxDepth ?? int.MaxValue,
-            EmotionalAffinity: source.EmotionalAffinity ?? "Neutral",
+            EmotionalAffinity: string.IsNullOrWhiteSpace(source.EmotionalAffinity)
+                ? throw new InvalidOperationException(
+                    $"Catalog NPC '{source.Key}' has no emotional register.")
+                : source.EmotionalAffinity,
             IsRecurring: source.IsRecurring,
             Persona: source.Persona is null ? null : MapNpcPersona(source.Persona),
             DialogueGraph: source.DialogueGraph is null ? null : MapNpcDialogueGraph(source.DialogueGraph),

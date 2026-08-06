@@ -31,7 +31,7 @@ public sealed class CombatantSkillEntityConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false);
         builder.Property(s => s.Cooldown).HasColumnName("cooldown").HasDefaultValue(0);
         builder.Property(s => s.IsUltimate).HasColumnName("is_ultimate").HasDefaultValue(false);
-        builder.Property(s => s.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
+        builder.Property(s => s.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).IsRequired();
 
         builder.HasOne(s => s.Combatant)
             .WithMany(c => c.Skills)

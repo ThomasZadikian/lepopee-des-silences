@@ -19,7 +19,7 @@ public sealed class RunCharacterSkillSnapshotEntity
     public bool RequiresLineOfSight { get; set; }
     public int Cooldown { get; set; }
     public bool IsUltimate { get; set; }
-    public string EmotionalRegister { get; set; } = "Neutral";
+    public string EmotionalRegister { get; set; } = string.Empty;
     public string TemporarySlot { get; set; } = "Permanent";
 
     public RunCharacterSnapshotEntity? CharacterSnapshot { get; set; }

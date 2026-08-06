@@ -1059,10 +1059,8 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("EmotionalAffinity")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("emotional_affinity");
 
                     b.Property<string>("EncounterKeysJson")
@@ -2585,10 +2583,8 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("EmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("emotional_register");
 
                     b.Property<bool>("IsUltimate")

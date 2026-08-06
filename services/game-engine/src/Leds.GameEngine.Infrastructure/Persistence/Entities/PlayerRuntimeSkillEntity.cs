@@ -18,7 +18,7 @@ public sealed class PlayerRuntimeSkillEntity
     public bool RequiresLineOfSight { get; set; }
     public int Cooldown { get; set; }
     public bool IsUltimate { get; set; }
-    public string EmotionalRegister { get; set; } = "Neutral";
+    public string EmotionalRegister { get; set; } = string.Empty;
 
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

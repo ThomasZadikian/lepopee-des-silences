@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Domain.Runs;
 
@@ -92,6 +93,8 @@ public sealed class PlayerRuntimeSkill
         if (cooldown < 0)
             throw new DomainException("Player skill cooldown must be non-negative.");
 
+        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Player skill '{key}' EmotionalRegister");
+
         return new PlayerRuntimeSkill(
             key.Trim(), displayName.Trim(), skillType, targetingType, effectType, manaCost, chargeCost, basePower,
             string.IsNullOrWhiteSpace(category) ? "Physical" : category,
@@ -101,7 +104,7 @@ public sealed class PlayerRuntimeSkill
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            string.IsNullOrWhiteSpace(emotionalRegister) ? "Neutral" : emotionalRegister.Trim());
+            emotionalRegister.Trim());
     }
 
     /// <summary>
@@ -126,6 +129,7 @@ public sealed class PlayerRuntimeSkill
         bool isUltimate = false,
         string emotionalRegister = "Neutral")
     {
+        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted player skill '{key}' EmotionalRegister");
         return new PlayerRuntimeSkill(
             key, displayName, skillType, targetingType, effectType, manaCost, chargeCost,
             basePower, category, basePowerIsPercentOfMaxVitality, tacticalRange,

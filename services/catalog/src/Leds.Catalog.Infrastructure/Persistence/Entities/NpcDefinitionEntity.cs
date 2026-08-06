@@ -17,7 +17,7 @@ public sealed class NpcDefinitionEntity
     public string TagsJson { get; set; } = "[]";
 
     // ── NPC system (npc-system-sfd-0.1) ──────────────────────────────────────
-    public string EmotionalAffinity { get; set; } = "Neutral";
+    public string EmotionalAffinity { get; set; } = string.Empty;
     public bool IsRecurring { get; set; }
     public string? PersonaJson { get; set; }
     public string WoundsJson { get; set; } = "[]";

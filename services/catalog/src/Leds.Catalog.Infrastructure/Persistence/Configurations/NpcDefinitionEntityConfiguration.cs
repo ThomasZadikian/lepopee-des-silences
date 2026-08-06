@@ -28,7 +28,7 @@ public sealed class NpcDefinitionEntityConfiguration : IEntityTypeConfiguration<
 
         // NPC system fields
         builder.Property(e => e.EmotionalAffinity)
-            .HasColumnName("emotional_affinity").HasMaxLength(32).IsRequired().HasDefaultValue("Neutral");
+            .HasColumnName("emotional_affinity").HasMaxLength(32).IsRequired();
         builder.Property(e => e.IsRecurring)
             .HasColumnName("is_recurring").IsRequired().HasDefaultValue(false);
         builder.Property(e => e.PersonaJson)

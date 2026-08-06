@@ -28,7 +28,7 @@ public sealed class PlayerRuntimeSkillEntityConfiguration : IEntityTypeConfigura
         builder.Property(s => s.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false).IsRequired();
         builder.Property(s => s.Cooldown).HasColumnName("cooldown").HasDefaultValue(0).IsRequired();
         builder.Property(s => s.IsUltimate).HasColumnName("is_ultimate").HasDefaultValue(false).IsRequired();
-        builder.Property(s => s.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
+        builder.Property(s => s.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).IsRequired();
 
         builder.HasOne(s => s.PlayerState)
             .WithMany(ps => ps.Skills)

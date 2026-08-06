@@ -29,7 +29,7 @@ public sealed class RunCharacterSkillSnapshotEntityConfiguration : IEntityTypeCo
         builder.Property(e => e.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false).IsRequired();
         builder.Property(e => e.Cooldown).HasColumnName("cooldown").HasDefaultValue(0).IsRequired();
         builder.Property(e => e.IsUltimate).HasColumnName("is_ultimate").HasDefaultValue(false).IsRequired();
-        builder.Property(e => e.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
+        builder.Property(e => e.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).IsRequired();
         builder.Property(e => e.TemporarySlot).HasColumnName("temporary_slot").HasMaxLength(16).HasDefaultValue("Permanent").IsRequired();
 
         builder.HasIndex(e => e.CharacterSnapshotId);

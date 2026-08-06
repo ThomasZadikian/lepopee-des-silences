@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.Catalog.Domain.Npcs;
+using Leds.Catalog.Domain.Gameplay;
 using Leds.Catalog.Domain.RewardCursePools;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -137,7 +138,10 @@ public sealed class ExternalCatalogContentSeeder
         e.CompatibleRoomTypesJson = JsonSerializer.Serialize(item.CompatibleRoomTypes ?? [], JsonOptions);
         e.CompatiblePalaceRoomStatesJson = JsonSerializer.Serialize(item.CompatiblePalaceRoomStates ?? [], JsonOptions);
         e.CompatibleRoomClimatesJson = JsonSerializer.Serialize(item.CompatibleRoomClimates ?? [], JsonOptions);
-        e.EmotionalAffinity = string.IsNullOrWhiteSpace(item.EmotionalAffinity) ? "Neutral" : item.EmotionalAffinity!;
+        e.EmotionalAffinity = string.IsNullOrWhiteSpace(item.EmotionalAffinity)
+            ? throw new InvalidOperationException(
+                $"NPC pack entry '{item.Key}' must declare EmotionalAffinity explicitly.")
+            : EmotionalRegisterCatalog.CodeOf(EmotionalRegisterCatalog.Parse(item.EmotionalAffinity));
         e.IsRecurring = item.IsRecurring;
         e.PersonaJson = item.Persona is null ? null : JsonSerializer.Serialize(item.Persona, JsonOptions);
         e.WoundsJson = JsonSerializer.Serialize(item.Wounds ?? [], JsonOptions);

@@ -888,10 +888,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<string>("EmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("emotional_register");
 
                     b.Property<bool>("IsUltimate")
@@ -1240,10 +1238,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<string>("EmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("emotional_register");
 
                     b.Property<bool>("IsUltimate")
@@ -1862,10 +1858,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<string>("EmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasDefaultValue("Neutral")
                         .HasColumnName("emotional_register");
 
                     b.Property<bool>("IsUltimate")

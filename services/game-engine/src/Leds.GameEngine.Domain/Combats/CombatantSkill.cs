@@ -114,6 +114,8 @@ public sealed record CombatantSkill
         if (string.IsNullOrWhiteSpace(emotionalRegister))
             throw new DomainException("Combatant skill emotional register is required.");
 
+        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Combatant skill '{key}' EmotionalRegister");
+
         return new CombatantSkill(
             key.Trim(),
             displayName.Trim(),
@@ -159,6 +161,7 @@ public sealed record CombatantSkill
         bool isUltimate = false,
         string emotionalRegister = "Neutral")
     {
+        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted combatant skill '{key}' EmotionalRegister");
         return new CombatantSkill(
             key, displayName, skillType, targetingType, effectType, manaCost, chargeCost,
             basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>(), category,

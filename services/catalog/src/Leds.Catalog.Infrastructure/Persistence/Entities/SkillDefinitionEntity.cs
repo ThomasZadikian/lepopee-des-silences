@@ -34,7 +34,7 @@ public sealed class SkillDefinitionEntity
     public string TacticalAreaShape { get; set; } = "Single";
     public bool RequiresLineOfSight { get; set; }
     public bool IsUltimate { get; set; }
-    public string EmotionalRegister { get; set; } = "Neutral";
+    public string EmotionalRegister { get; set; } = string.Empty;
     public string Audience { get; set; } = "Player";
     // JSON string array of allowed player archetypes; empty/null = unrestricted.
     public string? AllowedArchetypesJson { get; set; }

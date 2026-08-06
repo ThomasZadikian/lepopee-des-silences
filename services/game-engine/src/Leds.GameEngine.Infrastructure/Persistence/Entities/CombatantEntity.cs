@@ -8,7 +8,7 @@ public sealed class CombatantEntity
     public string DisplayName { get; set; } = string.Empty;
     public string Side { get; set; } = string.Empty;
     public string Archetype { get; set; } = string.Empty;
-    public string NaturalEmotionalRegister { get; set; } = "Neutral";
+    public string NaturalEmotionalRegister { get; set; } = string.Empty;
     public int MaxVitality { get; set; }
     public int CurrentVitality { get; set; }
     public int Guard { get; set; }
