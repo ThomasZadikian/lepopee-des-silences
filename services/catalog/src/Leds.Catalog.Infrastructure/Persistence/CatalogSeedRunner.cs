@@ -2538,7 +2538,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("skill.temp.deluge-mineur", "Déluge mineur",
             "Une vague compacte frappe une zone en losange.",
-            "Damage", "Area", "Damage", mana: 9, power: 20, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 9, power: 20, cancellationToken,
             category: "Magic", cooldown: 2, emotionalRegister: "Melancolie");
 
         await UpsertSkillAsync("skill.temp.ecriture-appliquee", "Écriture appliquée",
@@ -2549,7 +2549,7 @@ public sealed partial class CatalogSeedRunner
 
         await UpsertSkillAsync("skill.temp.souffle-emprunte", "Souffle emprunté",
             "Une flamme volée jaillit en croix.",
-            "Damage", "Area", "Damage", mana: 8, power: 21, cancellationToken,
+            "Damage", "AllEnemies", "Damage", mana: 8, power: 21, cancellationToken,
             category: "Magic", cooldown: 2, emotionalRegister: "Rupture");
 
         await UpsertSkillAsync("skill.temp.construction-ephemere", "Construction éphémère",
