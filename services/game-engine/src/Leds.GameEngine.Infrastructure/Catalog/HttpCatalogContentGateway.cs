@@ -1053,7 +1053,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Key: source.Key,
             DisplayName: source.Name,
             Description: source.Description,
-            Archetype: EnemyArchetypeCode.ParseRequired(
+            Archetype: RequireCatalogCode(
                 source.Archetype,
                 $"Catalog enemy '{source.Key}' Archetype"),
             CompatibleRoomTypes: source.CompatibleRoomTypes,
@@ -1062,6 +1062,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             MaxRiskLevel: source.MaxRiskLevel,
             Tags: source.Tags,
             SkillKeys: source.SkillKeys,
+            Menace: source.Menace,
             AttackPower: source.AttackPower,
             Defense: source.Defense,
             Speed: source.Speed,
@@ -1070,13 +1071,20 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Mana: source.Mana,
             MagicAttack: source.MagicAttack,
             MagicDefense: source.MagicDefense,
-            Menace: source.Menace,
             Rarity: source.Rarity,
             Registre: EmotionalTypeCode.ParseRequired(
                 source.Registre,
                 $"Catalog enemy '{source.Key}' emotional register").ToString().ToLowerInvariant(),
             BoundRoomKeys: source.BoundRoomKeys,
             Movement: source.Movement);
+    }
+
+    private static string RequireCatalogCode(string? value, string contractField)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"{contractField} is required.");
+
+        return value.Trim();
     }
 
     private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(

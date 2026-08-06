@@ -2,6 +2,7 @@ public sealed record CatalogSkillDefinition(
     string Key, string DisplayName, string Description, string SkillType, string TargetingType,
     string EffectType, int ManaCost, int ChargeCost, int BasePower,
     IReadOnlyCollection<string> Tags,
+    string EmotionalRegister,
     IReadOnlyCollection<CatalogSkillEffectSpec>? Effects = null,
     string Category = "Physical",
     bool BasePowerIsPercentOfMaxVitality = false,
@@ -10,7 +11,6 @@ public sealed record CatalogSkillDefinition(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = null!,
     string Audience = "Player",
     IReadOnlyCollection<string>? AllowedArchetypes = null);
 

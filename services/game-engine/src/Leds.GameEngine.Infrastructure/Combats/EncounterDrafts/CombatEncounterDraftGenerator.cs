@@ -109,9 +109,9 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                     MagicDefense: ScaleStat(e.MagicDefense, statMultiplier),
                     Mana: e.Mana,
                     Movement: e.Movement,
-                    EmotionalRegister: EmotionalTypeCode.ParseRequired(
+                    EmotionalRegister: EmotionalTypeCode.NormalizeRequired(
                         e.Registre,
-                        $"Enemy '{e.Key}' Registre").ToString(),
+                        $"Enemy '{e.Key}' Registre"),
                     Skills: e.SkillKeys
                         .Select(sk => skillLookup.GetValueOrDefault(sk))
                         .Where(s => s is not null)

@@ -8,6 +8,7 @@ public sealed record SkillDefinitionDto(
     string SkillType, string TargetingType, string EffectType,
     int ManaCost, int ChargeCost, int BasePower,
     IReadOnlyCollection<SkillEffectSpecDto> Effects,
+    string EmotionalRegister,
     string Category = "Physical",
     bool BasePowerIsPercentOfMaxVitality = false,
     int TacticalRange = 1,
@@ -15,7 +16,6 @@ public sealed record SkillDefinitionDto(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = null!,
     string Audience = "Player",
     IReadOnlyCollection<string>? AllowedArchetypes = null)
 {
@@ -23,6 +23,7 @@ public sealed record SkillDefinitionDto(
         d.Id.Value, d.Key.Value, d.Name.Value, d.Description.Value, d.Version.Value, d.Status.ToString(),
         d.SkillType, d.TargetingType, d.EffectType, d.ManaCost, d.ChargeCost, d.BasePower,
         d.Effects.Select(SkillEffectSpecDto.FromDomain).ToArray(),
+        d.EmotionalRegister,
         d.Category,
         d.BasePowerIsPercentOfMaxVitality,
         d.TacticalRange,
@@ -30,7 +31,6 @@ public sealed record SkillDefinitionDto(
         d.RequiresLineOfSight,
         d.Cooldown,
         d.IsUltimate,
-        d.EmotionalRegister,
         d.Audience,
         d.AllowedArchetypes);
 }

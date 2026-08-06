@@ -57,12 +57,12 @@ public sealed record CombatEncounterDraftSkillDto(
     int ChargeCost,
     int BasePower,
     IReadOnlyCollection<string> Tags,
+    string EmotionalRegister,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
-    bool IsUltimate = false,
-    string EmotionalRegister = null!)
+    bool IsUltimate = false)
 {
     public static CombatEncounterDraftSkillDto FromDomain(CombatEncounterDraftSkill skill)
     {

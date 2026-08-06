@@ -11,6 +11,10 @@ public static class EnemyArchetypeCatalog
         "Rupture", "Shadow", "Skirmisher", "Support", "Tank", "Trauma"
     };
 
+    public static IReadOnlyCollection<string> All => Codes
+        .Order(StringComparer.Ordinal)
+        .ToArray();
+
     public static string Parse(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))

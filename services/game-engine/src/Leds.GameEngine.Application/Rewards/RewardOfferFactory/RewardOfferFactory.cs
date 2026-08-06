@@ -1,8 +1,10 @@
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
@@ -113,9 +115,14 @@ public sealed class RewardOfferFactory
 
         var choices = template.Options.Select(BuildRewardChoiceFromOption).ToList();
 
-        return RewardOffer.Create(
-            Enum.TryParse<RewardSource>(template.SourceType, ignoreCase: true, out var source) ? source : RewardSource.Combat,
-            choices);
+        if (!Enum.TryParse<RewardSource>(template.SourceType, ignoreCase: true, out var source)
+            || !Enum.IsDefined(source))
+        {
+            throw new DomainException(
+                $"Catalog reward template '{template.Key}' has unsupported source '{template.SourceType}'.");
+        }
+
+        return RewardOffer.Create(source, choices);
     }
 
     private static RewardChoice BuildRewardChoiceFromOption(CatalogRewardTemplateOptionSnapshot option)
@@ -128,13 +135,17 @@ public sealed class RewardOfferFactory
     {
         if (option.PayloadType == "Item" && option.PayloadKey is not null)
         {
-            // ItemType/ItemRarity/ItemEffectType default to Consumable/Common/Heal for
-            // templates authored before these fields existed — every "reward.item.*"
-            // template seeded going forward carries its own real values (see
-            // CatalogSeedRunner).
-            var itemType = option.ItemType ?? "Consumable";
-            var itemRarity = option.ItemRarity ?? "Common";
-            var itemEffectType = option.ItemEffectType ?? "Heal";
+            if (string.IsNullOrWhiteSpace(option.ItemType)
+                || string.IsNullOrWhiteSpace(option.ItemRarity)
+                || string.IsNullOrWhiteSpace(option.ItemEffectType))
+            {
+                throw new DomainException(
+                    $"Catalog reward option '{option.Label}' must declare item type, rarity and effect.");
+            }
+
+            var itemType = CatalogRunItemMapper.MapType(option.ItemType, option.ItemType).ToString();
+            var itemRarity = CatalogRunItemMapper.MapRarity(option.ItemRarity).ToString();
+            var itemEffectType = CatalogRunItemMapper.MapEffect(option.ItemEffectType).ToString();
             return $"item:{option.PayloadKey}:{option.Label}:{option.Description}:{itemType}:{itemRarity}:{itemEffectType}:{option.BaseAmount}";
         }
 

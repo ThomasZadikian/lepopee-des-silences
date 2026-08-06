@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Dtos;
@@ -141,7 +142,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         if (definitionResult.IsFailure)
             throw new NotFoundException($"Palace law definition '{lawKey}' was not found.");
 
-        run.ActivatePalaceLaw(PalaceLawMapper.CreatePalaceLaw(definitionResult.Value, PalaceLawDomain.Combat));
+        run.ActivatePalaceLaw(PalaceLawMapper.CreatePalaceLaw(definitionResult.Value));
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
@@ -326,10 +327,10 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         // "Item" offering — these are free-authored catalog strings, not enum-backed at rest.
         run.AddRunItem(RunItem.Create(
             itemDef.Key, itemDef.DisplayName, itemDef.Description,
-            MapCategoryToRunItemType(itemDef.Category),
-            MapToRunItemRarity(itemDef.Rarity),
+            CatalogRunItemMapper.MapType(itemDef.ItemType, itemDef.Category),
+            CatalogRunItemMapper.MapRarity(itemDef.Rarity),
             quantity: quantity,
-            MapToRunItemEffectType(itemDef.EffectRunType),
+            CatalogRunItemMapper.MapEffect(itemDef.EffectRunType),
             effectAmount: itemDef.EffectValue,
             isContainer: itemDef.IsContainer,
             containerCapacity: itemDef.ContainerCapacity,
@@ -340,21 +341,6 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             $"'{itemDef.DisplayName}' added to the besace (×{quantity}).",
             RunDto.FromDomain(run));
     }
-
-    private static RunItemType MapCategoryToRunItemType(string category) =>
-        string.Equals(category, "Consumable", StringComparison.OrdinalIgnoreCase)
-            ? RunItemType.Consumable
-            : RunItemType.Passive;
-
-    private static RunItemRarity MapToRunItemRarity(string rarity) =>
-        Enum.TryParse<RunItemRarity>(rarity, ignoreCase: true, out var parsed)
-            ? parsed
-            : RunItemRarity.Epic;
-
-    private static RunItemEffectType MapToRunItemEffectType(string? effectRunType) =>
-        !string.IsNullOrWhiteSpace(effectRunType) && Enum.TryParse<RunItemEffectType>(effectRunType, ignoreCase: true, out var parsed)
-            ? parsed
-            : RunItemEffectType.None;
 
     public async Task<DevToolsCombatDebugResult> KillAllCurrentCombatEnemiesAsync(
         Guid runId,

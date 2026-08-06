@@ -644,7 +644,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 ManaCost: s.ManaCost,
                 ChargeCost: s.ChargeCost,
                 BasePower: s.BasePower,
-                Tags: Array.Empty<string>()))
+                Tags: Array.Empty<string>(),
+                EmotionalRegister: s.EmotionalRegister))
             .ToArray();
     }
 

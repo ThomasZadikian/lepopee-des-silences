@@ -11,11 +11,11 @@ public sealed record CombatEncounterDraftSkill(
     int ChargeCost,
     int BasePower,
     IReadOnlyCollection<string> Tags,
+    string EmotionalRegister,
     string Category = "Physical",
     bool BasePowerIsPercentOfMaxVitality = false,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
-    bool IsUltimate = false,
-    string EmotionalRegister = null!);
+    bool IsUltimate = false);

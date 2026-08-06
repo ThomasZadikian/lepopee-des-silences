@@ -63,16 +63,16 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                     e.AppliesToActor,
                     e.IsPermanent)).ToArray(),
                 acquisitionHints.TryGetValue(d.Key, out var hints) ? hints : [],
-                d.TacticalRange,
-                d.TacticalAreaShape,
-                d.RequiresLineOfSight,
-                d.Cooldown,
-                d.IsUltimate,
-                EmotionalTypeCode.ParseRequired(
+                EmotionalRegister: EmotionalTypeCode.NormalizeRequired(
                     d.EmotionalRegister,
-                    $"Skill '{d.Key}' EmotionalRegister").ToString().ToLowerInvariant(),
-                CompatibleCharacters(d.AllowedArchetypes, characters),
-                d.Audience)).ToArray());
+                    $"Skill '{d.Key}' EmotionalRegister"),
+                TacticalRange: d.TacticalRange,
+                TacticalAreaShape: d.TacticalAreaShape,
+                RequiresLineOfSight: d.RequiresLineOfSight,
+                Cooldown: d.Cooldown,
+                IsUltimate: d.IsUltimate,
+                CompatibleCharacterDefinitionKeys: CompatibleCharacters(d.AllowedArchetypes, characters),
+                Audience: d.Audience)).ToArray());
     }
 
     private static IReadOnlyCollection<string> CompatibleCharacters(

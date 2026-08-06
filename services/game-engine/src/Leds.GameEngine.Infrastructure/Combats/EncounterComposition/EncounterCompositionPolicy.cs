@@ -31,17 +31,6 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         [5] = 7,
     };
 
-    private static readonly IReadOnlyDictionary<string, int> ArchetypeCosts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Fragile"] = 1,
-        ["Support"] = 1,
-        ["Skirmisher"] = 2,
-        ["Guard"] = 2,
-        ["Disruptor"] = 2,
-        ["Bruiser"] = 3,
-        ["Elite"] = 4,
-    };
-
     private static readonly IReadOnlyDictionary<PalaceRoomState, string[]> ArchetypePreferenceByState =
         new Dictionary<PalaceRoomState, string[]>
         {
@@ -141,7 +130,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             // otherwise an unbound enemy with a cheaper archetype or an earlier Key deterministically
             // (see the "Determinism" tests below) shadows it forever, in every room, for every run.
             .OrderBy(e => IsPreciselyBoundToRoom(e, context.RoomKey) ? 0 : 1)
-            .ThenBy(e => GetArchetypeCost(e.Archetype))
+            .ThenBy(e => GetEncounterCost(e))
             .ThenBy(e => preferredArchetypes.Contains(e.Archetype, StringComparer.OrdinalIgnoreCase) ? 0 : 1)
             .ThenByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
@@ -184,7 +173,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
                 break;
             }
 
-            var cost = GetArchetypeCost(enemy.Archetype);
+            var cost = GetEncounterCost(enemy);
             if (cost <= remainingBudget)
             {
                 selected.Add(enemy);
@@ -242,7 +231,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
         preferredEnemyKey = preferred.Key;
 
-        var remaining = budget - GetArchetypeCost(preferred.Archetype);
+        var remaining = budget - GetEncounterCost(preferred);
 
         // L'escorte suit le palier de risque, comme une rencontre ordinaire : l'Elite occupe une
         // place, le reste de l'effectif autorisé peut l'accompagner. Elle restait auparavant
@@ -265,7 +254,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             if (squad.Count - 1 >= maxEscorts)
                 break;
 
-            var candidateCost = GetArchetypeCost(candidate.Archetype);
+            var candidateCost = GetEncounterCost(candidate);
             if (candidateCost > remaining)
                 continue;
 
@@ -276,27 +265,16 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         return squad;
     }
 
-    // Rare = always exactly one enemy, keyed off the catalog's Rarity field (not the
-    // Support/Disruptor archetype heuristic this used to use, which had nothing to do
-    // with rarity). Bridge fallback: if the catalog hasn't tagged any eligible enemy as
-    // Rare yet (seeding follow-up), fall back to the old archetype heuristic so Rare
-    // nodes don't come up empty in the meantime.
-    // TODO: remove the archetype fallback once catalog Rarity tagging is complete.
+    // Rare = always exactly one enemy, keyed off the Catalog-owned Rarity field.
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectRareEnemies(
         List<CatalogEnemyDefinition> eligible, out string? preferredEnemyKey)
     {
         var preferred = eligible
             .FirstOrDefault(e => string.Equals(e.Rarity, "Rare", StringComparison.OrdinalIgnoreCase));
 
-        preferred ??= eligible
-            .FirstOrDefault(e =>
-                string.Equals(e.Archetype, "Support", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(e.Archetype, "Disruptor", StringComparison.OrdinalIgnoreCase));
-
-        preferred ??= eligible
-            .OrderByDescending(e => e.BaseDifficulty)
-            .ThenBy(e => e.Key, StringComparer.Ordinal)
-            .First();
+        if (preferred is null)
+            throw new DomainException(
+                "Catalog returned no eligible enemy explicitly authored with Rare rarity.");
 
         preferredEnemyKey = preferred.Key;
 
@@ -314,17 +292,12 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         return [boss];
     }
 
-    private static int GetArchetypeCost(string archetype)
+    private static int GetEncounterCost(CatalogEnemyDefinition enemy)
     {
-        var canonical = EnemyArchetypeCode.ParseRequired(archetype, "Enemy archetype");
-        return ArchetypeCosts.TryGetValue(canonical, out var cost)
-            ? cost
-            : canonical switch
-            {
-                "Boss" => 4,
-                "Tank" => 3,
-                "Beast" or "Rupture" or "Shadow" or "Memory" or "Trauma" => 2,
-                _ => throw new DomainException($"Enemy archetype '{canonical}' has no encounter cost.")
-            };
+        if (enemy.Menace is < 1 or > 10)
+            throw new DomainException(
+                $"Catalog enemy '{enemy.Key}' has invalid Menace '{enemy.Menace}'. Expected 1 to 10.");
+
+        return enemy.Menace;
     }
 }

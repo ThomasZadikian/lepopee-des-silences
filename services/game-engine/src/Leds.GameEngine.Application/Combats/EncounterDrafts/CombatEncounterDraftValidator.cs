@@ -1,4 +1,3 @@
-using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 
@@ -64,7 +63,7 @@ public static class CombatEncounterDraftValidator
         {
             Require(enemy.EnemyKey, "Enemy definition key");
             Require(enemy.DisplayName, $"Enemy '{enemy.EnemyKey}' display name");
-            EnemyArchetypeCode.ParseRequired(enemy.Archetype, $"Enemy '{enemy.EnemyKey}' archetype");
+            Require(enemy.Archetype, $"Enemy '{enemy.EnemyKey}' archetype");
             EmotionalTypeCode.ParseRequired(enemy.EmotionalRegister, $"Enemy '{enemy.EnemyKey}' emotional register");
 
             if (enemy.BaseDifficulty < 0)

@@ -11,6 +11,7 @@ public sealed record CombatEncounterDraftEnemy(
     IReadOnlyCollection<string> Tags,
     IReadOnlyCollection<string> SkillKeys,
     IReadOnlyCollection<CombatEncounterDraftSkill> Skills,
+    string EmotionalRegister,
     int AttackPower = 0,
     int Defense = 0,
     int Speed = 10,
@@ -18,5 +19,4 @@ public sealed record CombatEncounterDraftEnemy(
     int MagicAttack = 0,
     int MagicDefense = 0,
     int Mana = 0,
-    int Movement = 4,
-    string EmotionalRegister = null!);
+    int Movement = 4);

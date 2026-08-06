@@ -330,10 +330,10 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 // no RunItemRarity equivalent). Map defensively instead of trusting an exact match.
                 run.AddRunItem(RunItem.Create(
                     itemDef.Key, itemDef.DisplayName, itemDef.Description,
-                    MapCategoryToRunItemType(itemDef.Category),
-                    MapToRunItemRarity(itemDef.Rarity),
+                    CatalogRunItemMapper.MapType(itemDef.ItemType, itemDef.Category),
+                    CatalogRunItemMapper.MapRarity(itemDef.Rarity),
                     quantity: offering.Amount > 0 ? offering.Amount : 1,
-                    MapToRunItemEffectType(itemDef.EffectRunType),
+                    CatalogRunItemMapper.MapEffect(itemDef.EffectRunType),
                     effectAmount: itemDef.EffectValue,
                     isContainer: itemDef.IsContainer,
                     containerCapacity: itemDef.ContainerCapacity,
@@ -344,21 +344,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 return "Rien ne se produit.";
         }
     }
-
-    private static RunItemType MapCategoryToRunItemType(string category) =>
-        string.Equals(category, "Consumable", StringComparison.OrdinalIgnoreCase)
-            ? RunItemType.Consumable
-            : RunItemType.Passive;
-
-    private static RunItemRarity MapToRunItemRarity(string rarity) =>
-        Enum.TryParse<RunItemRarity>(rarity, ignoreCase: true, out var parsed)
-            ? parsed
-            : RunItemRarity.Epic;
-
-    private static RunItemEffectType MapToRunItemEffectType(string? effectRunType) =>
-        !string.IsNullOrWhiteSpace(effectRunType) && Enum.TryParse<RunItemEffectType>(effectRunType, ignoreCase: true, out var parsed)
-            ? parsed
-            : RunItemEffectType.None;
 
     // ── Reward / curse roll (deterministic) + real application ───────────────
 

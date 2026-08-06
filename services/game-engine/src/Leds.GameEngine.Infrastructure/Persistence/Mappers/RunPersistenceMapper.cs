@@ -304,6 +304,7 @@ public static class RunPersistenceMapper
             CharacterId = snapshot.CharacterId,
             DefinitionKey = snapshot.DefinitionKey,
             DisplayName = snapshot.DisplayName,
+            EmotionalRegisterCode = snapshot.EmotionalRegisterCode,
             SnapshotOrder = order,
             EquippedItemKeysCsv = string.Join(';', snapshot.EquippedItemKeys),
             StatBlock = snapshot.StatBlock is not null

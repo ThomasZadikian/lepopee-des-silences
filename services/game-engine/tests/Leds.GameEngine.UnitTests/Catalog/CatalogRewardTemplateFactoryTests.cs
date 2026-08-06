@@ -38,7 +38,9 @@ public sealed class CatalogRewardTemplateFactoryTests
             "Combat", 2, 3,
             [
                 new CatalogRewardTemplateOptionSnapshot("Heal", "Soin test", "Soin test", null, null, null, 10, "Flat", 1),
-                new CatalogRewardTemplateOptionSnapshot("TemporaryItem", "Objet test", "Objet test", "item.test", "Item", null, 5, "Flat", 1),
+                new CatalogRewardTemplateOptionSnapshot(
+                    "TemporaryItem", "Objet test", "Objet test", "item.test", "Item", null, 5, "Flat", 1,
+                    ItemType: "Consumable", ItemRarity: "Common", ItemEffectType: "Heal"),
             ]);
 
         _gatewayMock
@@ -80,7 +82,9 @@ public sealed class CatalogRewardTemplateFactoryTests
             "reward.combat.test", "1.0", "Test", "",
             "Combat", 2, 3,
             [
-                new CatalogRewardTemplateOptionSnapshot("TemporaryItem", "Baume", "Soin", "item.consumable.minor-heal", "Item", null, 15, "Flat", 1),
+                new CatalogRewardTemplateOptionSnapshot(
+                    "TemporaryItem", "Baume", "Soin", "item.consumable.minor-heal", "Item", null, 15, "Flat", 1,
+                    ItemType: "Consumable", ItemRarity: "Common", ItemEffectType: "Heal"),
             ]);
 
         _gatewayMock

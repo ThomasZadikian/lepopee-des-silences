@@ -22,4 +22,7 @@ public static class EmotionalTypeCode
 
         return parsed;
     }
+
+    public static string NormalizeRequired(string? code, string contractField) =>
+        ParseRequired(code, contractField).ToString().ToLowerInvariant();
 }

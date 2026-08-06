@@ -19,7 +19,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["fragile"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 1);
 
     private static readonly CatalogEnemyDefinition SupportEnemy = new(
         Key: "enemy.support.v1",
@@ -31,7 +32,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["support"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 1);
 
     private static readonly CatalogEnemyDefinition SkirmisherEnemy = new(
         Key: "enemy.skirmisher.v1",
@@ -43,7 +45,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["skirmisher"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 2);
 
     private static readonly CatalogEnemyDefinition GuardEnemy = new(
         Key: "enemy.guard.v1",
@@ -55,7 +58,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["guard"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 2);
 
     private static readonly CatalogEnemyDefinition DisruptorEnemy = new(
         Key: "enemy.disruptor.v1",
@@ -67,7 +71,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["disruptor"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 2);
 
     private static readonly CatalogEnemyDefinition BruiserEnemy = new(
         Key: "enemy.bruiser.v1",
@@ -79,7 +84,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["bruiser"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 3);
 
     private static readonly CatalogEnemyDefinition EliteEnemy = new(
         Key: "enemy.elite.v1",
@@ -91,7 +97,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 3,
         MaxRiskLevel: 5,
         Tags: ["elite"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 4);
 
     private static readonly CatalogEnemyDefinition TaggedEliteEnemy = new(
         Key: "enemy.tag-elite.v1",
@@ -103,7 +110,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 3,
         MaxRiskLevel: 5,
         Tags: ["elite"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 3);
 
     private static readonly CatalogEnemyDefinition HighDifficultyEnemy = new(
         Key: "enemy.high-difficulty.v1",
@@ -115,7 +123,8 @@ public sealed class EncounterCompositionPolicyTests
         MinRiskLevel: 4,
         MaxRiskLevel: 5,
         Tags: ["boss"],
-        SkillKeys: ["skill.basic.strike"]);
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 3);
 
     private static readonly EncounterCompositionPolicy Policy = new();
 
@@ -337,7 +346,8 @@ public sealed class EncounterCompositionPolicyTests
     public void Compose_ShouldIncreaseBudget_ForRare()
     {
         var combatContext = CreateContext(riskLevel: 3, encounterType: "Combat");
-        var rareContext = CreateContext(riskLevel: 3, encounterType: "Rare");
+        var rareEnemy = GuardEnemy with { Rarity = "Rare" };
+        var rareContext = CreateContext(riskLevel: 3, encounterType: "Rare", enemies: [rareEnemy]);
 
         var combatResult = Policy.Compose(combatContext);
         var rareResult = Policy.Compose(rareContext);
@@ -394,7 +404,8 @@ public sealed class EncounterCompositionPolicyTests
     public void Compose_ShouldSelectExactlyOneEnemy_ForRare()
     {
         // Rare is always solo now — never brings a second enemy, unlike the old logic.
-        var context = CreateContext(riskLevel: 5, encounterType: "Rare");
+        var rareEnemy = GuardEnemy with { Rarity = "Rare" };
+        var context = CreateContext(riskLevel: 5, encounterType: "Rare", enemies: [rareEnemy]);
 
         var result = Policy.Compose(context);
 
@@ -451,23 +462,20 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldPreferSupportOrDisruptor_ForRareEncounter_WhenNoRarityTaggedEnemyIsAvailable()
+    public void Compose_ShouldRejectRareEncounter_WhenCatalogHasNoRarityTaggedEnemy()
     {
-        // Temporary bridge fallback: none of these fixtures set Rarity="Rare" (they default
-        // to "Common"), so this exercises the archetype heuristic kept for catalogs that
-        // haven't tagged Rarity yet. Remove once catalog Rarity seeding (Phase 11) lands.
         var context = CreateContext(
             riskLevel: 3,
             encounterType: "Rare",
             enemies: [GuardEnemy, SupportEnemy]);
 
-        var result = Policy.Compose(context);
+        var act = () => Policy.Compose(context);
 
-        result.SelectedEnemies.Should().Contain(e => e.Key == SupportEnemy.Key);
+        act.Should().Throw<DomainException>().WithMessage("*explicitly authored with Rare rarity*");
     }
 
     [Fact]
-    public void Compose_ShouldPreferRarityTaggedEnemy_ForRareEncounter_OverArchetypeFallback()
+    public void Compose_ShouldPreferRarityTaggedEnemy_ForRareEncounter()
     {
         var rareTagged = GuardEnemy with { Key = "enemy.rare-tagged.v1", Rarity = "Rare" };
         var context = CreateContext(
@@ -513,27 +521,27 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldUseArchetypeCosts_ToStayWithinBudget()
+    public void Compose_ShouldUseCatalogMenace_ToStayWithinBudget()
     {
         var enemies = new[] { FragileEnemy, GuardEnemy };
         var context = CreateContext(riskLevel: 1, enemies: enemies);
 
         var result = Policy.Compose(context);
 
-        var totalCost = result.SelectedEnemies
-            .Sum(e => e.Archetype switch
-            {
-                "Fragile" => 1,
-                "Guard" => 2,
-                _ => 2
-            });
+        var totalCost = result.SelectedEnemies.Sum(e => e.Menace);
         totalCost.Should().BeLessThanOrEqualTo(result.DifficultyBudget);
     }
 
     [Fact]
     public void Compose_ShouldFallbackToLowestCostEnemy_WhenNoCombinationFits()
     {
-        var expensiveEnemy = FragileEnemy with { Archetype = "Bruiser", Key = "enemy.bruiser.v1", BaseDifficulty = 6 };
+        var expensiveEnemy = FragileEnemy with
+        {
+            Archetype = "Bruiser",
+            Key = "enemy.bruiser.v1",
+            BaseDifficulty = 6,
+            Menace = 3
+        };
         var enemies = new[] { expensiveEnemy };
         var context = CreateContext(riskLevel: 1, encounterType: "Combat", enemies: enemies);
 

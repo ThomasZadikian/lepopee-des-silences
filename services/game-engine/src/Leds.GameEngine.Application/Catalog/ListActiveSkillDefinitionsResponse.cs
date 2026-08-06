@@ -14,12 +14,12 @@ public sealed record SkillDefinitionView(
     bool BasePowerIsPercentOfMaxVitality,
     IReadOnlyCollection<SkillEffectView> Effects,
     IReadOnlyCollection<string> AcquisitionHints,
+    string EmotionalRegister,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = null!,
     // Compatibility is resolved server-side from Catalog character definitions; the
     // client never receives a second archetype model to interpret.
     IReadOnlyCollection<string>? CompatibleCharacterDefinitionKeys = null,

@@ -661,7 +661,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 2,
                 Tags: ["threshold", "fragile", "echo"],
-                SkillKeys: ["skill.basic.strike"]),
+                SkillKeys: ["skill.basic.strike"], Menace: 1),
             ["enemy.threshold.inner-resistance"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.inner-resistance",
                 DisplayName: "Résistance Intérieure",
@@ -672,7 +672,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 2,
                 MaxRiskLevel: 3,
                 Tags: ["threshold", "guard", "will"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.shield"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.shield"], Menace: 2),
             ["enemy.threshold.echo"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.echo",
                 DisplayName: "Écho",
@@ -683,7 +683,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 2,
                 Tags: ["threshold", "fragile", "echo"],
-                SkillKeys: ["skill.basic.strike"]),
+                SkillKeys: ["skill.basic.strike"], Menace: 1),
             ["enemy.threshold.splinter"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.splinter",
                 DisplayName: "Éclat",
@@ -694,7 +694,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 3,
                 Tags: ["threshold", "guard", "resilient"],
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike"]),
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike"], Menace: 2),
             ["enemy.threshold.whisper"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.whisper",
                 DisplayName: "Murmure",
@@ -705,7 +705,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 3,
                 Tags: ["threshold", "skirmisher", "aggressive"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.swift"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.swift"], Menace: 2),
             ["enemy.threshold.guardian-fragment"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.guardian-fragment",
                 DisplayName: "Fragment Gardien",
@@ -716,7 +716,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 2,
                 MaxRiskLevel: 4,
                 Tags: ["threshold", "guard", "rare"],
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"]),
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"], Menace: 3),
             ["enemy.threshold.fracture"] = new CatalogEnemyDefinition(
                 Key: "enemy.threshold.fracture",
                 DisplayName: "Fracture",
@@ -727,7 +727,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 2,
                 MaxRiskLevel: 4,
                 Tags: ["threshold", "bruiser", "instable"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.charge"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge"], Menace: 3),
             ["enemy.forest.rooted-regret"] = new CatalogEnemyDefinition(
                 Key: "enemy.forest.rooted-regret",
                 DisplayName: "Regret Enraciné",
@@ -738,7 +738,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["forest", "bruiser", "memory"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.charge"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge"], Menace: 2),
             ["enemy.forest.whispering-branch"] = new CatalogEnemyDefinition(
                 Key: "enemy.forest.whispering-branch",
                 DisplayName: "Branche Murmurante",
@@ -749,7 +749,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["forest", "support", "whisper"],
-                SkillKeys: ["skill.basic.heal", "skill.basic.strike"]),
+                SkillKeys: ["skill.basic.heal", "skill.basic.strike"], Menace: 2),
             ["enemy.rupture.broken-thought"] = new CatalogEnemyDefinition(
                 Key: "enemy.rupture.broken-thought",
                 DisplayName: "Pensée Brisée",
@@ -760,7 +760,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["rupture", "skirmisher", "thought"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.swift"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.swift"], Menace: 3),
             ["enemy.rupture.contradiction"] = new CatalogEnemyDefinition(
                 Key: "enemy.rupture.contradiction",
                 DisplayName: "Contradiction",
@@ -771,7 +771,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["rupture", "disruptor", "paradox"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.disable"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.disable"], Menace: 4),
             ["enemy.silence.mute-witness"] = new CatalogEnemyDefinition(
                 Key: "enemy.silence.mute-witness",
                 DisplayName: "Témoin Muet",
@@ -782,7 +782,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["silence", "guard", "witness"],
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike"]),
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike"], Menace: 3),
             ["enemy.silence.absent-voice"] = new CatalogEnemyDefinition(
                 Key: "enemy.silence.absent-voice",
                 DisplayName: "Voix Absente",
@@ -793,7 +793,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["silence", "disruptor", "voice"],
-                SkillKeys: ["skill.basic.disable", "skill.basic.strike"]),
+                SkillKeys: ["skill.basic.disable", "skill.basic.strike"], Menace: 4),
             ["enemy.memory.archived-wound"] = new CatalogEnemyDefinition(
                 Key: "enemy.memory.archived-wound",
                 DisplayName: "Blessure Archivée",
@@ -804,7 +804,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["memory", "bruiser", "wound"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.charge"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge"], Menace: 4),
             ["enemy.memory.named-loss"] = new CatalogEnemyDefinition(
                 Key: "enemy.memory.named-loss",
                 DisplayName: "Perte Nommée",
@@ -815,7 +815,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["memory", "support", "loss"],
-                SkillKeys: ["skill.basic.heal", "skill.basic.buff"]),
+                SkillKeys: ["skill.basic.heal", "skill.basic.buff"], Menace: 4),
             ["enemy.antechamber.door-keeper"] = new CatalogEnemyDefinition(
                 Key: "enemy.antechamber.door-keeper",
                 DisplayName: "Gardien de Porte",
@@ -826,7 +826,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["antechamber", "guard", "door"],
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"]),
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"], Menace: 5),
             ["enemy.antechamber.last-refusal"] = new CatalogEnemyDefinition(
                 Key: "enemy.antechamber.last-refusal",
                 DisplayName: "Dernier Refus",
@@ -837,7 +837,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 5,
                 Tags: ["antechamber", "bruiser", "final-stand"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.charge", "skill.basic.enrage"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge", "skill.basic.enrage"], Menace: 5),
             ["enemy.final.silent-double"] = new CatalogEnemyDefinition(
                 Key: "enemy.final.silent-double",
                 DisplayName: "Double Silencieux",
@@ -848,7 +848,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 4,
                 MaxRiskLevel: 5,
                 Tags: ["final", "elite", "mirror"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.swift", "skill.basic.disable"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.swift", "skill.basic.disable"], Menace: 8),
             ["enemy.final.last-echo"] = new CatalogEnemyDefinition(
                 Key: "enemy.final.last-echo",
                 DisplayName: "Dernier Écho",
@@ -859,7 +859,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 4,
                 MaxRiskLevel: 5,
                 Tags: ["final", "elite", "echo"],
-                SkillKeys: ["skill.basic.strike", "skill.basic.heal", "skill.basic.buff"]),
+                SkillKeys: ["skill.basic.strike", "skill.basic.heal", "skill.basic.buff"], Menace: 9),
             ["boss.threshold.warden"] = new CatalogEnemyDefinition(
                 Key: "boss.threshold.warden",
                 DisplayName: "Gardien du Seuil",
@@ -870,7 +870,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "threshold"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.forest.rootbound-memory"] = new CatalogEnemyDefinition(
                 Key: "boss.forest.rootbound-memory",
                 DisplayName: "Gardien des Racines",
@@ -881,7 +881,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "forest"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.rupture.fractured-echo"] = new CatalogEnemyDefinition(
                 Key: "boss.rupture.fractured-echo",
                 DisplayName: "Fragment de Rupture",
@@ -892,7 +892,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "rupture"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.silence.mute-herald"] = new CatalogEnemyDefinition(
                 Key: "boss.silence.mute-herald",
                 DisplayName: "Voix Éteinte",
@@ -903,7 +903,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "silence"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.memory.archivist"] = new CatalogEnemyDefinition(
                 Key: "boss.memory.archivist",
                 DisplayName: "Archiviste des Échos",
@@ -914,7 +914,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "memory"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.antechamber.last-door"] = new CatalogEnemyDefinition(
                 Key: "boss.antechamber.last-door",
                 DisplayName: "Gardien de l'Antichambre",
@@ -925,7 +925,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "antechamber"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["boss.final.himlit"] = new CatalogEnemyDefinition(
                 Key: "boss.final.himlit",
                 DisplayName: "Him'Lit",
@@ -936,7 +936,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "final"],
-                SkillKeys: ["skill-boss-void-slam-v1"]),
+                SkillKeys: ["skill-boss-void-slam-v1"], Menace: 10),
             ["enemy.forest.chimere-serpentaire"] = new CatalogEnemyDefinition(
                 Key: "enemy.forest.chimere-serpentaire",
                 DisplayName: "Chimere Serpentaire",
@@ -947,7 +947,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 30,
                 Tags: ["forest", "beast"],
-                SkillKeys: ["skill.basic.strike"])
+                SkillKeys: ["skill.basic.strike"], Menace: 1)
         };
 
     private static readonly IReadOnlyDictionary<string, CatalogEnemyLootTable> EnemyLootTables =
@@ -1142,7 +1142,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 5,
                 ChargeCost: 0,
                 BasePower: 10,
-                Tags: ["basic", "damage"]),
+                Tags: ["basic", "damage"], EmotionalRegister: "neutral"),
             ["skill.basic.guard"] = new CatalogSkillDefinition(
                 Key: "skill.basic.guard",
                 DisplayName: "Garde",
@@ -1153,7 +1153,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 0,
                 ChargeCost: 0,
                 BasePower: 5,
-                Tags: ["basic", "defense"]),
+                Tags: ["basic", "defense"], EmotionalRegister: "neutral"),
             ["skill.basic.weaken"] = new CatalogSkillDefinition(
                 Key: "skill.basic.weaken",
                 DisplayName: "Affaiblissement",
@@ -1164,7 +1164,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 4,
                 ChargeCost: 0,
                 BasePower: 0,
-                Tags: ["basic", "debuff"]),
+                Tags: ["basic", "debuff"], EmotionalRegister: "neutral"),
             ["skill.basic.disrupt"] = new CatalogSkillDefinition(
                 Key: "skill.basic.disrupt",
                 DisplayName: "Perturbation",
@@ -1175,7 +1175,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 6,
                 ChargeCost: 1,
                 BasePower: 0,
-                Tags: ["basic", "disrupt"]),
+                Tags: ["basic", "disrupt"], EmotionalRegister: "neutral"),
             ["skill.basic.focus"] = new CatalogSkillDefinition(
                 Key: "skill.basic.focus",
                 DisplayName: "Concentration",
@@ -1186,7 +1186,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 2,
                 ChargeCost: 0,
                 BasePower: 0,
-                Tags: ["basic", "buff"]),
+                Tags: ["basic", "buff"], EmotionalRegister: "neutral"),
             ["skill.basic.shield"] = new CatalogSkillDefinition(
                 Key: "skill.basic.shield",
                 DisplayName: "Bouclier",
@@ -1197,7 +1197,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 0,
                 ChargeCost: 0,
                 BasePower: 5,
-                Tags: ["basic", "shield"]),
+                Tags: ["basic", "shield"], EmotionalRegister: "neutral"),
             ["skill.basic.heal"] = new CatalogSkillDefinition(
                 Key: "skill.basic.heal",
                 DisplayName: "Soin",
@@ -1208,7 +1208,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 6,
                 ChargeCost: 0,
                 BasePower: 15,
-                Tags: ["basic", "heal"]),
+                Tags: ["basic", "heal"], EmotionalRegister: "neutral"),
             ["skill.basic.charge"] = new CatalogSkillDefinition(
                 Key: "skill.basic.charge",
                 DisplayName: "Charge",
@@ -1219,7 +1219,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 7,
                 ChargeCost: 1,
                 BasePower: 18,
-                Tags: ["basic", "charge"]),
+                Tags: ["basic", "charge"], EmotionalRegister: "neutral"),
             ["skill.basic.swift"] = new CatalogSkillDefinition(
                 Key: "skill.basic.swift",
                 DisplayName: "Rapidité",
@@ -1230,7 +1230,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 4,
                 ChargeCost: 0,
                 BasePower: 7,
-                Tags: ["basic", "swift"]),
+                Tags: ["basic", "swift"], EmotionalRegister: "neutral"),
             ["skill.basic.disable"] = new CatalogSkillDefinition(
                 Key: "skill.basic.disable",
                 DisplayName: "Neutralisation",
@@ -1241,7 +1241,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 8,
                 ChargeCost: 1,
                 BasePower: 0,
-                Tags: ["basic", "disable"]),
+                Tags: ["basic", "disable"], EmotionalRegister: "neutral"),
             ["skill.basic.taunt"] = new CatalogSkillDefinition(
                 Key: "skill.basic.taunt",
                 DisplayName: "Provocation",
@@ -1252,7 +1252,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 3,
                 ChargeCost: 0,
                 BasePower: 0,
-                Tags: ["basic", "taunt"]),
+                Tags: ["basic", "taunt"], EmotionalRegister: "neutral"),
             ["skill.basic.enrage"] = new CatalogSkillDefinition(
                 Key: "skill.basic.enrage",
                 DisplayName: "Enragement",
@@ -1263,7 +1263,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 5,
                 ChargeCost: 1,
                 BasePower: 0,
-                Tags: ["basic", "enrage"]),
+                Tags: ["basic", "enrage"], EmotionalRegister: "neutral"),
             ["skill.basic.buff"] = new CatalogSkillDefinition(
                 Key: "skill.basic.buff",
                 DisplayName: "Renforcement",
@@ -1274,7 +1274,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 5,
                 ChargeCost: 0,
                 BasePower: 0,
-                Tags: ["basic", "buff"]),
+                Tags: ["basic", "buff"], EmotionalRegister: "neutral"),
             ["skill-boss-void-slam-v1"] = new CatalogSkillDefinition(
                 Key: "skill-boss-void-slam-v1",
                 DisplayName: "Void Slam",
@@ -1285,7 +1285,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ManaCost: 0,
                 ChargeCost: 1,
                 BasePower: 14,
-                Tags: ["boss", "damage", "void"])
+                Tags: ["boss", "damage", "void"], EmotionalRegister: "neutral")
         };
 
     public Task<CatalogSkillDefinition?> GetSkillDefinitionByKeyAsync(
@@ -1546,6 +1546,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
             null,
             baseAmount,
             "Flat",
-            1);
+            1,
+            ItemType: payloadType == "Item" ? "Consumable" : null,
+            ItemRarity: payloadType == "Item" ? "Common" : null,
+            ItemEffectType: payloadType == "Item"
+                ? payloadKey?.Contains("guard", StringComparison.OrdinalIgnoreCase) == true ? "Guard" : "Heal"
+                : null);
     }
 }

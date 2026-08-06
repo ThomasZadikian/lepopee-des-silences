@@ -3,42 +3,30 @@ using Leds.Catalog.Domain.Enemies;
 
 namespace Leds.Catalog.UnitTests.Domain.Enemies;
 
-public sealed class EnemyArchetypeTests
+public sealed class EnemyArchetypeCatalogTests
 {
     [Fact]
-    public void ShouldHaveExpectedValues()
+    public void ShouldPublishTheCanonicalCodes()
     {
-        ((int)EnemyArchetype.Unknown).Should().Be(0);
-        ((int)EnemyArchetype.Trauma).Should().Be(1);
-        ((int)EnemyArchetype.Memory).Should().Be(2);
-        ((int)EnemyArchetype.Shadow).Should().Be(3);
-        ((int)EnemyArchetype.Guardian).Should().Be(4);
-        ((int)EnemyArchetype.Elite).Should().Be(5);
-        ((int)EnemyArchetype.Boss).Should().Be(6);
+        EnemyArchetypeCatalog.All.Should().BeEquivalentTo(
+        [
+            "Beast", "Boss", "Bruiser", "Disruptor", "Elite", "Fragile", "Guard",
+            "Memory", "Rupture", "Shadow", "Skirmisher", "Support", "Tank", "Trauma"
+        ]);
+    }
+
+    [Theory]
+    [InlineData("boss", "Boss")]
+    [InlineData(" GUARD ", "Guard")]
+    public void Parse_ShouldReturnCanonicalCode(string input, string expected)
+    {
+        EnemyArchetypeCatalog.Parse(input).Should().Be(expected);
     }
 
     [Fact]
-    public void ShouldHaveSevenValues()
+    public void Parse_ShouldRejectUnknownCode()
     {
-        Enum.GetValues<EnemyArchetype>().Should().HaveCount(7);
-    }
-
-    [Fact]
-    public void ShouldParseFromString_WhenValidValueProvided()
-    {
-        var result = Enum.Parse<EnemyArchetype>("Boss");
-        result.Should().Be(EnemyArchetype.Boss);
-    }
-
-    [Fact]
-    public void ShouldReturnCorrectName_WhenToStringCalled()
-    {
-        EnemyArchetype.Shadow.ToString().Should().Be("Shadow");
-    }
-
-    [Fact]
-    public void Unknown_ShouldBeDefaultValue()
-    {
-        default(EnemyArchetype).Should().Be(EnemyArchetype.Unknown);
+        var act = () => EnemyArchetypeCatalog.Parse("Guardian");
+        act.Should().Throw<Exception>().WithMessage("*Unknown enemy archetype*");
     }
 }

@@ -89,7 +89,7 @@ public sealed record CombatantSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!)
+        string? emotionalRegister = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Combatant skill key is required.");
@@ -115,7 +115,8 @@ public sealed record CombatantSkill
         if (string.IsNullOrWhiteSpace(emotionalRegister))
             throw new DomainException("Combatant skill emotional register is required.");
 
-        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Combatant skill '{key}' EmotionalRegister");
+        var canonicalEmotionalRegister = EmotionalTypeCode.NormalizeRequired(
+            emotionalRegister, $"Combatant skill '{key}' EmotionalRegister");
 
         return new CombatantSkill(
             key.Trim(),
@@ -135,7 +136,7 @@ public sealed record CombatantSkill
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister.Trim());
+            canonicalEmotionalRegister);
     }
 
     /// <summary>
@@ -160,14 +161,15 @@ public sealed record CombatantSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!)
+        string? emotionalRegister = null)
     {
-        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted combatant skill '{key}' EmotionalRegister");
+        var canonicalEmotionalRegister = EmotionalTypeCode.NormalizeRequired(
+            emotionalRegister, $"Persisted combatant skill '{key}' EmotionalRegister");
         return new CombatantSkill(
             key, displayName, skillType, targetingType, effectType, manaCost, chargeCost,
             basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>(), category,
             basePowerIsPercentOfMaxVitality, tacticalRange, tacticalAreaShape,
-            requiresLineOfSight, cooldown, isUltimate, emotionalRegister);
+            requiresLineOfSight, cooldown, isUltimate, canonicalEmotionalRegister);
     }
 
     public CombatantSkill WithPowerMultiplier(double multiplier)

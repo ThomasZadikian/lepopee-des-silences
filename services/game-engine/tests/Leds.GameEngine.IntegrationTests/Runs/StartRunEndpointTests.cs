@@ -88,6 +88,24 @@ public sealed class StartRunEndpointTests : IClassFixture<GameEngineApiFactory>
     }
 
     [Fact]
+    public async Task Started_run_should_reload_with_its_character_emotional_registers()
+    {
+        var startResponse = await _client.PostAsJsonAsync(
+            "/api/v2/runs",
+            new { PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111") });
+        var startBody = await startResponse.Content.ReadAsStringAsync();
+        startResponse.StatusCode.Should().Be(HttpStatusCode.Created, because: startBody);
+
+        var started = await startResponse.Content.ReadFromJsonAsync<StartRunResponse>();
+        started.Should().NotBeNull();
+
+        var reloadResponse = await _client.GetAsync($"/api/v2/runs/{started!.Run.Id}");
+        var reloadBody = await reloadResponse.Content.ReadAsStringAsync();
+
+        reloadResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: reloadBody);
+    }
+
+    [Fact]
     public async Task StartRun_ShouldReturnBadRequest_WhenPlayerIdIsEmpty()
     {
         var response = await _client.PostAsJsonAsync(

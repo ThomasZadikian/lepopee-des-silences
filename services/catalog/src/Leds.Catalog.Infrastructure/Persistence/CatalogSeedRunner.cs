@@ -2326,7 +2326,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "meute", "elite" },
             skillKeys: new[] { "skill.basic.strike" },
             vitality: 40, attack: 10, defense: 9, guard: 4, speed: 11, focus: 0,
-            cancellationToken, registre: "Effroi");
+            cancellationToken, menace: 6, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.lamiz", "Lamiz",
@@ -2337,7 +2337,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "meute" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 16, attack: 5, defense: 0, guard: 0, speed: 14, focus: 0,
-            cancellationToken, registre: "Effroi");
+            cancellationToken, menace: 2, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.uguiro", "Uguiro",
@@ -2348,7 +2348,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "monstre", "elite" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 48, attack: 12, defense: 12, guard: 5, speed: 8, focus: 0,
-            cancellationToken, registre: "Effroi");
+            cancellationToken, menace: 7, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.ombres-tentaculaires", "Ombres tentaculaires",
@@ -2359,7 +2359,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "ambiance", "brume" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 18, attack: 5, defense: 3, guard: 0, speed: 12, focus: 0,
-            cancellationToken, registre: "Effroi");
+            cancellationToken, menace: 3, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.oeil-du-visionnaire", "L'Œil du Visionnaire animé",
@@ -2370,7 +2370,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "lituisme", "surveillance", "motif" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 24, attack: 7, defense: 6, guard: 2, speed: 16, focus: 6,
-            cancellationToken, registre: "Memoire");
+            cancellationToken, menace: 5, registre: "Memoire");
 
         await UpsertEnemyAsync(
             "canon.enemy.goule-anxiete", "La Goule",
@@ -2389,7 +2389,7 @@ public sealed partial class CatalogSeedRunner
                 "canon.skill.se-taire"
             },
             vitality: 38, attack: 9, defense: 6, guard: 3, speed: 12, focus: 3,
-            cancellationToken, registre: "Effroi");
+            cancellationToken, menace: 6, registre: "Effroi");
 
         await UpsertEnemyAsync(
             "canon.enemy.homoncule", "L'Homoncule",
@@ -2400,7 +2400,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "alchimie", "homoncule", "elite", "weak.fire" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 52, attack: 13, defense: 15, guard: 6, speed: 7, focus: 0,
-            cancellationToken, registre: "Rupture");
+            cancellationToken, menace: 7, registre: "Rupture");
 
         // ── Ennemis canon additionnels (renfort du bestiaire, mêmes familles/thèmes) ──
         await UpsertEnemyAsync(
@@ -2412,7 +2412,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "predateur", "fossoyeur" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.brume" },
             vitality: 18, attack: 7, defense: 3, guard: 0, speed: 14, focus: 0,
-            cancellationToken, registre: "Rupture");
+            cancellationToken, menace: 3, registre: "Rupture");
 
         await UpsertEnemyAsync(
             "canon.enemy.enfant-argile", "L'Enfant d'argile",
@@ -2423,7 +2423,7 @@ public sealed partial class CatalogSeedRunner
             tags: new[] { "canon", "alchimie", "argile", "enfant" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.transmutation" },
             vitality: 16, attack: 4, defense: 6, guard: 2, speed: 9, focus: 3,
-            cancellationToken, registre: "Rupture");
+            cancellationToken, menace: 2, registre: "Rupture");
     }
 
     // riskMin/riskMax are compared at runtime against ResolveCurrentEventCommandHandler's

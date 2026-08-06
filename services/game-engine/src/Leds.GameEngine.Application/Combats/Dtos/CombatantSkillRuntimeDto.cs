@@ -13,10 +13,10 @@ public sealed record CombatantSkillRuntimeDto(
     int ChargeCost,
     int BasePower,
     IReadOnlyCollection<string> Tags,
-    string Category = "Physical",
     // Catalog-authored register. Neutral is explicit; the client never derives a
     // second type from keys, tags or the caster.
-    string EmotionalRegister = "neutral",
+    string EmotionalRegister,
+    string Category = "Physical",
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,

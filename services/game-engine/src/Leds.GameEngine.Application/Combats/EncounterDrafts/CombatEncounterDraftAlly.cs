@@ -5,6 +5,7 @@ public sealed record CombatEncounterDraftAlly(
     string DisplayName,
     string Role,
     IReadOnlyCollection<string> Tags,
+    string EmotionalRegister,
     bool IsProtagonist = false,
     int MaxVitality = 0,
     int AttackPower = 0,
@@ -19,5 +20,4 @@ public sealed record CombatEncounterDraftAlly(
     int MagicAttack = 0,
     int MagicDefense = 0,
     int Movement = 4,
-    string EmotionalRegister = null!,
     Guid? CharacterInstanceId = null);

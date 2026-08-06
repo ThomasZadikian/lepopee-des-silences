@@ -55,23 +55,23 @@ public sealed class PalaceLawMapperTests
     }
 
     [Fact]
-    public void CreatePalaceLaw_ShouldUseFallbackDomain_WhenNoImpactDomainParses()
+    public void CreatePalaceLaw_ShouldRejectUnknownImpactDomain()
     {
         var definition = CreateDefinition(impactDomains: ["not-a-real-domain"]);
 
-        var law = PalaceLawMapper.CreatePalaceLaw(definition, PalaceLawDomain.Combat);
+        var act = () => PalaceLawMapper.CreatePalaceLaw(definition);
 
-        law.Domains.Should().ContainSingle().Which.Should().Be(PalaceLawDomain.Combat);
+        act.Should().Throw<Exception>().WithMessage("*unsupported impact domain*");
     }
 
     [Fact]
-    public void CreatePalaceLaw_ShouldDefaultFallbackDomainToNarrative()
+    public void CreatePalaceLaw_ShouldRejectMissingImpactDomain()
     {
         var definition = CreateDefinition(impactDomains: []);
 
-        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+        var act = () => PalaceLawMapper.CreatePalaceLaw(definition);
 
-        law.Domains.Should().ContainSingle().Which.Should().Be(PalaceLawDomain.Narrative);
+        act.Should().Throw<Exception>().WithMessage("*at least one impact domain*");
     }
 
     [Fact]

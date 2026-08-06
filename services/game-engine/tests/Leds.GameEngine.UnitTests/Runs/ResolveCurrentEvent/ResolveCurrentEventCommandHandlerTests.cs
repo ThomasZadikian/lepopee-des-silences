@@ -301,7 +301,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
         var draftEnemy = new CatalogEnemyDefinition(
             "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
-            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });
+            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" },
+            Menace: 1);
 
         catalogGateway
             .Setup(g => g.ListCompatibleEnemyDefinitionsAsync(
@@ -478,7 +479,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
         var draftEnemy = new CatalogEnemyDefinition(
             "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
-            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });
+            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" },
+            Menace: 1);
 
         catalogGateway
             .Setup(g => g.ListCompatibleEnemyDefinitionsAsync(

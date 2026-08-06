@@ -22,7 +22,8 @@ public sealed class EncounterCompositionPolicyLawTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: ["fragile"],
-        SkillKeys: ["skill.basic.strike"]),
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 1),
 
     new CatalogEnemyDefinition(
         Key: "enemy.skirmisher.v1",
@@ -34,7 +35,8 @@ public sealed class EncounterCompositionPolicyLawTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: [],
-        SkillKeys: ["skill.basic.strike"]),
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 2),
 
     new CatalogEnemyDefinition(
         Key: "enemy.bruiser.v1",
@@ -46,7 +48,8 @@ public sealed class EncounterCompositionPolicyLawTests
         MinRiskLevel: 1,
         MaxRiskLevel: 5,
         Tags: [],
-        SkillKeys: ["skill.basic.strike"]),
+        SkillKeys: ["skill.basic.strike"],
+        Menace: 3),
 ];
 
     [Fact]

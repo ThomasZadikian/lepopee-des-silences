@@ -15,7 +15,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = null!)
+        string? emotionalRegisterCode = null)
     {
         Id = id;
         CharacterId = characterId;
@@ -43,7 +43,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = null!)
+        string? emotionalRegisterCode = null)
     {
         if (characterId == Guid.Empty)
             throw new DomainException("Character id is required.");
@@ -103,11 +103,11 @@ public sealed class RunCharacterSnapshot
             .ToArray();
     }
 
-    private static string NormalizeEmotionalRegisterCode(string emotionalRegisterCode)
+    private static string NormalizeEmotionalRegisterCode(string? emotionalRegisterCode)
     {
-        return EmotionalTypeCode.ParseRequired(
+        return EmotionalTypeCode.NormalizeRequired(
             emotionalRegisterCode,
-            "Character emotional register code").ToString();
+            "Character emotional register code");
     }
 
     public static RunCharacterSnapshot Rehydrate(
@@ -118,7 +118,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = null!)
+        string? emotionalRegisterCode = null)
     {
         return new RunCharacterSnapshot(
             id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys, emotionalRegisterCode);

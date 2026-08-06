@@ -41,9 +41,9 @@ public sealed class RunCharacterSkillSnapshot
         RequiresLineOfSight = requiresLineOfSight;
         Cooldown = cooldown;
         IsUltimate = isUltimate;
-        EmotionalRegister = EmotionalTypeCode.ParseRequired(
-            emotionalRegister,
-            $"Run character skill '{skillDefinitionKey}' emotional register").ToString();
+        EmotionalRegister = EmotionalTypeCode.NormalizeRequired(
+            emotionalRegister!,
+            $"Run character skill '{skillDefinitionKey}' emotional register");
         TemporarySlot = temporarySlot;
     }
 
@@ -82,7 +82,7 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!,
+        string? emotionalRegister = null,
         string temporarySlot = "Permanent")
     {
         if (string.IsNullOrWhiteSpace(skillDefinitionKey))
@@ -108,7 +108,7 @@ public sealed class RunCharacterSkillSnapshot
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister,
+            emotionalRegister!,
             temporarySlot);
     }
 
@@ -129,7 +129,7 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!,
+        string? emotionalRegister = null,
         string temporarySlot = "Permanent")
     {
         return new RunCharacterSkillSnapshot(
@@ -149,7 +149,7 @@ public sealed class RunCharacterSkillSnapshot
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister,
+            emotionalRegister!,
             temporarySlot);
     }
 }

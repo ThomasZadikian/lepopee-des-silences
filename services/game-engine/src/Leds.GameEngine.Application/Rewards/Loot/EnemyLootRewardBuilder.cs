@@ -79,42 +79,19 @@ public sealed class EnemyLootRewardBuilder
             }
 
             var item = itemResult.Value;
-            var runItemRarity = MapToRunItemRarity(item.Rarity);
-            var runItemEffectType = string.IsNullOrWhiteSpace(item.EffectRunType)
-                ? "None"
-                : item.EffectRunType;
+            var runItemRarity = CatalogRunItemMapper.MapRarity(item.Rarity).ToString();
+            var runItemEffectType = CatalogRunItemMapper.MapEffect(item.EffectRunType).ToString();
             choices.Add(RewardChoice.Create(
                 RewardType.TemporaryItem,
                 item.DisplayName,
                 item.Description,
-                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{MapToRunItemType(item.ItemType, item.Category)}:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
+                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{CatalogRunItemMapper.MapType(item.ItemType, item.Category)}:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
                 loot.SourceEnemyKey,
                 loot.SourceEnemyDisplayName));
         }
 
         return choices;
     }
-
-    // Unique remains a catalog-only rarity. Runtime distinguishes Legendary because
-    // the Palace SFD uses it for several authored drops.
-    private static string MapToRunItemRarity(string catalogRarity) => catalogRarity switch
-    {
-        "Common" or "Uncommon" or "Rare" or "Epic" or "Legendary" => catalogRarity,
-        _ => "Legendary"
-    };
-
-    private static string MapToRunItemType(string itemType, string category) => itemType switch
-    {
-        "Weapon" => nameof(RunItemType.Weapon),
-        "Accessory" => nameof(RunItemType.Equipment),
-        "Relic" or "Heritage" => nameof(RunItemType.Relic),
-        "Grimoire" => nameof(RunItemType.Grimoire),
-        "WeatherInstrument" => nameof(RunItemType.WeatherInstrument),
-        "SkillEssence" => nameof(RunItemType.SkillEssence),
-        _ when string.Equals(category, "Relic", StringComparison.OrdinalIgnoreCase)
-            => nameof(RunItemType.Relic),
-        _ => nameof(RunItemType.Consumable)
-    };
 
     /// <summary>
     /// Builds a display-only summary of every enemy defeated in the fight — description

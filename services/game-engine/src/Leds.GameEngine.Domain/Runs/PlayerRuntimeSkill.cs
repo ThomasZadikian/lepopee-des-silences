@@ -76,7 +76,7 @@ public sealed class PlayerRuntimeSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!)
+        string? emotionalRegister = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Player skill key is required.");
@@ -93,7 +93,8 @@ public sealed class PlayerRuntimeSkill
         if (cooldown < 0)
             throw new DomainException("Player skill cooldown must be non-negative.");
 
-        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Player skill '{key}' EmotionalRegister");
+        var canonicalEmotionalRegister = EmotionalTypeCode.NormalizeRequired(
+            emotionalRegister, $"Player skill '{key}' EmotionalRegister");
 
         return new PlayerRuntimeSkill(
             key.Trim(), displayName.Trim(), skillType, targetingType, effectType, manaCost, chargeCost, basePower,
@@ -104,7 +105,7 @@ public sealed class PlayerRuntimeSkill
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister.Trim());
+            canonicalEmotionalRegister);
     }
 
     /// <summary>
@@ -127,13 +128,14 @@ public sealed class PlayerRuntimeSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = null!)
+        string? emotionalRegister = null)
     {
-        EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted player skill '{key}' EmotionalRegister");
+        var canonicalEmotionalRegister = EmotionalTypeCode.NormalizeRequired(
+            emotionalRegister, $"Persisted player skill '{key}' EmotionalRegister");
         return new PlayerRuntimeSkill(
             key, displayName, skillType, targetingType, effectType, manaCost, chargeCost,
             basePower, category, basePowerIsPercentOfMaxVitality, tacticalRange,
             tacticalAreaShape, requiresLineOfSight, cooldown, isUltimate,
-            emotionalRegister);
+            canonicalEmotionalRegister);
     }
 }

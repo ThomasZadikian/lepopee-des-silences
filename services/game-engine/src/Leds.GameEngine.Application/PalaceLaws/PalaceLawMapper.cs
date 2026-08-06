@@ -14,23 +14,20 @@ namespace Leds.GameEngine.Application.PalaceLaws;
 /// </summary>
 public static class PalaceLawMapper
 {
-    public static PalaceLaw CreatePalaceLaw(
-        PalaceLawDefinitionSnapshot definition,
-        PalaceLawDomain fallbackDomain = PalaceLawDomain.Narrative)
+    public static PalaceLaw CreatePalaceLaw(PalaceLawDefinitionSnapshot definition)
     {
         var domains = definition.ImpactDomains
             .Select(domain => Enum.TryParse<PalaceLawDomain>(domain, ignoreCase: true, out var parsed)
-                ? parsed
-                : (PalaceLawDomain?)null)
-            .Where(domain => domain.HasValue)
-            .Select(domain => domain!.Value)
+                && Enum.IsDefined(parsed)
+                    ? parsed
+                    : throw new DomainException(
+                        $"Palace law '{definition.Key}' has unsupported impact domain '{domain}'."))
             .Distinct()
             .ToArray();
 
         if (domains.Length == 0)
-        {
-            domains = [fallbackDomain];
-        }
+            throw new DomainException(
+                $"Palace law '{definition.Key}' must declare at least one impact domain.");
 
         var effects = (definition.Effects ?? [])
             .OrderBy(effect => effect.Order)
@@ -62,8 +59,10 @@ public static class PalaceLawMapper
         }
 
         var duration = Enum.TryParse<RunModifierDuration>(effect.Duration, ignoreCase: true, out var parsedDuration)
-            ? parsedDuration
-            : RunModifierDuration.UntilRunEnds;
+            && Enum.IsDefined(parsedDuration)
+                ? parsedDuration
+                : throw new DomainException(
+                    $"Palace law effect duration '{effect.Duration}' is not supported by the runtime.");
 
         return effectType switch
         {
