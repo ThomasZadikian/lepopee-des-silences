@@ -2,6 +2,7 @@
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
@@ -306,7 +307,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     }
 
     private static EmotionalAffinityMatrixSnapshot ToDomainMatrix(
-        Catalog.Contracts.CatalogEmotionalAffinityMatrixSnapshot source)
+        CatalogEmotionalAffinityMatrixSnapshot source)
     {
         ArgumentNullException.ThrowIfNull(source);
         return EmotionalAffinityMatrixSnapshot.Create(

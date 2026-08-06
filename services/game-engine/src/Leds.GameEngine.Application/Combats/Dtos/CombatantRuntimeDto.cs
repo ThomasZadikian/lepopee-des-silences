@@ -37,9 +37,14 @@ public sealed record CombatantRuntimeDto(
     // affinities (honours an item-driven AttackTypeOverride on the combatant).
     private static readonly EmotionalTypeProfileProvider TypeProvider = new();
 
-    public static CombatantRuntimeDto FromDomain(Combatant combatant, int currentTick)
+    public static CombatantRuntimeDto FromDomain(
+        Combatant combatant,
+        int currentTick,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
-        var profile = TypeProvider.Resolve(combatant, EmotionalAffinityMatrixSnapshot.Canonical);
+        var profile = TypeProvider.Resolve(
+            combatant,
+            emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical);
 
         return new CombatantRuntimeDto(
             Id: combatant.Id.Value,

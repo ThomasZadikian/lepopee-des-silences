@@ -103,7 +103,10 @@ public sealed record TacticalCombatRuntimeDto(
 
         return new TacticalCombatantRuntimeDto(
             // Même bestiaire, mêmes stats et mêmes statuts, enrichis du placement tactique.
-            Combatant: CombatantRuntimeDto.FromDomain(combatant, combat.CurrentTick),
+            Combatant: CombatantRuntimeDto.FromDomain(
+                combatant,
+                combat.CurrentTick,
+                combat.EmotionalAffinityMatrix),
             X: position.X,
             Y: position.Y,
             HasMoved: turn.HasMoved,
