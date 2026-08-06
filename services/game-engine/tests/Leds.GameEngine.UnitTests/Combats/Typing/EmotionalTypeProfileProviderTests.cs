@@ -16,7 +16,7 @@ public sealed class EmotionalTypeProfileProviderTests
             "enemy.x", "X", "UnrelatedArchetype", 50,
             naturalEmotionalType: EmotionalType.Melancolie);
 
-        var profile = _provider.Resolve(fragile);
+        var profile = _provider.Resolve(fragile, EmotionalAffinityMatrixSnapshot.Canonical);
 
         profile.AttackType.Should().Be(EmotionalType.Melancolie);
         profile.WeakTo.Should().Contain(EmotionalType.Silence);
@@ -31,7 +31,7 @@ public sealed class EmotionalTypeProfileProviderTests
             "unrelated.instance.key", "Hero", "AnyRole", 100,
             naturalEmotionalType: EmotionalType.Memoire);
 
-        var profile = _provider.Resolve(hero);
+        var profile = _provider.Resolve(hero, EmotionalAffinityMatrixSnapshot.Canonical);
 
         profile.AttackType.Should().Be(EmotionalType.Memoire);
         profile.WeakTo.Should().Contain(EmotionalType.Deni);
@@ -44,7 +44,7 @@ public sealed class EmotionalTypeProfileProviderTests
     {
         var unknown = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
 
-        _provider.Resolve(unknown).Should().BeSameAs(CombatantTypeProfile.Neutral);
+        _provider.Resolve(unknown, EmotionalAffinityMatrixSnapshot.Canonical).Should().BeSameAs(CombatantTypeProfile.Neutral);
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class EmotionalTypeProfileProviderTests
             naturalEmotionalType: EmotionalType.Memoire);
         hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
 
-        var profile = _provider.Resolve(hero);
+        var profile = _provider.Resolve(hero, EmotionalAffinityMatrixSnapshot.Canonical);
 
         profile.AttackType.Should().Be(EmotionalType.Rupture);
         profile.WeakTo.Should().Contain(EmotionalType.Deni);
@@ -172,7 +172,7 @@ public sealed class EmotionalTypeProfileProviderTests
             definitionKey, "Companion", "AnyRole", 100,
             naturalEmotionalType: expected);
 
-        _provider.Resolve(companion).AttackType.Should().Be(expected);
+        _provider.Resolve(companion, EmotionalAffinityMatrixSnapshot.Canonical).AttackType.Should().Be(expected);
     }
 
     [Fact]

@@ -58,7 +58,8 @@ public sealed class TacticalCombat : ICombatContext
         Dictionary<Guid, TacticalFacing>? facings = null,
         GridPosition? escapePosition = null,
         RiskTier riskTier = RiskTier.Calme,
-        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null)
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         Id = id;
         RunId = runId;
@@ -77,6 +78,7 @@ public sealed class TacticalCombat : ICombatContext
         CreatedAtUtc = createdAtUtc;
         EscapePosition = escapePosition;
         RiskTier = riskTier;
+        EmotionalAffinityMatrix = emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical;
         _equippedItemKeys = (equippedItemKeys
                 ?? new Dictionary<Guid, IReadOnlyCollection<string>>())
             .ToDictionary(
@@ -101,6 +103,7 @@ public sealed class TacticalCombat : ICombatContext
 
     public IReadOnlyCollection<Combatant> Allies => _allies.AsReadOnly();
     public IReadOnlyCollection<Combatant> Enemies => _enemies.AsReadOnly();
+    public EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
     private IEnumerable<Combatant> AllCombatants => _allies.Concat(_enemies);
 
@@ -960,7 +963,8 @@ public sealed class TacticalCombat : ICombatContext
         bool falaiseWindEnabled = false,
         bool presentationsEnabled = false,
         bool miroirEnabled = false,
-        string? forgottenSkillKey = null)
+        string? forgottenSkillKey = null,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
 
@@ -995,7 +999,8 @@ public sealed class TacticalCombat : ICombatContext
             createdAtUtc,
             escapePosition: escapePosition,
             riskTier: riskTier,
-            equippedItemKeys: equippedItemKeys)
+            equippedItemKeys: equippedItemKeys,
+            emotionalAffinityMatrix: emotionalAffinityMatrix)
         {
             HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled,
             FirstHitCriticalEnabled = firstHitCriticalEnabled,
@@ -1068,7 +1073,8 @@ public sealed class TacticalCombat : ICombatContext
         bool presentationsEnabled = false,
         bool miroirEnabled = false,
         bool hasMirrorTriggered = false,
-        string? forgottenSkillKey = null)
+        string? forgottenSkillKey = null,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(positions);
@@ -1083,7 +1089,8 @@ public sealed class TacticalCombat : ICombatContext
             facings?.ToDictionary(pair => pair.Key, pair => pair.Value),
             escapePosition,
             riskTier,
-            equippedItemKeys)
+            equippedItemKeys,
+            emotionalAffinityMatrix)
         {
             Status = status,
             RoundNumber = roundNumber,

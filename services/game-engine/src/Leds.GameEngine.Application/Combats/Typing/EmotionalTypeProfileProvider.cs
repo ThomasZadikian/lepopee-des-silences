@@ -9,14 +9,14 @@ namespace Leds.GameEngine.Application.Combats.Typing;
 /// </summary>
 public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 {
-    public CombatantTypeProfile Resolve(Combatant combatant)
+    public CombatantTypeProfile Resolve(
+        Combatant combatant,
+        EmotionalAffinityMatrixSnapshot emotionalAffinityMatrix)
     {
-        if (combatant is null)
-        {
-            return CombatantTypeProfile.Neutral;
-        }
+        ArgumentNullException.ThrowIfNull(combatant);
+        ArgumentNullException.ThrowIfNull(emotionalAffinityMatrix);
 
-        var baseProfile = Profile(combatant.NaturalEmotionalType);
+        var baseProfile = Profile(combatant.NaturalEmotionalType, emotionalAffinityMatrix);
 
         // An item-driven attack type override changes the offensive type only;
         // the combatant keeps its innate weaknesses / resistances / immunities.
@@ -41,7 +41,7 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 
         // Default / basic attacks follow the caster's character/archetype type
         // (and can be modified by items).
-        return Resolve(attacker).AttackType;
+        return attacker.AttackTypeOverride ?? attacker.NaturalEmotionalType;
     }
 
     /// <summary>
@@ -79,29 +79,22 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         return false;
     }
 
-    private static CombatantTypeProfile Profile(EmotionalType naturalRegister)
+    private static CombatantTypeProfile Profile(
+        EmotionalType naturalRegister,
+        EmotionalAffinityMatrixSnapshot emotionalAffinityMatrix)
     {
         if (naturalRegister == EmotionalType.Neutral)
-        {
             return CombatantTypeProfile.Neutral;
-        }
-
-        var (weak, resistant, immune) = naturalRegister switch
-        {
-            EmotionalType.Effroi => (EmotionalType.Memoire, EmotionalType.Rupture, EmotionalType.Silence),
-            EmotionalType.Deni => (EmotionalType.Melancolie, EmotionalType.Effroi, EmotionalType.Folie),
-            EmotionalType.Melancolie => (EmotionalType.Silence, EmotionalType.Memoire, EmotionalType.Effroi),
-            EmotionalType.Rupture => (EmotionalType.Folie, EmotionalType.Melancolie, EmotionalType.Deni),
-            EmotionalType.Memoire => (EmotionalType.Deni, EmotionalType.Folie, EmotionalType.Rupture),
-            EmotionalType.Silence => (EmotionalType.Rupture, EmotionalType.Deni, EmotionalType.Memoire),
-            EmotionalType.Folie => (EmotionalType.Effroi, EmotionalType.Silence, EmotionalType.Melancolie),
-            _ => (EmotionalType.Neutral, EmotionalType.Neutral, EmotionalType.Neutral)
-        };
 
         return new CombatantTypeProfile(
             naturalRegister,
-            weak == EmotionalType.Neutral ? new HashSet<EmotionalType>() : new HashSet<EmotionalType> { weak },
-            resistant == EmotionalType.Neutral ? new HashSet<EmotionalType>() : new HashSet<EmotionalType> { resistant },
-            immune == EmotionalType.Neutral ? new HashSet<EmotionalType>() : new HashSet<EmotionalType> { immune });
+            ResolveIncoming(DamageEffectiveness.Weak),
+            ResolveIncoming(DamageEffectiveness.Resistant),
+            ResolveIncoming(DamageEffectiveness.Immune));
+
+        IReadOnlySet<EmotionalType> ResolveIncoming(DamageEffectiveness effectiveness) =>
+            Enum.GetValues<EmotionalType>()
+                .Where(attack => emotionalAffinityMatrix.Resolve(attack, naturalRegister) == effectiveness)
+                .ToHashSet();
     }
 }

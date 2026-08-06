@@ -8,6 +8,7 @@ using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.GameEngine.Domain.Npcs;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
 
@@ -27,6 +28,8 @@ public static class RunPersistenceMapper
             Seed = run.Seed,
             GeneratorVersion = run.GeneratorVersion,
             MarkovMatrixVersion = run.MarkovMatrixVersion,
+            EmotionalAffinityMatrixVersion = run.EmotionalAffinityMatrix.Version,
+            EmotionalAffinityMatrixJson = JsonSerializer.Serialize(run.EmotionalAffinityMatrix.Rules),
             CurrentRoomId = run.CurrentRoomId.Value,
             CurrentRoomIndex = run.CurrentRoomIndex,
             ActiveCombatId = run.ActiveCombatId?.Value,
@@ -408,8 +411,9 @@ public static class RunPersistenceMapper
                 snapshotRunModifierIds);
         }
 
+        var emotionalAffinityMatrix = DeserializeEmotionalAffinityMatrix(entity);
         var activeTacticalCombat = entity.ActiveCombat is not null
-            ? TacticalCombatPersistenceMapper.ToDomain(entity.ActiveCombat)
+            ? TacticalCombatPersistenceMapper.ToDomain(entity.ActiveCombat, emotionalAffinityMatrix)
             : null;
 
         var playerState = entity.PlayerState is not null
@@ -516,6 +520,7 @@ public static class RunPersistenceMapper
             lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
             forgottenSkillKey: entity.ForgottenSkillKey,
             activeTacticalCombat: activeTacticalCombat,
+            emotionalAffinityMatrix: emotionalAffinityMatrix,
             suspendedSevereLawModifierIds: string.IsNullOrWhiteSpace(entity.SuspendedSevereLawModifierIdsJson)
                 ? null
                 : JsonSerializer.Deserialize<Guid[]>(entity.SuspendedSevereLawModifierIdsJson),
@@ -529,6 +534,18 @@ public static class RunPersistenceMapper
 
         RehydrateNpcEncounters(run, entity);
         return run;
+    }
+
+    private static EmotionalAffinityMatrixSnapshot DeserializeEmotionalAffinityMatrix(RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.EmotionalAffinityMatrixVersion))
+            throw new InvalidOperationException($"Run '{entity.Id}' has no emotional affinity matrix version.");
+        if (string.IsNullOrWhiteSpace(entity.EmotionalAffinityMatrixJson))
+            throw new InvalidOperationException($"Run '{entity.Id}' has no emotional affinity matrix snapshot.");
+
+        var rules = JsonSerializer.Deserialize<EmotionalAffinityRuleSnapshot[]>(entity.EmotionalAffinityMatrixJson)
+            ?? throw new InvalidOperationException($"Run '{entity.Id}' has an invalid emotional affinity matrix snapshot.");
+        return EmotionalAffinityMatrixSnapshot.Create(entity.EmotionalAffinityMatrixVersion, rules);
     }
 
     public static Room ToDomain(RoomEntity entity)

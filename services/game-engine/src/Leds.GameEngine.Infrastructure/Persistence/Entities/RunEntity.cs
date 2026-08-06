@@ -8,6 +8,8 @@ public sealed class RunEntity
     public string Seed { get; set; } = string.Empty;
     public string GeneratorVersion { get; set; } = string.Empty;
     public string MarkovMatrixVersion { get; set; } = string.Empty;
+    public string EmotionalAffinityMatrixVersion { get; set; } = string.Empty;
+    public string EmotionalAffinityMatrixJson { get; set; } = string.Empty;
     public Guid CurrentRoomId { get; set; }
     public int CurrentRoomIndex { get; set; }
     public Guid? ActiveCombatId { get; set; }

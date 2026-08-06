@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.PalaceLaws;
@@ -238,7 +239,8 @@ public sealed class Run
         int magicAttack = 0,
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
-        string? forgottenSkillKey = null)
+        string? forgottenSkillKey = null,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -279,6 +281,7 @@ public sealed class Run
         CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
         LastPromulgationFloorIndex = lastPromulgationFloorIndex;
         ForgottenSkillKey = forgottenSkillKey;
+        EmotionalAffinityMatrix = emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical;
 
         _rooms.Add(initialRoom);
     }
@@ -292,6 +295,8 @@ public sealed class Run
     public string GeneratorVersion { get; }
 
     public string MarkovMatrixVersion { get; }
+
+    public EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
     public RunStatus Status { get; private set; }
 
@@ -789,7 +794,8 @@ public sealed class Run
         int healingBonusPercent = 0,
         bool caliceInfiniEnabled = false,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         if (playerId == Guid.Empty)
         {
@@ -893,7 +899,8 @@ public sealed class Run
             healingBonusPercent: healingBonusPercent,
             caliceInfiniEnabled: caliceInfiniEnabled,
             magicAttack: magicAttack,
-            magicDefense: magicDefense);
+            magicDefense: magicDefense,
+            emotionalAffinityMatrix: emotionalAffinityMatrix);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -2862,11 +2869,12 @@ public sealed class Run
         int? lastPromulgationFloorIndex = null,
         string? forgottenSkillKey = null,
         IEnumerable<Guid>? suspendedSevereLawModifierIds = null,
-        Combats.Tactical.TacticalCombat? activeTacticalCombat = null)
+        Combats.Tactical.TacticalCombat? activeTacticalCombat = null,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -121,7 +122,9 @@ public static class TacticalCombatPersistenceMapper
         };
     }
 
-    public static TacticalCombat ToDomain(CombatEntity entity)
+    public static TacticalCombat ToDomain(
+        CombatEntity entity,
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -207,7 +210,8 @@ public static class TacticalCombatPersistenceMapper
             entity.PresentationsEnabled,
             entity.MiroirEnabled,
             entity.HasMirrorTriggered,
-            entity.ForgottenSkillKey);
+            entity.ForgottenSkillKey,
+            emotionalAffinityMatrix);
     }
 
     private static int[] ParseIntCsv(string? csv, int expectedLength)

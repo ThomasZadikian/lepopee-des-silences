@@ -104,7 +104,8 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
             roster.FalaiseWindEnabled,
             roster.PresentationsEnabled,
             roster.MiroirEnabled,
-            roster.ForgottenSkillKey);
+            roster.ForgottenSkillKey,
+            run.EmotionalAffinityMatrix);
     }
 
     private static GridPosition? ResolveEscapePosition(

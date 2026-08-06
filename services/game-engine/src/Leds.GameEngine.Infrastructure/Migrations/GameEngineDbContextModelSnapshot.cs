@@ -2211,6 +2211,17 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("markov_matrix_version");
 
+                    b.Property<string>("EmotionalAffinityMatrixVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("emotional_affinity_matrix_version");
+
+                    b.Property<string>("EmotionalAffinityMatrixJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("emotional_affinity_matrix_json");
+
                     b.Property<int>("MaxHp")
                         .HasColumnType("integer")
                         .HasColumnName("max_hp");

@@ -1,10 +1,13 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.PalaceLaws;
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Domain.Combats.Typing;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.StartRun;
@@ -37,6 +40,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     private readonly PlayerSkillMerger _skillMerger;
     private readonly PlayerStatMerger _statMerger;
     private readonly IClock _clock;
+    private readonly ICatalogContentGateway? _catalogContentGateway;
 
     public StartRunCommandHandler(
         IRunGenerator runGenerator,
@@ -46,7 +50,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         IAmbientPalaceLawPromulgator palaceLawPromulgator,
         PlayerSkillMerger skillMerger,
         PlayerStatMerger statMerger,
-        IClock clock)
+        IClock clock,
+        ICatalogContentGateway? catalogContentGateway = null)
     {
         _runGenerator = runGenerator;
         _runRepository = runRepository;
@@ -56,6 +61,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         _skillMerger = skillMerger;
         _statMerger = statMerger;
         _clock = clock;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     public async Task<StartRunResponse> Handle(
@@ -79,6 +85,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         var seed = _runGenerator.GenerateSeed();
         var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
+        var emotionalAffinityMatrix = _catalogContentGateway is null
+            ? EmotionalAffinityMatrixSnapshot.Canonical
+            : ToDomainMatrix(await _catalogContentGateway.GetEmotionalAffinityMatrixAsync(cancellationToken));
 
         var mainCharacter = snapshot.Characters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
@@ -201,7 +210,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
-            caliceInfiniEnabled: caliceInfiniEnabled);
+            caliceInfiniEnabled: caliceInfiniEnabled,
+            emotionalAffinityMatrix: emotionalAffinityMatrix);
 
         // Ambient promulgation ("irréfusabilité") also applies to the very first room of
         // the run: without this, MoveToNextRoomCommandHandler's guaranteed first-floor
@@ -293,5 +303,20 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         await _runRepository.AddAsync(run, cancellationToken);
 
         return new StartRunResponse(RunDto.FromDomain(run));
+    }
+
+    private static EmotionalAffinityMatrixSnapshot ToDomainMatrix(
+        Catalog.Contracts.CatalogEmotionalAffinityMatrixSnapshot source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return EmotionalAffinityMatrixSnapshot.Create(
+            source.Version,
+            source.Rules.Select(rule => new EmotionalAffinityRuleSnapshot(
+                EmotionalTypeCode.ParseRequired(rule.AttackingRegister, "Affinity attacking register"),
+                EmotionalTypeCode.ParseRequired(rule.DefendingRegister, "Affinity defending register"),
+                Enum.TryParse<DamageEffectiveness>(rule.Outcome, true, out var outcome)
+                    ? outcome
+                    : throw new InvalidOperationException(
+                        $"Catalog affinity outcome '{rule.Outcome}' is invalid."))));
     }
 }

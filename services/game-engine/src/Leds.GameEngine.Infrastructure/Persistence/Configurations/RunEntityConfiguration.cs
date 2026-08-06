@@ -19,6 +19,8 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.Seed).HasColumnName("seed").HasMaxLength(128).IsRequired();
         builder.Property(run => run.GeneratorVersion).HasColumnName("generator_version").HasMaxLength(64).IsRequired();
         builder.Property(run => run.MarkovMatrixVersion).HasColumnName("markov_matrix_version").HasMaxLength(64).IsRequired();
+        builder.Property(run => run.EmotionalAffinityMatrixVersion).HasColumnName("emotional_affinity_matrix_version").HasMaxLength(64).IsRequired();
+        builder.Property(run => run.EmotionalAffinityMatrixJson).HasColumnName("emotional_affinity_matrix_json").IsRequired();
         builder.Property(run => run.CurrentRoomId).HasColumnName("current_room_id");
         builder.Property(run => run.CurrentRoomIndex).HasColumnName("current_room_index");
         builder.Property(run => run.ActiveCombatId).HasColumnName("active_combat_id");

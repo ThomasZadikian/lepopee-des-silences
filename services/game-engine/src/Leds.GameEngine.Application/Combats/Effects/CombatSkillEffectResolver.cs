@@ -551,7 +551,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // combatant-scoped — consumed the moment ANY hit lands, at most once.
             var isFirstHitCritical = combat.TryConsumeFirstHitCritical();
 
-            var defenderProfile = _typeProfileProvider.Resolve(target);
+            var defenderProfile = _typeProfileProvider.Resolve(target, combat.EmotionalAffinityMatrix);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
             var hasHeightAdvantage = combat is TacticalCombat tacticalCombat
                 && tacticalCombat.HasHeightAdvantage(actor.Id.Value, target.Id.Value);

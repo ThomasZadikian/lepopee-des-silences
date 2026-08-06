@@ -1,3 +1,5 @@
+using Leds.GameEngine.Domain.Combats.Typing;
+
 namespace Leds.GameEngine.Domain.Combats;
 
 /// <summary>
@@ -28,6 +30,8 @@ public interface ICombatContext
 
     IReadOnlyCollection<Combatant> Allies { get; }
     IReadOnlyCollection<Combatant> Enemies { get; }
+
+    EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
     // ── Lois du Palais actives sur ce combat ────────────────────────────────────────────────
     // Figées à la création depuis les RunModifiers actifs. Elles modifient la résolution, pas

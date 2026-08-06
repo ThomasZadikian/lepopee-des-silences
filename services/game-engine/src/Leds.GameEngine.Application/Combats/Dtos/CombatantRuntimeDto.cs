@@ -39,7 +39,7 @@ public sealed record CombatantRuntimeDto(
 
     public static CombatantRuntimeDto FromDomain(Combatant combatant, int currentTick)
     {
-        var profile = TypeProvider.Resolve(combatant);
+        var profile = TypeProvider.Resolve(combatant, EmotionalAffinityMatrixSnapshot.Canonical);
 
         return new CombatantRuntimeDto(
             Id: combatant.Id.Value,
