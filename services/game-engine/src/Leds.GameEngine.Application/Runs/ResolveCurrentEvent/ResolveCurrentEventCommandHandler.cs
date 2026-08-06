@@ -454,6 +454,7 @@ public sealed class ResolveCurrentEventCommandHandler
             MagicDefense: protagonist.StatBlock.MagicDefense,
             Movement: protagonist.StatBlock.Movement,
             EmotionalRegister: protagonist.EmotionalRegisterCode,
+            CharacterInstanceId: protagonist.CharacterId,
             Skills: MapCharacterSkills(protagonist)));
 
         foreach (var companion in characters.Skip(1).Take(Run.MaxPartySize - 1))
@@ -481,6 +482,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 MagicDefense: companion.StatBlock.MagicDefense,
                 Movement: companion.StatBlock.Movement,
                 EmotionalRegister: companion.EmotionalRegisterCode,
+                CharacterInstanceId: companion.CharacterId,
                 Skills: MapCharacterSkills(companion)));
         }
 

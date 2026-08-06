@@ -24,7 +24,8 @@ public sealed class Combatant
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot baseStatSnapshot,
         CombatantRuntimeState runtimeState,
-        bool hasActedThisCombat = false)
+        bool hasActedThisCombat = false,
+        Guid? characterInstanceId = null)
     {
         Id = id;
         SourceKey = sourceKey;
@@ -44,10 +45,13 @@ public sealed class Combatant
         _permanentSkills = skills;
         BaseStatSnapshot = baseStatSnapshot;
         RuntimeState = runtimeState;
+        CharacterInstanceId = characterInstanceId;
     }
 
     public CombatantId Id { get; }
     public string SourceKey { get; }
+    public string SourceDefinitionKey => SourceKey;
+    public Guid? CharacterInstanceId { get; }
     public string DisplayName { get; }
     public CombatantSide Side { get; }
     public string Archetype { get; }
@@ -306,7 +310,8 @@ public sealed class Combatant
         int maxVitality,
         int baseGuard = 0,
         IReadOnlyCollection<CombatantSkill>? skills = null,
-        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral,
+        Guid? characterInstanceId = null)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -341,7 +346,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            characterInstanceId: characterInstanceId);
     }
 
     public static Combatant CreateEnemy(
@@ -359,7 +365,8 @@ public sealed class Combatant
         int magicDefense = 0,
         int mana = 0,
         int movement = 4,
-        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral,
+        Guid? characterInstanceId = null)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -399,7 +406,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            characterInstanceId: characterInstanceId);
     }
 
     public static Combatant Create(
@@ -423,7 +431,8 @@ public sealed class Combatant
         int magicAttack = 0,
         int magicDefense = 0,
         int movement = 4,
-        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral,
+        Guid? characterInstanceId = null)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -495,7 +504,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            characterInstanceId: characterInstanceId);
     }
 
     public void MarkDefeated()
@@ -613,7 +623,8 @@ public sealed class Combatant
         int maxMana = int.MaxValue,
         int healingBonusPercent = 0,
         bool hasActedThisCombat = false,
-        EmotionalType naturalEmotionalType = EmotionalType.Neutral)
+        EmotionalType naturalEmotionalType = EmotionalType.Neutral,
+        Guid? characterInstanceId = null)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -638,7 +649,7 @@ public sealed class Combatant
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, naturalEmotionalType, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, naturalEmotionalType, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat, characterInstanceId);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(

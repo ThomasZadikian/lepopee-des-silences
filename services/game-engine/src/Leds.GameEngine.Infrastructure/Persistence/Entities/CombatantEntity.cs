@@ -5,6 +5,7 @@ public sealed class CombatantEntity
     public Guid Id { get; set; }
     public Guid CombatId { get; set; }
     public string SourceKey { get; set; } = string.Empty;
+    public Guid? CharacterInstanceId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string Side { get; set; } = string.Empty;
     public string Archetype { get; set; } = string.Empty;

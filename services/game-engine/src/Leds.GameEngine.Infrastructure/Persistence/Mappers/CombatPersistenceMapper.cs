@@ -22,6 +22,7 @@ public static class CombatPersistenceMapper
             Id = combatant.Id.Value,
             CombatId = combatId,
             SourceKey = combatant.SourceKey,
+            CharacterInstanceId = combatant.CharacterInstanceId,
             DisplayName = combatant.DisplayName,
             Side = combatant.Side.ToString(),
             Archetype = combatant.Archetype,
@@ -284,7 +285,8 @@ public static class CombatPersistenceMapper
             hasActedThisCombat: entity.HasActedThisCombat,
             naturalEmotionalType: EmotionalTypeCode.ParseRequired(
                 entity.NaturalEmotionalRegister,
-                $"Combatant '{entity.SourceKey}' natural emotional register"));
+                $"Combatant '{entity.SourceKey}' natural emotional register"),
+            characterInstanceId: entity.CharacterInstanceId);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

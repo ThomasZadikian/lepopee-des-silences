@@ -644,6 +644,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("combat_id");
 
+                    b.Property<Guid?>("CharacterInstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("character_instance_id");
+
                     b.Property<int>("CriticalChanceBonusPercent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

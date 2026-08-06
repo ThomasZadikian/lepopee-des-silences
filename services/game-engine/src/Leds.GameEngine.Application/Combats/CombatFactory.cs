@@ -201,7 +201,8 @@ public sealed class CombatFactory : ICombatFactory
                         magicDefense: magicDefense,
                         naturalEmotionalType: EmotionalTypeCode.ParseRequired(
                             ally.EmotionalRegister,
-                            $"Ally '{ally.AllyKey}' natural emotional register"));
+                            $"Ally '{ally.AllyKey}' natural emotional register"),
+                        characterInstanceId: ally.CharacterInstanceId);
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
@@ -268,7 +269,8 @@ public sealed class CombatFactory : ICombatFactory
                     movement: ally.Movement,
                     naturalEmotionalType: EmotionalTypeCode.ParseRequired(
                         ally.EmotionalRegister,
-                        $"Ally '{ally.AllyKey}' natural emotional register"));
+                        $"Ally '{ally.AllyKey}' natural emotional register"),
+                    characterInstanceId: ally.CharacterInstanceId);
 
                 // Companions keep their own emotional type (no item override).
                 companion.ApplyAttackTypeOverride(null);
