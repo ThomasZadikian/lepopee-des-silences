@@ -2,8 +2,8 @@ namespace Leds.GameEngine.Application.Players;
 
 /// <summary>
 /// Resolves a player character's combat archetype from its catalog
-/// <c>DefinitionKey</c>. Mirrors <c>EmotionalTypeProfileProvider.ProfilesByKey</c>: a
-/// lightweight beta tuning table, promotable to catalog/seed later without touching
+/// <c>DefinitionKey</c>. This is a lightweight beta tuning table, promotable to
+/// Catalog authoring later without touching
 /// the equip-validation logic that consumes it (see <see cref="SkillArchetypeGate"/>).
 /// </summary>
 public static class CharacterArchetypeProvider
