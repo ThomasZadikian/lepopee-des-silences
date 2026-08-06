@@ -2514,6 +2514,67 @@ public sealed partial class CatalogSeedRunner
             return;
         }
 
+        existing.Name = name;
+        existing.DisplayName = name;
+        existing.Description = description;
+        existing.NarrativeText = description;
+        existing.Version = version;
+        existing.Status = "Active";
+        existing.Archetype = archetype;
+        existing.Family = family;
+        existing.Rank = rank;
+        existing.Role = role;
+        existing.BaseDifficulty = isElite ? 2 : 1;
+        existing.EncounterWeight = 1;
+        existing.MinRiskLevel = riskMin;
+        existing.MaxRiskLevel = riskMax;
+        existing.MinDepth = depthMin;
+        existing.MaxDepth = depthMax;
+        existing.IsElite = isElite;
+        existing.BaseWeight = 1;
+        existing.Rarity = rarity;
+        existing.Registre = canonicalRegister;
+        existing.MenaceLevel = menace;
+        existing.BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? Array.Empty<string>());
+        existing.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
+        existing.TagsJson = JsonSerializer.Serialize(tags);
+        existing.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
+        existing.UpdatedAtUtc = now;
+
+        existing.StatBlock ??= new EnemyStatBlockEntity
+        {
+            Id = Guid.NewGuid(),
+            EnemyDefinitionId = existing.Id
+        };
+        existing.StatBlock.MaxVitality = vitality;
+        existing.StatBlock.AttackPower = attack;
+        existing.StatBlock.Defense = defense;
+        existing.StatBlock.StartingGuard = guard;
+        existing.StatBlock.Speed = speed;
+        existing.StatBlock.Initiative = initiative;
+        existing.StatBlock.Focus = focus;
+        existing.StatBlock.Mana = mana;
+        existing.StatBlock.Charge = 0;
+        existing.StatBlock.MagicAttack = magicAttack;
+        existing.StatBlock.MagicDefense = magicDefense;
+
+        var desiredSkillKeys = skillKeys
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var obsoleteLinks = existing.SkillLinks
+            .Where(link => !desiredSkillKeys.Contains(link.SkillDefinitionKey))
+            .ToArray();
+        _ctx.EnemySkillLinks.RemoveRange(obsoleteLinks);
+
+        foreach (var skillKey in desiredSkillKeys.Where(key => existing.SkillLinks.All(link =>
+                     !string.Equals(link.SkillDefinitionKey, key, StringComparison.OrdinalIgnoreCase))))
+        {
+            existing.SkillLinks.Add(new EnemySkillLinkEntity
+            {
+                EnemyDefinitionId = existing.Id,
+                SkillDefinitionKey = skillKey
+            });
+        }
     }
 
     // ── SORTS CANON ───────────────────────────────────────────────────────────
@@ -6429,6 +6490,7 @@ public sealed partial class CatalogSeedRunner
                 TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
                 SkillKeysJson = JsonSerializer.Serialize(skillKeys),
                 Registre = EmotionalRegisterCatalog.CodeOf(EmotionalRegisterCatalog.Parse(emotionalRegister)),
+                MenaceLevel = 10,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             };
@@ -6461,6 +6523,7 @@ public sealed partial class CatalogSeedRunner
             enemy.TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" });
             enemy.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
             enemy.Registre = EmotionalRegisterCatalog.CodeOf(EmotionalRegisterCatalog.Parse(emotionalRegister));
+            enemy.MenaceLevel = 10;
             enemy.UpdatedAtUtc = now;
             enemy.StatBlock ??= new EnemyStatBlockEntity { Id = Guid.NewGuid(), EnemyDefinitionId = enemy.Id };
             enemy.StatBlock.MaxVitality = vit; enemy.StatBlock.AttackPower = atk;
