@@ -38,11 +38,21 @@ const props = withDefaults(
 
 const rootEl = ref<HTMLElement | null>(null);
 const isHovered = ref(false);
-const bubbleStyle = ref<{ left: string; bottom: string }>({ left: '0px', bottom: '0px' });
+const bubbleStyle = ref<{ left: string; top: string; bottom: string }>(
+  { left: '0px', top: 'auto', bottom: '0px' },
+);
 
 const BUBBLE_WIDTH = 220;
 const BUBBLE_GAP = 8;
 const VIEWPORT_MARGIN = 8;
+/**
+ * Worst-case bubble height (title + up to 3 lines + padding), used to decide whether
+ * there's room to place the bubble above the trigger. A plain constant rather than a
+ * measure-then-reposition pass: the bubble mounts already-visible (teleported, forced
+ * `visibility:visible` — see the unscoped style below), so measuring its real height
+ * first would mean a visible flash at the wrong spot for one frame.
+ */
+const BUBBLE_MAX_HEIGHT_ESTIMATE = 110;
 
 function computeBubblePosition() {
   const el = rootEl.value;
@@ -56,9 +66,21 @@ function computeBubblePosition() {
       window.innerWidth - BUBBLE_WIDTH - VIEWPORT_MARGIN,
     ),
   );
-  const bottom = Math.max(VIEWPORT_MARGIN, window.innerHeight - rect.top + BUBBLE_GAP);
 
-  bubbleStyle.value = { left: `${left}px`, bottom: `${bottom}px` };
+  // Prefer above the trigger, like the plain (non-teleported) bubble always does — but
+  // a trigger near the TOP of the viewport (e.g. the first portraits in combat's
+  // initiative rail) doesn't leave room for that: `bottom` alone has no notion of the
+  // bubble's own height, so it silently pushed the bubble's top edge past y=0, off-screen
+  // and unreadable. Flip below the trigger instead whenever there isn't enough room above.
+  const hasRoomAbove = rect.top - BUBBLE_GAP - BUBBLE_MAX_HEIGHT_ESTIMATE >= VIEWPORT_MARGIN;
+
+  if (hasRoomAbove) {
+    const bottom = window.innerHeight - rect.top + BUBBLE_GAP;
+    bubbleStyle.value = { left: `${left}px`, top: 'auto', bottom: `${bottom}px` };
+  } else {
+    const top = rect.bottom + BUBBLE_GAP;
+    bubbleStyle.value = { left: `${left}px`, top: `${top}px`, bottom: 'auto' };
+  }
 }
 
 function showTeleportedBubble() {
@@ -256,7 +278,11 @@ const statModifierLine = computed(() => {
         v-if="isHovered"
         class="sigil__bubble sigil__bubble--teleported"
         role="tooltip"
-        :style="{ '--bubble-left': bubbleStyle.left, '--bubble-bottom': bubbleStyle.bottom }"
+        :style="{
+          '--bubble-left': bubbleStyle.left,
+          '--bubble-top': bubbleStyle.top,
+          '--bubble-bottom': bubbleStyle.bottom,
+        }"
       >
         <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
         <div v-if="statModifierLine" class="sigil__bubble-line">{{ statModifierLine }}</div>
@@ -434,8 +460,8 @@ const statModifierLine = computed(() => {
 <style>
 .sigil__bubble--teleported {
   position: fixed !important;
-  top: auto !important;
   left: var(--bubble-left) !important;
+  top: var(--bubble-top) !important;
   bottom: var(--bubble-bottom) !important;
   opacity: 1 !important;
   visibility: visible !important;
