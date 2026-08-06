@@ -10,6 +10,13 @@ namespace Leds.GameEngine.UnitTests.Common;
 
 public sealed class StubCatalogContentGateway : ICatalogContentGateway
 {
+    public CatalogEmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; set; } =
+        new("emotional-affinity-test-1.0.0", []);
+
+    public Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(EmotionalAffinityMatrix);
+
     private static readonly IReadOnlyDictionary<string, ItemTemplateSnapshot> ItemTemplates =
         new Dictionary<string, ItemTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
         {

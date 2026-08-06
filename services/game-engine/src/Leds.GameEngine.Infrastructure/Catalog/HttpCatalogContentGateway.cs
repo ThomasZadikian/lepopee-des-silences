@@ -26,6 +26,24 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         _httpClient = httpClient;
     }
 
+    public async Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/emotional-affinity-matrix";
+        var response = await GetJsonOrNullAsync<EmotionalAffinityMatrixHttpResponse>(url, cancellationToken)
+            ?? throw new InvalidOperationException("Catalog returned no emotional affinity matrix.");
+
+        if (string.IsNullOrWhiteSpace(response.Version) || response.Rules is null)
+            throw new InvalidOperationException("Catalog returned an incomplete emotional affinity matrix.");
+
+        return new CatalogEmotionalAffinityMatrixSnapshot(
+            response.Version,
+            response.Rules.Select(rule => new CatalogEmotionalAffinityRuleSnapshot(
+                rule.AttackingRegister,
+                rule.DefendingRegister,
+                rule.Outcome)).ToArray());
+    }
+
     public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
@@ -1705,6 +1723,15 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Version,
         string EntryNodeKey,
         IReadOnlyDictionary<string, CatalogNpcDialogueNodeHttpResponse>? Nodes);
+
+    private sealed record EmotionalAffinityMatrixHttpResponse(
+        string Version,
+        IReadOnlyCollection<EmotionalAffinityRuleHttpResponse>? Rules);
+
+    private sealed record EmotionalAffinityRuleHttpResponse(
+        string AttackingRegister,
+        string DefendingRegister,
+        string Outcome);
 
     // ── Template HTTP responses ───────────────────────────────────────
 
