@@ -175,7 +175,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -284,7 +284,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 10)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -591,7 +591,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 10)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -803,7 +803,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -892,7 +892,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -980,7 +980,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1070,7 +1070,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1159,7 +1159,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1249,7 +1249,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1338,7 +1338,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ]]));
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
