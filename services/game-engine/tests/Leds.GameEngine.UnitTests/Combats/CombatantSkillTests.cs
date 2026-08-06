@@ -18,7 +18,7 @@ public sealed class CombatantSkillTests
             5,
             0,
             10,
-            ["basic"]);
+            ["basic"], emotionalRegister: "Neutral");
 
         skill.Key.Should().Be("skill.basic.strike");
         skill.DisplayName.Should().Be("Frappe");
@@ -34,7 +34,8 @@ public sealed class CombatantSkillTests
     [Fact]
     public void Create_ShouldThrow_WhenKeyIsEmpty()
     {
-        var act = () => CombatantSkill.Create("", "Frappe", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+        var act = () => CombatantSkill.Create("", "Frappe", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            emotionalRegister: "Neutral");
 
         act.Should().Throw<DomainException>().WithMessage("Combatant skill key is required.");
     }
@@ -42,7 +43,8 @@ public sealed class CombatantSkillTests
     [Fact]
     public void Create_ShouldThrow_WhenDisplayNameIsEmpty()
     {
-        var act = () => CombatantSkill.Create("skill.basic.strike", "", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+        var act = () => CombatantSkill.Create("skill.basic.strike", "", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            emotionalRegister: "Neutral");
 
         act.Should().Throw<DomainException>().WithMessage("Combatant skill display name is required.");
     }
@@ -50,7 +52,8 @@ public sealed class CombatantSkillTests
     [Fact]
     public void Create_ShouldThrow_WhenBasePowerIsNegative()
     {
-        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 5, 0, -1);
+        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 5, 0, -1,
+            emotionalRegister: "Neutral");
 
         act.Should().Throw<DomainException>().WithMessage("Combatant skill base power must be non-negative.");
     }
@@ -58,7 +61,8 @@ public sealed class CombatantSkillTests
     [Fact]
     public void Create_ShouldThrow_WhenManaCostIsNegative()
     {
-        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", -1, 0, 10);
+        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", -1, 0, 10,
+            emotionalRegister: "Neutral");
 
         act.Should().Throw<DomainException>().WithMessage("Combatant skill mana cost must be non-negative.");
     }
@@ -66,7 +70,8 @@ public sealed class CombatantSkillTests
     [Fact]
     public void Create_ShouldThrow_WhenChargeCostIsNegative()
     {
-        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 5, -1, 10);
+        var act = () => CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 5, -1, 10,
+            emotionalRegister: "Neutral");
 
         act.Should().Throw<DomainException>().WithMessage("Combatant skill charge cost must be non-negative.");
     }

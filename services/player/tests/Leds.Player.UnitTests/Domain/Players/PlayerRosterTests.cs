@@ -28,7 +28,6 @@ public sealed class PlayerRosterTests
     {
         var roster = PlayerRoster.Create();
         var character = PlayerCharacter.Create("key", "Name", 100, 0, 0, ["skill"]);
-
         roster.AddCharacter(character);
 
         roster.Characters.Should().ContainSingle();
@@ -50,7 +49,6 @@ public sealed class PlayerRosterTests
     {
         var roster = PlayerRoster.Create();
         var character = PlayerCharacter.Create("key", "Name", 100, 0, 0, ["skill"]);
-
         roster.AddCharacter(character);
         var act = () => roster.AddCharacter(character);
 
@@ -63,7 +61,6 @@ public sealed class PlayerRosterTests
         var roster = PlayerRoster.Create();
         var character1 = PlayerCharacter.Create("key", "Name1", 100, 0, 0, ["skill1"]);
         var character2 = PlayerCharacter.Create("key", "Name2", 100, 0, 0, ["skill2"]);
-
         roster.AddCharacter(character1);
         var act = () => roster.AddCharacter(character2);
 
@@ -76,7 +73,6 @@ public sealed class PlayerRosterTests
         var roster = PlayerRoster.Create();
         var character1 = PlayerCharacter.Create("key1", "Name1", 100, 0, 0, ["skill1"]);
         var character2 = PlayerCharacter.Create("key2", "Name2", 100, 0, 0, ["skill2"]);
-
         roster.AddCharacter(character1);
         roster.AddCharacter(character2);
 
@@ -89,7 +85,6 @@ public sealed class PlayerRosterTests
         var roster = PlayerRoster.Create();
         var character1 = PlayerCharacter.Create("key1", "Name1", 100, 0, 0, ["skill1"]);
         var character2 = PlayerCharacter.Create("key2", "Name2", 100, 0, 0, ["skill2"]);
-
         roster.AddCharacter(character1);
         roster.AddCharacter(character2);
 
@@ -112,7 +107,6 @@ public sealed class PlayerRosterTests
     public void Rehydrate_ShouldRestoreCharacters()
     {
         var character = PlayerCharacter.Create("key", "Name", 100, 0, 0, ["skill"]);
-
         var roster = PlayerRoster.Rehydrate([character]);
 
         roster.Characters.Should().ContainSingle();

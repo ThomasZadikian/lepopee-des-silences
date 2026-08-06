@@ -59,5 +59,5 @@ public sealed class TacticalSkillProfileTests
             category: category,
             tacticalRange: tacticalRange,
             tacticalAreaShape: tacticalAreaShape,
-            requiresLineOfSight: requiresLineOfSight);
+            requiresLineOfSight: requiresLineOfSight, emotionalRegister: "Neutral");
 }

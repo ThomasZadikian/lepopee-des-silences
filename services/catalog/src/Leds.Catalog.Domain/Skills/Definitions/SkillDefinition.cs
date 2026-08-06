@@ -100,7 +100,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral",
+        string? emotionalRegister = null,
         string audience = "Player",
         IReadOnlyList<string>? allowedArchetypes = null)
     {
@@ -156,6 +156,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         }
 
         var parsedRegister = EmotionalRegisterCatalog.Parse(emotionalRegister);
+        SkillEffectSpecValidator.Validate(key, effects ?? []);
 
         var normalizedAudience = string.IsNullOrWhiteSpace(audience) ? "Player" : audience.Trim();
         if (normalizedAudience is not ("Player" or "Enemy" or "Any"))
@@ -191,7 +192,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            parsedRegister.ToString(),
+            EmotionalRegisterCatalog.CodeOf(parsedRegister),
             normalizedAudience,
             allowedArchetypes ?? []);
     }

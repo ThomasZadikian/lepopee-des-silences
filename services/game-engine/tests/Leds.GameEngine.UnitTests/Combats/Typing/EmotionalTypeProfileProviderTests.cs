@@ -2,6 +2,7 @@
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 
 namespace Leds.GameEngine.UnitTests.Combats.Typing;
 
@@ -16,12 +17,12 @@ public sealed class EmotionalTypeProfileProviderTests
             "enemy.x", "X", "UnrelatedArchetype", 50,
             naturalEmotionalType: EmotionalType.Melancolie);
 
-        var profile = _provider.Resolve(fragile, EmotionalAffinityMatrixSnapshot.Canonical);
+        var profile = _provider.Resolve(fragile, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         profile.AttackType.Should().Be(EmotionalType.Melancolie);
-        profile.WeakTo.Should().Contain(EmotionalType.Silence);
-        profile.ResistantTo.Should().Contain(EmotionalType.Memoire);
-        profile.ImmuneTo.Should().Contain(EmotionalType.Effroi);
+        profile.EffectivenessAgainst(EmotionalType.Silence).Should().Be(DamageEffectiveness.Weak);
+        profile.EffectivenessAgainst(EmotionalType.Memoire).Should().Be(DamageEffectiveness.Resistant);
+        profile.EffectivenessAgainst(EmotionalType.Effroi).Should().Be(DamageEffectiveness.Immune);
     }
 
     [Fact]
@@ -31,12 +32,12 @@ public sealed class EmotionalTypeProfileProviderTests
             "unrelated.instance.key", "Hero", "AnyRole", 100,
             naturalEmotionalType: EmotionalType.Memoire);
 
-        var profile = _provider.Resolve(hero, EmotionalAffinityMatrixSnapshot.Canonical);
+        var profile = _provider.Resolve(hero, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         profile.AttackType.Should().Be(EmotionalType.Memoire);
-        profile.WeakTo.Should().Contain(EmotionalType.Deni);
-        profile.ResistantTo.Should().Contain(EmotionalType.Folie);
-        profile.ImmuneTo.Should().Contain(EmotionalType.Rupture);
+        profile.EffectivenessAgainst(EmotionalType.Deni).Should().Be(DamageEffectiveness.Weak);
+        profile.EffectivenessAgainst(EmotionalType.Folie).Should().Be(DamageEffectiveness.Resistant);
+        profile.EffectivenessAgainst(EmotionalType.Rupture).Should().Be(DamageEffectiveness.Immune);
     }
 
     [Fact]
@@ -44,7 +45,9 @@ public sealed class EmotionalTypeProfileProviderTests
     {
         var unknown = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
 
-        _provider.Resolve(unknown, EmotionalAffinityMatrixSnapshot.Canonical).Should().BeSameAs(CombatantTypeProfile.Neutral);
+        var profile = _provider.Resolve(unknown, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
+        profile.AttackType.Should().Be(EmotionalType.Neutral);
+        profile.BaseMultiplierAgainst(EmotionalType.Rupture).Should().Be(1.0);
     }
 
     [Fact]
@@ -65,7 +68,8 @@ public sealed class EmotionalTypeProfileProviderTests
         var attacker = Combatant.CreateEnemy(
             "enemy.x", "X", "Guard", 50,
             naturalEmotionalType: EmotionalType.Rupture);
-        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            emotionalRegister: "Neutral");
 
         _provider.ResolveAttackType(attacker, skill).Should().Be(EmotionalType.Rupture);
     }
@@ -74,7 +78,8 @@ public sealed class EmotionalTypeProfileProviderTests
     public void Attack_type_is_neutral_for_unknown_attacker_without_tag()
     {
         var attacker = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
-        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+        var skill = CombatantSkill.Create("skill.x", "X", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            emotionalRegister: "Neutral");
 
         _provider.ResolveAttackType(attacker, skill).Should().Be(EmotionalType.Neutral);
     }
@@ -123,11 +128,13 @@ public sealed class EmotionalTypeProfileProviderTests
     {
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100,
             naturalEmotionalType: EmotionalType.Memoire);
-        var skill = CombatantSkill.Rehydrate(
-            "skill.invalid", "Invalid", "Damage", "SingleEnemy", "Damage", 0, 0, 10, [],
-            emotionalRegister: register!);
-
-        var act = () => _provider.ResolveAttackType(hero, skill);
+        var act = () =>
+        {
+            var skill = CombatantSkill.Rehydrate(
+                "skill.invalid", "Invalid", "Damage", "SingleEnemy", "Damage", 0, 0, 10, [],
+                emotionalRegister: register!);
+            _provider.ResolveAttackType(hero, skill);
+        };
 
         act.Should().Throw<Leds.GameEngine.Domain.Common.DomainException>()
             .WithMessage("*EmotionalRegister*");
@@ -139,7 +146,8 @@ public sealed class EmotionalTypeProfileProviderTests
         var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100,
             naturalEmotionalType: EmotionalType.Memoire);
         hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
-        var basicAttack = CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+        var basicAttack = CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            emotionalRegister: "Neutral");
 
         _provider.ResolveAttackType(hero, basicAttack).Should().Be(EmotionalType.Rupture);
     }
@@ -151,11 +159,11 @@ public sealed class EmotionalTypeProfileProviderTests
             naturalEmotionalType: EmotionalType.Memoire);
         hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
 
-        var profile = _provider.Resolve(hero, EmotionalAffinityMatrixSnapshot.Canonical);
+        var profile = _provider.Resolve(hero, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         profile.AttackType.Should().Be(EmotionalType.Rupture);
-        profile.WeakTo.Should().Contain(EmotionalType.Deni);
-        profile.ImmuneTo.Should().Contain(EmotionalType.Rupture);
+        profile.EffectivenessAgainst(EmotionalType.Deni).Should().Be(DamageEffectiveness.Weak);
+        profile.EffectivenessAgainst(EmotionalType.Rupture).Should().Be(DamageEffectiveness.Immune);
     }
 
     [Theory]
@@ -172,7 +180,7 @@ public sealed class EmotionalTypeProfileProviderTests
             definitionKey, "Companion", "AnyRole", 100,
             naturalEmotionalType: expected);
 
-        _provider.Resolve(companion, EmotionalAffinityMatrixSnapshot.Canonical).AttackType.Should().Be(expected);
+        _provider.Resolve(companion, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create()).AttackType.Should().Be(expected);
     }
 
     [Fact]
@@ -185,5 +193,29 @@ public sealed class EmotionalTypeProfileProviderTests
             emotionalRegister: "Silence");
 
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
+    }
+
+    [Fact]
+    public void Affinity_status_overrides_only_the_holder_profile()
+    {
+        var hero = Combatant.CreateAlly(
+            "character.player.self", "Hero", "AnyRole", 100,
+            naturalEmotionalType: EmotionalType.Memoire);
+        hero.ApplyStatusEffect(CombatStatusEffect.Create(
+            "status.memory-shield",
+            "Bouclier mémoriel",
+            StatusEffectKind.AffinityModifier,
+            currentTick: 0,
+            durationTicks: 2,
+            emotionalType: EmotionalType.Deni,
+            affinityOutcome: DamageEffectiveness.Immune,
+            affinityPriority: 50));
+
+        var profile = _provider.Resolve(hero, Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
+
+        profile.EffectivenessAgainst(EmotionalType.Deni).Should().Be(DamageEffectiveness.Immune);
+        Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create()
+            .Resolve(EmotionalType.Deni, EmotionalType.Memoire)
+            .Should().Be(DamageEffectiveness.Weak);
     }
 }

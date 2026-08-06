@@ -29,7 +29,7 @@ public sealed class PlayerProfileRepositoryTests
         var reloaded = await repository.GetByIdAsync(profile.Id, CancellationToken.None);
 
         reloaded.Should().NotBeNull();
-        reloaded!.PermanentUnlocks.Should().ContainSingle(
+        reloaded.PermanentUnlocks.Should().ContainSingle(
             u => u.UnlockKey == "npc.hitomi:offer.skill" && u.UnlockType == "npc-offering");
         reloaded.HasPermanentUnlock("npc.hitomi:offer.skill").Should().BeTrue();
     }

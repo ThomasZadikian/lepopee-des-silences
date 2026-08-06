@@ -33,7 +33,8 @@ public sealed class SelectRewardItemEnrichmentTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
@@ -81,7 +82,8 @@ public sealed class SelectRewardItemEnrichmentTests
             markovMatrixVersion: "markov-test",
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow,
-            journalEnabled: true);
+            journalEnabled: true,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
@@ -122,7 +124,8 @@ public sealed class SelectRewardItemEnrichmentTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
@@ -161,7 +164,8 @@ public sealed class SelectRewardItemEnrichmentTests
             markovMatrixVersion: "markov-test",
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow,
-            currentHp: 20);
+            currentHp: 20,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
@@ -202,7 +206,8 @@ public sealed class SelectRewardItemEnrichmentTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
@@ -254,7 +259,8 @@ public sealed class SelectRewardItemEnrichmentTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);

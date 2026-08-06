@@ -24,12 +24,14 @@ const allSkills: SkillDefinitionView[] = [
     skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage',
     manaCost: 2, chargeCost: 0, basePower: 10, category: 'Physical',
     basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
+    compatibleCharacterDefinitionKeys: ['character.player.self'],
   },
   {
     key: 'canon.skill.ultimate', displayName: 'Ultime', description: 'Un coup dévastateur.',
     skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage',
     manaCost: 20, chargeCost: 5, basePower: 100, category: 'Magic',
     basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [], isUltimate: true,
+    compatibleCharacterDefinitionKeys: ['character.player.self'],
   },
 ];
 

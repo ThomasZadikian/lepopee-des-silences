@@ -252,7 +252,8 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         {
             var skill = await _catalogContentGateway.GetSkillDefinitionByKeyAsync(skillKey, cancellationToken);
             if (skill is null)
-                continue;
+                throw new DomainException(
+                    $"Companion '{npc.Key}' references missing skill '{skillKey}'.");
 
             skillSnapshots.Add(RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: skill.Key,
@@ -262,28 +263,20 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
                 effectType: skill.EffectType,
                 manaCost: skill.ManaCost,
                 chargeCost: skill.ChargeCost,
-                basePower: skill.BasePower));
+                basePower: skill.BasePower,
+                emotionalRegister: skill.EmotionalRegister));
         }
 
         if (skillSnapshots.Count == 0)
-        {
-            skillSnapshots.Add(RunCharacterSkillSnapshot.Create(
-                skillDefinitionKey: "skill.basic.strike",
-                displayName: "Frappe",
-                skillType: "Damage",
-                targetingMode: "SingleEnemy",
-                effectType: "Damage",
-                manaCost: 0,
-                chargeCost: 0,
-                basePower: 10));
-        }
+            throw new DomainException($"Companion '{npc.Key}' has no declared skills.");
 
         var character = RunCharacterSnapshot.Create(
             characterId: Guid.NewGuid(),
             definitionKey: offering.TargetKey ?? npc.Key,
             displayName: npc.DisplayName,
             statBlock: statBlock,
-            skills: skillSnapshots);
+            skills: skillSnapshots,
+            emotionalRegisterCode: npc.EmotionalAffinity);
 
         snapshot.DebugAddCharacter(character);
 

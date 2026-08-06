@@ -154,6 +154,6 @@ public sealed class TestPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                         ManaCost: 0,
                         ChargeCost: 0,
                         BasePower: 5)
-                ])]));
+                ]]));
     }
 }

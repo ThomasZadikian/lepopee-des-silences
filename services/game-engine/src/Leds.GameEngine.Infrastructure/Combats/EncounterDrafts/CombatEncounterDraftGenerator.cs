@@ -9,11 +9,6 @@ namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 
 public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerator
 {
-    private const string PlayerAllyKey = "player.self";
-    private const string PlayerDisplayName = "Le Joueur";
-    private const string PlayerRole = "Protagonist";
-    private static readonly IReadOnlyCollection<string> PlayerTags = new[] { "player", "protagonist" };
-
     // BALANCE KNOB — stat bonus applied ONLY to the Elite/Rare "preferred" enemy pick
     // (EncounterCompositionResult.PreferredEnemyKey), multiplicatively on top of the base
     // per-tier DifficultyMultiplier every enemy already gets. An Elite's escort (if any) —
@@ -143,23 +138,19 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             })
             .ToArray();
 
-        var allies = context.PartyAllies is { Count: > 0 }
-            ? context.PartyAllies.ToArray()
-            : new[]
-            {
-                new CombatEncounterDraftAlly(
-                    AllyKey: PlayerAllyKey,
-                    DisplayName: PlayerDisplayName,
-                    Role: PlayerRole,
-                    Tags: PlayerTags,
-                    IsProtagonist: true)
-            };
+        if (context.PartyAllies is not { Count: > 0 })
+        {
+            throw new InvalidOperationException(
+                "Combat draft context must contain the run's snapshotted party.");
+        }
+
+        var allies = context.PartyAllies.ToArray();
 
         var riskProfile = _riskProfileResolver.Resolve(
             Enum.Parse<Leds.GameEngine.Domain.Nodes.NodeEventType>(context.EncounterType),
             context.RiskLevel);
 
-        return new CombatEncounterDraft(
+        var draft = new CombatEncounterDraft(
             RunId: context.RunId,
             RoomId: context.RoomId,
             NodeId: context.NodeId,
@@ -171,6 +162,9 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             Allies: allies,
             DifficultyMultiplier: riskProfile.DifficultyMultiplier,
             RoomKey: context.RoomKey);
+
+        CombatEncounterDraftValidator.Validate(draft);
+        return draft;
     }
 
     private static int ScaleStat(int baseValue, double multiplier) =>

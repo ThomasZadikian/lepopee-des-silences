@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Domain.Combats.Typing;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.Infrastructure.Players;
@@ -44,51 +45,43 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
             Characters: dto.Characters
                 .Select(c =>
                 {
-                    var stats = c.Stats is not null
-                        ? new PlayerRunSnapshotCharacterStats(
-                            MaxVitality: c.Stats.MaxVitality,
-                            AttackPower: c.Stats.AttackPower,
-                            Defense: c.Stats.Defense,
-                            StartingGuard: c.Stats.StartingGuard,
-                            Speed: c.Stats.Speed,
-                            Initiative: c.Stats.Initiative,
-                            Focus: c.Stats.Focus,
-                            Mana: c.Stats.Mana,
-                            Charge: c.Stats.Charge,
-                            MagicAttack: c.Stats.MagicAttack,
-                            MagicDefense: c.Stats.MagicDefense,
-                            Movement: c.Stats.Movement)
-                        : new PlayerRunSnapshotCharacterStats(
-                            MaxVitality: c.MaxVitality,
-                            AttackPower: 12,
-                            Defense: 6,
-                            StartingGuard: 0,
-                            Speed: 10,
-                            Initiative: 10,
-                            Focus: 0,
-                            Mana: c.BaseMana,
-                            Charge: 0,
-                            Movement: 4);
+                    if (c.Stats is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Player character '{c.DefinitionKey}' has no stat snapshot.");
+                    }
 
-                    var skills = c.Skills is { Count: > 0 }
-                        ? c.Skills.Select(s => new PlayerRunSnapshotCharacterSkill(
-                            SkillDefinitionKey: s.SkillDefinitionKey,
-                            DisplayName: s.DisplayName,
-                            SkillType: s.SkillType,
-                            TargetingMode: s.TargetingMode,
-                            EffectType: s.EffectType,
-                            ManaCost: s.ManaCost,
-                            ChargeCost: s.ChargeCost,
-                            BasePower: s.BasePower)).ToArray()
-                        : c.SkillKeys.Select(key => new PlayerRunSnapshotCharacterSkill(
-                            SkillDefinitionKey: key,
-                            DisplayName: key,
-                            SkillType: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Defense" : "Damage",
-                            TargetingMode: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Self" : "SingleEnemy",
-                            EffectType: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Guard" : "Damage",
-                            ManaCost: 0,
-                            ChargeCost: 0,
-                            BasePower: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? 5 : 10)).ToArray();
+                    if (c.SkillKeys is null || c.SkillKeys.Count == 0 || c.SkillKeys.Any(string.IsNullOrWhiteSpace))
+                    {
+                        throw new InvalidOperationException(
+                            $"Player character '{c.DefinitionKey}' has no valid equipped skill keys.");
+                    }
+
+                    var stats = new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: c.Stats.MaxVitality,
+                        AttackPower: c.Stats.AttackPower,
+                        Defense: c.Stats.Defense,
+                        StartingGuard: c.Stats.StartingGuard,
+                        Speed: c.Stats.Speed,
+                        Initiative: c.Stats.Initiative,
+                        Focus: c.Stats.Focus,
+                        Mana: c.Stats.Mana,
+                        Charge: c.Stats.Charge,
+                        MagicAttack: c.Stats.MagicAttack,
+                        MagicDefense: c.Stats.MagicDefense,
+                        Movement: c.Stats.Movement);
+
+                    // Only the keys are owned by Player Service. Mechanics are resolved
+                    // authoritatively from Catalog by PlayerSkillMerger before use.
+                    var skills = c.SkillKeys.Select(key => new PlayerRunSnapshotCharacterSkill(
+                        SkillDefinitionKey: key,
+                        DisplayName: string.Empty,
+                        SkillType: string.Empty,
+                        TargetingMode: string.Empty,
+                        EffectType: string.Empty,
+                        ManaCost: 0,
+                        ChargeCost: 0,
+                        BasePower: 0)).ToArray();
 
                     return new PlayerRunSnapshotCharacter(
                         CharacterId: c.CharacterId,
@@ -115,7 +108,6 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int BaseCharge,
         IReadOnlyCollection<string> SkillKeys,
         PlayerRunSnapshotCharacterStatsResponse? Stats = null,
-        IReadOnlyCollection<PlayerRunSnapshotCharacterSkillResponse>? Skills = null,
         IReadOnlyCollection<string>? EquippedItemKeys = null);
 
     private sealed record PlayerRunSnapshotCharacterStatsResponse(
@@ -132,13 +124,4 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int MagicDefense = 0,
         int Movement = 4);
 
-    private sealed record PlayerRunSnapshotCharacterSkillResponse(
-        string SkillDefinitionKey,
-        string DisplayName,
-        string SkillType,
-        string TargetingMode,
-        string EffectType,
-        int ManaCost,
-        int ChargeCost,
-        int BasePower);
 }

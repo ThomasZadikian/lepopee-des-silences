@@ -49,12 +49,12 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
         var equipment = allies.ToDictionary(
             ally => ally.Id.Value,
             ally => (IReadOnlyCollection<string>)(run.PlayerSnapshot?.Characters
-                .FirstOrDefault(character =>
-                    string.Equals(
-                        character.DefinitionKey,
-                        ally.SourceKey,
-                        StringComparison.OrdinalIgnoreCase))
-                ?.EquippedItemKeys.ToArray() ?? []));
+                .FirstOrDefault(character => ally.CharacterInstanceId == character.CharacterId)
+                ?.EquippedItemKeys
+                .Concat(ally.EquipmentBehaviorCodes.Select(code => $"behavior:{code}"))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray()
+                ?? ally.EquipmentBehaviorCodes.Select(code => $"behavior:{code}").ToArray()));
 
         var selectedNode = room.GetNode(nodeId);
         // The player's chosen/generated tier lives directly on the node

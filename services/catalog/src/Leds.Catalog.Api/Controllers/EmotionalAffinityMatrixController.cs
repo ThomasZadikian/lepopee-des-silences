@@ -18,9 +18,10 @@ public sealed class EmotionalAffinityMatrixController : ControllerBase
             matrix.Version,
             Rules = matrix.Rules.Select(rule => new
             {
-                AttackingRegister = rule.AttackingRegister.ToString(),
-                DefendingRegister = rule.DefendingRegister.ToString(),
-                Outcome = rule.Outcome.ToString()
+                AttackingRegister = EmotionalRegisterCatalog.CodeOf(rule.AttackingRegister),
+                DefendingRegister = EmotionalRegisterCatalog.CodeOf(rule.DefendingRegister),
+                Outcome = rule.Outcome.ToString(),
+                rule.Multiplier
             })
         });
     }

@@ -175,9 +175,9 @@ public sealed class UseTacticalItemCommandHandler
         var targetCell = requestedTarget;
         var extraLogEntries = new List<CombatLogEntryDto>();
 
-        switch (ability.ItemKey)
+        switch (ability.BehaviorCode)
         {
-            case "item.aiguille-arret":
+            case "tactical-temporal-slow":
                 targets.AddRange(combat.Enemies.Where(enemy => !enemy.IsDefeated));
                 foreach (var affectedTarget in targets)
                 {
@@ -195,7 +195,7 @@ public sealed class UseTacticalItemCommandHandler
                 targetCell = origin;
                 break;
 
-            case "item.aiguille-relieur":
+            case "tactical-extend-periodic-duration":
                 if (!TacticalTargeting.IsInRange(
                         combat.Battlefield,
                         origin,
@@ -228,7 +228,7 @@ public sealed class UseTacticalItemCommandHandler
                 combat.OrientToward(actor.Id.Value, requestedTarget);
                 break;
 
-            case "item.iris-amethyste":
+            case "tactical-mind-control":
                 if (!TacticalTargeting.IsInRange(
                         combat.Battlefield,
                         origin,

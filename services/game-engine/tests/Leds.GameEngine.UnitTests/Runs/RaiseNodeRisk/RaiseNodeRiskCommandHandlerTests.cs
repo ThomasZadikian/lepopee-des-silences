@@ -72,7 +72,8 @@ public sealed class RaiseNodeRiskCommandHandlerTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         return (run, combatNode);
     }

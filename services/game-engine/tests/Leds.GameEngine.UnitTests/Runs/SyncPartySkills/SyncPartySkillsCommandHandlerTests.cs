@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
@@ -79,21 +80,23 @@ public sealed class SyncPartySkillsCommandHandlerTests
         {
             RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
-                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10)
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10,
+                emotionalRegister: "Neutral")
         };
         var companionSkills = new[]
         {
             RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
-                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10)
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10,
+                emotionalRegister: "Neutral")
         };
 
         var protagonist = RunCharacterSnapshot.Create(
             characterId: protagonistId, definitionKey: "character.player.self", displayName: "Le Porteur",
-            statBlock: statBlock, skills: protagonistSkills);
+            statBlock: statBlock, skills: protagonistSkills, emotionalRegisterCode: "Neutral");
         var companion = RunCharacterSnapshot.Create(
             characterId: companionId, definitionKey: "character.mane", displayName: "Mané",
-            statBlock: statBlock, skills: companionSkills);
+            statBlock: statBlock, skills: companionSkills, emotionalRegisterCode: "Memoire");
 
         var snapshot = RunPlayerSnapshot.Create(
             playerId: run.PlayerId, displayName: "Joueur",
@@ -117,6 +120,21 @@ public sealed class SyncPartySkillsCommandHandlerTests
             .ReturnsAsync(CreateFreshSnapshot(run.PlayerId, protagonistId, companionId));
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetSkillDefinitionByKeyAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string key, CancellationToken _) => new CatalogSkillDefinition(
+                key,
+                key == "skill.new.protagonist" ? "Nouveau sort du joueur" : "Nouveau sort du compagnon",
+                "Definition Catalog",
+                "Damage",
+                "SingleEnemy",
+                "Damage",
+                0,
+                0,
+                key == "skill.new.protagonist" ? 12 : 9,
+                [],
+                EquippedItemKeys: []));
         var merger = new PlayerSkillMerger(catalogGateway.Object);
 
         var handler = new SyncPartySkillsCommandHandler(repo.Object, playerGateway.Object, merger);

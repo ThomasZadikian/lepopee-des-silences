@@ -41,7 +41,8 @@ public sealed class CombatResolutionServiceTests
                 markovMatrixVersion: "markov-test",
                 initialRoom: roomWithTargetNode.Room,
                 startedAt: DateTimeOffset.UtcNow,
-                journalEnabled: true);
+                journalEnabled: true,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
             TestGameEngineFactory.EnterNode(run, roomWithTargetNode.TargetNode);
         }
         else
@@ -175,7 +176,8 @@ public sealed class CombatResolutionServiceTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: roomWithTargetNode.Room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         TestGameEngineFactory.EnterNode(run, roomWithTargetNode.TargetNode);
 

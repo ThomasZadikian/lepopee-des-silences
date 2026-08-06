@@ -22,11 +22,15 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
 
-    using var scope = app.Services.CreateScope();
-
-    var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    await dbContext.Database.MigrateAsync();
+using (var scope = app.Services.CreateScope())
+{
+    if (app.Environment.IsDevelopment())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
 
     if (app.Configuration.GetValue<bool>("CatalogSeed:ApplyOnStartup"))
     {
@@ -36,6 +40,9 @@ if (app.Environment.IsDevelopment())
         var externalSeeder = scope.ServiceProvider.GetRequiredService<ExternalCatalogContentSeeder>();
         await externalSeeder.ApplyAsync();
     }
+
+    var integrityValidator = scope.ServiceProvider.GetRequiredService<CatalogIntegrityValidator>();
+    await integrityValidator.ValidateAsync();
 }
 
 app.MapControllers();

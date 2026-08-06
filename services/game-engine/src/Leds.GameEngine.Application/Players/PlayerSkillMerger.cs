@@ -7,8 +7,7 @@ namespace Leds.GameEngine.Application.Players;
 /// <summary>
 /// Shared skill-merge computation: for a given player-service character snapshot,
 /// resolves the effective combat skill list (equipped skills, re-resolved against the
-/// catalog for authoritative mechanics, falling back to the snapshot's own data when a
-/// skill is missing from the catalog) plus any skill granted by an equipped item.
+/// catalog for authoritative mechanics) plus any skill granted by an equipped item.
 /// Extracted from <c>StartRunCommandHandler</c> so the Grimoire's mid-run skill resync
 /// (<c>SyncPartySkillsCommandHandler</c>) can reuse the exact same merge logic instead
 /// of duplicating it and silently drifting (e.g. dropping item-granted skills).
@@ -36,7 +35,13 @@ public sealed class PlayerSkillMerger
         foreach (var itemKey in equippedItemKeys)
         {
             var result = await _catalogGateway.GetItemDefinitionByKeyAsync(itemKey, cancellationToken);
-            if (result.IsSuccess && result.Value.EquipmentEffects is { Count: > 0 } itemEffects)
+            if (!result.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Equipped item definition '{itemKey}' could not be resolved from Catalog.");
+            }
+
+            if (result.Value.EquipmentEffects is { Count: > 0 } itemEffects)
             {
                 effects.AddRange(itemEffects);
             }
@@ -54,8 +59,15 @@ public sealed class PlayerSkillMerger
         {
             var result = await _catalogGateway.GetItemDefinitionByKeyAsync(
                 itemKey, cancellationToken);
-            if (result.IsSuccess)
-                definitions.Add(result.Value);
+            if (!result.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Equipped item definition '{itemKey}' could not be resolved from Catalog.");
+            }
+
+            CatalogItemEquipmentEffectValidator.Validate(
+                result.Value.Key, result.Value.EquipmentEffects ?? []);
+            definitions.Add(result.Value);
         }
 
         return definitions;
@@ -64,11 +76,9 @@ public sealed class PlayerSkillMerger
     /// <summary>
     /// mainCharacter.Skills comes from player-service's run-snapshot, which only
     /// guarantees the equipped skill KEY is correct — DisplayName/EffectType/BasePower
-    /// there can be a best-effort guess (e.g. for a skill unlocked from an NPC offering
-    /// like Mané's "Favorite de Elise"). Re-resolve each key against the catalog (the
-    /// actual source of truth) and only fall back to the snapshot's own data if the
-    /// catalog lookup misses, so a legendary/rare skill's real mechanics (EffectType,
-    /// BasePower, Category, percent-of-max heal, ...) are what actually gets cast.
+    /// there can be a best-effort projection. Every key is therefore re-resolved against
+    /// Catalog, the authoritative source. A missing definition blocks the run instead of
+    /// manufacturing a Physical/Neutral skill with incomplete mechanics.
     /// </summary>
     public async Task<IReadOnlyCollection<MergedCharacterSkill>> MergeSkillsAsync(
         PlayerRunSnapshotCharacter character,
@@ -94,18 +104,20 @@ public sealed class PlayerSkillMerger
                 var fromCatalog = catalogLearnedSkills.FirstOrDefault(
                     s => string.Equals(s.Key, fallback.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase));
 
-                var merged = fromCatalog is not null
-                    ? new MergedCharacterSkill(
-                        fromCatalog.Key, fromCatalog.DisplayName, fromCatalog.SkillType, fromCatalog.TargetingType,
-                        fromCatalog.EffectType, fromCatalog.ManaCost, fromCatalog.ChargeCost, fromCatalog.BasePower,
-                        fromCatalog.Category, fromCatalog.BasePowerIsPercentOfMaxVitality,
-                        fromCatalog.TacticalRange, fromCatalog.TacticalAreaShape,
-                        fromCatalog.RequiresLineOfSight, fromCatalog.Cooldown,
-                        fromCatalog.IsUltimate, fromCatalog.EmotionalRegister)
-                    : new MergedCharacterSkill(
-                        fallback.SkillDefinitionKey, fallback.DisplayName, fallback.SkillType, fallback.TargetingMode,
-                        fallback.EffectType, fallback.ManaCost, fallback.ChargeCost, fallback.BasePower,
-                        "Physical", false, 1, "Single", false, 0, false, "Neutral");
+                if (fromCatalog is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Character '{character.DefinitionKey}' references missing skill definition " +
+                        $"'{fallback.SkillDefinitionKey}'.");
+                }
+
+                var merged = new MergedCharacterSkill(
+                    fromCatalog.Key, fromCatalog.DisplayName, fromCatalog.SkillType, fromCatalog.TargetingType,
+                    fromCatalog.EffectType, fromCatalog.ManaCost, fromCatalog.ChargeCost, fromCatalog.BasePower,
+                    fromCatalog.Category, fromCatalog.BasePowerIsPercentOfMaxVitality,
+                    fromCatalog.TacticalRange, fromCatalog.TacticalAreaShape,
+                    fromCatalog.RequiresLineOfSight, fromCatalog.Cooldown,
+                    fromCatalog.IsUltimate, fromCatalog.EmotionalRegister);
 
                 return ApplyWeaponContract(merged, equippedWeapon);
             })
@@ -157,17 +169,17 @@ public sealed class PlayerSkillMerger
         foreach (var skillKey in skillKeys)
         {
             var skill = await _catalogGateway.GetSkillDefinitionByKeyAsync(skillKey, cancellationToken);
-            if (skill is not null)
-            {
-                skills.Add(skill);
-            }
+            if (skill is null)
+                throw new InvalidOperationException($"Skill definition '{skillKey}' could not be resolved from Catalog.");
+
+            skills.Add(skill);
         }
 
         return skills;
     }
 }
 
-/// <summary>Neutral skill shape produced by <see cref="PlayerSkillMerger"/>, converted by each
+/// <summary>Catalog-authoritative skill shape produced by <see cref="PlayerSkillMerger"/>, converted by each
 /// caller into its own domain type (<c>PlayerRuntimeSkill</c> or <c>RunCharacterSkillSnapshot</c>).</summary>
 public sealed record MergedCharacterSkill(
     string Key,

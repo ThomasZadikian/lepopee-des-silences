@@ -35,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<CatalogSeedRunner>();
         services.AddScoped<ExternalCatalogContentSeeder>();
+        services.AddScoped<CatalogIntegrityValidator>();
         services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
         services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
         services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();

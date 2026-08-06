@@ -33,7 +33,8 @@ public sealed class TacticalReviveTests
                 (defeated, new GridPosition(0, 0))
             ],
             [(enemy, new GridPosition(2, 2))],
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var placed = combat.ReviveNear(defeated.Id.Value, user.Id.Value, 25);
 

@@ -21,7 +21,7 @@ public sealed class TacticalActivationEconomyTests
             manaCost: 0,
             chargeCost: 0,
             basePower: 10,
-            cooldown: 2);
+            cooldown: 2, emotionalRegister: "Neutral");
         var ally = Combatant.Create(
             CombatantId.New(),
             "player.self",
@@ -58,7 +58,8 @@ public sealed class TacticalActivationEconomyTests
             battlefield,
             [(ally, new GridPosition(0, 0))],
             [(enemy, new GridPosition(1, 0))],
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         ally.Mana.Should().Be(1, "the opening activation also regenerates Mana");
         combat.MarkActiveCombatantActed(skill);

@@ -21,7 +21,8 @@ public sealed class SkillDefinitionTests
             "Damage",
             manaCost: 5,
             chargeCost: 0,
-            basePower: 10);
+            basePower: 10,
+            emotionalRegister: "Neutral");
 
         def.Id.Value.Should().NotBeEmpty();
         def.Key.Value.Should().Be("skill.basic.strike");
@@ -50,7 +51,8 @@ public sealed class SkillDefinitionTests
     public void Create_ShouldThrow_WhenDescriptionIsEmpty()
     {
         var act = () => SkillDefinition.Create(
-            "skill.test", "Name", null, "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+            "skill.test", "Name", null, "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            emotionalRegister: "Neutral");
 
         act.Should()
             .Throw<DomainException>()
@@ -127,7 +129,8 @@ public sealed class SkillDefinitionTests
     public void Create_ShouldDefaultToEmptyEffects_WhenNoneProvided()
     {
         var def = SkillDefinition.Create(
-            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            emotionalRegister: "Neutral");
 
         def.Effects.Should().BeEmpty();
     }
@@ -143,7 +146,7 @@ public sealed class SkillDefinitionTests
 
         var def = SkillDefinition.Create(
             "skill.construction-perpetuelle", "Construction perpétuelle", "Desc", "1.0.0",
-            "Buff", "Self", "Buff", 14, 0, 0, effects: effects);
+            "Buff", "Self", "Buff", 14, 0, 0, effects: effects, emotionalRegister: "Neutral");
 
         def.Effects.Should().HaveCount(2);
         def.Effects.Should().Contain(e => e.Kind == "HealOverTime" && e.MagnitudeIsPercentOfMax);
@@ -151,10 +154,35 @@ public sealed class SkillDefinitionTests
     }
 
     [Fact]
+    public void Create_ShouldRejectUnsupportedEffectKind()
+    {
+        var act = () => SkillDefinition.Create(
+            "skill.invalid-effect", "Invalid", "Desc", "1.0.0",
+            "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            effects: [new SkillEffectSpec("UnknownRuntimeEffect", null, 1, 1000)],
+            emotionalRegister: "Neutral");
+
+        act.Should().Throw<DomainException>().WithMessage("*is not supported*");
+    }
+
+    [Fact]
+    public void Create_ShouldRejectStatModifierWithoutSupportedStat()
+    {
+        var act = () => SkillDefinition.Create(
+            "skill.invalid-stat", "Invalid", "Desc", "1.0.0",
+            "Buff", "Self", "Buff", 0, 0, 0,
+            effects: [new SkillEffectSpec("StatModifier", null, 1, 1000, Stat: "Luck")],
+            emotionalRegister: "Neutral");
+
+        act.Should().Throw<DomainException>().WithMessage("*supported Stat*");
+    }
+
+    [Fact]
     public void Create_ShouldDefaultCategoryToPhysical_WhenNoneProvided()
     {
         var def = SkillDefinition.Create(
-            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            emotionalRegister: "Neutral");
 
         def.Category.Should().Be("Physical");
     }
@@ -164,7 +192,7 @@ public sealed class SkillDefinitionTests
     {
         var def = SkillDefinition.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage",
-            5, 0, 10, category: "Magic");
+            5, 0, 10, category: "Magic", emotionalRegister: "Neutral");
 
         def.Category.Should().Be("Magic");
     }
@@ -174,7 +202,7 @@ public sealed class SkillDefinitionTests
     {
         var def = SkillDefinition.Create(
             "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
-            category: "   ");
+            category: "   ", emotionalRegister: "Neutral");
 
         def.Category.Should().Be("Physical");
     }
@@ -196,7 +224,7 @@ public sealed class SkillDefinitionTests
         def.RequiresLineOfSight.Should().BeTrue();
         def.Cooldown.Should().Be(2);
         def.IsUltimate.Should().BeTrue();
-        def.EmotionalRegister.Should().Be("Effroi");
+        def.EmotionalRegister.Should().Be("effroi");
     }
 
     [Theory]
@@ -227,10 +255,22 @@ public sealed class SkillDefinitionTests
     }
 
     [Fact]
+    public void Create_ShouldThrow_WhenEmotionalRegisterIsNotExplicit()
+    {
+        var act = () => SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Skill definition emotional register is required.");
+    }
+
+    [Fact]
     public void Activate_ShouldSetStatusToActive()
     {
         var def = SkillDefinition.Create(
-            "skill.test", "Name", "Desc", "1.0.0", "Buff", "Self", "Buff", 2, 0, 0);
+            "skill.test", "Name", "Desc", "1.0.0", "Buff", "Self", "Buff", 2, 0, 0,
+            emotionalRegister: "Neutral");
 
         def.Activate();
 

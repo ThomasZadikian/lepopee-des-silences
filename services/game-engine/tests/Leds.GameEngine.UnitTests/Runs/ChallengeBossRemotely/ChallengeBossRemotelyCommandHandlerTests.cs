@@ -23,7 +23,8 @@ public sealed class ChallengeBossRemotelyCommandHandlerTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.MoveParty(4, 0); // costs 4, remaining 4
         run.MoveParty(0, 0); // costs 4 back to start, remaining 0

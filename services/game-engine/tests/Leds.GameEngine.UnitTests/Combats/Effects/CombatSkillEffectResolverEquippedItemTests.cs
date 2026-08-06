@@ -28,7 +28,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.epingle-protocole"]
+                [ally.Id.Value] = ["behavior:hostile-status-duration-plus-one"]
             });
         var skill = CombatantSkill.Create(
             "canon.skill.affaiblissement", "Affaiblissement", "Debuff", "SingleEnemy", "Debuff",
@@ -38,7 +38,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
                 new SkillStatusEffectSpec(
                     "weaken", "Affaiblissement", StatusEffectKind.StatModifier,
                     Magnitude: -10, DurationTicks: 2500, Stat: CombatStat.AttackPower)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -59,7 +59,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
                 new SkillStatusEffectSpec(
                     "weaken", "Affaiblissement", StatusEffectKind.StatModifier,
                     Magnitude: -10, DurationTicks: 2500, Stat: CombatStat.AttackPower)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -75,7 +75,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.encrier-poche"]
+                [ally.Id.Value] = ["behavior:first-dot-duration-plus-one"]
             });
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
@@ -85,7 +85,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -103,7 +103,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.grain-choeur"]
+                [ally.Id.Value] = ["behavior:silence-mana-minus-two", "behavior:silence-duration-plus-one"]
             });
         var skill = CombatantSkill.Create(
             "canon.skill.silence", "Silence", "Debuff", "SingleEnemy", "Debuff",
@@ -131,11 +131,11 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.grain-choeur"]
+                [ally.Id.Value] = ["behavior:silence-mana-minus-two", "behavior:silence-duration-plus-one"]
             });
         var skill = CombatantSkill.Create(
             "canon.skill.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
-            manaCost: 5, chargeCost: 0, basePower: 10);
+            manaCost: 5, chargeCost: 0, basePower: 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -147,7 +147,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
     {
         var ultimate = CombatantSkill.Create(
             "canon.skill.ultimate", "Ultime", "Damage", "SingleEnemy", "Damage",
-            manaCost: 999, chargeCost: 999, basePower: 10, isUltimate: true);
+            manaCost: 999, chargeCost: 999, basePower: 10, isUltimate: true, emotionalRegister: "Neutral");
         var ally = Combatant.Create(
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
@@ -159,7 +159,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.diapason-audela"]
+                [ally.Id.Value] = ["behavior:prevent-revive-signature-on-death"]
             });
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", 100);
 
@@ -178,7 +178,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
     {
         var ultimate = CombatantSkill.Create(
             "canon.skill.ultimate", "Ultime", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, isUltimate: true);
+            manaCost: 0, chargeCost: 0, basePower: 10, isUltimate: true, emotionalRegister: "Neutral");
         var ally = Combatant.Create(
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
@@ -204,7 +204,7 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.grain-choeur"]
+                [ally.Id.Value] = ["behavior:silence-mana-minus-two", "behavior:silence-duration-plus-one"]
             });
         var skill = CombatantSkill.Create(
             "canon.skill.silence", "Silence", "Debuff", "SingleEnemy", "Debuff",
@@ -223,6 +223,6 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
     private static CombatantSkill CreateSkill(string key, string effectType, int basePower)
     {
         return CombatantSkill.Create(
-            key, key, effectType, "SingleEnemy", effectType, 0, 0, basePower);
+            key, key, effectType, "SingleEnemy", effectType, 0, 0, basePower, emotionalRegister: "Neutral");
     }
 }

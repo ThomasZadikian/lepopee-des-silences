@@ -5,7 +5,8 @@ namespace Leds.GameEngine.Domain.Combats.Typing;
 public sealed record EmotionalAffinityRuleSnapshot(
     EmotionalType AttackingRegister,
     EmotionalType DefendingRegister,
-    DamageEffectiveness Effectiveness);
+    DamageEffectiveness Effectiveness,
+    double Multiplier);
 
 /// <summary>
 /// Immutable copy of the global emotional matrix used by a run. Keeping the complete
@@ -13,11 +14,11 @@ public sealed record EmotionalAffinityRuleSnapshot(
 /// </summary>
 public sealed class EmotionalAffinityMatrixSnapshot
 {
-    private readonly IReadOnlyDictionary<(EmotionalType Attack, EmotionalType Defense), DamageEffectiveness> _rules;
+    private readonly IReadOnlyDictionary<(EmotionalType Attack, EmotionalType Defense), EmotionalAffinityRuleSnapshot> _rules;
 
     private EmotionalAffinityMatrixSnapshot(
         string version,
-        IReadOnlyDictionary<(EmotionalType Attack, EmotionalType Defense), DamageEffectiveness> rules)
+        IReadOnlyDictionary<(EmotionalType Attack, EmotionalType Defense), EmotionalAffinityRuleSnapshot> rules)
     {
         Version = version;
         _rules = rules;
@@ -26,7 +27,7 @@ public sealed class EmotionalAffinityMatrixSnapshot
     public string Version { get; }
 
     public IReadOnlyCollection<EmotionalAffinityRuleSnapshot> Rules => _rules
-        .Select(rule => new EmotionalAffinityRuleSnapshot(rule.Key.Attack, rule.Key.Defense, rule.Value))
+        .Select(rule => rule.Value)
         .ToArray();
 
     public static EmotionalAffinityMatrixSnapshot Create(
@@ -45,10 +46,14 @@ public sealed class EmotionalAffinityMatrixSnapshot
             throw new DomainException(
                 $"Emotional affinity matrix '{version}' must contain exactly {expectedRuleCount} rules.");
 
-        var dictionary = new Dictionary<(EmotionalType, EmotionalType), DamageEffectiveness>();
+        var dictionary = new Dictionary<(EmotionalType, EmotionalType), EmotionalAffinityRuleSnapshot>();
         foreach (var rule in materialized)
         {
-            if (!dictionary.TryAdd((rule.AttackingRegister, rule.DefendingRegister), rule.Effectiveness))
+            if (!double.IsFinite(rule.Multiplier) || rule.Multiplier < 0)
+                throw new DomainException(
+                    $"Emotional affinity matrix '{version}' contains an invalid multiplier.");
+
+            if (!dictionary.TryAdd((rule.AttackingRegister, rule.DefendingRegister), rule))
                 throw new DomainException(
                     $"Emotional affinity matrix '{version}' contains duplicate rule " +
                     $"{rule.AttackingRegister}->{rule.DefendingRegister}.");
@@ -66,46 +71,15 @@ public sealed class EmotionalAffinityMatrixSnapshot
     }
 
     public DamageEffectiveness Resolve(EmotionalType attack, EmotionalType defense) =>
-        _rules.TryGetValue((attack, defense), out var effectiveness)
-            ? effectiveness
+        _rules.TryGetValue((attack, defense), out var rule)
+            ? rule.Effectiveness
             : throw new DomainException(
                 $"Emotional affinity matrix '{Version}' has no rule for {attack}->{defense}.");
 
-    /// <summary>Canonical fixture for direct domain construction; application flows snapshot Catalog.</summary>
-    public static EmotionalAffinityMatrixSnapshot Canonical { get; } = CreateCanonical();
+    public double ResolveMultiplier(EmotionalType attack, EmotionalType defense) =>
+        _rules.TryGetValue((attack, defense), out var rule)
+            ? rule.Multiplier
+            : throw new DomainException(
+                $"Emotional affinity matrix '{Version}' has no multiplier for {attack}->{defense}.");
 
-    private static EmotionalAffinityMatrixSnapshot CreateCanonical()
-    {
-        var registers = Enum.GetValues<EmotionalType>();
-        var rules = from attack in registers
-                    from defense in registers
-                    select new EmotionalAffinityRuleSnapshot(
-                        attack,
-                        defense,
-                        ResolveCanonical(attack, defense));
-        return Create("emotional-affinity-1.0.0", rules);
-    }
-
-    private static DamageEffectiveness ResolveCanonical(EmotionalType attack, EmotionalType defense)
-    {
-        if (attack == EmotionalType.Neutral || defense == EmotionalType.Neutral)
-            return DamageEffectiveness.Neutral;
-
-        var (weak, resistant, immune) = defense switch
-        {
-            EmotionalType.Effroi => (EmotionalType.Memoire, EmotionalType.Rupture, EmotionalType.Silence),
-            EmotionalType.Deni => (EmotionalType.Melancolie, EmotionalType.Effroi, EmotionalType.Folie),
-            EmotionalType.Melancolie => (EmotionalType.Silence, EmotionalType.Memoire, EmotionalType.Effroi),
-            EmotionalType.Rupture => (EmotionalType.Folie, EmotionalType.Melancolie, EmotionalType.Deni),
-            EmotionalType.Memoire => (EmotionalType.Deni, EmotionalType.Folie, EmotionalType.Rupture),
-            EmotionalType.Silence => (EmotionalType.Rupture, EmotionalType.Deni, EmotionalType.Memoire),
-            EmotionalType.Folie => (EmotionalType.Effroi, EmotionalType.Silence, EmotionalType.Melancolie),
-            _ => (EmotionalType.Neutral, EmotionalType.Neutral, EmotionalType.Neutral)
-        };
-
-        if (attack == immune) return DamageEffectiveness.Immune;
-        if (attack == weak) return DamageEffectiveness.Weak;
-        if (attack == resistant) return DamageEffectiveness.Resistant;
-        return DamageEffectiveness.Neutral;
-    }
 }

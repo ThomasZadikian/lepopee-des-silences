@@ -16,7 +16,10 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         ArgumentNullException.ThrowIfNull(combatant);
         ArgumentNullException.ThrowIfNull(emotionalAffinityMatrix);
 
-        var baseProfile = Profile(combatant.NaturalEmotionalType, emotionalAffinityMatrix);
+        var baseProfile = Profile(
+            combatant.NaturalEmotionalType,
+            emotionalAffinityMatrix,
+            combatant.EmotionalAffinityModifiers);
 
         // An item-driven attack type override changes the offensive type only;
         // the combatant keeps its innate weaknesses / resistances / immunities.
@@ -24,9 +27,8 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         {
             return new CombatantTypeProfile(
                 overrideType,
-                baseProfile.WeakTo,
-                baseProfile.ResistantTo,
-                baseProfile.ImmuneTo);
+                baseProfile.BaseAffinities,
+                combatant.EmotionalAffinityModifiers);
         }
 
         return baseProfile;
@@ -53,21 +55,10 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
     /// return false because Catalog explicitly declares them <c>Neutral</c>).
     /// </summary>
     public static bool TryResolveIntrinsicType(CombatantSkill? skill, out EmotionalType type)
-        => TryResolveIntrinsicType(skill?.Key, skill?.Tags, skill?.EmotionalRegister, out type);
-
-    /// <summary>
-    /// Contract-oriented overload used by out-of-combat Catalog readers.
-    /// The key and tags remain in the signature for contract compatibility but never
-    /// participate in type resolution.
-    /// </summary>
-    public static bool TryResolveIntrinsicType(
-        string? skillKey, IReadOnlyCollection<string>? tags, string? emotionalRegister, out EmotionalType type)
     {
-        // Catalog is the sole authoring source. Tags and skill keys are intentionally
-        // ignored: accepting them as overrides allowed contradictory definitions.
         var registerType = EmotionalTypeCode.ParseRequired(
-            emotionalRegister,
-            $"Skill '{skillKey ?? "<unknown>"}' EmotionalRegister");
+            skill?.EmotionalRegister,
+            $"Skill '{skill?.Key ?? "<unknown>"}' EmotionalRegister");
 
         if (registerType != EmotionalType.Neutral)
         {
@@ -81,20 +72,19 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 
     private static CombatantTypeProfile Profile(
         EmotionalType naturalRegister,
-        EmotionalAffinityMatrixSnapshot emotionalAffinityMatrix)
+        EmotionalAffinityMatrixSnapshot emotionalAffinityMatrix,
+        IReadOnlyCollection<EmotionalAffinityModifier> modifiers)
     {
-        if (naturalRegister == EmotionalType.Neutral)
-            return CombatantTypeProfile.Neutral;
-
         return new CombatantTypeProfile(
             naturalRegister,
-            ResolveIncoming(DamageEffectiveness.Weak),
-            ResolveIncoming(DamageEffectiveness.Resistant),
-            ResolveIncoming(DamageEffectiveness.Immune));
+            ResolveAffinities(),
+            modifiers);
 
-        IReadOnlySet<EmotionalType> ResolveIncoming(DamageEffectiveness effectiveness) =>
-            Enum.GetValues<EmotionalType>()
-                .Where(attack => emotionalAffinityMatrix.Resolve(attack, naturalRegister) == effectiveness)
-                .ToHashSet();
+        IReadOnlyDictionary<EmotionalType, BaseEmotionalAffinity> ResolveAffinities() =>
+            Enum.GetValues<EmotionalType>().ToDictionary(
+                attack => attack,
+                attack => new BaseEmotionalAffinity(
+                    emotionalAffinityMatrix.Resolve(attack, naturalRegister),
+                    emotionalAffinityMatrix.ResolveMultiplier(attack, naturalRegister)));
     }
 }

@@ -664,6 +664,16 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("display_name");
 
+                    b.Property<string>("SourceDefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_definition_key");
+
+                    b.Property<string>("EmotionalAffinityModifiersJson")
+                        .HasColumnType("text")
+                        .HasColumnName("emotional_affinity_modifiers_json");
+
                     b.Property<int>("DotDamageBonusPercent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

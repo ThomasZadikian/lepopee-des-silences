@@ -9,7 +9,13 @@ namespace Leds.GameEngine.Application.Catalog.Ports;
 /// </summary>
 public interface ICatalogContentGateway
 {
+    Task<CatalogEmotionalRegisterCatalog> GetEmotionalRegisterCatalogAsync(
+        CancellationToken cancellationToken = default);
+
     Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogCharacterCombatDefinition>> ListCharacterCombatDefinitionsAsync(
         CancellationToken cancellationToken = default);
 
     Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
@@ -55,6 +61,9 @@ public interface ICatalogContentGateway
 
     Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
         string key,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListActiveEnemyDefinitionsAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListEnemyDefinitionsByRoomTypeAsync(

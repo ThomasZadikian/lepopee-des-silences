@@ -214,5 +214,6 @@ public sealed class TacticalMovementTests
             battlefield,
             allies,
             enemies,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 }

@@ -22,7 +22,8 @@ public sealed class NpcEventChoiceResolverTests
             speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
         var character = RunCharacterSnapshot.Create(
             characterId: Guid.NewGuid(), definitionKey: "character.player.self",
-            displayName: "Le Porteur", statBlock: statBlock, skills: []);
+            displayName: "Le Porteur", statBlock: statBlock, skills: [],
+            emotionalRegisterCode: "Neutral");
         run.AttachPlayerSnapshot(RunPlayerSnapshot.Create(
             playerId: run.PlayerId, displayName: "Joueur",
             characters: [character], createdAtUtc: DateTimeOffset.UtcNow));

@@ -158,7 +158,8 @@ public sealed class RunUseItemTests
         var room = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-tea", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
-            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20);
+            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var tea = RunItem.Create(
             "item.tasse-de-the.v1", "Tasse de thé", "",
             RunItemType.Consumable, RunItemRarity.Rare,
@@ -179,7 +180,8 @@ public sealed class RunUseItemTests
         var room = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-tea-bonus", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
-            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20, healingBonusPercent: 15);
+            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20, healingBonusPercent: 15,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var tea = RunItem.Create(
             "item.tasse-de-the.v1", "Tasse de thé", "",
             RunItemType.Consumable, RunItemRarity.Rare,
@@ -213,7 +215,8 @@ public sealed class RunUseItemTests
         var room = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-heal-percent", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
-            maxHp: 40, currentHp: 20);
+            maxHp: 40, currentHp: 20,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         var item = RunItem.Create(
             "item.heal-percent-test.v1", "Onguent", "",
             RunItemType.Consumable, RunItemRarity.Common,

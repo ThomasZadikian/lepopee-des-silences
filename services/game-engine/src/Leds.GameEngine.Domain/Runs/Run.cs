@@ -281,7 +281,8 @@ public sealed class Run
         CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
         LastPromulgationFloorIndex = lastPromulgationFloorIndex;
         ForgottenSkillKey = forgottenSkillKey;
-        EmotionalAffinityMatrix = emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical;
+        EmotionalAffinityMatrix = emotionalAffinityMatrix
+            ?? throw new DomainException("A Catalog emotional affinity matrix snapshot is required.");
 
         _rooms.Add(initialRoom);
     }
@@ -927,7 +928,8 @@ public sealed class Run
                 effectType: "Damage",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 10),
+                basePower: 10,
+                emotionalRegister: "Neutral"),
             PlayerRuntimeSkill.Create(
                 key: "skill.basic.guard",
                 displayName: "Garde",
@@ -936,7 +938,8 @@ public sealed class Run
                 effectType: "Guard",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 5)
+                basePower: 5,
+                emotionalRegister: "Neutral")
         ];
     }
 

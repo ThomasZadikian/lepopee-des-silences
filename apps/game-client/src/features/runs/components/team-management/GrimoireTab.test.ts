@@ -74,7 +74,8 @@ function skill(overrides: Partial<SkillDefinitionView> & { key: string; displayN
   return {
     description: 'Un sort.', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage',
     manaCost: 0, chargeCost: 0, basePower: 10, category: 'Physical',
-    basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
+    basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [], emotionalRegister: 'neutral',
+    compatibleCharacterDefinitionKeys: ['character.player.self', 'character.mane'],
     ...overrides,
   };
 }

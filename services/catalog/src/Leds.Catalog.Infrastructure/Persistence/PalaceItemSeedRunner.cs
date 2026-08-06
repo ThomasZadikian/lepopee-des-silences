@@ -167,9 +167,8 @@ public sealed partial class CatalogSeedRunner
 
         // Encrier de poche's "+5% dégâts des effets périodiques [appliqués par le
         // porteur]" — the DamageOverTime-duration half of this item ("leur première
-        // application dure une activation supplémentaire") is handled directly in
-        // CombatSkillEffectResolver via a hardcoded item-key check (same convention as
-        // Épingle du protocole/Grain du chœur), since it isn't a stat bonus.
+        // application dure une activation supplémentaire") is exposed separately as a
+        // Catalog-authored RuntimeBehavior consumed by CombatSkillEffectResolver.
         foreach (var effect in definition.Effects.Where(effect =>
                      effect.Type == "PeriodicDamageModifier"
                      && effect.Target == "EffectsAppliedByWearer"
@@ -259,23 +258,29 @@ public sealed partial class CatalogSeedRunner
                 Fx("StatModifier", "Wearer", 5, "Percent", "WhileEquipped", behavior: "defense"),
                 Fx("StatModifier", "Wearer", 10, "Percent", "BearerActivation",
                     "previous-activation:no-magic-skill", behavior: "defense")
-            ]),
+            ], equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "defense-after-no-magic")]),
         P("item.epingle-protocole", "Épingle du protocole",
             "Les affaiblissements appliqués par le porteur durent une activation supplémentaire.",
             "Equipment", "Accessory", "Uncommon", "Equip", effects:
-            [Fx("StatusDurationModifier", "HostileEffectsAppliedByWearer", 1, "BearerActivations", "WhileEquipped")]),
+            [Fx("StatusDurationModifier", "HostileEffectsAppliedByWearer", 1, "BearerActivations", "WhileEquipped")],
+            equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "hostile-status-duration-plus-one")]),
         P("item.encrier-poche", "Encrier de poche",
             "+5% dégâts des effets périodiques ; leur première application dure une activation supplémentaire.",
             "Equipment", "Accessory", "Uncommon", "Equip", pool: "Palier,Labyrinthe", effects:
             [
                 Fx("PeriodicDamageModifier", "EffectsAppliedByWearer", 5, "Percent", "WhileEquipped"),
                 Fx("StatusDurationModifier", "PeriodicEffectsAppliedByWearer", 1, "BearerActivations", "first-stack")
-            ]),
+            ], equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "first-dot-duration-plus-one")]),
         P("item.aiguille-relieur", "Aiguille du Relieur",
             "Une fois par combat, prolonge de 25% la durée restante de tous les DoT de l'équipe sur une cible.",
             "Equipment", "Accessory", "Rare", "UseInCombat", combat: true, range: 999, shape: "Single",
             pool: "room.labyrinthe", effects:
-            [Fx("ExtendPeriodicDuration", "SingleCombatant", 25, "Percent", "Immediate", "once-per-combat", behavior: "round-up")]),
+            [Fx("ExtendPeriodicDuration", "SingleCombatant", 25, "Percent", "Immediate", "once-per-combat", behavior: "round-up")],
+            equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "tactical-extend-periodic-duration")]),
         P("item.gantelet-trempe", "Gantelet de trempe",
             "+10% Attaque ; chaque buff d'Attaque reçu accorde +2 Défense pour la même durée.",
             "Equipment", "Accessory", "Uncommon", "Equip", pool: "Enfers,room.enfer3", effects:
@@ -303,20 +308,25 @@ public sealed partial class CatalogSeedRunner
             "La première attaque de mêlée réussie subie par combat est annulée et renvoie 50% des dégâts finaux.",
             "Equipment", "Accessory", "Epic", "Equip", pool: "room.cellulehopital", effects:
             [Fx("ReflectMeleeDamage", "Attacker", 50, "Percent", "Immediate",
-                "first-successful-melee-hit-per-combat", behavior: "damage-only;generate-charge")]),
+                "first-successful-melee-hit-per-combat", behavior: "damage-only;generate-charge")],
+            equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "reflect-first-melee-hit")]),
         P("item.iris-amethyste", "Iris améthyste",
             "Une fois par combat, force un ennemi non-boss à attaquer son propre camp ; coûte 1% de Vitalité maximale pour la run.",
             "Equipment", "Accessory", "Epic", "UseInCombat", combat: true, effects:
             [
                 Fx("MindControl", "SingleEnemy", 1, "BearerActivations", "non-boss;once-per-combat", behavior: "ai-selects-target-and-skill"),
                 Fx("MaxVitalityCost", "Wearer", 1, "Percent", "Run", "minimum-current-and-max:1")
-            ]),
+            ], equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "tactical-mind-control")]),
         P("item.aiguille-arret", "Aiguille d'arrêt",
             "Une fois par combat, ralentit tous les ennemis pendant deux activations : Vitesse, Movement et portées divisés par deux.",
             "Equipment", "Accessory", "Legendary", "UseInCombat", combat: true, range: 999, shape: "Map", los: false, minDepth: 3,
             effects:
             [Fx("TemporalSlow", "AllEnemies", 50, "Percent", "2TargetActivations",
-                "once-per-combat;max-stacks:5", behavior: "speed-movement-range;floor;minimum:1")]),
+                "once-per-combat;max-stacks:5", behavior: "speed-movement-range;floor;minimum:1")],
+            equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "tactical-temporal-slow")]),
         P("item.diapason-audela", "Diapason de l'au-delà",
             "À la mort du porteur, disparition irréversible pour le combat, +10% à toutes les statistiques de l'équipe et lancement gratuit du sort signature.",
             "Equipment", "Accessory", "Rare", "Equip", effects:
@@ -325,7 +335,8 @@ public sealed partial class CatalogSeedRunner
                 Fx("CastSignatureSkill", "NearestRelevantTarget", null, "FreeCast", "Immediate",
                     "on-wearer-defeated", behavior: "ignore-all-costs-and-cooldown"),
                 Fx("PreventRevive", "Wearer", null, "Boolean", "Combat", "on-wearer-defeated")
-            ]),
+            ], equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "prevent-revive-signature-on-death")]),
         P("item.ombrelle-jardinier", "Ombrelle du jardinier",
             "Ignore les malus météorologiques ; sous Accalmie, +5% à toutes les statistiques.",
             "Equipment", "Accessory", "Rare", "Equip", pool: "room.jardin", effects:
@@ -339,6 +350,10 @@ public sealed partial class CatalogSeedRunner
             [
                 Fx("ManaCostModifier", "Wearer", -2, "Flat", "WhileEquipped", "register:Silence;max-stacks:5"),
                 Fx("StatusDurationModifier", "SilenceAppliedByWearer", 1, "BearerActivations", "first-stack")
+            ], equipmentEffects:
+            [
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "silence-mana-minus-two"),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "silence-duration-plus-one")
             ]),
 
         // Consommables de soin
@@ -450,7 +465,9 @@ public sealed partial class CatalogSeedRunner
         P("item.metronome-choeur", "Métronome du chœur",
             "Toutes les cinq activations globales, l'ennemi vivant le plus rapide reçoit Silence pendant une activation.",
             "Relic", "Relic", "Rare", "Passive", pool: "Enfers", effects:
-            [Fx("ApplyStatus", "FastestEnemy", 1, "Stack", "1TargetActivation", "every:5-global-activations", behavior: "silence")]),
+            [Fx("ApplyStatus", "FastestEnemy", 1, "Stack", "1TargetActivation", "every:5-global-activations", behavior: "silence")],
+            equipmentEffects:
+            [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "team-silence-every-five-activations")]),
         P("item.tapis-poche", "Tapis de poche",
             "Au début des combats du Hall, des Couloirs ou du Palier, les ennemis subissent -2 Vitesse jusqu'à la fin de leur première activation.",
             "Relic", "Relic", "Rare", "Passive", pool: "room.halldentree", effects:
@@ -476,26 +493,34 @@ public sealed partial class CatalogSeedRunner
         P("item.tome-marees", "Tome des marées", "Apprend temporairement Déluge mineur.",
             "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 20, outside: true, pool: "loot.imperatrice",
             effectRunType: "GrantTemporarySkill",
-            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.deluge-mineur")]),
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.deluge-mineur")],
+            equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.deluge-mineur")]),
         P("item.feuillet-copiste", "Feuillet du copiste", "Apprend temporairement Écriture appliquée.",
             "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "Labyrinthe",
             effectRunType: "GrantTemporarySkill",
-            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.ecriture-appliquee")]),
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.ecriture-appliquee")],
+            equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.ecriture-appliquee")]),
         P("item.braise-volee", "Braise volée", "Apprend temporairement Souffle emprunté ; si l'offrande supérieure est connue, accorde 8 points de compétence.",
             "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "room.enfer3",
             effectRunType: "GrantTemporarySkill", effects:
             [
                 Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", "skill:not-known:souffle-forge", behavior: "skill.temp.souffle-emprunte"),
                 Fx("GrantSkillPoints", "Team", 8, "Flat", "Immediate", "skill:known:souffle-forge")
+            ], equipmentEffects:
+            [
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.souffle-emprunte"),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "known-forge-skill-awards-eight-points")
             ]),
         P("item.retable-portatif", "Retable portatif", "Apprend temporairement Prière ; en présence de Pénitents, crée une Station près du lanceur.",
             "Consumable", "Grimoire", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne",
             effectRunType: "GrantTemporarySkill",
-            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "canon.skill.priere-aspiration")]),
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "canon.skill.priere-aspiration")],
+            equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "canon.skill.priere-aspiration")]),
         P("item.carnet-croquis", "Carnet de croquis", "Apprend temporairement Construction éphémère.",
             "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.cellule",
             effectRunType: "GrantTemporarySkill",
-            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.construction-ephemere")]),
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.construction-ephemere")],
+            equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.construction-ephemere")]),
 
         // Instruments météo
         P("item.girouette-os", "Girouette d'os", "Hors combat, trois charges par run : relance la météo de la salle actuelle.",

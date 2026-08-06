@@ -1,15 +1,37 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import GrimoireSkillCard from './GrimoireSkillCard.vue';
 import type { SkillDefinitionView } from '../../../party/types/skillTypes';
+import { useEmotionalRegisterCatalog } from '../../../emotional-registers/store';
+
+beforeEach(() => {
+  useEmotionalRegisterCatalog().install('test-1', [
+    {
+      code: 'neutral', displayName: 'Neutral', glyph: '·', color: 'gray',
+      incomingAffinities: [
+        { incomingRegister: 'neutral', outcome: 'Neutral', multiplier: 1 },
+        { incomingRegister: 'effroi', outcome: 'Neutral', multiplier: 1 },
+      ],
+    },
+    {
+      code: 'effroi', displayName: 'Effroi', glyph: '✶', color: 'red',
+      incomingAffinities: [
+        { incomingRegister: 'neutral', outcome: 'Neutral', multiplier: 1 },
+        { incomingRegister: 'effroi', outcome: 'Neutral', multiplier: 1 },
+      ],
+    },
+  ]);
+});
 
 function skill(overrides: Partial<SkillDefinitionView> = {}): SkillDefinitionView {
   return {
     key: 'skill.a', displayName: 'Frappe', description: 'Un coup.', skillType: 'Damage',
     targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10,
     category: 'Physical', basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
+    emotionalRegister: 'neutral',
+    compatibleCharacterDefinitionKeys: ['character.player.self'],
     ...overrides,
   };
 }
@@ -90,6 +112,6 @@ describe('GrimoireSkillCard', () => {
     expect(wrapper.text()).toContain('Zone : Diamond');
     expect(wrapper.text()).toContain('Ligne de vue');
     expect(wrapper.text()).toContain('Recharge : 2 tours');
-    expect(wrapper.text()).toContain('Registre : Effroi');
+    expect(wrapper.findComponent({ name: 'EmotionalTypeBadge' }).exists()).toBe(true);
   });
 });

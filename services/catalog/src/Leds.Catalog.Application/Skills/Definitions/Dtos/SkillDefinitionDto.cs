@@ -15,7 +15,7 @@ public sealed record SkillDefinitionDto(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral",
+    string EmotionalRegister = null!,
     string Audience = "Player",
     IReadOnlyCollection<string>? AllowedArchetypes = null)
 {
@@ -45,10 +45,14 @@ public sealed record SkillEffectSpecDto(
     bool MagnitudeIsPercentOfMax,
     bool MagnitudeIsPercentOfBaseStat = false,
     bool AppliesToActor = false,
-    bool IsPermanent = false)
+    bool IsPermanent = false,
+    string? AffinityRegister = null,
+    string? AffinityOutcome = null,
+    int AffinityPriority = 0)
 {
     public static SkillEffectSpecDto FromDomain(SkillEffectSpec spec) => new(
         spec.Kind, spec.StatusKey, spec.Magnitude, spec.DurationTicks,
         spec.TickInterval, spec.Stat, spec.MagnitudeIsPercentOfMax,
-        spec.MagnitudeIsPercentOfBaseStat, spec.AppliesToActor, spec.IsPermanent);
+        spec.MagnitudeIsPercentOfBaseStat, spec.AppliesToActor, spec.IsPermanent,
+        spec.AffinityRegister, spec.AffinityOutcome, spec.AffinityPriority);
 }

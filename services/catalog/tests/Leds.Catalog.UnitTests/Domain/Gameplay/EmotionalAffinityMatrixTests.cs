@@ -19,6 +19,26 @@ public sealed class EmotionalAffinityMatrixTests
         matrix.Resolve(EmotionalRegister.Silence, EmotionalRegister.Effroi).Should().Be(AffinityOutcome.Immune);
         matrix.Resolve(EmotionalRegister.Neutral, EmotionalRegister.Effroi).Should().Be(AffinityOutcome.Neutral);
         matrix.Resolve(EmotionalRegister.Memoire, EmotionalRegister.Neutral).Should().Be(AffinityOutcome.Neutral);
+        matrix.Rules.Single(rule =>
+            rule.AttackingRegister == EmotionalRegister.Memoire
+            && rule.DefendingRegister == EmotionalRegister.Effroi).Multiplier.Should().Be(1.5);
+    }
+
+    [Fact]
+    public void Canonical_matrix_should_resolve_all_64_pairs_from_its_published_rules()
+    {
+        var matrix = EmotionalAffinityMatrix.Canonical;
+
+        foreach (var rule in matrix.Rules)
+        {
+            matrix.Resolve(rule.AttackingRegister, rule.DefendingRegister)
+                .Should().Be(rule.Outcome,
+                    $"the published pair {rule.AttackingRegister}->{rule.DefendingRegister} is authoritative");
+        }
+
+        matrix.Rules
+            .Select(rule => (rule.AttackingRegister, rule.DefendingRegister))
+            .Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
@@ -58,6 +78,6 @@ public sealed class EmotionalAffinityMatrixTests
     private static IReadOnlyCollection<EmotionalAffinityRule> CompleteNeutralRules() =>
         EmotionalRegisterCatalog.Active
             .SelectMany(attack => EmotionalRegisterCatalog.Active.Select(defense =>
-                new EmotionalAffinityRule(attack.Value, defense.Value, AffinityOutcome.Neutral)))
+                new EmotionalAffinityRule(attack.Value, defense.Value, AffinityOutcome.Neutral, 1.0)))
             .ToArray();
 }

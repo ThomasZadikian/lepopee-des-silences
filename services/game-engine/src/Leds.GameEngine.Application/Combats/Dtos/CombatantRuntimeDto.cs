@@ -1,11 +1,14 @@
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Application.Combats.Dtos;
 
 public sealed record CombatantRuntimeDto(
     Guid Id,
     string SourceKey,
+    string SourceDefinitionKey,
+    Guid? CharacterInstanceId,
     string DisplayName,
     string Side,
     string Archetype,
@@ -16,10 +19,9 @@ public sealed record CombatantRuntimeDto(
     int MaxMana,
     decimal Charge,
     string Status,
-    string AttackType,
-    IReadOnlyCollection<string> WeakTo,
-    IReadOnlyCollection<string> ResistantTo,
-    IReadOnlyCollection<string> ImmuneTo,
+    string NaturalEmotionalRegister,
+    string EffectiveAttackRegister,
+    IReadOnlyCollection<ResolvedEmotionalAffinityDto> IncomingAffinities,
     int AttackPower,
     int Defense,
     int Speed,
@@ -40,15 +42,17 @@ public sealed record CombatantRuntimeDto(
     public static CombatantRuntimeDto FromDomain(
         Combatant combatant,
         int currentTick,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot emotionalAffinityMatrix)
     {
         var profile = TypeProvider.Resolve(
             combatant,
-            emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical);
+            emotionalAffinityMatrix);
 
         return new CombatantRuntimeDto(
             Id: combatant.Id.Value,
             SourceKey: combatant.SourceKey,
+            SourceDefinitionKey: combatant.SourceDefinitionKey,
+            CharacterInstanceId: combatant.CharacterInstanceId,
             DisplayName: combatant.DisplayName,
             Side: combatant.Side.ToString(),
             Archetype: combatant.Archetype,
@@ -59,10 +63,11 @@ public sealed record CombatantRuntimeDto(
             MaxMana: combatant.MaxMana,
             Charge: combatant.Charge,
             Status: combatant.Status.ToString(),
-            AttackType: profile.AttackType.ToString(),
-            WeakTo: profile.WeakTo.Select(t => t.ToString()).ToArray(),
-            ResistantTo: profile.ResistantTo.Select(t => t.ToString()).ToArray(),
-            ImmuneTo: profile.ImmuneTo.Select(t => t.ToString()).ToArray(),
+            NaturalEmotionalRegister: CodeOf(combatant.NaturalEmotionalType),
+            EffectiveAttackRegister: CodeOf(profile.AttackType),
+            IncomingAffinities: Enum.GetValues<EmotionalType>()
+                .Select(register => ResolveIncomingAffinity(profile, register))
+                .ToArray(),
             // Effective values so active buffs/debuffs are visible in the UI.
             AttackPower: combatant.EffectiveAttackPower,
             Defense: combatant.EffectiveDefense,
@@ -104,4 +109,53 @@ public sealed record CombatantRuntimeDto(
                 })
                 .ToArray());
     }
+
+    private static ResolvedEmotionalAffinityDto ResolveIncomingAffinity(
+        CombatantTypeProfile profile,
+        EmotionalType incomingRegister)
+    {
+        var outcome = profile.EffectivenessAgainst(incomingRegister);
+        var modifierPercent = profile.MultiplierPercentAgainst(incomingRegister);
+        var baseMultiplier = profile.BaseMultiplierAgainst(incomingRegister);
+        var effectiveMultiplier = baseMultiplier
+            * Math.Max(0.0, 1.0 + modifierPercent / 100.0);
+
+        return new ResolvedEmotionalAffinityDto(
+            IncomingRegister: CodeOf(incomingRegister),
+            Outcome: outcome.ToString(),
+            BaseMultiplier: baseMultiplier,
+            ModifierPercent: modifierPercent,
+            EffectiveMultiplier: effectiveMultiplier,
+            Modifiers: profile.Modifiers
+                .Where(modifier => !modifier.IsExpired && modifier.IncomingRegister == incomingRegister)
+                .OrderByDescending(modifier => modifier.Priority)
+                .ThenBy(modifier => modifier.SourceKey, StringComparer.Ordinal)
+                .Select(modifier => new CombatantAffinityModifierDto(
+                    modifier.SourceKey,
+                    CodeOf(modifier.IncomingRegister),
+                    modifier.OutcomeOverride?.ToString(),
+                    modifier.MultiplierPercent,
+                    modifier.Priority,
+                    modifier.RemainingActivations))
+                .ToArray());
+    }
+
+    private static string CodeOf(EmotionalType register) =>
+        register.ToString().ToLowerInvariant();
 }
+
+public sealed record ResolvedEmotionalAffinityDto(
+    string IncomingRegister,
+    string Outcome,
+    double BaseMultiplier,
+    int ModifierPercent,
+    double EffectiveMultiplier,
+    IReadOnlyCollection<CombatantAffinityModifierDto> Modifiers);
+
+public sealed record CombatantAffinityModifierDto(
+    string SourceKey,
+    string IncomingRegister,
+    string? OutcomeOverride,
+    int MultiplierPercent,
+    int Priority,
+    int? RemainingActivations);

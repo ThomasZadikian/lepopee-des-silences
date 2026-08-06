@@ -69,8 +69,16 @@ public sealed class CombatFactory : ICombatFactory
         int magicDefense = 0,
         string? forgottenSkillKey = null,
         string? roomTheme = null,
-        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null)
+        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>? equipmentEffectsByCharacterId = null)
     {
+        CombatEncounterDraftValidator.Validate(draft);
+        CatalogItemEquipmentEffectValidator.Validate(
+            "equipped-items", conditionalEquipmentEffects ?? []);
+        foreach (var pair in equipmentEffectsByCharacterId ??
+                     new Dictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>())
+            CatalogItemEquipmentEffectValidator.Validate($"character:{pair.Key}", pair.Value);
+
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
             .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
@@ -145,6 +153,14 @@ public sealed class CombatFactory : ICombatFactory
         var allies = draft.Allies
             .Select(ally =>
             {
+                var characterEquipmentEffects = ally.CharacterInstanceId is { } characterId
+                    && equipmentEffectsByCharacterId?.TryGetValue(characterId, out var resolvedEffects) == true
+                        ? resolvedEffects
+                        : [];
+                var effectiveConditionalEffects = ally.IsProtagonist
+                    ? (conditionalEquipmentEffects ?? []).Concat(characterEquipmentEffects).ToArray()
+                    : characterEquipmentEffects;
+
                 if (ally.IsProtagonist)
                 {
                     // Protagonist: current HP/mana/charge from PlayerState, run stats,
@@ -171,12 +187,19 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                    var maxVitality = Math.Max(1,
-                        (int)Math.Round((playerState?.MaxVitality ?? 100) * maxVitalityMultiplier));
+                    var maxVitality = AdjustConditionalScalarStat(
+                        Math.Max(1, (int)Math.Round(
+                            (playerState?.MaxVitality ?? 100) * maxVitalityMultiplier)),
+                        "MaxVitality", roomTheme, activeClimate, effectiveConditionalEffects,
+                        minimum: 1);
                     var currentVitality = Math.Min(playerState?.CurrentVitality ?? maxVitality, maxVitality);
                     var guard = (playerState?.Guard ?? 0) + guardBonus;
-                    var mana = playerState?.Mana ?? 0;
-                    var maxMana = playerState?.MaxMana;
+                    var baseMaxMana = playerState?.MaxMana ?? playerState?.Mana ?? 0;
+                    var adjustedMaxMana = AdjustConditionalScalarStat(
+                        baseMaxMana, "Mana", roomTheme, activeClimate, effectiveConditionalEffects,
+                        minimum: 0);
+                    var mana = Math.Min(playerState?.Mana ?? 0, adjustedMaxMana);
+                    int? maxMana = adjustedMaxMana;
                     var charge = playerState?.Charge ?? 0;
 
                     var protagonist = Combatant.Create(
@@ -199,6 +222,7 @@ public sealed class CombatFactory : ICombatFactory
                         maxMana: maxMana,
                         magicAttack: magicAttack,
                         magicDefense: magicDefense,
+                        movement: ally.Movement,
                         naturalEmotionalType: EmotionalTypeCode.ParseRequired(
                             ally.EmotionalRegister,
                             $"Ally '{ally.AllyKey}' natural emotional register"),
@@ -243,8 +267,14 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                var companionMaxVitality = Math.Max(1, (int)Math.Round(
-                    (ally.MaxVitality > 0 ? ally.MaxVitality : 100) * maxVitalityMultiplier));
+                var companionMaxVitality = AdjustConditionalScalarStat(
+                    Math.Max(1, (int)Math.Round(
+                        (ally.MaxVitality > 0 ? ally.MaxVitality : 100) * maxVitalityMultiplier)),
+                    "MaxVitality", roomTheme, activeClimate, effectiveConditionalEffects,
+                    minimum: 1);
+                var companionMana = AdjustConditionalScalarStat(
+                    ally.Mana, "Mana", roomTheme, activeClimate, effectiveConditionalEffects,
+                    minimum: 0);
 
                 var companion = Combatant.Create(
                     CombatantId.New(),
@@ -256,14 +286,14 @@ public sealed class CombatFactory : ICombatFactory
                     currentVitality: companionMaxVitality,
                     guard: ally.StartingGuard + guardBonus,
                     baseGuard: guardBonus,
-                    mana: ally.Mana,
+                    mana: companionMana,
                     charge: ally.Charge,
                     companionSkills,
                     attackPower: ally.AttackPower,
                     defense: ally.Defense,
                     speed: ApplySpeedMultiplier(ally.Speed, speedMultiplier),
                     focus: ally.Focus,
-                    maxMana: ally.Mana,
+                    maxMana: companionMana,
                     magicAttack: ally.MagicAttack,
                     magicDefense: ally.MagicDefense,
                     movement: ally.Movement,
@@ -286,6 +316,21 @@ public sealed class CombatFactory : ICombatFactory
             : allies.FirstOrDefault(a => a.SourceKey == protagonistAllyKey);
         ApplyConditionalEquipmentStatBundle(
             protagonistCombatant, roomTheme, activeClimate, conditionalEquipmentEffects ?? []);
+        ApplyEquipmentAffinityModifiers(
+            protagonistCombatant, conditionalEquipmentEffects ?? []);
+        ApplyEquipmentRuntimeBehaviors(
+            protagonistCombatant, conditionalEquipmentEffects ?? []);
+
+        foreach (var combatant in allies.Where(ally => ally.CharacterInstanceId is not null))
+        {
+            if (equipmentEffectsByCharacterId?.TryGetValue(
+                    combatant.CharacterInstanceId!.Value, out var characterEffects) != true)
+                continue;
+
+            ApplyConditionalEquipmentStatBundle(combatant, roomTheme, activeClimate, characterEffects);
+            ApplyEquipmentAffinityModifiers(combatant, characterEffects);
+            ApplyEquipmentRuntimeBehaviors(combatant, characterEffects);
+        }
 
         var (bossVitalityMultiplier, bossPowerMultiplier, bossGuardBonus) = EncounterBonus(draft.EncounterType);
 
@@ -320,7 +365,8 @@ public sealed class CombatFactory : ICombatFactory
                     maxMana: ally.MaxMana,
                     magicAttack: (int)Math.Round(ally.BaseStatSnapshot.MagicAttack * MirrorCombatCopyStatMultiplier),
                     magicDefense: (int)Math.Round(ally.BaseStatSnapshot.MagicDefense * MirrorCombatCopyStatMultiplier),
-                    naturalEmotionalType: ally.NaturalEmotionalType))
+                    naturalEmotionalType: ally.NaturalEmotionalType,
+                    sourceDefinitionKey: ally.SourceDefinitionKey))
                 .ToArray();
 
             if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderReverse && !m.IsConsumed))
@@ -623,19 +669,60 @@ public sealed class CombatFactory : ICombatFactory
 
     /// <summary>StatKind strings authored on conditional equipment effects (e.g. "AttackPower",
     /// "MagicAttack") that have a matching CombatStat "base stat" usable with
-    /// isMagnitudePercentOfBaseStat. "MaxVitality"/"Mana" are intentionally absent — CombatStat
-    /// has no equivalent virtual stat for them (documented simplification: an "all-stats"
-    /// conditional bonus like Ombrelle du jardinier's only reaches 6 of its 8 named stats).</summary>
+    /// isMagnitudePercentOfBaseStat. MaxVitality and Mana are applied directly while the
+    /// combatant is constructed because they change resource ceilings rather than derived
+    /// combat stats.</summary>
     private static readonly IReadOnlyDictionary<string, CombatStat> ConditionalEquipmentStatKinds =
         new Dictionary<string, CombatStat>(StringComparer.OrdinalIgnoreCase)
         {
             ["AttackPower"] = CombatStat.AttackPower,
             ["Defense"] = CombatStat.Defense,
             ["Speed"] = CombatStat.Speed,
+            ["Movement"] = CombatStat.Movement,
             ["Focus"] = CombatStat.Focus,
             ["MagicAttack"] = CombatStat.MagicAttack,
             ["MagicDefense"] = CombatStat.MagicDefense,
         };
+
+    private static int AdjustConditionalScalarStat(
+        int baseValue,
+        string statKind,
+        string? roomTheme,
+        RoomClimate? climate,
+        IReadOnlyCollection<CatalogItemEquipmentEffect> effects,
+        int minimum)
+    {
+        var matching = effects.Where(effect =>
+                string.Equals(effect.StatKind, statKind, StringComparison.OrdinalIgnoreCase)
+                && effect.Amount is not null
+                && MatchesEquipmentCondition(effect.Condition, roomTheme, climate))
+            .ToArray();
+        var flat = matching
+            .Where(effect => string.Equals(effect.Kind, "StatBonus", StringComparison.OrdinalIgnoreCase))
+            .Sum(effect => effect.Amount!.Value);
+        var percent = matching
+            .Where(effect => string.Equals(effect.Kind, "StatBonusPercent", StringComparison.OrdinalIgnoreCase))
+            .Sum(effect => effect.Amount!.Value);
+
+        return Math.Max(minimum, baseValue + flat + (int)Math.Round(baseValue * percent / 100.0));
+    }
+
+    private static bool MatchesEquipmentCondition(
+        string? condition,
+        string? roomTheme,
+        RoomClimate? climate)
+    {
+        if (condition is null)
+            return false;
+
+        return condition.StartsWith("room:", StringComparison.OrdinalIgnoreCase)
+            ? string.Equals(condition["room:".Length..], roomTheme, StringComparison.OrdinalIgnoreCase)
+            : condition.StartsWith("weather:", StringComparison.OrdinalIgnoreCase)
+                && climate is not null
+                && string.Equals(
+                    condition["weather:".Length..], climate.Value.ToString(),
+                    StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Room/weather-conditional equipment StatBonus/StatBonusPercent effects (e.g. Boussole
@@ -665,13 +752,7 @@ public sealed class CombatFactory : ICombatFactory
             if (!isPercent && !string.Equals(effect.Kind, "StatBonus", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var matches = condition.StartsWith("room:", StringComparison.OrdinalIgnoreCase)
-                ? string.Equals(condition["room:".Length..], roomTheme, StringComparison.OrdinalIgnoreCase)
-                : condition.StartsWith("weather:", StringComparison.OrdinalIgnoreCase)
-                    ? climate is not null
-                        && string.Equals(condition["weather:".Length..], climate.Value.ToString(), StringComparison.OrdinalIgnoreCase)
-                    : false;
-            if (!matches)
+            if (!MatchesEquipmentCondition(condition, roomTheme, climate))
                 continue;
 
             protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
@@ -684,6 +765,59 @@ public sealed class CombatFactory : ICombatFactory
                 stat: stat,
                 isMagnitudePercentOfBaseStat: isPercent,
                 isPermanent: true));
+        }
+    }
+
+    private static void ApplyEquipmentAffinityModifiers(
+        Combatant? protagonist,
+        IReadOnlyCollection<CatalogItemEquipmentEffect> equipmentEffects)
+    {
+        if (protagonist is null)
+            return;
+
+        foreach (var effect in equipmentEffects)
+        {
+            if (!string.Equals(effect.Kind, "AffinityOutcomeOverride", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(effect.Kind, "AffinityMultiplierPercent", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var incoming = EmotionalTypeCode.ParseRequired(
+                effect.AffinityRegister,
+                $"Equipment '{effect.SourceDefinitionKey ?? "<unknown>"}' affinity register");
+            var outcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
+                ? null
+                : Enum.TryParse<DamageEffectiveness>(effect.AffinityOutcome, true, out var parsed)
+                    ? parsed
+                    : throw new DomainException(
+                        $"Equipment '{effect.SourceDefinitionKey ?? "<unknown>"}' affinity outcome is invalid.");
+
+            protagonist.ApplyEmotionalAffinityModifier(EmotionalAffinityModifier.Create(
+                sourceKey: $"{effect.SourceDefinitionKey
+                    ?? throw new DomainException("Equipment affinity modifier source key is required.")}:" +
+                    effect.Kind,
+                incomingRegister: incoming,
+                outcomeOverride: outcome,
+                multiplierPercent: effect.Amount ?? 0,
+                priority: effect.Priority,
+                durationActivations: effect.DurationActivations));
+        }
+    }
+
+    private static void ApplyEquipmentRuntimeBehaviors(
+        Combatant? protagonist,
+        IReadOnlyCollection<CatalogItemEquipmentEffect> equipmentEffects)
+    {
+        if (protagonist is null)
+            return;
+
+        foreach (var effect in equipmentEffects.Where(effect => string.Equals(
+                     effect.Kind, "RuntimeBehavior", StringComparison.OrdinalIgnoreCase)))
+        {
+            protagonist.ApplyEquipmentBehavior(
+                effect.BehaviorCode
+                    ?? throw new DomainException("Equipment runtime behavior code is required."),
+                effect.SourceDefinitionKey
+                    ?? throw new DomainException("Equipment runtime behavior source key is required."));
         }
     }
 
@@ -1027,7 +1161,8 @@ public sealed class CombatFactory : ICombatFactory
                 manaCost: 0,
                 chargeCost: 0,
                 basePower: ScalePlayerSkillPower("Damage", 10, attackPowerMultiplier),
-                statusEffects: EffectFor(skillEffects, "skill.basic.strike")),
+                statusEffects: EffectFor(skillEffects, "skill.basic.strike"),
+                emotionalRegister: "Neutral"),
             CombatantSkill.Create(
                 key: "skill.basic.guard",
                 displayName: "Garde",
@@ -1037,7 +1172,8 @@ public sealed class CombatFactory : ICombatFactory
                 manaCost: 0,
                 chargeCost: 0,
                 basePower: 5,
-                statusEffects: EffectFor(skillEffects, "skill.basic.guard"))
+                statusEffects: EffectFor(skillEffects, "skill.basic.guard"),
+                emotionalRegister: "Neutral")
         ];
     }
 }

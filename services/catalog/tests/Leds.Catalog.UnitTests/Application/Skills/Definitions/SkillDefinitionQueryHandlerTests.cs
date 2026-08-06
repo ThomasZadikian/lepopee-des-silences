@@ -132,7 +132,8 @@ public sealed class SkillDefinitionQueryHandlerTests
             manaCost: 5,
             chargeCost: 0,
             basePower: 10,
-            status: CatalogContentStatus.Draft);
+            status: CatalogContentStatus.Draft,
+            emotionalRegister: "Neutral");
 
         def.Activate();
 

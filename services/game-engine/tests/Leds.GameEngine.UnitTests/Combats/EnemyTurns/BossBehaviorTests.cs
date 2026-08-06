@@ -21,7 +21,7 @@ public sealed class BossBehaviorTests
             effectType,
             0,
             0,
-            basePower);
+            basePower, emotionalRegister: "Neutral");
     }
 
     // Regression test: LowestHpPlayer/HighestHpPlayer used a stable OrderBy, so

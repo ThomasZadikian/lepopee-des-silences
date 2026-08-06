@@ -33,7 +33,8 @@ public static class DamageCalculator
         }
 
         var effectiveness = defender.EffectivenessAgainst(attackType);
-        var typeMultiplier = DamageEffectivenessMultipliers.For(effectiveness);
+        var localMultiplier = Math.Max(0.0, 1.0 + defender.MultiplierPercentAgainst(attackType) / 100.0);
+        var typeMultiplier = defender.BaseMultiplierAgainst(attackType) * localMultiplier;
 
         // An immune hit can never crit (it deals nothing); otherwise a crit lands
         // when the deterministic roll falls under the attacker's crit chance.

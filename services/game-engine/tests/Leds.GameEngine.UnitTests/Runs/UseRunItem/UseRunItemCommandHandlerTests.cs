@@ -112,7 +112,7 @@ public sealed class UseRunItemCommandHandlerTests
     public async Task Handle_ShouldRejectLegacyInventoryUse_WhenCombatIsActive()
     {
         var strikeSkill = CombatantSkill.Create(
-            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10, emotionalRegister: "Neutral");
         var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
         var run = runWithNode.Run;
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [strikeSkill]);

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Domain.Runs;
 
@@ -40,7 +41,9 @@ public sealed class RunCharacterSkillSnapshot
         RequiresLineOfSight = requiresLineOfSight;
         Cooldown = cooldown;
         IsUltimate = isUltimate;
-        EmotionalRegister = emotionalRegister;
+        EmotionalRegister = EmotionalTypeCode.ParseRequired(
+            emotionalRegister,
+            $"Run character skill '{skillDefinitionKey}' emotional register").ToString();
         TemporarySlot = temporarySlot;
     }
 
@@ -79,7 +82,7 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral",
+        string emotionalRegister = null!,
         string temporarySlot = "Permanent")
     {
         if (string.IsNullOrWhiteSpace(skillDefinitionKey))
@@ -126,7 +129,7 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral",
+        string emotionalRegister = null!,
         string temporarySlot = "Permanent")
     {
         return new RunCharacterSkillSnapshot(

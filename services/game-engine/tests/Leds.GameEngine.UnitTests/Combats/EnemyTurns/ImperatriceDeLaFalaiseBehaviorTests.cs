@@ -21,7 +21,7 @@ public sealed class ImperatriceDeLaFalaiseBehaviorTests
     {
         return CombatantSkill.Create(
             key, key, effectType, targetingType, effectType, manaCost: 0, chargeCost: 0,
-            basePower: basePower, category: category);
+            basePower: basePower, category: category, emotionalRegister: "Neutral");
     }
 
     [Fact]

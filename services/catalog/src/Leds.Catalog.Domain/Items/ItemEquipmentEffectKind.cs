@@ -37,5 +37,14 @@ public enum ItemEquipmentEffectKind
     DotDamageBonusPercent = 11,
     // Percentage points (Amount) added to ALL healing the wearer applies — skills and
     // items, in and out of combat (e.g. Majordome's legendary "La tasse du majordome": +15%).
-    HealingBonusPercent = 12
+    HealingBonusPercent = 12,
+    // Overrides the matrix outcome for one incoming emotional register while equipped.
+    // AffinityOutcome and Priority are mandatory; a higher priority wins.
+    AffinityOutcomeOverride = 13,
+    // Adjusts the final emotional multiplier by Amount percentage points after the
+    // categorical outcome has been resolved. The source remains local to the wearer.
+    AffinityMultiplierPercent = 14,
+    // Stable runtime handler selected by Catalog data. This replaces branching on
+    // item definition keys in the combat engine for bespoke passive mechanics.
+    RuntimeBehavior = 15
 }

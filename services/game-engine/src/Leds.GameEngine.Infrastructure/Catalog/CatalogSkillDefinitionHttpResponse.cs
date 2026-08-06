@@ -10,7 +10,7 @@ public sealed record CatalogSkillDefinitionHttpResponse(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral",
+    string EmotionalRegister = null!,
     string Audience = "Player",
     IReadOnlyCollection<string>? AllowedArchetypes = null);
 
@@ -24,4 +24,7 @@ public sealed record CatalogSkillEffectSpecHttpResponse(
     bool MagnitudeIsPercentOfMax,
     bool MagnitudeIsPercentOfBaseStat = false,
     bool AppliesToActor = false,
-    bool IsPermanent = false);
+    bool IsPermanent = false,
+    string? AffinityRegister = null,
+    string? AffinityOutcome = null,
+    int AffinityPriority = 0);

@@ -448,7 +448,7 @@ public sealed class CombatantTests
     {
         var borrowed = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 22);
+            manaCost: 8, chargeCost: 0, basePower: 22, emotionalRegister: "Neutral");
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
 
         combatant.PermanentSkills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
@@ -467,7 +467,7 @@ public sealed class CombatantTests
     {
         var borrowed = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 22);
+            manaCost: 8, chargeCost: 0, basePower: 22, emotionalRegister: "Neutral");
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
             "creation:target", "Création", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.SkillGrant,

@@ -9,7 +9,11 @@ import { watch } from 'vue';
 
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
-import type { CombatantStatusEffectDto, TacticalCombatantRuntimeDto } from '../types/combatContracts';
+import type {
+  AffinityOutcome,
+  CombatantStatusEffectDto,
+  TacticalCombatantRuntimeDto,
+} from '../types/combatContracts';
 
 export type PortraitDetail = {
   unit: TacticalCombatantRuntimeDto;
@@ -21,6 +25,15 @@ export type PortraitDetail = {
 
 const props = defineProps<{ detail: PortraitDetail | null }>();
 const emit = defineEmits<{ close: [] }>();
+
+const AFFINITY_OUTCOMES: AffinityOutcome[] = ['Weak', 'Resistant', 'Immune'];
+
+function affinityOutcomeLabel(outcome: AffinityOutcome): string {
+  if (outcome === 'Weak') return 'Faible à';
+  if (outcome === 'Resistant') return 'Résiste à';
+  if (outcome === 'Immune') return 'Immunisé à';
+  return 'Neutre face à';
+}
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') emit('close');
@@ -121,26 +134,39 @@ const STAT_ROWS: { key: 'attackPower' | 'defense' | 'speed' | 'magicAttack' | 'm
             </div>
           </div>
 
-          <div
-            v-if="detail.unit.combatant.attackType || detail.unit.combatant.weakTo?.length || detail.unit.combatant.resistantTo?.length || detail.unit.combatant.immuneTo?.length"
-            class="portrait-card__section"
-          >
+          <div class="portrait-card__section">
             <span class="portrait-card__section-title">Registre émotionnel</span>
-            <div v-if="detail.unit.combatant.attackType" class="portrait-card__type-row">
-              <span class="portrait-card__type-label">Attaques en</span>
-              <EmotionalTypeBadge :type="detail.unit.combatant.attackType" />
+            <div class="portrait-card__type-row">
+              <span class="portrait-card__type-label">Registre naturel</span>
+              <EmotionalTypeBadge :type="detail.unit.combatant.naturalEmotionalRegister" />
             </div>
-            <div v-if="detail.unit.combatant.weakTo?.length" class="portrait-card__type-row">
-              <span class="portrait-card__type-label">Faible à</span>
-              <EmotionalTypeBadge v-for="type in detail.unit.combatant.weakTo ?? []" :key="type" :type="type" compact />
+            <div
+              v-if="detail.unit.combatant.effectiveAttackRegister !== detail.unit.combatant.naturalEmotionalRegister"
+              class="portrait-card__type-row"
+            >
+              <span class="portrait-card__type-label">Attaque par défaut</span>
+              <EmotionalTypeBadge :type="detail.unit.combatant.effectiveAttackRegister" />
             </div>
-            <div v-if="detail.unit.combatant.resistantTo?.length" class="portrait-card__type-row">
-              <span class="portrait-card__type-label">Résiste à</span>
-              <EmotionalTypeBadge v-for="type in detail.unit.combatant.resistantTo ?? []" :key="type" :type="type" compact />
-            </div>
-            <div v-if="detail.unit.combatant.immuneTo?.length" class="portrait-card__type-row">
-              <span class="portrait-card__type-label">Immunisé à</span>
-              <EmotionalTypeBadge v-for="type in detail.unit.combatant.immuneTo ?? []" :key="type" :type="type" compact />
+            <div
+              v-for="outcome in AFFINITY_OUTCOMES"
+              :key="outcome"
+              v-show="detail.unit.combatant.incomingAffinities.some((affinity) => affinity.outcome === outcome)"
+              class="portrait-card__type-row"
+            >
+              <span class="portrait-card__type-label">{{ affinityOutcomeLabel(outcome) }}</span>
+              <span class="portrait-card__affinity-list">
+                <span
+                  v-for="affinity in detail.unit.combatant.incomingAffinities.filter((entry) => entry.outcome === outcome)"
+                  :key="affinity.incomingRegister"
+                  class="portrait-card__affinity"
+                  :title="affinity.modifiers.length
+                    ? `${affinity.effectiveMultiplier.toFixed(2)}× · ${affinity.modifiers.map((modifier) => modifier.sourceKey).join(', ')}`
+                    : `${affinity.effectiveMultiplier.toFixed(2)}×`"
+                >
+                  <EmotionalTypeBadge :type="affinity.incomingRegister" compact />
+                  <small v-if="affinity.modifierPercent !== 0">{{ affinity.effectiveMultiplier.toFixed(2) }}×</small>
+                </span>
+              </span>
             </div>
           </div>
 
@@ -344,6 +370,16 @@ const STAT_ROWS: { key: 'attackPower' | 'defense' | 'speed' | 'magicAttack' | 'm
   color: var(--ink-3);
   min-width: 68px;
 }
+
+.portrait-card__affinity-list,
+.portrait-card__affinity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portrait-card__affinity-list { flex-wrap: wrap; }
+.portrait-card__affinity small { color: var(--ink-4); font-family: var(--font-mono); }
 
 .portrait-card__statuses {
   display: flex;

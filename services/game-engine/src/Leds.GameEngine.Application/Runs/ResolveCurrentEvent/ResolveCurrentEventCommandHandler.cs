@@ -186,7 +186,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
             var skillEffects = await BuildSkillEffectsAsync(run, draft, cancellationToken);
-            var conditionalEquipmentEffects = await ResolveConditionalEquipmentEffectsAsync(run, cancellationToken);
+            var equipmentEffectsByCharacterId = await ResolveEquipmentEffectsAsync(run, cancellationToken);
 
             var roster = _combatFactory.BuildRoster(
                 combatId, draft, run.PlayerState, run.RunModifiers,
@@ -207,7 +207,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 healingBonusPercent: run.HealingBonusPercent,
                 forgottenSkillKey: run.ForgottenSkillKey,
                 roomTheme: room.Theme,
-                conditionalEquipmentEffects: conditionalEquipmentEffects);
+                equipmentEffectsByCharacterId: equipmentEffectsByCharacterId);
 
             var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
                 combatId, roster, room, selectedNode.Id, run, _clock.UtcNow.UtcDateTime);
@@ -429,14 +429,14 @@ public sealed class ResolveCurrentEventCommandHandler
         var characters = run.PlayerSnapshot?.Characters.ToArray() ?? [];
         if (characters.Length == 0)
         {
-            return []; // generator falls back to the default protagonist
+            return []; // the draft generator rejects a run without a snapshotted party
         }
 
         var allies = new List<CombatEncounterDraftAlly>(capacity: Run.MaxPartySize);
 
         var protagonist = characters[0];
         allies.Add(new CombatEncounterDraftAlly(
-            AllyKey: "player.self",
+            AllyKey: protagonist.DefinitionKey,
             DisplayName: protagonist.DisplayName,
             Role: "Protagonist",
             Tags: new[] { "player", "protagonist" },
@@ -534,24 +534,36 @@ public sealed class ResolveCurrentEventCommandHandler
     }
 
     /// <summary>
-    /// Room/weather-conditional equipment effects (e.g. Boussole du Pèlerin, Couronne de sel)
-    /// carried by whatever the protagonist has equipped right now — re-evaluated fresh every
-    /// combat by CombatFactory instead of being baked into PlayerStatMerger's static run-start
-    /// stats (see that class's Condition filter).
+    /// Complete declarative equipment effects carried by every snapshotted character.
+    /// Source keys remain attached for traceability and handler selection.
     /// </summary>
-    private async Task<IReadOnlyCollection<CatalogItemEquipmentEffect>> ResolveConditionalEquipmentEffectsAsync(
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>> ResolveEquipmentEffectsAsync(
         Run run, CancellationToken ct)
     {
-        var equippedItemKeys = run.PlayerSnapshot?.Characters.FirstOrDefault()?.EquippedItemKeys;
-        if (equippedItemKeys is not { Count: > 0 })
-            return [];
+        var characters = run.PlayerSnapshot?.Characters ?? [];
+        if (characters.All(character => character.EquippedItemKeys.Count == 0))
+            return new Dictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>();
 
         var itemDefinitions = await _catalogContentGateway.ListActiveItemDefinitionsAsync(ct);
-        return itemDefinitions
-            .Where(item => equippedItemKeys.Contains(item.Key))
-            .SelectMany(item => item.EquipmentEffects ?? [])
-            .Where(effect => effect.Condition is not null)
-            .ToArray();
+        var definitionsByKey = itemDefinitions.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>();
+        foreach (var character in characters)
+        {
+            var effects = new List<CatalogItemEquipmentEffect>();
+            foreach (var itemKey in character.EquippedItemKeys)
+            {
+                if (!definitionsByKey.TryGetValue(itemKey, out var item))
+                    throw new DomainException(
+                        $"Character '{character.DefinitionKey}' references missing equipped item '{itemKey}'.");
+
+                effects.AddRange((item.EquipmentEffects ?? [])
+                    .Select(effect => effect with { SourceDefinitionKey = item.Key }));
+            }
+
+            result[character.CharacterId] = effects;
+        }
+
+        return result;
     }
 
     private static IReadOnlyList<SkillStatusEffectSpec> ToStatusSpecs(CatalogSkillDefinition d)
@@ -563,12 +575,18 @@ public sealed class ResolveCurrentEventCommandHandler
         foreach (var effect in d.Effects)
         {
             if (string.IsNullOrWhiteSpace(effect.Kind)
-                || !Enum.TryParse<StatusEffectKind>(effect.Kind, true, out var kind))
-                continue;
+                || !Enum.TryParse<StatusEffectKind>(effect.Kind, true, out var kind)
+                || !Enum.IsDefined(kind))
+                throw new DomainException(
+                    $"Skill '{d.Key}' contains unsupported status effect kind '{effect.Kind}'.");
 
             var stat = CombatStat.None;
-            if (!string.IsNullOrWhiteSpace(effect.Stat))
-                Enum.TryParse(effect.Stat, true, out stat);
+            if (!string.IsNullOrWhiteSpace(effect.Stat)
+                && (!Enum.TryParse(effect.Stat, true, out stat) || !Enum.IsDefined(stat)))
+                throw new DomainException(
+                    $"Skill '{d.Key}' contains unsupported combat stat '{effect.Stat}'.");
+            if (kind == StatusEffectKind.StatModifier && stat == CombatStat.None)
+                throw new DomainException($"Skill '{d.Key}' StatModifier requires a combat stat.");
 
             // Disambiguate multiple effects on the same skill (e.g. HealOverTime + GuardOverTime
             // both from "Construction perpétuelle") — a shared key would make the second
@@ -577,14 +595,26 @@ public sealed class ResolveCurrentEventCommandHandler
             // catalog key like "canon.skill.regard-infantile:StatModifier" and would otherwise
             // leak straight into player-facing combat log lines).
             var key = string.IsNullOrWhiteSpace(effect.StatusKey) ? $"{d.Key}:{effect.Kind}" : effect.StatusKey;
+            var affinityRegister = string.IsNullOrWhiteSpace(effect.AffinityRegister)
+                ? null
+                : EmotionalTypeCode.ParseRequired(
+                    effect.AffinityRegister,
+                    $"Skill '{d.Key}' affinity modifier register");
+            var affinityOutcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
+                ? null
+                : Enum.TryParse<DamageEffectiveness>(effect.AffinityOutcome, true, out var parsedOutcome)
+                    ? parsedOutcome
+                    : throw new DomainException($"Skill '{d.Key}' affinity modifier outcome is invalid.");
             specs.Add(new SkillStatusEffectSpec(
                 Key: key, DisplayName: d.DisplayName, Kind: kind,
                 Magnitude: effect.Magnitude, DurationTicks: effect.DurationTicks,
-                TickInterval: effect.TickInterval, Stat: stat, EmotionalType: null, Stacks: 1,
+                TickInterval: effect.TickInterval, Stat: stat, EmotionalType: affinityRegister, Stacks: 1,
                 MagnitudeIsPercentOfMax: effect.MagnitudeIsPercentOfMax,
                 MagnitudeIsPercentOfBaseStat: effect.MagnitudeIsPercentOfBaseStat,
                 AppliesToActor: effect.AppliesToActor,
-                IsPermanent: effect.IsPermanent));
+                IsPermanent: effect.IsPermanent,
+                AffinityOutcome: affinityOutcome,
+                AffinityPriority: effect.AffinityPriority));
         }
         return specs;
     }

@@ -162,7 +162,7 @@ export const SORTS = {
   // ═══ MÉMOIRE — la pierre, l'archive, ce qui a été posé et ne bouge plus ══════════════
 
   fondations: {
-    name: 'Fondations', caster: 'Thomas', side: 'ally', registre: 'memoire', shape: 'single',
+    name: 'Fondations', caster: 'Thomas', side: 'ally', shape: 'single',
     range: 1, dmg: 10, col: '#e0b45f',
     phrase: 'La case se souvient d’avoir été un mur.',
     note: 'Une dalle sort du sol sous la cible et se rétracte. Le sol garde le joint tracé.',
@@ -210,7 +210,7 @@ export const SORTS = {
   },
 
   rempart: {
-    name: 'Rempart', caster: 'Thomas', side: 'ally', registre: 'memoire', shape: 'cross',
+    name: 'Rempart', caster: 'Thomas', side: 'ally', shape: 'cross',
     range: 2, dmg: 7, col: '#e0b45f',
     phrase: 'Quatre murs bas, le temps d’un tour. Personne ne passe, vous non plus.',
     note: 'La croix se relève d’un cran. Les cases du bord montent après le centre.',
@@ -239,7 +239,7 @@ export const SORTS = {
   },
 
   dictee: {
-    name: 'Dictée', caster: 'Copiste Aveugle', side: 'enemy', registre: 'memoire', shape: 'single',
+    name: 'Dictée', caster: 'Copiste Aveugle', side: 'enemy', shape: 'single',
     range: 4, dmg: 10, col: '#d8cfb4',
     phrase: 'Ce qui est dit est écrit. Ce qui est écrit vous concerne.',
     note: 'Des lignes de texte figuré tombent sur la case et s’impriment dans le sol.',
@@ -281,7 +281,7 @@ export const SORTS = {
   },
 
   'nom-lu': {
-    name: 'Nom lu à voix haute', caster: 'Lecteur de Nom', side: 'enemy', registre: 'memoire', shape: 'diamond',
+    name: 'Nom lu à voix haute', caster: 'Lecteur de Nom', side: 'enemy', shape: 'diamond',
     range: 5, dmg: 11, col: '#e6c273',
     phrase: 'Il dira votre nom. Après, vous ne l’aurez plus.',
     note: 'Une onde d’or part du centre. Chaque case atteinte perd sa couleur une seconde.',
@@ -315,7 +315,7 @@ export const SORTS = {
   // ═══ RUPTURE — le choc, la cassure, ce qui a été frappé trop fort ════════════════════
 
   impulsivite: {
-    name: 'Impulsivité', caster: 'Mané', side: 'ally', registre: 'rupture', shape: 'single',
+    name: 'Impulsivité', caster: 'Mané', side: 'ally', shape: 'single',
     range: 1, dmg: 15, col: '#d1662c',
     phrase: 'Elle frappe avant d’avoir décidé de frapper.',
     note: 'Un arc unique, traversant la case en diagonale. Aucun temps de préparation.',
@@ -340,7 +340,7 @@ export const SORTS = {
   },
 
   'frappe-enclume': {
-    name: 'Frappe d’enclume', caster: 'Enclume Marchante', side: 'enemy', registre: 'rupture', shape: 'cross',
+    name: 'Frappe d’enclume', caster: 'Enclume Marchante', side: 'enemy', shape: 'cross',
     range: 1, dmg: 14, col: '#e0793f',
     phrase: 'Le sol reçoit le coup avant vous.',
     note: 'Impact au centre, onde qui part dans les quatre voisines. Le sol se fend.',
@@ -387,7 +387,7 @@ export const SORTS = {
   },
 
   'colere-echo': {
-    name: 'Colère sans objet', caster: 'Écho de Colère', side: 'enemy', registre: 'rupture', shape: 'diamond',
+    name: 'Colère sans objet', caster: 'Écho de Colère', side: 'enemy', shape: 'diamond',
     range: 2, dmg: 12, col: '#d1662c',
     phrase: 'Il ne sait plus contre qui. Cela ne l’arrête pas.',
     note: 'Toutes les cases du losange s’allument en même temps — aucune propagation.',
@@ -413,7 +413,7 @@ export const SORTS = {
   // ═══ MÉLANCOLIE — l'eau, le froid, ce qui descend ════════════════════════════════════
 
   larme: {
-    name: 'Larme d’Elise', caster: 'Elise', side: 'ally', registre: 'melancolie', shape: 'single',
+    name: 'Larme d’Elise', caster: 'Elise', side: 'ally', shape: 'single',
     range: 4, dmg: 10, col: '#6f96c8',
     phrase: 'Une seule. Elle tombe droit, et la case se creuse.',
     note: 'Chute verticale, impact ponctuel, deux ondes concentriques. Rien ne brûle.',
@@ -451,7 +451,7 @@ export const SORTS = {
   },
 
   'berceuse-inversee': {
-    name: 'Berceuse inversée', caster: 'Mina', side: 'ally', registre: 'melancolie', shape: 'diamond',
+    name: 'Berceuse inversée', caster: 'Mina', side: 'ally', shape: 'diamond',
     range: 3, dmg: 6, col: '#6f96c8',
     phrase: 'Elle chante la fin d’abord. Personne ne s’endort.',
     note: 'Trois ondes lentes, du bord vers le centre : la seule zone qui se ferme.',
@@ -475,7 +475,7 @@ export const SORTS = {
   },
 
   'chagrin-goutte': {
-    name: 'Goutte-à-goutte', caster: 'Écho de Chagrin', side: 'enemy', registre: 'melancolie', shape: 'single',
+    name: 'Goutte-à-goutte', caster: 'Écho de Chagrin', side: 'enemy', shape: 'single',
     range: 3, dmg: 9, col: '#6f96c8',
     phrase: 'Il pleure une personne dont il a oublié le nom.',
     note: 'Sept gouttes espacées sur la durée. Chacune est un petit impact séparé.',
@@ -504,7 +504,7 @@ export const SORTS = {
   // ═══ SILENCE — le retrait, le blanc, ce qui coupe le son ═════════════════════════════
 
   'silence-partage': {
-    name: 'Silence partagé', caster: 'Elise', side: 'ally', registre: 'silence', shape: 'map',
+    name: 'Silence partagé', caster: 'Elise', side: 'ally', shape: 'map',
     range: 99, dmg: 8, col: '#c3bfcc', once: true,
     phrase: 'Le silence tombe sur tout le monde. Vous compris.',
     note: 'Le seul sort qui n’épargne aucune case. Toute la salle blanchit, puis se rend.',
@@ -528,7 +528,7 @@ export const SORTS = {
   },
 
   'se-taire': {
-    name: 'Se taire', caster: 'Voile Marcheur', side: 'enemy', registre: 'silence', shape: 'diamond',
+    name: 'Se taire', caster: 'Voile Marcheur', side: 'enemy', shape: 'diamond',
     range: 3, dmg: 7, col: '#c3bfcc',
     phrase: 'Vous avez traversé quelque chose. Vous ne savez pas quoi.',
     note: 'La lumière du sol est RETIRÉE au lieu d’être ajoutée : la zone s’assombrit.',
@@ -552,7 +552,7 @@ export const SORTS = {
   },
 
   'flamme-froide': {
-    name: 'Flamme froide', caster: 'Gardien à Facettes', side: 'enemy', registre: 'silence', shape: 'cross',
+    name: 'Flamme froide', caster: 'Gardien à Facettes', side: 'enemy', shape: 'cross',
     range: 3, dmg: 11, col: '#b3bdf2',
     phrase: 'Elle brûle sous le marbre, pas au-dessus.',
     note: 'La flamme est SOUS la case : elle éclaire les joints du sol par en dessous.',
@@ -599,7 +599,7 @@ export const SORTS = {
   // ═══ DÉNI — le blanc propre, le protocole, ce qui prétend que tout va bien ═══════════
 
   'regard-infantile': {
-    name: 'Regard infantile', caster: 'Mina', side: 'ally', registre: 'deni', shape: 'single',
+    name: 'Regard infantile', caster: 'Mina', side: 'ally', shape: 'single',
     range: 4, dmg: 7, col: '#d9a441',
     phrase: 'Elle regarde. La cible cesse d’avoir raison.',
     note: 'Aucun projectile : la case est simplement vue. Un cercle net, sans bavure.',
@@ -619,7 +619,7 @@ export const SORTS = {
   },
 
   'injection-blanche': {
-    name: 'Injection blanche', caster: 'Infirmière du Déni', side: 'enemy', registre: 'deni', shape: 'single',
+    name: 'Injection blanche', caster: 'Infirmière du Déni', side: 'enemy', shape: 'single',
     range: 3, dmg: 9, col: '#e8e4ee',
     phrase: 'Vous n’avez pas mal. Regardez le dossier.',
     note: 'Une seule ligne droite, très fine, et la case devient blanche et propre.',
@@ -650,7 +650,7 @@ export const SORTS = {
   // ═══ EFFROI — le rouge, la vitesse, ce qui chasse ════════════════════════════════════
 
   frappe: {
-    name: 'Frappe', caster: 'Ombre menaçante', side: 'enemy', registre: 'effroi', shape: 'cross',
+    name: 'Frappe', caster: 'Ombre menaçante', side: 'enemy', shape: 'cross',
     range: 2, dmg: 15, col: '#c8394a', boss: true,
     phrase: 'Quelque chose occupe la salle. On ne voit pas quoi.',
     note: 'Trois griffures parallèles en travers de la croix. Le rouge est un événement.',
@@ -680,7 +680,7 @@ export const SORTS = {
   },
 
   curee: {
-    name: 'Curée', caster: 'Voraces', side: 'enemy', registre: 'effroi', shape: 'single',
+    name: 'Curée', caster: 'Voraces', side: 'enemy', shape: 'single',
     range: 1, dmg: 13, col: '#c8394a',
     phrase: 'Elles dévorent les énergies. Elles ne se pressent pas.',
     note: 'La case s’assombrit par les bords vers le centre — quelque chose s’y referme.',
@@ -718,7 +718,7 @@ export const SORTS = {
   // ═══ FOLIE — le rose, la symétrie fausse, ce qui vous montre quelque chose ═══════════
 
   'vol-a-la-tire': {
-    name: 'Vol à la tire', caster: 'John', side: 'ally', registre: 'folie', shape: 'single',
+    name: 'Vol à la tire', caster: 'John', side: 'ally', shape: 'single',
     range: 1, dmg: 13, col: '#cf3f92',
     phrase: 'Il prend quelque chose. On ne saura pas quoi avant longtemps.',
     note: 'Un fil part de la case vers le lanceur. L’effet se lit au RETOUR, pas à l’aller.',
@@ -754,7 +754,7 @@ export const SORTS = {
   },
 
   'reflet-force': {
-    name: 'Reflet forcé', caster: 'Miroir Porteur', side: 'enemy', registre: 'folie', shape: 'diamond',
+    name: 'Reflet forcé', caster: 'Miroir Porteur', side: 'enemy', shape: 'diamond',
     range: 2, dmg: 10, col: '#cf3f92',
     phrase: 'Il ne vous attaque pas. Il vous présente.',
     note: 'Chaque case reçoit une copie inversée de la case opposée. Symétrie fausse.',
@@ -794,7 +794,7 @@ export const SORTS = {
       `generique-${flavor}-${shape}`,
       {
         name: `Geste ${flavor === 'physique' ? 'physique' : 'magique'} générique`,
-        caster: null, side: null, registre: null, shape, range: 0, dmg: 0, col,
+        caster: null, side: null, shape, range: 0, dmg: 0, col,
         note: 'Repli générique : pas encore de peinture dédiée pour ce sort.',
         fx(k) {
           const { ctx, cx, cy, ux, uy, p, d, center } = k;
@@ -811,17 +811,12 @@ export const SORTS = {
 
 export const SORT_IDS = Object.keys(SORTS);
 
-/** Sorts d'un registre donné, dans l'ordre du catalogue. */
-export function sortsOf(registre) {
-  return SORT_IDS.filter((id) => SORTS[id].registre === registre);
-}
-
 /** Fiche lisible d'un sort, pour l'atelier et le handoff. */
 export function sortInfo(id) {
   const s = SORTS[id];
   if (!s) return null;
   return {
-    id, name: s.name, caster: s.caster, side: s.side, registre: s.registre,
+    id, name: s.name, caster: s.caster, side: s.side,
     shape: s.shape, shapeLabel: SHAPES[s.shape].label, shapeGlyph: SHAPES[s.shape].glyph,
     range: s.range, dmg: s.dmg, col: s.col, once: !!s.once, boss: !!s.boss,
     phrase: s.phrase, note: s.note,
@@ -833,14 +828,14 @@ export function sortInfo(id) {
  *  `cells` : [{ cx, cy, ux, uy, d, center, dist }] — cy est l'ancre au sol, élévation
  *  comprise. `from` : point écran du lanceur, pour les sorts qui tirent un fil.
  *  Les cases sont peintes du fond vers l'avant : c'est l'appelant qui les a triées. */
-export function playSort(ctx, id, cells, p, from = null) {
+export function playSort(ctx, id, cells, p, from = null, catalogColor = null) {
   const s = SORTS[id];
   if (!s || p <= 0 || p >= 1) return;
   for (const c of cells) {
     const R = seeded(id + ':' + c.cx.toFixed(1) + ':' + c.cy.toFixed(1));
     ctx.save();
     s.fx({
-      ctx, R, p, from, col: s.col,
+      ctx, R, p, from, col: catalogColor ?? s.col,
       cx: c.cx, cy: c.cy, ux: c.ux, uy: c.uy,
       d: c.d ?? 0, center: !!c.center, dist: c.dist ?? c.d ?? 0,
     });

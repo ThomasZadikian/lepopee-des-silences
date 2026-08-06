@@ -78,7 +78,8 @@ public sealed class TacticalCombat : ICombatContext
         CreatedAtUtc = createdAtUtc;
         EscapePosition = escapePosition;
         RiskTier = riskTier;
-        EmotionalAffinityMatrix = emotionalAffinityMatrix ?? EmotionalAffinityMatrixSnapshot.Canonical;
+        EmotionalAffinityMatrix = emotionalAffinityMatrix
+            ?? throw new DomainException("A Catalog emotional affinity matrix snapshot is required.");
         _equippedItemKeys = (equippedItemKeys
                 ?? new Dictionary<Guid, IReadOnlyCollection<string>>())
             .ToDictionary(
@@ -129,9 +130,28 @@ public sealed class TacticalCombat : ICombatContext
             pair => pair.Key,
             pair => (IReadOnlyCollection<string>)pair.Value.ToArray());
 
-    public bool HasEquippedItem(Guid combatantId, string itemKey) =>
+    public bool HasEquipmentBehavior(Guid combatantId, string behaviorCode) =>
         _equippedItemKeys.TryGetValue(combatantId, out var keys)
-        && keys.Contains(itemKey);
+        && keys.Any(key => key.Equals($"behavior:{behaviorCode}", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith($"behavior:{behaviorCode}|", StringComparison.OrdinalIgnoreCase));
+
+    public bool TryGetEquipmentBehaviorSource(
+        Guid combatantId,
+        string behaviorCode,
+        out string sourceDefinitionKey)
+    {
+        sourceDefinitionKey = string.Empty;
+        if (!_equippedItemKeys.TryGetValue(combatantId, out var keys))
+            return false;
+
+        var prefix = $"behavior:{behaviorCode}|";
+        var token = keys.FirstOrDefault(key => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        if (token is null)
+            return false;
+
+        sourceDefinitionKey = token[prefix.Length..];
+        return !string.IsNullOrWhiteSpace(sourceDefinitionKey);
+    }
     public IReadOnlyDictionary<Guid, int> ActivationCounts => _activationCounts;
     public IReadOnlyDictionary<Guid, bool> LastActivationUsedMagic => _lastActivationUsedMagic;
     /// <summary>Who the most recent activation's DoT/HoT/guard ticks (if any) landed on.</summary>
@@ -346,7 +366,7 @@ public sealed class TacticalCombat : ICombatContext
     {
         var wasActive = ActiveCombatantId == combatantId;
         var defeated = RequireCombatant(combatantId);
-        if (HasEquippedItem(combatantId, "item.diapason-audela"))
+        if (HasEquipmentBehavior(combatantId, "prevent-revive-signature-on-death"))
         {
             _cannotRevive.Add(combatantId);
             var recipientSide = defeated.Side;
@@ -407,6 +427,9 @@ public sealed class TacticalCombat : ICombatContext
 
         if (ActiveCombatantId is { } outgoingId && !TurnStateOf(outgoingId).HasActed)
             OrientTowardNearestVisibleEnemy(outgoingId);
+
+        if (ActiveCombatantId is { } completedId)
+            RequireCombatant(completedId).AdvanceEmotionalAffinityModifiers();
 
         // Filtrer les combattants vaincus de l'ordre d'initiative pour éviter les incohérences
         _initiativeOrder = _initiativeOrder.Where(id => !IsDefeated(id)).ToList();
@@ -476,7 +499,7 @@ public sealed class TacticalCombat : ICombatContext
             return;
         }
 
-        if (HasEquippedItem(combatantId, "item.gants-service-muet")
+        if (HasEquipmentBehavior(combatantId, "defense-after-no-magic")
             && !_lastActivationUsedMagic.GetValueOrDefault(combatantId))
         {
             combatant.ApplyStatusEffect(CombatStatusEffect.Create(
@@ -515,7 +538,7 @@ public sealed class TacticalCombat : ICombatContext
         if (CurrentTick % 5 != 0
             || !_allies.Any(ally =>
                 !ally.IsDefeated
-                && HasEquippedItem(ally.Id.Value, "item.metronome-choeur")))
+                && HasEquipmentBehavior(ally.Id.Value, "team-silence-every-five-activations")))
         {
             return;
         }

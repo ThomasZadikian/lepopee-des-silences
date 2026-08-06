@@ -118,7 +118,8 @@ public sealed class SelectRewardCommandHandlerTests
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow,
             maxHp: 40,
-            currentHp: 20);
+            currentHp: 20,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: (int)RiskTier.Tendu);

@@ -88,7 +88,7 @@ public sealed record CombatantSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = null!)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Combatant skill key is required.");
@@ -159,7 +159,7 @@ public sealed record CombatantSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = null!)
     {
         EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted combatant skill '{key}' EmotionalRegister");
         return new CombatantSkill(

@@ -27,6 +27,11 @@ public sealed record ItemEquipmentEffectView(
     string? StatKind,
     int? Amount,
     string? SkillKey,
-    string? AffinityRegister);
+    string? AffinityRegister,
+    string? Condition = null,
+    string? AffinityOutcome = null,
+    int Priority = 0,
+    int? DurationActivations = null,
+    string? BehaviorCode = null);
 
 public sealed record ListActiveItemDefinitionsResponse(IReadOnlyCollection<ItemDefinitionView> Items);

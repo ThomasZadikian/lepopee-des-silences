@@ -6,8 +6,8 @@ namespace Leds.GameEngine.Application.Players;
 /// <summary>
 /// Enforces per-archetype skill equip restrictions ahead of the talent system: a skill
 /// with a non-empty <c>AllowedArchetypes</c> list (see catalog <c>SkillDefinition</c>)
-/// can only be equipped by a character whose <see cref="CharacterArchetypeProvider"/>
-/// archetype is in that list. Skills with an empty list stay universally equippable —
+/// can only be equipped by a character whose Catalog-authored archetype is in that list.
+/// Skills with an empty list stay universally equippable —
 /// this only restricts skills explicitly authored to belong to one archetype (e.g. a
 /// companion's signature move), closing the loophole where an item's GrantSkill effect
 /// or a Grimoire consumable could teach ANY character ANY skill regardless of role.
@@ -30,8 +30,14 @@ public sealed class SkillArchetypeGate
             return;
         }
 
-        var archetype = CharacterArchetypeProvider.Resolve(characterDefinitionKey);
-        if (archetype == CharacterArchetypeProvider.Adaptive)
+        var characters = await _catalogGateway.ListCharacterCombatDefinitionsAsync(cancellationToken);
+        var character = characters.SingleOrDefault(definition => string.Equals(
+            definition.DefinitionKey, characterDefinitionKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ConflictException(
+                $"Aucune définition Catalog n'existe pour le personnage '{characterDefinitionKey}'.");
+
+        var archetype = character.CombatArchetypeCode;
+        if (string.Equals(archetype, "Adaptive", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

@@ -318,4 +318,5 @@ public sealed class PlayerCharacter
             items,
             statPointsInvested);
     }
+
 }

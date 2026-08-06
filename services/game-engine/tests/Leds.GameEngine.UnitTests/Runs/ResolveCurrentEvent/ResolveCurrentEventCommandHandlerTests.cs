@@ -314,8 +314,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             "Threshold", 0, selectedNode.RiskLevel, "Combat",
             new[] { new CombatEncounterDraftEnemy(
                 "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
-                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }, Skills: []) },
-            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" },
+                Skills: [DraftBasicStrike()], EmotionalRegister: "Effroi") },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" },
+                IsProtagonist: true, EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid()) });
 
         draftGenerator
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
@@ -399,8 +401,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             "Threshold", 0, selectedNode.RiskLevel, "FinalBoss",
             new[] { new CombatEncounterDraftEnemy(
                 "canon.enemy.himlit", "Him'Lit", "", "Boss",
-                1, 1, 2, new[] { "boss" }, new[] { "skill.basic.strike" }, Skills: []) },
-            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+                1, 1, 2, new[] { "boss" }, new[] { "skill.basic.strike" },
+                Skills: [DraftBasicStrike()], EmotionalRegister: "Effroi") },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" },
+                IsProtagonist: true, EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid()) });
 
         draftGenerator
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
@@ -487,8 +491,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             "Threshold", 0, selectedNode.RiskLevel, "Combat",
             new[] { new CombatEncounterDraftEnemy(
                 "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
-                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }, Skills: []) },
-            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" },
+                Skills: [DraftBasicStrike()], EmotionalRegister: "Effroi") },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" },
+                IsProtagonist: true, EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid()) });
 
         draftGenerator
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
@@ -543,4 +549,17 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         response.EncounterDraft.Should().BeNull();
     }
+
+    private static CombatEncounterDraftSkill DraftBasicStrike() => new(
+        "skill.basic.strike",
+        "Frappe",
+        "Attaque de base.",
+        "Damage",
+        "SingleEnemy",
+        "Damage",
+        0,
+        0,
+        10,
+        [],
+        EmotionalRegister: "Neutral");
 }

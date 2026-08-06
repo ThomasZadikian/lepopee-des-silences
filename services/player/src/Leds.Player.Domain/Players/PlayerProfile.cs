@@ -185,7 +185,8 @@ public sealed class PlayerProfile
             .ToArray();
 
         var companion = PlayerCharacter.Create(
-            companionDefinitionKey, displayName, statBlock, skills, characterType: "Companion");
+            companionDefinitionKey, displayName, statBlock, skills,
+            characterType: "Companion");
 
         Roster.AddCharacter(companion);
 

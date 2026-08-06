@@ -102,12 +102,14 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
         int speed, int initiative, int focus, int mana, int charge,
-        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
+        IReadOnlyCollection<string> skillKeys,
+        CancellationToken cancellationToken,
         int magicAttack = 0, int magicDefense = 0)
         => await EnrichAsync(
             await _inner.RecruitCompanionAsync(
                 playerId, companionDefinitionKey, displayName, maxVitality, attackPower, defense,
-                startingGuard, speed, initiative, focus, mana, charge, skillKeys, cancellationToken,
+                startingGuard, speed, initiative, focus, mana, charge, skillKeys,
+                cancellationToken,
                 magicAttack, magicDefense),
             cancellationToken);
 

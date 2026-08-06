@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -59,6 +60,10 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
             var loadedAlly = loadedCombat.Allies.FirstOrDefault(a => a.Id == originalAlly.Id);
             loadedAlly.Should().NotBeNull();
             loadedAlly!.SourceKey.Should().Be(originalAlly.SourceKey);
+            loadedAlly.SourceDefinitionKey.Should().Be(originalAlly.SourceDefinitionKey);
+            loadedAlly.CharacterInstanceId.Should().Be(originalAlly.CharacterInstanceId);
+            loadedAlly.PersistentEmotionalAffinityModifiers.Should().BeEquivalentTo(
+                originalAlly.PersistentEmotionalAffinityModifiers);
             loadedAlly.DisplayName.Should().Be(originalAlly.DisplayName);
             loadedAlly.Side.Should().Be(originalAlly.Side);
             loadedAlly.Archetype.Should().Be(originalAlly.Archetype);
@@ -139,11 +144,19 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
 
     private static Run CreateTestRunWithCombat()
     {
-        var ally = Combatant.CreateAlly("player.test", "Hero", "Warrior", 100, 0,
-            [CombatantSkill.Create("skill.strike", "Strike", "Damage", "SingleEnemy", "Damage", 0, 0, 10)]);
+        var ally = Combatant.CreateAlly("runtime.player.test", "Hero", "Warrior", 100, 0,
+            [CombatantSkill.Create("skill.strike", "Strike", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+                emotionalRegister: "Neutral")],
+            naturalEmotionalType: EmotionalType.Memoire,
+            characterInstanceId: Guid.NewGuid(),
+            sourceDefinitionKey: "character.player.test");
+        ally.ApplyEmotionalAffinityModifier(EmotionalAffinityModifier.Create(
+            "item.test:AffinityOutcomeOverride", EmotionalType.Effroi,
+            DamageEffectiveness.Resistant, priority: 20, durationActivations: 3));
 
         var enemy = Combatant.CreateEnemy("enemy.test", "Goblin", "Scout", 30,
-            [CombatantSkill.Create("skill.bite", "Bite", "Damage", "SingleEnemy", "Damage", 0, 0, 5)]);
+            [CombatantSkill.Create("skill.bite", "Bite", "Damage", "SingleEnemy", "Damage", 0, 0, 5,
+                emotionalRegister: "Neutral")]);
 
         var node1 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 1, []);
         var node2 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 2, []);
@@ -168,7 +181,8 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
             layoutTemplateKey: "test-grid-v1",
             layoutTemplateVersion: "1.0.0");
 
-        var run = Run.StartNew(Guid.NewGuid(), "test-seed", "1.0.0", "1.0.0", room, DateTimeOffset.UtcNow);
+        var run = Run.StartNew(Guid.NewGuid(), "test-seed", "1.0.0", "1.0.0", room, DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.IntegrationTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var battlefield = TacticalBattlefield.Rehydrate(
             4, 2,
@@ -186,7 +200,8 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
             battlefield,
             [(ally, allyPosition)],
             [(enemy, enemyPosition)],
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.IntegrationTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.StartTacticalCombat(combat);
 

@@ -25,7 +25,8 @@ public sealed class CurrentRoomIndexTests
 
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-test", "gen-test", "markov-test",
-            room, DateTimeOffset.UtcNow);
+            room, DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.CurrentRoomIndex.Should().Be(0);
     }
@@ -37,7 +38,8 @@ public sealed class CurrentRoomIndexTests
 
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-threshold", "gen-test", "markov-test",
-            room, DateTimeOffset.UtcNow);
+            room, DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.CurrentRoomIndex.Should().Be(0);
         run.CurrentRoom.RoomType.Should().Be(RoomType.Threshold);
@@ -50,7 +52,8 @@ public sealed class CurrentRoomIndexTests
 
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-dto", "gen-test", "markov-test",
-            room, DateTimeOffset.UtcNow);
+            room, DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var dto = RunDto.FromDomain(run);
 
@@ -66,7 +69,8 @@ public sealed class CurrentRoomIndexTests
 
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-counter", "gen-test", "markov-test",
-            room, DateTimeOffset.UtcNow);
+            room, DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var dto = RunDto.FromDomain(run);
 

@@ -5,6 +5,7 @@ public sealed class CombatantEntity
     public Guid Id { get; set; }
     public Guid CombatId { get; set; }
     public string SourceKey { get; set; } = string.Empty;
+    public string SourceDefinitionKey { get; set; } = string.Empty;
     public Guid? CharacterInstanceId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string Side { get; set; } = string.Empty;
@@ -36,6 +37,7 @@ public sealed class CombatantEntity
     /// serialized as JSON. Set at combat creation from the wearer's equipped items.
     /// </summary>
     public string? TypedDamageReductionsJson { get; set; }
+    public string? EmotionalAffinityModifiersJson { get; set; }
 
     /// <summary>
     /// Equipment-driven hit chance bonus (percentage points) and DamageOverTime

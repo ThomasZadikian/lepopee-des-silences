@@ -19,11 +19,13 @@ public sealed class CombatFactoryConditionalEquipmentTests
     private static CombatEncounterDraft CreateDraftWithProtagonist()
     {
         var protagonist = new CombatEncounterDraftAlly(
-            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true);
+            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true,
+            EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid());
 
         var enemy = new CombatEncounterDraftEnemy(
             "enemy.0", "Enemy0", "Description", "Guard", 3, 1, 5,
-            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>());
+            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>(),
+            EmotionalRegister: "Effroi");
 
         return new CombatEncounterDraft(
             RunId: Guid.NewGuid(),
@@ -35,6 +37,61 @@ public sealed class CombatFactoryConditionalEquipmentTests
             EncounterType: "Combat",
             Enemies: new[] { enemy },
             Allies: new[] { protagonist });
+    }
+
+    [Fact]
+    public void BuildRoster_ShouldAttachCatalogRuntimeBehaviorWithItsSource()
+    {
+        var effect = new CatalogItemEquipmentEffect(
+            "RuntimeBehavior", null, null, null, null,
+            BehaviorCode: "reflect-first-melee-hit",
+            SourceDefinitionKey: "item.cornes-ivoire");
+
+        var roster = new CombatFactory().BuildRoster(
+            CombatId.New(), CreateDraftWithProtagonist(),
+            conditionalEquipmentEffects: [effect]);
+
+        roster.Allies.Single().EquipmentBehaviorCodes
+            .Should().Contain("reflect-first-melee-hit|item.cornes-ivoire");
+    }
+
+    [Fact]
+    public void BuildRoster_ShouldApplyEquipmentEffectsToTheMatchingCharacterInstanceOnly()
+    {
+        var protagonistId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+        var draft = CreateDraftWithProtagonist() with
+        {
+            Allies =
+            [
+                CreateDraftWithProtagonist().Allies.Single() with
+                {
+                    CharacterInstanceId = protagonistId
+                },
+                new CombatEncounterDraftAlly(
+                    "character.mane", "Mané", "Companion", [],
+                    MaxVitality: 80,
+                    EmotionalRegister: "Rupture",
+                    CharacterInstanceId: companionId)
+            ]
+        };
+        var effect = new CatalogItemEquipmentEffect(
+            "RuntimeBehavior", null, null, null, null,
+            BehaviorCode: "reflect-first-melee-hit",
+            SourceDefinitionKey: "item.cornes-ivoire");
+
+        var roster = new CombatFactory().BuildRoster(
+            CombatId.New(), draft,
+            equipmentEffectsByCharacterId:
+                new Dictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>
+                {
+                    [companionId] = [effect]
+                });
+
+        roster.Allies.Single(ally => ally.CharacterInstanceId == protagonistId)
+            .EquipmentBehaviorCodes.Should().BeEmpty();
+        roster.Allies.Single(ally => ally.CharacterInstanceId == companionId)
+            .EquipmentBehaviorCodes.Should().Contain("reflect-first-melee-hit|item.cornes-ivoire");
     }
 
     [Fact]
@@ -168,14 +225,12 @@ public sealed class CombatFactoryConditionalEquipmentTests
     }
 
     [Fact]
-    public void BuildRoster_ShouldIgnoreConditionalBonus_ForUnsupportedStatKind()
+    public void BuildRoster_ShouldApplyConditionalMaxVitalityBonus()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
         var effects = new[]
         {
-            // MaxVitality has no CombatStat equivalent (documented simplification) —
-            // must be silently skipped rather than throwing.
             new CatalogItemEquipmentEffect(
                 "StatBonusPercent", StatKind: "MaxVitality", Amount: 5, SkillKey: null, AffinityRegister: null,
                 Condition: "room:Montagne"),
@@ -184,6 +239,6 @@ public sealed class CombatFactoryConditionalEquipmentTests
         var roster = factory.BuildRoster(
             CombatId.New(), draft, roomTheme: "Montagne", conditionalEquipmentEffects: effects);
 
-        roster.Allies.Single().StatusEffects.Should().BeEmpty();
+        roster.Allies.Single().MaxVitality.Should().Be(105);
     }
 }

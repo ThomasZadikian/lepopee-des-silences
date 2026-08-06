@@ -14,7 +14,8 @@ public enum AffinityOutcome
 public sealed record EmotionalAffinityRule(
     EmotionalRegister AttackingRegister,
     EmotionalRegister DefendingRegister,
-    AffinityOutcome Outcome);
+    AffinityOutcome Outcome,
+    double Multiplier);
 
 /// <summary>
 /// Complete, immutable affinity matrix. Construction fails unless every active
@@ -24,11 +25,11 @@ public sealed class EmotionalAffinityMatrix
 {
     public const string CanonicalVersion = "emotional-affinity-1.0.0";
 
-    private readonly IReadOnlyDictionary<(EmotionalRegister Attack, EmotionalRegister Defense), AffinityOutcome> _rules;
+    private readonly IReadOnlyDictionary<(EmotionalRegister Attack, EmotionalRegister Defense), EmotionalAffinityRule> _rules;
 
     private EmotionalAffinityMatrix(
         string version,
-        IReadOnlyDictionary<(EmotionalRegister Attack, EmotionalRegister Defense), AffinityOutcome> rules)
+        IReadOnlyDictionary<(EmotionalRegister Attack, EmotionalRegister Defense), EmotionalAffinityRule> rules)
     {
         Version = version;
         _rules = rules;
@@ -43,7 +44,7 @@ public sealed class EmotionalAffinityMatrix
     public static EmotionalAffinityMatrix Canonical { get; } = CreateCanonical();
 
     public IReadOnlyCollection<EmotionalAffinityRule> Rules => _rules
-        .Select(rule => new EmotionalAffinityRule(rule.Key.Attack, rule.Key.Defense, rule.Value))
+        .Select(rule => rule.Value)
         .ToArray();
 
     public static EmotionalAffinityMatrix Create(
@@ -74,6 +75,9 @@ public sealed class EmotionalAffinityMatrix
         if (duplicates.Length > 0)
             throw new DomainException($"Emotional affinity matrix contains duplicate pairs: {string.Join(", ", duplicates)}.");
 
+        if (materialized.Any(rule => !double.IsFinite(rule.Multiplier) || rule.Multiplier < 0))
+            throw new DomainException("Emotional affinity multipliers must be finite and non-negative.");
+
         var expectedCount = activeRegisters.Count * activeRegisters.Count;
         if (materialized.Length != expectedCount)
         {
@@ -95,15 +99,15 @@ public sealed class EmotionalAffinityMatrix
             version.Trim(),
             materialized.ToDictionary(
                 rule => (rule.AttackingRegister, rule.DefendingRegister),
-                rule => rule.Outcome));
+                rule => rule));
     }
 
     public AffinityOutcome Resolve(EmotionalRegister attack, EmotionalRegister defense)
     {
-        if (!_rules.TryGetValue((attack, defense), out var outcome))
+        if (!_rules.TryGetValue((attack, defense), out var rule))
             throw new DomainException($"No affinity rule exists for {attack}->{defense}.");
 
-        return outcome;
+        return rule.Outcome;
     }
 
     private static EmotionalAffinityMatrix CreateCanonical()
@@ -113,7 +117,8 @@ public sealed class EmotionalAffinityMatrix
                 new EmotionalAffinityRule(
                     attack.Value,
                     defense.Value,
-                    ResolveCanonicalOutcome(attack.Value, defense.Value))))
+                    ResolveCanonicalOutcome(attack.Value, defense.Value),
+                    MultiplierFor(ResolveCanonicalOutcome(attack.Value, defense.Value)))))
             .ToArray();
 
         return Create(CanonicalVersion, rules);
@@ -143,4 +148,12 @@ public sealed class EmotionalAffinityMatrix
         if (attack == immune) return AffinityOutcome.Immune;
         return AffinityOutcome.Neutral;
     }
+
+    private static double MultiplierFor(AffinityOutcome outcome) => outcome switch
+    {
+        AffinityOutcome.Weak => 1.5,
+        AffinityOutcome.Resistant => 0.75,
+        AffinityOutcome.Immune => 0.0,
+        _ => 1.0
+    };
 }

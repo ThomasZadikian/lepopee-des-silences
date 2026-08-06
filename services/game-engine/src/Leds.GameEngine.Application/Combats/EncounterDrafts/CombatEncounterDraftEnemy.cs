@@ -19,4 +19,4 @@ public sealed record CombatEncounterDraftEnemy(
     int MagicDefense = 0,
     int Mana = 0,
     int Movement = 4,
-    string EmotionalRegister = "Neutral");
+    string EmotionalRegister = null!);

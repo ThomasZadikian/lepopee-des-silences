@@ -1,32 +1,33 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { EmotionalType } from '../types/combatContracts';
-import { EMOTIONAL_TYPE_META } from '../../../shared/theme/typeColors';
+import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
 
 const props = withDefaults(
   defineProps<{
-    type: EmotionalType | string;
+    type: string;
     /** Compact omits the label and shows only the colored glyph. */
     compact?: boolean;
   }>(),
   { compact: false },
 );
 
-const meta = computed(() => EMOTIONAL_TYPE_META[props.type] ?? EMOTIONAL_TYPE_META.Neutral);
-const isNeutral = computed(() => (props.type ?? 'Neutral') === 'Neutral');
+const registerStore = useEmotionalRegisterCatalog();
+const definition = computed(() => registerStore.definitionOf(props.type));
+const label = computed(() => definition.value?.displayName ?? props.type);
+const glyph = computed(() => definition.value?.glyph ?? '!');
+const color = computed(() => definition.value?.color ?? 'var(--danger-dim)');
 </script>
 
 <template>
   <span
-    v-if="!isNeutral"
     class="type-badge"
-    :class="{ 'type-badge--compact': compact }"
-    :style="{ '--type-color': meta.color }"
-    :title="`Type émotionnel : ${meta.label}`"
+    :class="{ 'type-badge--compact': compact, 'type-badge--invalid': !definition }"
+    :style="{ '--type-color': color }"
+    :title="definition ? `Registre émotionnel : ${label}` : `Registre émotionnel inconnu : ${type}`"
   >
-    <span class="type-badge__glyph">{{ meta.glyph }}</span>
-    <span v-if="!compact" class="type-badge__label">{{ meta.label }}</span>
+    <span class="type-badge__glyph">{{ glyph }}</span>
+    <span v-if="!compact" class="type-badge__label">{{ label }}</span>
   </span>
 </template>
 
@@ -49,6 +50,7 @@ const isNeutral = computed(() => (props.type ?? 'Neutral') === 'Neutral');
 }
 
 .type-badge--compact { padding: 1px 4px; font-size: 0.62rem; }
+.type-badge--invalid { border-style: dashed; }
 .type-badge__glyph { font-size: 0.7em; line-height: 1; }
 .type-badge__label { font-weight: 600; }
 </style>

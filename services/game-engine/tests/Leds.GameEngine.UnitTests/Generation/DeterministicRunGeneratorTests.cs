@@ -239,7 +239,8 @@ public sealed class DeterministicRunGeneratorTests
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var nextRoom = await generator.GenerateNextRoomAsync(run);
 
@@ -257,7 +258,8 @@ public sealed class DeterministicRunGeneratorTests
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var nextRoom = await generator.GenerateNextRoomAsync(run);
 
@@ -282,7 +284,8 @@ public sealed class DeterministicRunGeneratorTests
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var nextRoomA = await generator.GenerateNextRoomAsync(run);
         var nextRoomB = await generator.GenerateNextRoomAsync(run);
@@ -391,7 +394,8 @@ public sealed class DeterministicRunGeneratorTests
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var preview = await generator.PreviewUpcomingRoomNamesAsync(run);
 
@@ -426,7 +430,8 @@ public sealed class DeterministicRunGeneratorTests
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var preview = await generator.PreviewUpcomingRoomNamesAsync(run);
 

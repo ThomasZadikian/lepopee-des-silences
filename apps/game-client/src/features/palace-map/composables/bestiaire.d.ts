@@ -8,8 +8,6 @@
 
 export const TOKEN: Record<string, string>;
 
-export const REGISTRES: Record<string, { label: string; glyph: string; col: string }>;
-
 export const ROLES: Record<string, { label: string; note: string }>;
 
 export const ROSTER_IDS: string[];
@@ -21,7 +19,6 @@ export type RosterEntry = {
   side: 'ally' | 'enemy';
   role: string;
   family: string;
-  registre: string;
   rarity: string;
   quote: string;
   catalogKey: string | null;

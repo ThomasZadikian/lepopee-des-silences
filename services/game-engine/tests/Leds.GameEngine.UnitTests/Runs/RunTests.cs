@@ -23,7 +23,8 @@ public sealed class RunTests
             "gen-0.4.0",
             "markov-0.2.0",
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.Id.Value.Should().NotBeEmpty();
         run.PlayerId.Should().Be(playerId);
@@ -58,7 +59,8 @@ public sealed class RunTests
             initialRoom,
             DateTimeOffset.UtcNow,
             mana: 25,
-            charge: 3);
+            charge: 3,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.PlayerState!.Mana.Should().Be(25);
         run.PlayerState!.Charge.Should().Be(3);
@@ -77,7 +79,8 @@ public sealed class RunTests
             initialRoom,
             DateTimeOffset.UtcNow,
             magicAttack: 9,
-            magicDefense: 4);
+            magicDefense: 4,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.MagicAttack.Should().Be(9);
         run.MagicDefense.Should().Be(4);
@@ -94,7 +97,8 @@ public sealed class RunTests
             "gen-0.4.0",
             "markov-0.2.0",
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.MagicAttack.Should().Be(0);
         run.MagicDefense.Should().Be(0);
@@ -112,7 +116,8 @@ public sealed class RunTests
             "markov-0.2.0",
             initialRoom,
             DateTimeOffset.UtcNow,
-            journalEnabled: true);
+            journalEnabled: true,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.AppendJournalEntry("J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet.");
 
@@ -135,7 +140,8 @@ public sealed class RunTests
             "gen-0.4.0",
             "markov-0.2.0",
             initialRoom,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.AppendJournalEntry("Ceci ne devrait jamais être écrit.");
 
@@ -393,7 +399,8 @@ public sealed class RunTests
             TestGameEngineFactory.CreateThresholdRoom(),
             DateTimeOffset.UtcNow,
             maxHp: 40,
-            currentHp: 10);
+            currentHp: 10,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         run.SetPendingRewardOffer(RewardOfferId.New());
 
         var choice = RewardChoice.Create(
@@ -418,7 +425,8 @@ public sealed class RunTests
             TestGameEngineFactory.CreateThresholdRoom(),
             DateTimeOffset.UtcNow,
             maxHp: 40,
-            currentHp: 35);
+            currentHp: 35,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         run.SetPendingRewardOffer(RewardOfferId.New());
 
         var choice = RewardChoice.Create(
@@ -443,7 +451,8 @@ public sealed class RunTests
             TestGameEngineFactory.CreateThresholdRoom(),
             DateTimeOffset.UtcNow,
             maxHp: 40,
-            currentHp: 20);
+            currentHp: 20,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
         run.SetPendingRewardOffer(RewardOfferId.New());
 
         var choice = RewardChoice.Create(
@@ -500,7 +509,8 @@ public sealed class RunTests
         var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
-            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2);
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         var accepted1 = run.TryAddRunItem(CreateDistinctItem("item.a"));
         var accepted2 = run.TryAddRunItem(CreateDistinctItem("item.b"));
@@ -516,7 +526,8 @@ public sealed class RunTests
         var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
-            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2);
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.TryAddRunItem(CreateDistinctItem("item.a"));
         run.TryAddRunItem(CreateDistinctItem("item.b"));
@@ -533,7 +544,8 @@ public sealed class RunTests
         var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
         var run = Run.StartNew(
             Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
-            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 1);
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 1,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         run.TryAddRunItem(CreateDistinctItem("item.a", quantity: 1));
         var accepted = run.TryAddRunItem(CreateDistinctItem("item.a", quantity: 1));

@@ -16,11 +16,13 @@ public sealed class CombatFactoryHimLitProtectionTests
     private static CombatEncounterDraft CreateDraftWithProtagonist()
     {
         var protagonist = new CombatEncounterDraftAlly(
-            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true);
+            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true,
+            EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid());
 
         var enemy = new CombatEncounterDraftEnemy(
             "enemy.0", "Enemy0", "Description", "Guard", 3, 1, 5,
-            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>());
+            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>(),
+            EmotionalRegister: "Effroi");
 
         return new CombatEncounterDraft(
             RunId: Guid.NewGuid(),
@@ -119,12 +121,15 @@ public sealed class CombatFactoryHimLitProtectionTests
     {
         var factory = new CombatFactory();
         var protagonist = new CombatEncounterDraftAlly(
-            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true);
+            "player.self", "Le Porteur", "Fighter", Array.Empty<string>(), IsProtagonist: true,
+            EmotionalRegister: "Memoire", CharacterInstanceId: Guid.NewGuid());
         var companion = new CombatEncounterDraftAlly(
-            "companion.mane", "Mané", "Support", Array.Empty<string>(), IsProtagonist: false);
+            "companion.mane", "Mané", "Support", Array.Empty<string>(), IsProtagonist: false,
+            MaxVitality: 80, EmotionalRegister: "Silence", CharacterInstanceId: Guid.NewGuid());
         var enemy = new CombatEncounterDraftEnemy(
             "enemy.0", "Enemy0", "Description", "Guard", 3, 1, 5,
-            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>());
+            Array.Empty<string>(), Array.Empty<string>(), Array.Empty<CombatEncounterDraftSkill>(),
+            EmotionalRegister: "Effroi");
 
         var draft = new CombatEncounterDraft(
             RunId: Guid.NewGuid(), RoomId: Guid.NewGuid(), NodeId: Guid.NewGuid(),

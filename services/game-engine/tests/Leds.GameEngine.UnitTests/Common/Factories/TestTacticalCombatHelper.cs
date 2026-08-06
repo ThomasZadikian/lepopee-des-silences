@@ -62,7 +62,8 @@ public static class TestTacticalCombatHelper
             dotMagnitudeBonus: dotMagnitudeBonus,
             healingBlocked: healingBlocked,
             thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
-            equippedItemKeys: equippedItemKeys);
+            equippedItemKeys: equippedItemKeys,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
     }
 
     /// <summary>

@@ -34,18 +34,6 @@ export const TOKEN = {
   sap: '#86dcb4',
 };
 
-/** Les sept registres émotionnels. Glyphe et couleur sont la clé de lecture du joueur :
- *  ils ne changent jamais d'une salle à l'autre. */
-export const REGISTRES = {
-  effroi: { label: 'Effroi', glyph: '✶', col: '#c8394a' },
-  deni: { label: 'Déni', glyph: '◇', col: '#d9a441' },
-  melancolie: { label: 'Mélancolie', glyph: '❍', col: '#6f96c8' },
-  rupture: { label: 'Rupture', glyph: '⟡', col: '#d1662c' },
-  memoire: { label: 'Mémoire', glyph: '◈', col: '#e0b45f' },
-  silence: { label: 'Silence', glyph: '○', col: '#c3bfcc' },
-  folie: { label: 'Folie', glyph: '✳', col: '#cf3f92' },
-};
-
 /** Lecture visuelle attendue par rôle — c'est le contrat de silhouette. */
 export const ROLES = {
   guard: 'large, bas, symétrique — occupe la case entière',
@@ -465,7 +453,6 @@ export const ROSTER = {
   'boss-ombre': {
     catalogKey: null,
     name: 'Ombre menaçante', side: 'enemy', role: 'bruiser', family: 'boss', rarity: 'boss',
-    registre: 'effroi', boss: true,
     quote: 'Quelque chose occupe la salle. On ne voit pas quoi.',
     silhouette: 'Une masse haute, sans détail, qui dépasse tout le reste. Placeholder assumé.',
     pal: { body: '#0e0d16', deep: '#04040a', accent: '#ff4038', light: '#3a3650' },
@@ -531,7 +518,6 @@ export const ROSTER = {
   'veilleur-tapis': {
     catalogKey: 'canon.enemy.veilleur-tapis',
     name: 'Veilleur du Tapis', side: 'enemy', role: 'guard', family: 'veilleurs', rarity: 'common',
-    registre: 'silence',
     quote: '« Vos pieds. Je vous prie. »',
     silhouette: 'Pliée à 90°, jamais redressée ; large et basse, elle barre le passage.',
     pal: { body: '#17151f', deep: '#0a0910', accent: '#6d1420', light: '#e8e4ef' },
@@ -606,7 +592,6 @@ export const ROSTER = {
   'porteur-plateau': {
     catalogKey: 'canon.enemy.porteur-plateau',
     name: 'Porteur de Plateau', side: 'enemy', role: 'support', family: 'veilleurs', rarity: 'common',
-    registre: 'silence',
     quote: '« Thé ? Eau ? Attention ? »',
     silhouette: 'Buste seul, coupé net à la taille, flottant à hauteur constante.',
     pal: { body: '#1a1824', deep: '#0c0b12', accent: '#b8bcc8', light: '#e8e4ef' },
@@ -675,7 +660,6 @@ export const ROSTER = {
   'echo-politesse': {
     catalogKey: 'canon.enemy.echo-politesse',
     name: 'Écho de Politesse', side: 'enemy', role: 'disruptor', family: 'veilleurs', rarity: 'common',
-    registre: 'silence',
     quote: '« Après vous. Non — après vous. »',
     silhouette: 'Quasi absente : une distorsion, un pli. Le plus difficile à cadrer, et c’est le propos.',
     pal: { body: '#c3bfcc', deep: '#4a4658', accent: '#a8c0d8', light: '#e8e4ef' },
@@ -720,7 +704,6 @@ export const ROSTER = {
   'sentinelle-seuil': {
     catalogKey: 'canon.enemy.sentinelle-seuil',
     name: 'Sentinelle du Seuil', side: 'enemy', role: 'bruiser', family: 'veilleurs', rarity: 'elite',
-    registre: 'silence',
     quote: '« Le seuil a été souillé. Cela ne se pardonne pas. »',
     silhouette: 'Colonne. Strictement cylindrique, sans bras évidents, plus haute que tout.',
     pal: { body: '#c8c4cf', deep: '#6a6678', accent: TOKEN.frost, light: '#eae6f0' },
@@ -782,7 +765,6 @@ export const ROSTER = {
   'copiste-aveugle': {
     catalogKey: 'canon.enemy.copiste-aveugle',
     name: 'Copiste Aveugle', side: 'enemy', role: 'disruptor', family: 'copistes', rarity: 'common',
-    registre: 'memoire',
     quote: '« Je n’ai pas besoin de voir. Le texte se souvient pour moi. »',
     silhouette: 'Voûtée sur un parchemin flottant qui la prolonge à l’horizontale.',
     pal: { body: '#4a4234', deep: '#241f18', accent: TOKEN.blood, paper: '#ded0a8', light: TOKEN.gold },
@@ -841,7 +823,6 @@ export const ROSTER = {
   'encrier-vivant': {
     catalogKey: 'canon.enemy.encrier-vivant',
     name: 'Encrier Vivant', side: 'enemy', role: 'support', family: 'copistes', rarity: 'common',
-    registre: 'memoire',
     quote: '« Il ne faut jamais, jamais manquer d’encre. »',
     silhouette: 'Humanoïde approximative, contour en verre, contenu liquide et mobile.',
     pal: { body: '#8a96a8', deep: '#3a4250', accent: '#02020a', light: '#dce4ee' },
@@ -908,7 +889,6 @@ export const ROSTER = {
   'page-inachevee': {
     catalogKey: 'canon.enemy.page-inachevee',
     name: 'Page Inachevée', side: 'enemy', role: 'disruptor', family: 'copistes', rarity: 'uncommon',
-    registre: 'memoire',
     quote: '« La phrase s’arrête ici. Vous aussi. »',
     silhouette: 'Plan vertical, presque 2D. Vue de profil, elle disparaît presque.',
     pal: { body: '#f0ead8', deep: '#a89c78', accent: '#100c08', light: '#ffffff' },
@@ -962,7 +942,6 @@ export const ROSTER = {
   relieur: {
     catalogKey: 'canon.enemy.relieur',
     name: 'Le Relieur', side: 'enemy', role: 'bruiser', family: 'copistes', rarity: 'rare',
-    registre: 'memoire',
     quote: '« Rien ne se termine tant que je n’ai pas cousu la dernière page. »',
     silhouette: 'La plus massive de la famille. Épaules d’artisan, tablier lourd, bras-aiguilles.',
     pal: { body: '#6a4c30', deep: '#2e2014', accent: TOKEN.bloodDim, steel: '#b0aebc', light: '#a8814e' },
@@ -1022,7 +1001,6 @@ export const ROSTER = {
   'squelette-souvenir': {
     catalogKey: 'canon.enemy.squelette-souvenir',
     name: 'Squelette de Souvenir', side: 'enemy', role: 'skirmisher', family: 'squelettes', rarity: 'common',
-    registre: 'memoire', variants: ['tasse', 'jouet', 'clef', 'chaussure', 'lettre'],
     quote: '« ... » (il n’a jamais été raconté ; il n’a pas de voix)',
     silhouette: 'Squelette humain classique, mais TOUJOURS tenant un objet du quotidien.',
     pal: { body: '#9a9690', deep: '#4e4a46', accent: TOKEN.gold, light: '#b8b4ae' },
@@ -1092,7 +1070,6 @@ export const ROSTER = {
   'porteur-cendre': {
     catalogKey: 'canon.enemy.porteur-cendre',
     name: 'Porteur de Cendre', side: 'enemy', role: 'support', family: 'squelettes', rarity: 'uncommon',
-    registre: 'memoire',
     quote: '« Je me souviens d’eux. C’est mon fardeau, et ma monnaie. »',
     silhouette: 'Courbée sous une charge qui la dépasse. La hotte est plus grande que le porteur.',
     pal: { body: '#5a5450', deep: '#28242a', accent: TOKEN.ember, ash: '#8e8a86', light: '#a8a29c' },
@@ -1155,7 +1132,6 @@ export const ROSTER = {
   'choeur-muet': {
     catalogKey: 'canon.enemy.choeur-muet',
     name: 'Chœur Muet', side: 'enemy', role: 'disruptor', family: 'squelettes', rarity: 'rare',
-    registre: 'memoire',
     quote: '« Ils chantent. Vous ne l’entendrez jamais. C’est ça, le supplice. »',
     silhouette: 'Triple. Trois crânes en éventail sur un buste unique — la plus identifiable.',
     pal: { body: '#9a9690', deep: '#4a4642', accent: '#c3bfcc', light: '#b8b4ae' },
@@ -1217,7 +1193,6 @@ export const ROSTER = {
   'infirmiere-deni': {
     catalogKey: 'canon.enemy.infirmiere-deni',
     name: 'Infirmière du Déni', side: 'enemy', role: 'disruptor', family: 'blouses', rarity: 'uncommon',
-    registre: 'deni',
     quote: '« Vous n’avez pas mal. Regardez le dossier. »',
     silhouette: 'Verticale et nette, élargie par le chariot qu’elle pousse.',
     pal: { body: '#f0eef4', deep: '#a8a4b4', accent: TOKEN.goldDim, chrome: '#c8c8d2', light: '#ffffff' },
@@ -1279,7 +1254,6 @@ export const ROSTER = {
   'souvenir-alite': {
     catalogKey: 'canon.enemy.souvenir-alite',
     name: 'Souvenir Alité', side: 'enemy', role: 'skirmisher', family: 'blouses', rarity: 'common',
-    registre: 'deni',
     quote: '« Il attend une visite. Vous ferez l’affaire. »',
     silhouette: 'Mobilier, pas créature. Un lit sur roulettes, drap tendu formant une bosse humaine.',
     pal: { body: '#e8e6ee', deep: '#a09cae', accent: TOKEN.sap, chrome: '#c4c4d0', light: '#ffffff' },
@@ -1346,7 +1320,6 @@ export const ROSTER = {
   'regisseur-blanc': {
     catalogKey: 'canon.enemy.regisseur-blanc',
     name: 'Régisseur des Couloirs Blancs', side: 'enemy', role: 'support', family: 'blouses', rarity: 'rare',
-    registre: 'deni',
     quote: '« Les visites sont terminées. Elles l’ont toujours été. »',
     silhouette: 'Le plus haut de la famille, dos parfaitement droit, allongé par le trousseau.',
     pal: { body: '#eae8f0', deep: '#9a96a8', accent: TOKEN.goldDeep, light: '#ffffff' },
@@ -1406,7 +1379,6 @@ export const ROSTER = {
   voraces: {
     catalogKey: 'canon.enemy.voraces',
     name: 'Voraces', side: 'enemy', role: 'bruiser', family: 'predateurs', rarity: 'elite',
-    registre: 'effroi', variants: ['petite', 'moyenne', 'grande'],
     quote: 'Elles dévorent les énergies. Intelligentes, elles chassent en meute.',
     silhouette: 'Bipède allongée, prédatrice. Trois échelles du même modèle, de 1,40 m à 3 m.',
     pal: { body: '#14121c', deep: '#05050a', accent: '#8e8a9c', light: '#c8c4d2' },
@@ -1472,7 +1444,6 @@ export const ROSTER = {
   lamiz: {
     catalogKey: 'canon.enemy.lamiz',
     name: 'Lamiz', side: 'enemy', role: 'swarm', family: 'predateurs', rarity: 'common',
-    registre: 'effroi',
     quote: 'Là où l’une apparaît, les autres suivent.',
     silhouette: 'Petite, quadrupède, JAMAIS SEULE : conçue directement comme un groupe de 3 à 5.',
     pal: { body: '#191723', deep: '#08080e', accent: '#6a6a86', light: '#a8a4bc' },
@@ -1525,7 +1496,6 @@ export const ROSTER = {
   uguiro: {
     catalogKey: 'canon.enemy.uguiro',
     name: 'Uguiro', side: 'enemy', role: 'bruiser', family: 'predateurs', rarity: 'elite',
-    registre: 'effroi',
     quote: 'Un monstre des profondeurs du Palais. Lent à se révéler, terrible une fois éveillé.',
     silhouette: 'Masse au repos, indistincte. Au repos, on ne doit pas comprendre ce que c’est.',
     pal: { body: '#101420', deep: '#04060c', accent: '#3c5a6a', light: '#7a98a8' },
@@ -1574,7 +1544,6 @@ export const ROSTER = {
   'fossoyeur-pale': {
     catalogKey: 'canon.enemy.fossoyeur-pale',
     name: 'Le Fossoyeur pâle', side: 'enemy', role: 'skirmisher', family: 'predateurs', rarity: 'common',
-    registre: 'effroi',
     quote: 'Il creuse avant même que tu sois tombé.',
     silhouette: 'Maigre, haute, penchée sur son ouvrage, avec un outil de creusement.',
     pal: { body: '#3a3640', deep: '#1a1820', accent: '#d8d0c0', skin: '#c8c0b0', light: '#8a8290' },
@@ -1630,7 +1599,6 @@ export const ROSTER = {
   'echo-colere': {
     catalogKey: 'canon.enemy.echo-colere',
     name: 'Écho de Colère', side: 'enemy', role: 'bruiser', family: 'echos', rarity: 'uncommon',
-    registre: 'rupture',
     quote: '« Il ne sait plus contre qui. Cela ne l’arrête pas. »',
     silhouette: 'Haute, épaules énormes, poings serrés bas. Le contour est déchiré, pas flou.',
     pal: { body: '#2a1e28', deep: '#100a10', accent: '#d1662c', light: '#e88a4a' },
@@ -1684,7 +1652,6 @@ export const ROSTER = {
   relieur: {
     catalogKey: 'canon.enemy.relieur',
     name: 'Le Relieur', side: 'enemy', role: 'bruiser', family: 'copistes', rarity: 'rare',
-    registre: 'memoire',
     quote: '« Rien ne se termine tant que je n’ai pas cousu la dernière page. »',
     silhouette: 'Massif, tablier de cuir. Les avant-bras se terminent en aiguilles courbes.',
     pal: { body: '#4a3a2e', deep: '#1a1410', accent: TOKEN.gold, light: '#c8a878', steel: '#b8bcc8' },
@@ -1747,7 +1714,6 @@ export const ROSTER = {
   'ombres-tentaculaires': {
     catalogKey: 'canon.enemy.ombres-tentaculaires',
     name: 'Ombres tentaculaires', side: 'enemy', role: 'disruptor', family: 'brume', rarity: 'common',
-    registre: 'silence',
     quote: '« Des rats grands comme des chiens, des serpents à pattes — ce ne sont que ses bras. »',
     silhouette: 'Un corps bas, presque absent. Quatre bras qui montent hors du cadre.',
     pal: { body: '#2a2c3e', deep: '#0e1018', accent: '#c3bfcc', light: '#8f8ca4' },
@@ -1789,7 +1755,6 @@ export const ROSTER = {
   'oeil-du-visionnaire': {
     catalogKey: 'canon.enemy.oeil-du-visionnaire',
     name: 'L’Œil du Visionnaire animé', side: 'enemy', role: 'disruptor', family: 'lituisme', rarity: 'elite',
-    registre: 'memoire',
     quote: '« Il vous voit avant que vous ne le voyiez. »',
     silhouette: 'Presque plat : un symbole qui rampe sur les pavés. Rien ne se dresse.',
     pal: { body: '#221c2c', deep: '#0a0810', accent: '#a86fd8', light: '#e8c94a' },
@@ -1840,7 +1805,6 @@ export const ROSTER = {
   'goule-anxiete': {
     catalogKey: 'canon.enemy.goule-anxiete',
     name: 'La Goule', side: 'enemy', role: 'drain', family: 'psyche', rarity: 'elite',
-    registre: 'folie',
     quote: '« Elle envahit, recouvre, étouffe — jusqu’au “Tais-toi” d’Elise. »',
     silhouette: 'Déborde largement de sa case. Pas de bas : elle recouvre le sol alentour.',
     pal: { body: '#2c1e34', deep: '#0e0812', accent: '#cf3f92', light: '#8f74a8' },
@@ -1904,7 +1868,6 @@ export const ROSTER = {
   homoncule: {
     catalogKey: 'canon.enemy.homoncule',
     name: 'L’Homoncule', side: 'enemy', role: 'bruiser', family: 'alchimie', rarity: 'elite',
-    registre: 'deni',
     quote: '« Lent, presque doux — jusqu’à ce qu’il hurle. »',
     silhouette: 'Haut, épaules molles, tête inclinée. Une flamme froide contenue dans le torse.',
     pal: { body: '#4a4260', deep: '#161228', accent: '#9a7cf0', light: '#e0d8c0' },
@@ -1964,7 +1927,6 @@ export const ROSTER = {
   'enfant-argile': {
     catalogKey: 'canon.enemy.enfant-argile',
     name: 'L’Enfant d’argile', side: 'enemy', role: 'support', family: 'alchimie', rarity: 'common',
-    registre: 'deni',
     quote: '« Un essai raté, abandonné avant l’achèvement. Il soigne encore, par réflexe. »',
     silhouette: 'Petit, vertical, une moitié inachevée : le bras droit s’arrête au coude.',
     pal: { body: '#7a6450', deep: '#2a2018', accent: '#86dcb4', light: '#a89078' },
@@ -2024,7 +1986,6 @@ export const ROSTER = {
   'chimere-affamee': {
     catalogKey: 'canon.enemy.chimere-affamee',
     name: 'Chimère Affamée', side: 'enemy', role: 'skirmisher', family: 'chimeres', rarity: 'common',
-    registre: 'effroi',
     quote: '« Elle ne rugit pas. Elle compte vos battements de cœur. »',
     silhouette: 'Basse, allongée, immobile. La mâchoire est trop longue pour le crâne.',
     pal: { body: '#5a4a3a', deep: '#1e1812', accent: '#c8394a', light: '#8f7a5e' },
@@ -2074,7 +2035,6 @@ export const ROSTER = {
   'berger-ordres': {
     catalogKey: 'canon.enemy.berger-ordres',
     name: 'Berger d’Ordres', side: 'enemy', role: 'support', family: 'chimeres', rarity: 'uncommon',
-    registre: 'effroi',
     quote: '« Le troupeau ne demande qu’une chose. Je la lui accorde. »',
     silhouette: 'Très vertical, immobile, une règle d’architecte démesurée tenue comme houlette.',
     pal: { body: '#3e3a44', deep: '#161418', accent: '#d9a441', light: '#9a9488' },
@@ -2119,7 +2079,6 @@ export const ROSTER = {
   'agneau-inverse': {
     catalogKey: 'canon.enemy.agneau-inverse',
     name: 'Agneau Inversé', side: 'enemy', role: 'disruptor', family: 'chimeres', rarity: 'uncommon',
-    registre: 'effroi',
     quote: '« Il broutait. Vous avez cligné des yeux. Il vous regarde. »',
     silhouette: 'Petit, rond, paisible. La seule figure du bestiaire qu’on prend pour un décor.',
     pal: { body: '#d8d2c4', deep: '#1c1a20', accent: '#c8394a', light: '#f0ece0' },
@@ -2170,7 +2129,6 @@ export const ROSTER = {
   'creation-instable': {
     catalogKey: 'canon.enemy.creation-instable',
     name: 'Création Instable', side: 'enemy', role: 'bruiser', family: 'forgeron', rarity: 'common',
-    registre: 'rupture',
     quote: '« Elle se tient debout. Presque. C’est le presque qui fait mal. »',
     silhouette: 'Humanoïde de guingois : une jambe plus courte, tout le corps penché pour compenser.',
     pal: { body: '#4a4650', deep: '#1a1820', accent: TOKEN.ember, light: '#8e8a98' },
@@ -2226,7 +2184,6 @@ export const ROSTER = {
   'marteau-vivant': {
     catalogKey: 'canon.enemy.marteau-vivant',
     name: 'Marteau Vivant', side: 'enemy', role: 'bruiser', family: 'forgeron', rarity: 'uncommon',
-    registre: 'rupture',
     quote: '« Les marteaux qui hurlent. C’est de lui qu’on parle. »',
     silhouette: 'Très haut, très étroit : une masse de forge dressée sur un manche vertébral.',
     pal: { body: '#464250', deep: '#18161e', accent: TOKEN.ember, light: '#9a96a6' },
@@ -2274,7 +2231,6 @@ export const ROSTER = {
   'sentinelle-fonte': {
     catalogKey: 'canon.enemy.sentinelle-fonte',
     name: 'Sentinelle de Fonte', side: 'enemy', role: 'support', family: 'forgeron', rarity: 'uncommon',
-    registre: 'rupture',
     quote: '« Plomb, or, mercure, soufre, sel. Elle récite. C’est tout ce qu’on lui a laissé. »',
     silhouette: 'Assise en tailleur, large et basse. Elle ne se lève jamais, et ça se voit.',
     pal: { body: '#4e4a4e', deep: '#1c1a1c', accent: TOKEN.ember, light: '#8e8a8e' },
@@ -2326,7 +2282,6 @@ export const ROSTER = {
   'scorie-rampante': {
     catalogKey: 'canon.enemy.scorie-rampante',
     name: 'Scorie Rampante', side: 'enemy', role: 'skirmisher', family: 'forgeron', rarity: 'common',
-    registre: 'rupture',
     quote: '« Ça rampe. Ça brûle. Ça se souvient d’avoir été un projet. »',
     silhouette: 'Très basse, étalée, asymétrique. Aucune verticale : elle se traîne.',
     pal: { body: '#3a3238', deep: '#150f12', accent: TOKEN.ember, light: '#e07a3a' },
@@ -2384,7 +2339,6 @@ export const ROSTER = {
   'pelerin-sans-visage': {
     catalogKey: 'canon.enemy.pelerin-sans-visage',
     name: 'Pèlerin Sans Visage', side: 'enemy', role: 'skirmisher', family: 'penitents', rarity: 'common',
-    registre: 'effroi',
     quote: '« Il monte depuis si longtemps qu’il a usé son visage contre le vent. »',
     silhouette: 'Étroit, courbé par la pente, penché en avant. Un chapelet pend à la ceinture.',
     pal: { body: '#4a4650', deep: '#1a1820', accent: '#c8b8a0', light: '#8e8a96' },
@@ -2433,7 +2387,6 @@ export const ROSTER = {
   'prieur-lituique': {
     catalogKey: 'canon.enemy.prieur-lituique',
     name: 'Prieur Lituique', side: 'enemy', role: 'support', family: 'penitents', rarity: 'uncommon',
-    registre: 'effroi',
     quote: '« Elle restaure — mais nourrit ce qui rôde. Lui, il sait exactement ce qui rôde. »',
     silhouette: 'Vertical, dos trop droit pour la bure. Un encensoir flotte devant lui.',
     pal: { body: '#2a2630', deep: '#0e0c12', accent: TOKEN.gold, light: '#b8b0c4' },
@@ -2476,7 +2429,6 @@ export const ROSTER = {
   'frayeur-exhumee': {
     catalogKey: 'canon.enemy.frayeur-exhumee',
     name: 'Frayeur Exhumée', side: 'enemy', role: 'bruiser', family: 'penitents', rarity: 'rare',
-    registre: 'effroi',
     quote: '« Depuis la découverte de la chambre, les échos de la frayeur ne cessent de s’agiter. »',
     silhouette: 'Figée en plein recul : bras levés devant le visage, corps rejeté en arrière.',
     pal: { body: '#6a5c4a', deep: '#221c16', accent: '#c8394a', light: '#a89478' },
@@ -2539,7 +2491,6 @@ export const ROSTER = {
   'promeneur-fige': {
     catalogKey: 'canon.enemy.promeneur-fige',
     name: 'Promeneur Figé', side: 'enemy', role: 'skirmisher', family: 'jardin', rarity: 'common',
-    registre: 'deni',
     quote: '« Belle journée, n’est-ce pas ? N’est-ce pas ? N’est-ce pas ? »',
     silhouette: 'Vertical, habits du dimanche, un bras levé en salut qui ne redescend jamais.',
     pal: { body: '#3e3a4a', deep: '#16141c', accent: '#d9a441', light: '#c8c0b0', skin: '#d8c8b0' },
@@ -2592,7 +2543,6 @@ export const ROSTER = {
   'jardinier-sans-ombre': {
     catalogKey: 'canon.enemy.jardinier-sans-ombre',
     name: 'Jardinier Sans Ombre', side: 'enemy', role: 'disruptor', family: 'jardin', rarity: 'uncommon',
-    registre: 'deni',
     quote: '« Les fleurs sont merveilleuses parce que je coupe tout ce qui ne l’est pas. »',
     silhouette: 'Voûté sur ses massifs, sécateur en main. Rien sous lui : aucun contact au sol.',
     pal: { body: '#3e4a44', deep: '#161e1a', accent: '#86dcb4', light: '#8aa08c', skin: '#c8b8a0' },
@@ -2650,7 +2600,6 @@ export const ROSTER = {
   'gardien-intemporel': {
     catalogKey: 'canon.enemy.gardien-intemporel',
     name: 'Gardien Intemporel', side: 'enemy', role: 'bruiser', family: 'crystal', rarity: 'rare',
-    registre: 'memoire',
     quote: '« Il gardait déjà. Il gardera encore. »',
     silhouette: 'Colosse translucide, épaules larges et plates. On voit à travers lui.',
     pal: { body: '#3a4468', deep: '#141a30', accent: TOKEN.frost, light: '#c0cbff' },
@@ -2711,7 +2660,6 @@ export const ROSTER = {
   'eclat-eveille': {
     catalogKey: 'canon.enemy.eclat-eveille',
     name: 'Éclat Éveillé', side: 'enemy', role: 'skirmisher', family: 'crystal', rarity: 'uncommon',
-    registre: 'memoire',
     quote: '« Un joyau qui a fini par comprendre qu’on le regardait. »',
     silhouette: 'Un seul solide flottant, à hauteur de poitrine. Rien ne touche le sol.',
     pal: { body: '#465274', deep: '#161c34', accent: TOKEN.frost, light: '#dce4ff' },
@@ -2763,7 +2711,6 @@ export const ROSTER = {
   'echo-peur': {
     catalogKey: 'canon.enemy.echo-peur',
     name: 'Écho de Peur', side: 'enemy', role: 'disruptor', family: 'echos', rarity: 'uncommon',
-    registre: 'effroi',
     quote: '« Il guette une sortie qui n’existe plus. Vous êtes entre lui et elle. »',
     silhouette: 'Pâle, étroite, plaquée de côté. Jamais tout à fait là où on la regarde.',
     pal: { body: '#242030', deep: '#0c0a12', accent: '#c8394a', light: '#d8d0e0' },
@@ -2813,7 +2760,6 @@ export const ROSTER = {
   'echo-tristesse': {
     catalogKey: 'canon.enemy.echo-tristesse',
     name: 'Écho de Tristesse', side: 'enemy', role: 'support', family: 'echos', rarity: 'uncommon',
-    registre: 'melancolie',
     quote: '« Il ne pleure pas. Il constate, longtemps après tout le monde. »',
     silhouette: 'La forme d’une personne assise — même quand elle se déplace. Basse, tassée.',
     pal: { body: '#242a3e', deep: '#0c1020', accent: '#6f96c8', light: '#a8c0e0' },
@@ -2873,7 +2819,6 @@ export const ROSTER = {
   imperatrice: {
     catalogKey: 'canon.enemy.imperatrice',
     name: 'L’Impératrice', side: 'enemy', role: 'bruiser', family: 'imperatrice', rarity: 'legendary',
-    registre: 'melancolie',
     quote: '« Malheureux sont ceux qui croiseront l’impératrice dans ce lieu. »',
     silhouette: 'Démesurée, émergeant à mi-corps. La couronne est plus large que les épaules.',
     pal: { body: '#2e2a44', deep: '#0e0c1a', accent: '#8f6fd0', light: '#b8a8e0', sea: '#3a3260' },
@@ -2974,7 +2919,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'chimere-cornue': {
     name: 'Chimère Cornue', side: 'enemy', role: 'guard', family: 'chimeres', rarity: 'common',
-    registre: 'rupture',
     quote: '« Elle a des cornes parce qu’on se souvenait qu’il en fallait. »',
     silhouette: 'Basse, large, quadrupède. Les cornes partent d’un endroit où rien ne devrait pousser.',
     pal: { body: '#5a4a3e', deep: '#241c18', accent: '#c8b28a', light: '#8f7a62' },
@@ -3019,7 +2963,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'levraut-double': {
     name: 'Levraut Double', side: 'enemy', role: 'swarm', family: 'chimeres', rarity: 'common',
-    registre: 'rupture',
     quote: '« Deux corps, un seul souvenir de fuir. »',
     silhouette: 'Petits, par trois. Chacun a une paire de pattes de trop, repliée contre le flanc.',
     pal: { body: '#6e5f52', deep: '#2a2320', accent: '#d8c8a8', light: '#9a8a74' },
@@ -3053,7 +2996,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'grand-cerf-faux': {
     name: 'Le Grand Cerf Faux', side: 'enemy', role: 'bruiser', family: 'chimeres', rarity: 'rare',
-    registre: 'rupture',
     quote: '« Sa ramure continue de pousser vers l’intérieur. »',
     silhouette: 'Très haut, bipède mais chevalin. La ramure occupe plus de place que le corps.',
     pal: { body: '#4a3c38', deep: '#1c1614', accent: '#e0cba0', light: '#8a7466' },
@@ -3100,7 +3042,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'automate-soufflet': {
     name: 'Automate à Soufflet', side: 'enemy', role: 'guard', family: 'forgeron', rarity: 'common',
-    registre: 'rupture',
     quote: '« Il respire, mais c’est un outil qui respire. »',
     silhouette: 'Cube bas sur trois pieds courts, un soufflet en accordéon sur le dessus.',
     pal: { body: '#4a4650', deep: '#1e1c26', accent: TOKEN.ember, light: '#8e8a98' },
@@ -3141,7 +3082,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'enclume-marchante': {
     name: 'Enclume Marchante', side: 'enemy', role: 'bruiser', family: 'forgeron', rarity: 'elite',
-    registre: 'rupture',
     quote: '« Ce n’est pas elle qui frappe. C’est elle qu’on frappe, et elle s’est levée. »',
     silhouette: 'Masse d’acier haute et déportée, jambes trop courtes. Le poids est en haut.',
     pal: { body: '#3e3a46', deep: '#16141c', accent: TOKEN.ember, light: '#9a96a6' },
@@ -3188,7 +3128,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'clou-vivant': {
     name: 'Clou Vivant', side: 'enemy', role: 'skirmisher', family: 'forgeron', rarity: 'common',
-    registre: 'rupture',
     quote: '« Il cherche la planche qu’on lui a promise. »',
     silhouette: 'Une tige de fer debout, penchée, la tête plate en haut. Presque pas de largeur.',
     pal: { body: '#5a5460', deep: '#221e28', accent: '#d8623c', light: '#a8a2b2' },
@@ -3226,7 +3165,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'penitent-agenouille': {
     name: 'Pénitent Agenouillé', side: 'enemy', role: 'guard', family: 'penitents', rarity: 'common',
-    registre: 'melancolie',
     quote: '« Il attend un pardon qui n’a jamais été prévu. »',
     silhouette: 'À genoux, front au sol, dos très large. Occupe la case sans dépasser en hauteur.',
     pal: { body: '#4e4c58', deep: '#1e1e28', accent: '#8fa8c0', light: '#7e7c8c' },
@@ -3273,7 +3211,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'porte-chaine': {
     name: 'Porte-Chaîne', side: 'enemy', role: 'bruiser', family: 'penitents', rarity: 'uncommon',
-    registre: 'melancolie',
     quote: '« Le poids est à lui. Il ne le partagera pas. »',
     silhouette: 'Haut mais plié en deux par la charge. Un bloc de pierre pend dans son dos.',
     pal: { body: '#4a4854', deep: '#1c1c26', accent: '#8fa8c0', light: '#82808e', skin: '#a49a92' },
@@ -3314,7 +3251,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'cierge-marcheur': {
     name: 'Cierge Marcheur', side: 'enemy', role: 'support', family: 'penitents', rarity: 'common',
-    registre: 'melancolie',
     quote: '« Tant qu’il brûle, la peine reste comptée. »',
     silhouette: 'Vertical, étroit, immobile. Une flamme unique portée devant, à hauteur de poitrine.',
     pal: { body: '#484654', deep: '#1a1a24', accent: '#e8c98a', light: '#d8d0c0' },
@@ -3357,7 +3293,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'buisson-taille': {
     name: 'Buisson Taillé', side: 'enemy', role: 'guard', family: 'jardin', rarity: 'common',
-    registre: 'deni',
     quote: '« Il a la forme d’un animal que personne n’a nommé. »',
     silhouette: 'Masse végétale basse et large, aux angles nets. La taille est géométrique.',
     pal: { body: '#2e4a3a', deep: '#122018', accent: TOKEN.sap, light: '#5e8a68' },
@@ -3406,7 +3341,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'jardinier-cire': {
     name: 'Jardinier de Cire', side: 'enemy', role: 'support', family: 'jardin', rarity: 'uncommon',
-    registre: 'deni',
     quote: '« Tout pousse très bien. Regardez comme tout pousse bien. »',
     silhouette: 'Vertical, tablier, sécateur tenu devant. Le visage a fondu et coulé sur le col.',
     pal: { body: '#3e4a44', deep: '#161e1a', accent: '#e8dcc0', light: '#8aa08c', skin: '#e0d8c4' },
@@ -3457,7 +3391,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'epouvantail-poli': {
     name: 'Épouvantail Poli', side: 'enemy', role: 'disruptor', family: 'jardin', rarity: 'common',
-    registre: 'deni',
     quote: '« Il s’excuse pendant qu’il vous barre le passage. »',
     silhouette: 'Croix de bois habillée, contour flottant. Un bras est toujours levé, en salut.',
     pal: { body: '#4a4034', deep: '#1c1810', accent: '#d9a441', light: '#8a7a5e' },
@@ -3518,7 +3451,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'gardien-facette': {
     name: 'Gardien à Facettes', side: 'enemy', role: 'guard', family: 'crystal', rarity: 'common',
-    registre: 'silence',
     quote: '« Il tient la porte d’une salle qui n’a plus rien à garder. »',
     silhouette: 'Bloc trapézoïdal large, posé à plat. Arêtes franches, aucune courbe.',
     pal: { body: '#3a4468', deep: '#141a30', accent: TOKEN.frost, light: '#9aa8e0' },
@@ -3555,7 +3487,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'eclat-errant': {
     name: 'Éclat Errant', side: 'enemy', role: 'swarm', family: 'crystal', rarity: 'common',
-    registre: 'silence',
     quote: '« Chacun est un morceau de quelque chose de plus grand, qui manque. »',
     silhouette: 'Cinq petits solides flottants, alignés à des hauteurs différentes.',
     pal: { body: '#465274', deep: '#161c34', accent: TOKEN.frost, light: '#b8c4f0' },
@@ -3585,7 +3516,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'prisme-sentinelle': {
     name: 'Prisme Sentinelle', side: 'enemy', role: 'bruiser', family: 'crystal', rarity: 'elite',
-    registre: 'silence',
     quote: '« Il vous a déjà vu. Sous six angles à la fois. »',
     silhouette: 'Très haut, étroit, penché. Une colonne de cristal qui se termine en pointe.',
     pal: { body: '#3e4a72', deep: '#121834', accent: TOKEN.frost, light: '#c0cbff' },
@@ -3620,7 +3550,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'echo-chagrin': {
     name: 'Écho de Chagrin', side: 'enemy', role: 'disruptor', family: 'echos', rarity: 'common',
-    registre: 'melancolie',
     quote: '« Il pleure une personne dont il a oublié le nom. »',
     silhouette: 'Verticale, effilée vers le bas, sans pieds. Elle s’égoutte au lieu de marcher.',
     pal: { body: '#22283e', deep: '#0c1020', accent: '#6f96c8', light: '#a8c0e0' },
@@ -3669,7 +3598,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'echo-joie-fausse': {
     name: 'Écho de Joie Fausse', side: 'enemy', role: 'skirmisher', family: 'echos', rarity: 'uncommon',
-    registre: 'folie',
     quote: '« Il danse. C’est ça, le problème. »',
     silhouette: 'Étroite, en déséquilibre, un pied levé. Toujours en mouvement, jamais posée.',
     pal: { body: '#2c1c30', deep: '#120a16', accent: '#cf3f92', light: '#f0a8d0' },
@@ -3717,7 +3645,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'voile-marcheur': {
     name: 'Voile Marcheur', side: 'enemy', role: 'disruptor', family: 'brume', rarity: 'common',
-    registre: 'silence',
     quote: '« Vous avez traversé quelque chose. Vous ne savez pas quoi. »',
     silhouette: 'Haute, sans bas défini, sans épaules. Une verticale de brume plus dense.',
     pal: { body: '#3a3c50', deep: '#181a28', accent: '#c3bfcc', light: '#e0dee8' },
@@ -3756,7 +3683,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'main-de-brume': {
     name: 'Mains de Brume', side: 'enemy', role: 'swarm', family: 'brume', rarity: 'common',
-    registre: 'silence',
     quote: '« Elles sortent du sol et retiennent les chevilles. »',
     silhouette: 'Quatre mains basses qui émergent du sol, à des angles différents.',
     pal: { body: '#3e4054', deep: '#181a26', accent: '#c3bfcc', light: '#dcdae6' },
@@ -3794,7 +3720,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'noyau-de-brume': {
     name: 'Noyau de Brume', side: 'enemy', role: 'drain', family: 'brume', rarity: 'rare',
-    registre: 'silence',
     quote: '« Tant qu’il est là, la salle continue de s’oublier. »',
     silhouette: 'Déborde de sa case. Un centre très dense, des bras de brume sur les côtés.',
     pal: { body: '#343648', deep: '#141622', accent: '#c3bfcc', light: '#eeecf4' },
@@ -3835,7 +3760,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'officiant-lituique': {
     name: 'Officiant Lituique', side: 'enemy', role: 'support', family: 'lituisme', rarity: 'uncommon',
-    registre: 'memoire',
     quote: '« La lecture a commencé. Elle ne s’interrompt pour personne. »',
     silhouette: 'Vertical, immobile, un registre ouvert tenu à hauteur de poitrine.',
     pal: { body: '#2a2432', deep: '#0e0c14', accent: TOKEN.gold, light: '#e0d4b0' },
@@ -3878,7 +3802,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'porte-encens': {
     name: 'Porte-Encens', side: 'enemy', role: 'disruptor', family: 'lituisme', rarity: 'common',
-    registre: 'memoire',
     quote: '« La fumée efface l’ordre dans lequel les choses sont arrivées. »',
     silhouette: 'Silhouette encapuchonnée noyée dans sa propre fumée. Un encensoir pend bas.',
     pal: { body: '#26222e', deep: '#0c0a10', accent: TOKEN.gold, light: '#b8b0c4' },
@@ -3923,7 +3846,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'lecteur-de-nom': {
     name: 'Lecteur de Nom', side: 'enemy', role: 'bruiser', family: 'lituisme', rarity: 'rare',
-    registre: 'memoire',
     quote: '« Il dira votre nom. Après, vous ne l’aurez plus. »',
     silhouette: 'Haut, mitre allongée, épaules très larges. Un rouleau déroulé jusqu’au sol.',
     pal: { body: '#241e2c', deep: '#0c0a12', accent: TOKEN.gold, light: '#e8dcb8' },
@@ -3972,7 +3894,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'miroir-porteur': {
     name: 'Miroir Porteur', side: 'enemy', role: 'guard', family: 'psyche', rarity: 'common',
-    registre: 'folie',
     quote: '« Il ne vous attaque pas. Il vous présente. »',
     silhouette: 'Large et bas, un grand miroir tenu de face qui occupe presque toute la case.',
     pal: { body: '#2e2438', deep: '#100c16', accent: '#cf3f92', light: '#c8c0d8' },
@@ -4026,7 +3947,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'reflet-inverse': {
     name: 'Reflet Inverse', side: 'enemy', role: 'skirmisher', family: 'psyche', rarity: 'uncommon',
-    registre: 'folie',
     quote: '« Il fait vos gestes une seconde avant vous. »',
     silhouette: 'Deux moitiés du même corps, décalées, comme mal recollées sur l’axe vertical.',
     pal: { body: '#2a2238', deep: '#100c1a', accent: '#cf3f92', light: '#a8a0c8' },
@@ -4061,7 +3981,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'pensee-parasite': {
     name: 'Pensées Parasites', side: 'enemy', role: 'swarm', family: 'psyche', rarity: 'common',
-    registre: 'folie',
     quote: '« Aucune n’est à vous. Toutes se répondent. »',
     silhouette: 'Un essaim de petites formes ovales, en orbite serrée autour d’un point vide.',
     pal: { body: '#302442', deep: '#120c1c', accent: '#cf3f92', light: '#e0a8d8' },
@@ -4103,7 +4022,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'alambic-marcheur': {
     name: 'Alambic Marcheur', side: 'enemy', role: 'support', family: 'alchimie', rarity: 'common',
-    registre: 'deni',
     quote: '« La distillation est en cours. Elle a commencé il y a très longtemps. »',
     silhouette: 'Vertical, une panse de verre au milieu, un col recourbé qui dépasse en haut.',
     pal: { body: '#3e4450', deep: '#161a22', accent: '#86dcb4', light: '#b0a878' },
@@ -4152,7 +4070,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'homoncule-verre': {
     name: 'Homoncule de Verre', side: 'enemy', role: 'skirmisher', family: 'alchimie', rarity: 'uncommon',
-    registre: 'deni',
     quote: '« Il n’est pas fini. Personne ne compte le finir. »',
     silhouette: 'Petit, étroit, penché en avant. Transparent, sauf le liquide dans son torse.',
     pal: { body: '#48505e', deep: '#181c26', accent: '#e8c94a', light: '#c8d4e8' },
@@ -4198,7 +4115,6 @@ export const ROSTER_PROPOSITIONS = {
 
   'creuset-vivant': {
     name: 'Creuset Vivant', side: 'enemy', role: 'bruiser', family: 'alchimie', rarity: 'elite',
-    registre: 'rupture',
     quote: '« Ce qui bout là-dedans a un avis. »',
     silhouette: 'Trapu mais haut, épaules de pierre réfractaire. Le contenu déborde par le haut.',
     pal: { body: '#403a3e', deep: '#181416', accent: TOKEN.ember, light: '#8a8288' },
@@ -4322,7 +4238,6 @@ export function getCombatantSprite(id, variant = 0) {
     id, name: e.name, side: e.side, role: e.role, roleNote: ROLES[e.role],
     family: e.family, familyLabel: (FAMILIES[e.family] || {}).label ?? e.family,
     rarity: e.rarity, boss: !!e.boss,
-    registre: e.registre ? { key: e.registre, ...REGISTRES[e.registre] } : null,
     quote: e.quote, silhouette: e.silhouette,
     variants: e.variants ?? null,
     palette: Object.entries(e.pal).map(([k, v]) => ({ key: k, col: Array.isArray(v) ? v : v })),

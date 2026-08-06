@@ -31,7 +31,8 @@ public sealed class CombatSkillEffectResolverCostReductionTests
     }
 
     private static CombatantSkill CreateSkill(int manaCost, int chargeCost) =>
-        CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", manaCost, chargeCost, 10);
+        CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", manaCost, chargeCost, 10,
+            emotionalRegister: "Neutral");
 
     [Fact]
     public void Resolve_ShouldSpendFullCost_WhenActorHasNoCostReduction()

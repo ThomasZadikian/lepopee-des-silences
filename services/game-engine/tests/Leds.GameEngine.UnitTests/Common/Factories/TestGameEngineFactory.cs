@@ -168,7 +168,8 @@ public static class TestGameEngineFactory
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
-            caliceInfiniEnabled: caliceInfiniEnabled);
+            caliceInfiniEnabled: caliceInfiniEnabled,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
     }
 
     public static Run CreateRunWithPlayerSnapshot(
@@ -197,7 +198,8 @@ public static class TestGameEngineFactory
                 effectType: "Damage",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 10)
+                basePower: 10,
+                emotionalRegister: "Neutral")
         };
 
         var character = RunCharacterSnapshot.Create(
@@ -205,7 +207,8 @@ public static class TestGameEngineFactory
             definitionKey: "character.player.self",
             displayName: "Le Porteur",
             statBlock: statBlock,
-            skills: skills);
+            skills: skills,
+            emotionalRegisterCode: "Neutral");
 
         var snapshot = RunPlayerSnapshot.Create(
             playerId: run.PlayerId,
@@ -230,7 +233,8 @@ public static class TestGameEngineFactory
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: roomWithTargetNode.Room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         return new TestRunWithTargetNode(run, roomWithTargetNode.TargetNode);
     }

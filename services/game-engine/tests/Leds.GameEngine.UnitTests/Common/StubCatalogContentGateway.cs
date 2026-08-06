@@ -10,12 +10,50 @@ namespace Leds.GameEngine.UnitTests.Common;
 
 public sealed class StubCatalogContentGateway : ICatalogContentGateway
 {
+    public IReadOnlyCollection<CatalogEnemyDefinition> ActiveEnemyDefinitions { get; set; } = [];
+
+    public Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListActiveEnemyDefinitionsAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ActiveEnemyDefinitions);
+
+    public CatalogEmotionalRegisterCatalog EmotionalRegisterCatalog { get; set; } =
+        new("emotional-registers-test-1.0.0",
+        [
+            new("neutral", "Neutral", "·", "gray", []),
+            new("effroi", "Effroi", "✶", "red", [])
+        ]);
+
+    public Task<CatalogEmotionalRegisterCatalog> GetEmotionalRegisterCatalogAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(EmotionalRegisterCatalog);
+
     public CatalogEmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; set; } =
-        new("emotional-affinity-test-1.0.0", []);
+        new(
+            "emotional-affinity-test-1.0.0",
+            TestEmotionalAffinityMatrix.Create().Rules.Select(rule =>
+                new CatalogEmotionalAffinityRuleSnapshot(
+                    rule.AttackingRegister.ToString().ToLowerInvariant(),
+                    rule.DefendingRegister.ToString().ToLowerInvariant(),
+                    rule.Effectiveness.ToString(),
+                    rule.Multiplier)).ToArray());
 
     public Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult(EmotionalAffinityMatrix);
+
+    public IReadOnlyCollection<CatalogCharacterCombatDefinition> CharacterCombatDefinitions { get; set; } =
+    [
+        new("character.player.self", "Protagonist", "adaptive", "memoire"),
+        new("character.thomas", "Companion", "tank", "silence"),
+        new("character.mane", "Companion", "glass-cannon", "rupture"),
+        new("character.mina", "Companion", "support", "folie"),
+        new("character.elise", "Companion", "hybrid", "melancolie"),
+        new("character.john", "Companion", "opportunist", "deni")
+    ];
+
+    public Task<IReadOnlyCollection<CatalogCharacterCombatDefinition>> ListCharacterCombatDefinitionsAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(CharacterCombatDefinitions);
 
     private static readonly IReadOnlyDictionary<string, ItemTemplateSnapshot> ItemTemplates =
         new Dictionary<string, ItemTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)

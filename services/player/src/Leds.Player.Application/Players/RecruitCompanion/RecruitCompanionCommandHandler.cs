@@ -35,7 +35,8 @@ public sealed class RecruitCompanionCommandHandler : IRequestHandler<RecruitComp
             request.MagicDefense);
 
         profile.RecruitCompanion(
-            request.CompanionDefinitionKey, request.DisplayName, statBlock, request.SkillKeys, _timeProvider.GetUtcNow());
+            request.CompanionDefinitionKey, request.DisplayName, statBlock, request.SkillKeys,
+            _timeProvider.GetUtcNow());
 
         await _repository.SaveAsync(profile, cancellationToken);
 

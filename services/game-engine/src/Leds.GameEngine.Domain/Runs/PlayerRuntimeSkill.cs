@@ -76,7 +76,7 @@ public sealed class PlayerRuntimeSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = null!)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Player skill key is required.");
@@ -127,7 +127,7 @@ public sealed class PlayerRuntimeSkill
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = null!)
     {
         EmotionalTypeCode.ParseRequired(emotionalRegister, $"Persisted player skill '{key}' EmotionalRegister");
         return new PlayerRuntimeSkill(

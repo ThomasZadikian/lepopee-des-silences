@@ -62,7 +62,7 @@ public sealed record CombatEncounterDraftSkillDto(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral")
+    string EmotionalRegister = null!)
 {
     public static CombatEncounterDraftSkillDto FromDomain(CombatEncounterDraftSkill skill)
     {

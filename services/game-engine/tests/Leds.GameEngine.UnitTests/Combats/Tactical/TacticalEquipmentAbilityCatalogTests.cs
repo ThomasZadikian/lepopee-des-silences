@@ -20,7 +20,7 @@ public sealed class TacticalEquipmentAbilityCatalogTests
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
             {
-                [ally.Id.Value] = ["item.iris-amethyste"]
+                [ally.Id.Value] = ["behavior:tactical-mind-control|item.iris-amethyste"]
             });
 
         var resolved = TacticalEquipmentAbilityCatalog.TryResolve(

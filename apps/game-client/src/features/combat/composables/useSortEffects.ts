@@ -28,6 +28,7 @@ export type SortEffect = {
   startedAt: number;
   duration: number;
   from: { x: number; y: number } | null;
+  color: string;
 };
 
 const SORT_DURATION_MS = Math.round(1500 * PACE);
@@ -37,6 +38,7 @@ const renderPaintedSort = playSort as unknown as (
   cells: SortEffect['cells'],
   progress: number,
   from: SortEffect['from'],
+  color: string,
 ) => void;
 
 export function useSortEffects() {
@@ -56,11 +58,14 @@ export function useSortEffects() {
     projection: ProjectionParams,
     casterX?: number,
     casterY?: number,
+    catalogShape?: string,
+    catalogColor = '#8b9dcf',
   ) {
     if (!sortId || !(SORTS as Record<string, any>)[sortId]) return;
 
     const sort = (SORTS as Record<string, any>)[sortId];
-    const shapedCells = shapeCells(sort.shape, centerX, centerY) as SortCell[] | null;
+    const shape = (catalogShape ?? sort.shape).toLowerCase();
+    const shapedCells = shapeCells(shape, centerX, centerY) as SortCell[] | null;
     const rawCells = shapedCells ?? Array.from(
       { length: battlefield.width * battlefield.height },
       (_, index) => ({
@@ -110,6 +115,7 @@ export function useSortEffects() {
         startedAt: performance.now(),
         duration: SORT_DURATION_MS,
         from: from ? { x: from.screenX, y: from.screenY } : null,
+        color: catalogColor,
       },
     ];
   }
@@ -126,7 +132,7 @@ export function useSortEffects() {
 
     for (const sort of activeSorts.value) {
       const progress = (now - sort.startedAt) / sort.duration;
-      renderPaintedSort(ctx, sort.sortId, sort.cells, progress, sort.from);
+      renderPaintedSort(ctx, sort.sortId, sort.cells, progress, sort.from, sort.color);
     }
   }
 

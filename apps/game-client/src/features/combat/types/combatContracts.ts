@@ -8,8 +8,8 @@ export type SkillType =
   // Legacy/unused values — no seeded skill produces them today, kept for safety.
   | 'Weaken' | 'Disrupt';
 
-export type EmotionalType =
-  | 'Neutral' | 'Effroi' | 'Deni' | 'Melancolie' | 'Rupture' | 'Memoire' | 'Silence' | 'Folie';
+export type EmotionalRegisterCode = string;
+export type AffinityOutcome = 'Neutral' | 'Weak' | 'Resistant' | 'Immune';
 
 export type TargetingType =
   | 'Self'
@@ -33,7 +33,7 @@ export type CombatantSkillRuntimeDto = {
   tags: string[];
   category: SkillCategory;
   /** The skill's OWN "élément" — null for basic attacks / untyped skills. */
-  emotionalType?: EmotionalType | null;
+  emotionalRegister: EmotionalRegisterCode;
   /** Server-owned tactical contract. The client must not infer these values independently. */
   tacticalRange: number;
   tacticalAreaShape: TacticalAreaShape;
@@ -57,10 +57,9 @@ export type CombatantRuntimeDto = {
   maxMana: number;
   charge: number;
   status: CombatantStatus;
-  attackType?: EmotionalType;
-  weakTo?: EmotionalType[];
-  resistantTo?: EmotionalType[];
-  immuneTo?: EmotionalType[];
+  naturalEmotionalRegister: EmotionalRegisterCode;
+  effectiveAttackRegister: EmotionalRegisterCode;
+  incomingAffinities: ResolvedEmotionalAffinityDto[];
   attackPower?: number;
   defense?: number;
   speed?: number;
@@ -73,6 +72,24 @@ export type CombatantRuntimeDto = {
   criticalChanceBonusPercent?: number;
   statusEffects?: CombatantStatusEffectDto[];
   skills: CombatantSkillRuntimeDto[];
+};
+
+export type CombatantAffinityModifierDto = {
+  sourceKey: string;
+  incomingRegister: EmotionalRegisterCode;
+  outcomeOverride: AffinityOutcome | null;
+  multiplierPercent: number;
+  priority: number;
+  remainingActivations: number | null;
+};
+
+export type ResolvedEmotionalAffinityDto = {
+  incomingRegister: EmotionalRegisterCode;
+  outcome: AffinityOutcome;
+  baseMultiplier: number;
+  modifierPercent: number;
+  effectiveMultiplier: number;
+  modifiers: CombatantAffinityModifierDto[];
 };
 
 export type StatusEffectKind =

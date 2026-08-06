@@ -1,4 +1,5 @@
 using Leds.Catalog.Domain.Npcs;
+using Leds.Catalog.Domain.Gameplay;
 
 namespace Leds.Catalog.Domain.Items;
 
@@ -17,4 +18,8 @@ public sealed record ItemEquipmentEffect(
     // null means always-on while equipped. Only StatBonus/StatBonusPercent kinds currently
     // support a condition; game-engine re-evaluates it fresh every combat instead of baking
     // it into the character's static run-start stats (see PlayerStatMerger/CombatFactory).
-    string? Condition = null);
+    string? Condition = null,
+    AffinityOutcome? AffinityOutcome = null,
+    int Priority = 0,
+    int? DurationActivations = null,
+    string? BehaviorCode = null);

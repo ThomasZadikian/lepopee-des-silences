@@ -22,4 +22,7 @@ public sealed record SkillEffectSpec(
     bool AppliesToActor = false,
     // When true, the effect never expires on its own — only removed by the target's
     // death (e.g. "Une destinée cruelle"). DurationTicks is ignored in this case.
-    bool IsPermanent = false);
+    bool IsPermanent = false,
+    string? AffinityRegister = null,
+    string? AffinityOutcome = null,
+    int AffinityPriority = 0);

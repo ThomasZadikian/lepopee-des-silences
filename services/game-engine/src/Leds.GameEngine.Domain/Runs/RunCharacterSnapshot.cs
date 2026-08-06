@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Domain.Runs;
 
@@ -14,7 +15,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = "neutral")
+        string emotionalRegisterCode = null!)
     {
         Id = id;
         CharacterId = characterId;
@@ -42,7 +43,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = "neutral")
+        string emotionalRegisterCode = null!)
     {
         if (characterId == Guid.Empty)
             throw new DomainException("Character id is required.");
@@ -83,8 +84,8 @@ public sealed class RunCharacterSnapshot
 
     /// <summary>
     /// Equipment mid-run resync (equip/unequip a permanent item from the run): replaces
-    /// this character's snapshotted item-key list so equipment-keyed triggers (e.g.
-    /// <c>equipment.*</c> combat triggers, conditional room/weather item effects) read
+    /// this character's snapshotted item-key list so Catalog-authored equipment effects
+    /// and runtime behaviors read
     /// the freshly-equipped loadout instead of the one frozen at <see cref="Run.StartNew"/>.
     /// </summary>
     public void ReplaceEquippedItemKeys(IReadOnlyCollection<string>? equippedItemKeys)
@@ -104,10 +105,9 @@ public sealed class RunCharacterSnapshot
 
     private static string NormalizeEmotionalRegisterCode(string emotionalRegisterCode)
     {
-        if (string.IsNullOrWhiteSpace(emotionalRegisterCode))
-            throw new DomainException("Character emotional register code is required.");
-
-        return emotionalRegisterCode.Trim().ToLowerInvariant();
+        return EmotionalTypeCode.ParseRequired(
+            emotionalRegisterCode,
+            "Character emotional register code").ToString();
     }
 
     public static RunCharacterSnapshot Rehydrate(
@@ -118,7 +118,7 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string emotionalRegisterCode = "neutral")
+        string emotionalRegisterCode = null!)
     {
         return new RunCharacterSnapshot(
             id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys, emotionalRegisterCode);

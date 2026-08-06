@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
 using Leds.SharedBuildingBlocks.Results;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.PalaceLaws;
@@ -10,6 +11,7 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -17,6 +19,86 @@ namespace Leds.GameEngine.UnitTests.Runs.StartRun;
 
 public sealed class StartRunCommandHandlerTests
 {
+    private static PlayerSkillMerger CreateSkillMerger(Mock<ICatalogContentGateway> gateway)
+    {
+        gateway
+            .Setup(g => g.GetEmotionalAffinityMatrixAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CatalogEmotionalAffinityMatrixSnapshot(
+                Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create().Version,
+                Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create().Rules
+                    .Select(rule => new CatalogEmotionalAffinityRuleSnapshot(
+                        rule.AttackingRegister.ToString(),
+                        rule.DefendingRegister.ToString(),
+                        rule.Effectiveness.ToString(),
+                        rule.Multiplier))
+                    .ToArray()));
+        gateway
+            .Setup(g => g.ListCharacterCombatDefinitionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new CatalogCharacterCombatDefinition(
+                    "character.player.self", "Protagonist", "adaptive", "memoire"),
+                new CatalogCharacterCombatDefinition(
+                    "character.mane", "Companion", "glass-cannon", "rupture")
+            ]);
+        gateway
+            .Setup(g => g.GetSkillDefinitionByKeyAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string key, CancellationToken _) => key switch
+            {
+                "skill.granted.shield" => new CatalogSkillDefinition(
+                    key, "Bouclier accordé", "Un bouclier temporaire.",
+                    "Defense", "Self", "Guard", 0, 0, 8, [],
+                    EmotionalRegister: "Neutral"),
+                "skill.mane.favorite-de-elise" => new CatalogSkillDefinition(
+                    key, "Favorite de Elise", "Un soin instantané.",
+                    "Buff", "Self", "Heal", 0, 0, 15, [],
+                    BasePowerIsPercentOfMaxVitality: true,
+                    EmotionalRegister: "Neutral"),
+                _ => new CatalogSkillDefinition(
+                    key,
+                    key,
+                    "Test skill",
+                    key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Defense" : "Damage",
+                    key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Self" : "SingleEnemy",
+                    key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Guard" : "Damage",
+                    0,
+                    0,
+                    key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? 5 : 10,
+                    [],
+                    EmotionalRegister: "Neutral")
+            });
+        return new PlayerSkillMerger(gateway.Object);
+    }
+
+    private static void ConfigurePermanentBehavior(
+        Mock<ICatalogContentGateway> gateway,
+        string itemKey,
+        string behaviorCode)
+    {
+        gateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync(itemKey, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                itemKey,
+                "test-1.0.0",
+                itemKey,
+                "Test item",
+                null,
+                "Equipment",
+                "Accessory",
+                "Rare",
+                "Passive",
+                "PersistentMeta",
+                "None",
+                1,
+                false,
+                false,
+                null,
+                EquipmentEffects:
+                [new CatalogItemEquipmentEffect(
+                    "RuntimeBehavior", null, null, null, null, BehaviorCode: behaviorCode)])));
+    }
+
     private static Mock<IPlayerProfileGateway> CreateProfileGateway(
         Guid playerId, params string[] permanentItemKeys)
     {
@@ -93,7 +175,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -111,9 +193,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         var response = await handler.Handle(
             new StartRunCommand(playerId),
@@ -201,7 +284,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 10)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -219,9 +302,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -330,9 +414,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -439,9 +524,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -505,7 +591,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 10)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -529,9 +615,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -644,9 +731,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -715,7 +803,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -726,6 +814,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ConfigurePermanentBehavior(catalogGateway, "canon.item.carnet-de-bord", "run-journal");
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.carnet-de-bord");
         var handler = new StartRunCommandHandler(
             generator.Object,
@@ -733,9 +822,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -802,7 +892,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -820,9 +910,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -889,7 +980,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -900,6 +991,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ConfigurePermanentBehavior(catalogGateway, "canon.item.deni-permanent", "deny-palace-law");
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.deni-permanent");
         var handler = new StartRunCommandHandler(
             generator.Object,
@@ -907,9 +999,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -977,7 +1070,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -995,9 +1088,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -1065,7 +1159,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1076,6 +1170,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ConfigurePermanentBehavior(catalogGateway, "canon.item.calice-infini", "infinite-chalice");
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.calice-infini");
         var handler = new StartRunCommandHandler(
             generator.Object,
@@ -1083,9 +1178,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -1153,7 +1249,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1164,6 +1260,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ConfigurePermanentBehavior(catalogGateway, "canon.item.peluche-mina", "reputation-gain-plus-ten");
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.peluche-mina");
         var handler = new StartRunCommandHandler(
             generator.Object,
@@ -1171,9 +1268,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),
@@ -1240,7 +1338,7 @@ public sealed class StartRunCommandHandlerTests
                             ManaCost: 0,
                             ChargeCost: 0,
                             BasePower: 5)
-                    ])]));
+                    ]]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1251,6 +1349,7 @@ public sealed class StartRunCommandHandlerTests
             .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ConfigurePermanentBehavior(catalogGateway, "canon.item.protection-himlit", "himlit-protection");
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.protection-himlit");
         var handler = new StartRunCommandHandler(
             generator.Object,
@@ -1258,9 +1357,10 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
-            new PlayerSkillMerger(catalogGateway.Object),
+            CreateSkillMerger(catalogGateway),
             new PlayerStatMerger(),
-            clock.Object);
+            clock.Object,
+            catalogGateway.Object);
 
         await handler.Handle(
             new StartRunCommand(playerId),

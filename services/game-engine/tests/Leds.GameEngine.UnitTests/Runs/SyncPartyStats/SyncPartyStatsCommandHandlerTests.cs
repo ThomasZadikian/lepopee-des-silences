@@ -66,15 +66,16 @@ public sealed class SyncPartyStatsCommandHandlerTests
         {
             RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
-                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10)
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10,
+                emotionalRegister: "Neutral")
         };
 
         var protagonist = RunCharacterSnapshot.Create(
             characterId: protagonistId, definitionKey: "character.player.self", displayName: "Le Porteur",
-            statBlock: protagonistStatBlock, skills: skills);
+            statBlock: protagonistStatBlock, skills: skills, emotionalRegisterCode: "Neutral");
         var companion = RunCharacterSnapshot.Create(
             characterId: companionId, definitionKey: "character.mane", displayName: "Mané",
-            statBlock: companionStatBlock, skills: skills);
+            statBlock: companionStatBlock, skills: skills, emotionalRegisterCode: "Memoire");
 
         var snapshot = RunPlayerSnapshot.Create(
             playerId: run.PlayerId, displayName: "Joueur",

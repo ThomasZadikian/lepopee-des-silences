@@ -206,7 +206,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
         int speed, int initiative, int focus, int mana, int charge,
-        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
+        IReadOnlyCollection<string> skillKeys,
+        CancellationToken cancellationToken,
         int magicAttack = 0, int magicDefense = 0)
     {
         var response = await _httpClient.PostAsJsonAsync(

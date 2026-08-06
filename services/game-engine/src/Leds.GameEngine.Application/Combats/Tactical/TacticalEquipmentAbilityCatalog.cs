@@ -15,6 +15,7 @@ public static class TacticalEquipmentAbilityCatalog
     public sealed record Ability(
         Guid Id,
         string ItemKey,
+        string BehaviorCode,
         string DisplayName,
         int Range,
         TacticalAreaShape Shape,
@@ -25,11 +26,11 @@ public static class TacticalEquipmentAbilityCatalog
     private static readonly IReadOnlyDictionary<string, (string Name, int Range, TacticalAreaShape Shape, bool Los, string Target)> Definitions =
         new Dictionary<string, (string, int, TacticalAreaShape, bool, string)>(StringComparer.OrdinalIgnoreCase)
         {
-            ["item.aiguille-relieur"] = (
+            ["tactical-extend-periodic-duration"] = (
                 "Aiguille du Relieur", 999, TacticalAreaShape.Single, true, "SingleEnemy"),
-            ["item.aiguille-arret"] = (
+            ["tactical-temporal-slow"] = (
                 "Aiguille d'arrêt", 999, TacticalAreaShape.Map, false, "AllEnemies"),
-            ["item.iris-amethyste"] = (
+            ["tactical-mind-control"] = (
                 "Iris améthyste", 2, TacticalAreaShape.Diamond, true, "SingleEnemy"),
         };
 
@@ -39,8 +40,12 @@ public static class TacticalEquipmentAbilityCatalog
             return [];
 
         return Definitions
-            .Where(pair => combat.HasEquippedItem(actorId, pair.Key))
-            .Select(pair => Create(actorId, pair.Key, pair.Value))
+            .Where(pair => combat.TryGetEquipmentBehaviorSource(actorId, pair.Key, out _))
+            .Select(pair =>
+            {
+                combat.TryGetEquipmentBehaviorSource(actorId, pair.Key, out var itemKey);
+                return Create(actorId, itemKey, pair.Key, pair.Value);
+            })
             .Where(ability => !combat.HasUsedOnceSkill(ability.UseKey))
             .Select(ability => new CombatUsableItemDto(
                 ability.Id,
@@ -64,10 +69,10 @@ public static class TacticalEquipmentAbilityCatalog
     {
         foreach (var pair in Definitions)
         {
-            if (!combat.HasEquippedItem(actorId, pair.Key))
+            if (!combat.TryGetEquipmentBehaviorSource(actorId, pair.Key, out var itemKey))
                 continue;
 
-            var candidate = Create(actorId, pair.Key, pair.Value);
+            var candidate = Create(actorId, itemKey, pair.Key, pair.Value);
             if (candidate.Id == abilityId)
             {
                 ability = candidate;
@@ -82,17 +87,19 @@ public static class TacticalEquipmentAbilityCatalog
     private static Ability Create(
         Guid actorId,
         string itemKey,
+        string behaviorCode,
         (string Name, int Range, TacticalAreaShape Shape, bool Los, string Target) definition)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{actorId:N}:{itemKey}"));
         return new Ability(
             new Guid(bytes[..16]),
             itemKey,
+            behaviorCode,
             definition.Name,
             definition.Range,
             definition.Shape,
             definition.Los,
             definition.Target,
-            $"equipment:{itemKey}");
+            $"equipment:{behaviorCode}");
     }
 }

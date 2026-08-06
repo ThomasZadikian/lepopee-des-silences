@@ -250,16 +250,19 @@ public sealed class RunPromulgationTests
             RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
                 skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
-                manaCost: 0, chargeCost: 0, basePower: 10),
+                manaCost: 0, chargeCost: 0, basePower: 10,
+                emotionalRegister: "Neutral"),
             RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.hero.blaze", displayName: "Brasier",
                 skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
-                manaCost: 5, chargeCost: 0, basePower: 20),
+                manaCost: 5, chargeCost: 0, basePower: 20,
+                emotionalRegister: "Neutral"),
         };
 
         var character = RunCharacterSnapshot.Create(
             characterId: Guid.NewGuid(), definitionKey: "character.player.self",
-            displayName: "Le Porteur", statBlock: statBlock, skills: skills);
+            displayName: "Le Porteur", statBlock: statBlock, skills: skills,
+            emotionalRegisterCode: "Neutral");
 
         run.AttachPlayerSnapshot(RunPlayerSnapshot.Create(
             playerId: run.PlayerId, displayName: "Joueur", characters: [character],

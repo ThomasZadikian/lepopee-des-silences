@@ -15,6 +15,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.Id).HasColumnName("id");
         builder.Property(c => c.CombatId).HasColumnName("combat_id");
         builder.Property(c => c.SourceKey).HasColumnName("source_key").HasMaxLength(128).IsRequired();
+        builder.Property(c => c.SourceDefinitionKey).HasColumnName("source_definition_key").HasMaxLength(128).IsRequired();
         builder.Property(c => c.CharacterInstanceId).HasColumnName("character_instance_id");
         builder.Property(c => c.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
         builder.Property(c => c.Side).HasColumnName("side").HasMaxLength(32).IsRequired();
@@ -31,6 +32,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.HasActedThisCombat).HasColumnName("has_acted_this_combat").HasDefaultValue(false);
         builder.Property(c => c.AttackTypeOverride).HasColumnName("attack_type_override");
         builder.Property(c => c.TypedDamageReductionsJson).HasColumnName("typed_damage_reductions_json");
+        builder.Property(c => c.EmotionalAffinityModifiersJson).HasColumnName("emotional_affinity_modifiers_json");
         builder.Property(c => c.HitChanceBonusPercent).HasColumnName("hit_chance_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.DotDurationReductionPercent).HasColumnName("dot_duration_reduction_percent").HasDefaultValue(0);
         builder.Property(c => c.DotDamageReductionPercent).HasColumnName("dot_damage_reduction_percent").HasDefaultValue(0);

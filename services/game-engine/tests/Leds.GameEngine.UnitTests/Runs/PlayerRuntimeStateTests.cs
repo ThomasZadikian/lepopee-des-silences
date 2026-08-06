@@ -9,7 +9,8 @@ public sealed class PlayerRuntimeStateTests
     private static PlayerRuntimeSkill CreateDefaultSkill()
     {
         return PlayerRuntimeSkill.Create(
-            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10,
+            emotionalRegister: "Neutral");
     }
 
     [Fact]

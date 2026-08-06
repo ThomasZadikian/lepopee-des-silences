@@ -6,7 +6,6 @@ import { usePlayerStore } from '../../../party/stores/playerStore';
 import { useRunStore } from '../../stores/runStore';
 import { skillsApi } from '../../../party/api/skillsApi';
 import { categoryLabel } from './grimoireDisplay';
-import { isArchetypeIncompatible } from '../../../party/archetypes';
 import GrimoireSkillCard from './GrimoireSkillCard.vue';
 import GrimoirePaginationControls from './GrimoirePaginationControls.vue';
 
@@ -63,7 +62,9 @@ const filteredSkills = computed(() => {
 const knownKeys = computed(() => new Set(props.character.skills.map((s) => s.skillKey)));
 
 function isIncompatible(skill: SkillDefinitionView): boolean {
-  return isArchetypeIncompatible(skill.allowedArchetypes, props.character.definitionKey);
+  return !skill.compatibleCharacterDefinitionKeys.some(
+    (key) => key.toLowerCase() === props.character.definitionKey.toLowerCase(),
+  );
 }
 
 // ── Staged equip/unequip state ("Valider les choix") ──

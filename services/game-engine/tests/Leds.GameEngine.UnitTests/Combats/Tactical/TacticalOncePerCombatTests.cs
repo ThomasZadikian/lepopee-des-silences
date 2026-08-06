@@ -54,6 +54,7 @@ public sealed class TacticalOncePerCombatTests
             battlefield,
             [(ally, new GridPosition(0, 0))],
             [(enemy, new GridPosition(1, 0))],
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
     }
 }

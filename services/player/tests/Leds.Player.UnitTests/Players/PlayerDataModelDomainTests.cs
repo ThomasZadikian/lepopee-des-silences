@@ -28,7 +28,8 @@ public sealed class PlayerDataModelDomainTests
             "character.player.self",
             "Le Porteur",
             PlayerCharacterStatBlock.CreateDefaultPorteur(),
-            [PlayerCharacterSkill.Create("skill.basic.strike", now, "default")]);
+            [PlayerCharacterSkill.Create("skill.basic.strike", now, "default")],
+            status: "Active");
 
         character.AddSkill(PlayerCharacterSkill.Create("skill.basic.strike", now, "reward"));
 

@@ -27,7 +27,9 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfBaseStat,
         IReadOnlyCollection<CombatantSkill>? grantedSkills,
         bool isPermanent,
-        IReadOnlyCollection<Guid?>? stackSourceIds)
+        IReadOnlyCollection<Guid?>? stackSourceIds,
+        DamageEffectiveness? affinityOutcome,
+        int affinityPriority)
     {
         Key = key;
         DisplayName = displayName;
@@ -45,6 +47,8 @@ public sealed class CombatStatusEffect
         IsMagnitudePercentOfBaseStat = isMagnitudePercentOfBaseStat;
         GrantedSkills = grantedSkills ?? Array.Empty<CombatantSkill>();
         IsPermanent = isPermanent;
+        AffinityOutcome = affinityOutcome;
+        AffinityPriority = affinityPriority;
     }
     private const int MinTickInterval = 1400;
     private readonly List<Guid?> _stackSourceIds;
@@ -85,6 +89,8 @@ public sealed class CombatStatusEffect
     /// unused for a permanent effect.
     /// </summary>
     public bool IsPermanent { get; }
+    public DamageEffectiveness? AffinityOutcome { get; }
+    public int AffinityPriority { get; }
 
     public bool IsPeriodic => TickInterval > 0
         && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
@@ -108,7 +114,9 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfBaseStat = false,
         IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
         bool isPermanent = false,
-        Guid? sourceCombatantId = null)
+        Guid? sourceCombatantId = null,
+        DamageEffectiveness? affinityOutcome = null,
+        int affinityPriority = 0)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
@@ -116,6 +124,10 @@ public sealed class CombatStatusEffect
             throw new DomainException("Status effect duration must be positive.");
         if (stacks is < 1 or > 5)
             throw new DomainException("Status effect stacks must be between one and five.");
+        if (kind == StatusEffectKind.AffinityModifier
+            && (emotionalType is null || (affinityOutcome is null && magnitude == 0)))
+            throw new DomainException(
+                "Affinity modifier status requires EmotionalType and an outcome or multiplier.");
 
         // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
         var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval);
@@ -137,7 +149,9 @@ public sealed class CombatStatusEffect
             isMagnitudePercentOfBaseStat,
             grantedSkills,
             isPermanent,
-            Enumerable.Repeat(sourceCombatantId, stacks).ToArray());
+            Enumerable.Repeat(sourceCombatantId, stacks).ToArray(),
+            affinityOutcome,
+            affinityPriority);
     }
 
     public static CombatStatusEffect Rehydrate(
@@ -147,8 +161,10 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfBaseStat = false,
         IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
         bool isPermanent = false,
-        IReadOnlyCollection<Guid?>? stackSourceIds = null)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills, isPermanent, stackSourceIds);
+        IReadOnlyCollection<Guid?>? stackSourceIds = null,
+        DamageEffectiveness? affinityOutcome = null,
+        int affinityPriority = 0)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills, isPermanent, stackSourceIds, affinityOutcome, affinityPriority);
 
     public bool IsExpired(int currentTick) => !IsPermanent && currentTick >= ExpiresAtTick;
 

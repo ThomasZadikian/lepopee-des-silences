@@ -38,5 +38,6 @@ public interface ICombatFactory
         int magicDefense = 0,
         string? forgottenSkillKey = null,
         string? roomTheme = null,
-        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null);
+        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>? equipmentEffectsByCharacterId = null);
 }

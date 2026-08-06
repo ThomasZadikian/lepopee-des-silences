@@ -143,7 +143,7 @@ public sealed partial class CatalogSeedRunner
         e.CompatibleRoomTypesJson = "[]";
         e.CompatiblePalaceRoomStatesJson = "[]";
         e.CompatibleRoomClimatesJson = "[]";
-        e.EmotionalAffinity = affinity.ToString();
+        e.EmotionalAffinity = EmotionalRegisterCatalog.CodeOf(affinity);
         e.IsRecurring = recurring;
         e.PersonaJson = JsonSerializer.Serialize(persona, J);
         e.WoundsJson = JsonSerializer.Serialize(wounds, J);
@@ -2443,6 +2443,8 @@ public sealed partial class CatalogSeedRunner
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
+        var canonicalRegister = EmotionalRegisterCatalog.CodeOf(
+            EmotionalRegisterCatalog.Parse(registre ?? string.Empty));
 
         var existing = await _ctx.EnemyDefinitions
             .Include(e => e.StatBlock)
@@ -2474,7 +2476,7 @@ public sealed partial class CatalogSeedRunner
                 IsElite = isElite,
                 BaseWeight = 1,
                 Rarity = rarity,
-                Registre = registre,
+                Registre = canonicalRegister,
                 MenaceLevel = menace,
                 BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? Array.Empty<string>()),
                 CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes),
@@ -2523,7 +2525,7 @@ public sealed partial class CatalogSeedRunner
         await UpsertSkillAsync("skill.basic.strike", "Frappe",
             "Un coup simple, sans fioriture. Ce que tout ce qui a des poings ou des crocs sait faire.",
             "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
-            category: "Physical");
+            category: "Physical", emotionalRegister: "Neutral");
 
         await UpsertSkillAsync("canon.skill.flamme-froide", "Flamme froide",
             "Bleu-violet, elle ne brûle pas la peau mais la chair, et le givre transperce l'os. Le sort de l'apothicaire.",
@@ -4321,7 +4323,7 @@ public sealed partial class CatalogSeedRunner
     bool requiresLineOfSight = false,
     int cooldown = 0,
     bool isUltimate = false,
-    string emotionalRegister = "Neutral",
+    string? emotionalRegister = null,
     // Who can use this skill: "Player" (default), "Enemy"-exclusive, or "Any". Keeps
     // enemy-only skills out of the player-facing Grimoire (ListActiveSkillDefinitionsQuery)
     // while enemy AI kits keep resolving skills directly by key regardless of audience.
@@ -4330,6 +4332,8 @@ public sealed partial class CatalogSeedRunner
     // meaningful for Audience "Player"/"Any" — enforced by SkillArchetypeGate at equip time.
     IReadOnlyCollection<string>? allowedArchetypes = null)
     {
+        var canonicalEmotionalRegister = EmotionalRegisterCatalog.CodeOf(
+            EmotionalRegisterCatalog.Parse(emotionalRegister ?? string.Empty));
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
         var tacticalContract = CanonicalTacticalSkillContracts.Require(key);
@@ -4348,7 +4352,7 @@ public sealed partial class CatalogSeedRunner
             // player-facing Grimoire until the whole database was wiped and reseeded).
             existing.Audience = audience;
             existing.AllowedArchetypesJson = allowedArchetypesJson;
-            existing.EmotionalRegister = emotionalRegister;
+            existing.EmotionalRegister = canonicalEmotionalRegister;
             return;
         }
         _ctx.SkillDefinitions.Add(new SkillDefinitionEntity
@@ -4379,7 +4383,7 @@ public sealed partial class CatalogSeedRunner
             RequiresLineOfSight = requiresLineOfSight,
             Cooldown = cooldown,
             IsUltimate = isUltimate,
-            EmotionalRegister = emotionalRegister,
+            EmotionalRegister = canonicalEmotionalRegister,
             Audience = audience,
             AllowedArchetypesJson = allowedArchetypesJson,
             BaseWeight = 1,
@@ -4564,43 +4568,40 @@ public sealed partial class CatalogSeedRunner
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "AttackPower", Amount: 10) });
 
-        // Aucun effet d'équipement classique : sa mécanique (journalisation automatique des
-        // événements de run) est branchée par clé directement côté game-engine, pas via
-        // ItemEquipmentEffectKind — voir SeedForgeronAsync/SeedEmotionsAsync et StartRunCommandHandler.
+        // La mécanique de journalisation est déclarée par un RuntimeBehavior Catalog.
         await UpsertItemAsync("canon.item.carnet-de-bord", "Carnet de bord",
             "Un carnet vierge qui ne le reste jamais longtemps. Une fois en ta possession, il consigne de lui-même, run après run, tout ce que tu traverses.",
-            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken);
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: [new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "run-journal")]);
 
-        // Aucun effet d'équipement classique : sa mécanique (retirer une loi active du Palais,
-        // une fois toutes les 10 rooms) est branchée par clé directement côté game-engine, pas
-        // via ItemEquipmentEffectKind — voir SeedErikaAsync et StartRunCommandHandler.
+        // Le retrait périodique d'une loi est déclaré par un RuntimeBehavior Catalog.
         await UpsertItemAsync("canon.item.deni-permanent", "Déni permanent",
             "Une clause qu'Erika a arrachée aux marges du Palais, avant même que quiconque songe à en dresser les lois. La brandir, c'est faire vaciller une règle — le temps de la faire taire.",
-            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken);
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: [new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "deny-palace-law")]);
 
-        // Aucun effet d'équipement classique : le bonus de gain de réputation (+10%) est
-        // branché par clé directement côté game-engine, pas via ItemEquipmentEffectKind —
-        // voir SeedMinaAsync et StartRunCommandHandler.ReputationBoostItemKey.
+        // Le bonus de réputation est déclaré par un RuntimeBehavior Catalog.
         await UpsertItemAsync("canon.item.peluche-mina", "Peluche de Mina",
             "Usée, cousue de fil grossier — la seule chose que Mina possédait avant de te la confier. La garder sur soi, c'est porter un peu de sa confiance.",
-            "Relic", "Keepsake", "Rare", "Permanent", false, 0, cancellationToken);
+            "Relic", "Keepsake", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: [new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "reputation-gain-plus-ten")]);
 
-        // Aucun effet d'équipement classique : rencontres Him'Lit +50% (génération de
-        // room) + bundle de statut de combat "Ce n'était pas pour vous..." sont branchés
-        // par clé directement côté game-engine, pas via ItemEquipmentEffectKind — voir
-        // SeedMinaAsync, StartRunCommandHandler.HimLitProtectionItemKey, DeterministicRunGenerator
-        // et CombatFactory.ApplyHimLitProtection.
+        // La protection et ses effets de run sont déclarés par un RuntimeBehavior Catalog.
         await UpsertItemAsync("canon.item.protection-himlit", "Protection de Him'Lit",
             "Une marque que Him'Lit lui-même a posée sur Mina, et qu'elle a un jour posée sur toi. Elle attire son regard plus souvent qu'elle ne devrait — et pèse, un peu, sur ce que tu portes en combat.",
-            "Relic", "Ward", "Legendary", "Permanent", false, 0, cancellationToken);
+            "Relic", "Ward", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: [new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "himlit-protection")]);
 
-        // Aucun effet d'équipement classique : sa mécanique (restaurer 50% des PV max
-        // d'une cible, une fois par Room) est branchée par clé directement côté
-        // game-engine, pas via ItemEquipmentEffectKind — voir SeedJohnAsync,
-        // StartRunCommandHandler.CaliceInfiniItemKey et Run.UseCaliceInfini.
+        // La restauration périodique est déclarée par un RuntimeBehavior Catalog.
         await UpsertItemAsync("canon.item.calice-infini", "Calice infini",
             "Un calice que John a gardé de ses années de pillage, avant que le Palais ne l'envoie digérer par Him'Lit. Il ne se vide jamais tout à fait — une gorgée suffit à refaire ce qui a été perdu.",
-            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken);
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: [new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "infinite-chalice")]);
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",
@@ -4652,6 +4653,7 @@ public sealed partial class CatalogSeedRunner
         var now = DateTime.UtcNow;
         var lifecycle = durability == "Permanent" ? "PersistentMeta" : "RuntimeRunOnly";
         var duration = durability == "Permanent" ? "Permanent" : "RunOnly";
+        ItemEquipmentEffectValidator.Validate(key, equipmentEffects ?? []);
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects ?? [], J);
         var readablePagesJson = JsonSerializer.Serialize(readablePages ?? [], J);
         var existing = await _ctx.ItemDefinitions.FirstOrDefaultAsync(i => i.Key == key, cancellationToken);
@@ -6348,35 +6350,35 @@ public sealed partial class CatalogSeedRunner
             "Le Grand Cardinal",
             "Le grand cardinal du Palais",
             new[] { "Antechamber", "Threshold" },
-            "75",
+            "75", "deni",
             2, 90, 14, 18, 6, 12,
             new[]
                 { "canon.skill.priere-aspiration", "canon.skill.flamme-froide", "skill.basic.strike" },
             cancellationToken);
 
         await UpsertBossAsync("canon.enemy.imperatrice-vipere", "canon.boss.imperatrice-vipere", "L'Impératrice — la Vipère", "L'impératrice du Palais",
-            new[] { "Rupture", "Memory" }, "75", 3, 140, 20, 24, 8, 14,
+            new[] { "Rupture", "Memory" }, "75", "rupture", 3, 140, 20, 24, 8, 14,
             new[] { "canon.skill.priere-aspiration", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.homoncule-roi", "canon.boss.homoncule-roi", "L'Homoncule — le Vieillard", "Le roi, l'Homoncule, bien des nom lui furent donné",
-            new[] { "Rupture", "Silence" }, "75", 3, 160, 22, 27, 10, 8,
+            new[] { "Rupture", "Silence" }, "75", "memoire", 3, 160, 22, 27, 10, 8,
             new[] { "canon.skill.transmutation", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.pape-louis-xvii", "canon.boss.pape-louis-xvii", "Le Pape Louis XVII", "Le pape",
-            new[] { "Antechamber", "Fear" }, "75", 4, 200, 24, 36, 12, 11,
+            new[] { "Antechamber", "Fear" }, "75", "effroi", 4, 200, 24, 36, 12, 11,
             new[] { "canon.skill.brume", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         // "Final" uniquement : Him'Lit est exclusivement le boss de la room qui recurre
         // tous les BossInterval (10) étages (cf. MarkovRoomTypeResolver) — il n'apparaît
         // pas comme rencontre normale dans les rooms Rupture/Forêt.
         await UpsertBossAsync("canon.enemy.himlit", "canon.boss.himlit", "Him'Lit", "Le maître des lieux, souverain du Palais",
-            new[] { "Final" }, "100", 5, 280, 32, 48, 16, 13,
+            new[] { "Final" }, "100", "silence", 5, 280, 32, 48, 16, 13,
             new[] { "canon.skill.brume", "canon.skill.priere-aspiration", "canon.skill.flamme-seraphine", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
     }
 
     private async Task UpsertBossAsync(
         string enemyKey, string bossKey, string name, string description,
-        string[] roomTypes, string danger, int difficulty,
+        string[] roomTypes, string danger, string emotionalRegister, int difficulty,
         int vit, int atk, int def, int guard, int speed,
         string[] skillKeys, CancellationToken cancellationToken)
     {
@@ -6420,6 +6422,7 @@ public sealed partial class CatalogSeedRunner
                 CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes),
                 TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
                 SkillKeysJson = JsonSerializer.Serialize(skillKeys),
+                Registre = EmotionalRegisterCatalog.CodeOf(EmotionalRegisterCatalog.Parse(emotionalRegister)),
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             };
@@ -6451,6 +6454,7 @@ public sealed partial class CatalogSeedRunner
             enemy.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
             enemy.TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" });
             enemy.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
+            enemy.Registre = EmotionalRegisterCatalog.CodeOf(EmotionalRegisterCatalog.Parse(emotionalRegister));
             enemy.UpdatedAtUtc = now;
             enemy.StatBlock ??= new EnemyStatBlockEntity { Id = Guid.NewGuid(), EnemyDefinitionId = enemy.Id };
             enemy.StatBlock.MaxVitality = vit; enemy.StatBlock.AttackPower = atk;

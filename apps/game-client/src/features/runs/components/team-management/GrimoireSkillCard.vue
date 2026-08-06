@@ -2,8 +2,8 @@
 import { computed } from 'vue';
 import type { SkillDefinitionView } from '../../../party/types/skillTypes';
 import { categoryLabel, formatEffect } from './grimoireDisplay';
-import { emotionalTypeMeta } from '../../../../shared/theme/typeColors';
 import EmotionalTypeBadge from '../../../combat/components/EmotionalTypeBadge.vue';
+import { useEmotionalRegisterCatalog } from '../../../emotional-registers/store';
 
 const props = withDefaults(
   defineProps<{
@@ -19,7 +19,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{ toggleEquip: [key: string] }>();
 
-const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
+const registerStore = useEmotionalRegisterCatalog();
+const typeMeta = computed(() => registerStore.definitionOf(props.skill.emotionalRegister));
 </script>
 
 <template>
@@ -30,7 +31,7 @@ const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
   >
     <div class="grimoire-card__head">
       <span class="grimoire-card__name">{{ skill.displayName }}</span>
-      <EmotionalTypeBadge v-if="skill.emotionalType" :type="skill.emotionalType" compact />
+      <EmotionalTypeBadge :type="skill.emotionalRegister" compact />
       <span v-if="skill.isUltimate" class="grimoire-chip grimoire-chip--ultimate">Ultime</span>
       <span class="grimoire-chip">{{ categoryLabel(skill.effectType) }}</span>
       <span class="grimoire-chip grimoire-chip--muted">{{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}</span>
@@ -50,9 +51,6 @@ const typeMeta = computed(() => emotionalTypeMeta(props.skill.emotionalType));
       <span>Zone : {{ skill.tacticalAreaShape ?? 'Single' }}</span>
       <span>{{ skill.requiresLineOfSight ? 'Ligne de vue' : 'Sans ligne de vue' }}</span>
       <span v-if="(skill.cooldown ?? 0) > 0">Recharge : {{ skill.cooldown }} tours</span>
-      <span v-if="skill.emotionalRegister && skill.emotionalRegister !== 'Neutral'">
-        Registre : {{ skill.emotionalRegister }}
-      </span>
     </div>
 
     <template v-if="isKnown">

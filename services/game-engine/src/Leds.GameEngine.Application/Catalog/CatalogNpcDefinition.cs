@@ -12,7 +12,7 @@ public sealed record CatalogNpcDefinition(
     IReadOnlyCollection<string> CompatibleRoomClimates,
     int MinDepth = 0,
     int MaxDepth = int.MaxValue,
-    string EmotionalAffinity = "Neutral",
+    string EmotionalAffinity = null!,
     bool IsRecurring = false,
     CatalogNpcPersona? Persona = null,
     CatalogNpcDialogueGraph? DialogueGraph = null,

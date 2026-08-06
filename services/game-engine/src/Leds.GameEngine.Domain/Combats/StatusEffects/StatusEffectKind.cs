@@ -8,5 +8,6 @@ public enum StatusEffectKind
     StatModifier,   // buff/debuff a CombatStat (Magnitude may be negative)
     Stun,           // neutralizes the holder's activation
     Silence,        // prevents skill use for the holder's activation
-    SkillGrant      // temporarily adds a snapshot of another combatant's skills (see CombatStatusEffect.GrantedSkills)
+    SkillGrant,     // temporarily adds a snapshot of another combatant's skills (see CombatStatusEffect.GrantedSkills)
+    AffinityModifier // local outcome/multiplier exception layered over the run matrix
 }

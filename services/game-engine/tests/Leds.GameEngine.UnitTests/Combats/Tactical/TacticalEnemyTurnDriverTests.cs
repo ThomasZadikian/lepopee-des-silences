@@ -63,7 +63,7 @@ public sealed class TacticalEnemyTurnDriverTests
             manaCost: 0,
             chargeCost: 0,
             basePower: 8,
-            category: "Magic");
+            category: "Magic", emotionalRegister: "Neutral");
         var actor = Combatant.CreateEnemy(
             "enemy.healer", "Chirurgien", "Support", 30, [heal], speed: 20);
         var woundedAlly = Combatant.CreateEnemy(
@@ -117,6 +117,7 @@ public sealed class TacticalEnemyTurnDriverTests
                 (actor, new GridPosition(0, 0)),
                 (woundedAlly, new GridPosition(1, 0)),
             ],
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
     }
 }

@@ -37,5 +37,6 @@ public sealed class RunForcedWeatherTests
         "test",
         "test",
         TestGameEngineFactory.CreateThresholdRoom(),
-        DateTimeOffset.UtcNow);
+        DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 }

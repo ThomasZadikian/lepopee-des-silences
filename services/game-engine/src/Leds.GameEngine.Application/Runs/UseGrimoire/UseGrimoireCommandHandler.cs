@@ -12,16 +12,6 @@ namespace Leds.GameEngine.Application.Runs.UseGrimoire;
 public sealed class UseGrimoireCommandHandler
     : IRequestHandler<UseGrimoireCommand, UseGrimoireResponse>
 {
-    private static readonly IReadOnlyDictionary<string, string> SkillByGrimoire =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["item.tome-marees"] = "skill.temp.deluge-mineur",
-            ["item.feuillet-copiste"] = "skill.temp.ecriture-appliquee",
-            ["item.braise-volee"] = "skill.temp.souffle-emprunte",
-            ["item.retable-portatif"] = "canon.skill.priere-aspiration",
-            ["item.carnet-croquis"] = "skill.temp.construction-ephemere"
-        };
-
     private readonly IRunRepository _runs;
     private readonly ICatalogContentGateway _catalog;
     private readonly IPlayerProfileGateway _players;
@@ -48,10 +38,23 @@ public sealed class UseGrimoireCommandHandler
             .FirstOrDefault(candidate => candidate.CharacterId == request.CharacterId)
             ?? throw new DomainException($"Character '{request.CharacterId}' was not found in this run.");
 
-        if (!SkillByGrimoire.TryGetValue(item.DefinitionKey, out var skillKey))
+        var itemDefinitionResult = await _catalog.GetItemDefinitionByKeyAsync(
+            item.DefinitionKey, cancellationToken);
+        if (!itemDefinitionResult.IsSuccess)
+            throw new DomainException($"Grimoire '{item.DefinitionKey}' is missing from Catalog.");
+
+        var itemDefinition = itemDefinitionResult.Value;
+        var skillKey = (itemDefinition.EquipmentEffects ?? [])
+            .SingleOrDefault(effect => string.Equals(
+                effect.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase))
+            ?.SkillKey;
+        if (string.IsNullOrWhiteSpace(skillKey))
             throw new DomainException($"Grimoire '{item.DefinitionKey}' has no authored temporary skill.");
 
-        if (item.DefinitionKey.Equals("item.braise-volee", StringComparison.OrdinalIgnoreCase)
+        var awardsPointsForKnownForgeSkill = (itemDefinition.EquipmentEffects ?? []).Any(effect =>
+            string.Equals(effect.Kind, "RuntimeBehavior", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(effect.BehaviorCode, "known-forge-skill-awards-eight-points", StringComparison.OrdinalIgnoreCase));
+        if (awardsPointsForKnownForgeSkill
             && character.Skills.Any(skill =>
                 skill.SkillDefinitionKey.Equals(
                     "canon.skill.souffle-de-la-forge",

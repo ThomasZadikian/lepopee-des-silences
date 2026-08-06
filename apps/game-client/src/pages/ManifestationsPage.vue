@@ -1,113 +1,62 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import EmotionalTypeBadge from '../features/combat/components/EmotionalTypeBadge.vue';
-import type { EmotionalType } from '../features/combat/types/combatContracts';
+import { enemyCodexApi, type BossCodexEntry } from '../features/emotional-registers/enemyCodexApi';
+import { useEmotionalRegisterCatalog } from '../features/emotional-registers/store';
 import LivingWalls from '../shared/components/LivingWalls.vue';
 
 const router = useRouter();
 const props = defineProps<{ embedded?: boolean }>();
+const emotionalRegisters = useEmotionalRegisterCatalog();
 
-type BossEntry = {
-  name: string;
-  salle: string;
-  type: EmotionalType;
-  weak: EmotionalType;
-  res: EmotionalType;
-  threat: 'modérée' | 'élevée' | 'instable' | 'le saigneur';
-  desc: string;
+type BossLore = {
   mech: string[];
   quote: string;
 };
 
-const bosses: BossEntry[] = [
-  {
-    name: 'Gardien des Racines',
-    salle: 'La Forêt — III',
-    type: 'Deni',
-    weak: 'Rupture',
-    res: 'Memoire',
-    threat: 'élevée',
-    desc: "Une masse de bois et de tendons, poussée là où trop d'instinct a été enfoui. Il ne poursuit pas : il enracine, et attend que vous renonciez à partir.",
-    mech: [
-      'Enracine la cuve — annule la fuite',
-      'Soin continu tant qu’une racine respire',
-      'Couper les racines (Rupture) coupe son soin',
-    ],
-    quote: '« Reste. Tout pousse mieux dans ce qui ne bouge plus. »',
+const LORE: Record<string, BossLore> = {
+  'canon.enemy.himlit': {
+    mech: ['Brume', 'Prière d’aspiration', 'Flamme séraphine'],
+    quote: '« Lettre après lettre, le sang pleure. »',
   },
-  {
-    name: 'Voix Éteinte',
-    salle: 'La Rupture — IV',
-    type: 'Rupture',
-    weak: 'Memoire',
-    res: 'Silence',
-    threat: 'instable',
-    desc: "Ce qui reste d'un cri trop longtemps retenu. Elle parle avec votre propre voix, et chaque phrase éteint la combustion d'un cran.",
-    mech: [
-      'Inflige Silence à intervalle',
-      'Affaiblissement de défense sur toute l’équipe',
-      'Frappe plus fort contre une cible muette',
-    ],
-    quote: '« Tu l’as déjà pensé. Je ne fais que le dire à voix haute. »',
-  },
-  {
-    name: 'Archiviste des Échos',
-    salle: 'La Mémoire — II',
-    type: 'Memoire',
-    weak: 'Effroi',
-    res: 'Melancolie',
-    threat: 'modérée',
-    desc: "Gardien des runs passées. Il conserve chaque version de vous qui a échoué, et vous les oppose, l'une après l'autre.",
-    mech: [
-      'Convoque l’écho d’une run perdue',
-      'Copie votre dernière compétence',
-      'Vulnérable quand ses archives sont vides',
-    ],
-    quote: '« Je vous ai déjà vu mourir ici. Plusieurs fois. »',
-  },
-  {
-    name: "Gardien de l'Antichambre",
-    salle: "L'Antichambre — VI",
-    type: 'Neutral',
-    weak: 'Effroi',
-    res: 'Memoire',
-    threat: 'élevée',
-    desc: "Ni hostile ni clément. Il pèse, simplement. Le dernier seuil avant le cœur, et la dernière chance de faire demi-tour.",
-    mech: [
-      'Jauge bloquée des deux camps par phases',
-      'Dégâts proportionnels à votre charge accumulée',
-      'Ne s’enrage jamais',
-    ],
-    quote: '« Montrez-moi ce que vous valez de porter, jusqu’au centre. »',
-  },
-  {
-    name: "Him'Lit",
-    salle: 'Le Cœur — VII',
-    type: 'Silence',
-    weak: 'Silence',
-    res: 'Effroi',
-    threat: 'le saigneur',
-    desc: "Le Saigneur des Silences. Il n'attaque pas le corps mais la langue : il écrit en vous, lettre après lettre, jusqu'à ce que le cœur se mette à pleurer.",
-    mech: [
-      'Inscrit une lettre par tick — au mot complet, dégât massif',
-      'Convertit votre Soin continu en saignée',
-      'Faiblesse : le silence assumé, non subi',
-    ],
-    quote: '« oth-oth, ha-dam yivkeh. Lettre après lettre, le sang pleure. »',
-  },
-];
-
-const THREAT_COLOR: Record<BossEntry['threat'], string> = {
-  'modérée': 'var(--ink-3)',
-  'élevée': 'var(--mauve-dim)',
-  'instable': 'var(--mauve)',
-  'le saigneur': 'var(--danger-dim)',
 };
 
+const bosses = ref<BossCodexEntry[]>([]);
+const loadError = ref<string | null>(null);
 const selectedIndex = ref(0);
-const selected = computed(() => bosses[selectedIndex.value]);
+const selected = computed(() => bosses.value[selectedIndex.value]);
+const selectedLore = computed<BossLore>(() => selected.value
+  ? LORE[selected.value.key] ?? { mech: [], quote: '' }
+  : { mech: [], quote: '' });
+const selectedRegister = computed(() =>
+  emotionalRegisters.definitionOf(selected.value?.emotionalRegister));
+const selectedWeaknesses = computed(() => selectedRegister.value?.incomingAffinities
+  .filter((affinity) => affinity.outcome === 'Weak') ?? []);
+const selectedResistances = computed(() => selectedRegister.value?.incomingAffinities
+  .filter((affinity) => affinity.outcome === 'Resistant') ?? []);
+const selectedImmunities = computed(() => selectedRegister.value?.incomingAffinities
+  .filter((affinity) => affinity.outcome === 'Immune') ?? []);
+
+function roomLabel(boss: BossCodexEntry): string {
+  return boss.compatibleRoomTypes.join(' · ');
+}
+
+function threatColor(threat: number): string {
+  if (threat >= 5) return 'var(--danger-dim)';
+  if (threat >= 4) return 'var(--mauve)';
+  if (threat >= 3) return 'var(--mauve-dim)';
+  return 'var(--ink-3)';
+}
+
+onMounted(async () => {
+  try {
+    bosses.value = (await enemyCodexApi.listBosses()).bosses;
+  } catch (caught) {
+    loadError.value = caught instanceof Error ? caught.message : 'Bestiaire indisponible.';
+  }
+});
 </script>
 
 <template>
@@ -120,66 +69,86 @@ const selected = computed(() => bosses[selectedIndex.value]);
       <span class="manif-page__kicker">Bestiaire · gardiens des salles</span>
       <h1 class="manif-page__title">Les Manifestations majeures</h1>
 
-      <div class="manif-layout">
+      <p v-if="loadError" class="es-body">{{ loadError }}</p>
+      <div v-else-if="selected" class="manif-layout">
         <div class="manif-list">
           <button
             v-for="(boss, i) in bosses"
-            :key="boss.name"
+            :key="boss.key"
             class="manif-list__item"
             :class="{ 'manif-list__item--sel': i === selectedIndex }"
             @click="selectedIndex = i"
           >
-            <div class="manif-list__badge"><EmotionalTypeBadge :type="boss.type" compact /></div>
+            <div class="manif-list__badge"><EmotionalTypeBadge :type="boss.emotionalRegister" compact /></div>
             <div>
-              <div class="manif-list__name">{{ boss.name }}</div>
-              <div class="manif-list__salle">{{ boss.salle }}</div>
+              <div class="manif-list__name">{{ boss.displayName }}</div>
+              <div class="manif-list__salle">{{ roomLabel(boss) }}</div>
             </div>
           </button>
         </div>
 
         <div class="manif-detail">
           <div class="manif-detail__portrait">
-            <span class="manif-detail__tag">silhouette — {{ selected.name }}</span>
+            <span class="manif-detail__tag">silhouette — {{ selected.displayName }}</span>
           </div>
           <div class="manif-detail__body">
             <div class="manif-detail__top">
-              <span class="es-kicker">{{ selected.salle }}</span>
-              <EmotionalTypeBadge :type="selected.type" />
+              <span class="es-kicker">{{ roomLabel(selected) }}</span>
+              <EmotionalTypeBadge :type="selected.emotionalRegister" />
             </div>
             <h2 class="es-h2" style="font-size: clamp(28px, 3.4vw, 44px); margin-top: 13px">
-              {{ selected.name }}
+              {{ selected.displayName }}
             </h2>
             <p class="es-body" style="max-width: 48ch; margin-top: 16px; color: var(--ink-3)">
-              {{ selected.desc }}
+              {{ selected.description }}
             </p>
 
             <div class="manif-detail__affinities">
               <div class="manif-detail__affinity">
                 <span class="es-label">faible à</span>
-                <EmotionalTypeBadge :type="selected.weak" compact />
+                <EmotionalTypeBadge
+                  v-for="affinity in selectedWeaknesses"
+                  :key="affinity.incomingRegister"
+                  :type="affinity.incomingRegister"
+                  compact
+                />
               </div>
               <div class="manif-detail__affinity">
                 <span class="es-label">résiste</span>
-                <EmotionalTypeBadge :type="selected.res" compact />
+                <EmotionalTypeBadge
+                  v-for="affinity in selectedResistances"
+                  :key="affinity.incomingRegister"
+                  :type="affinity.incomingRegister"
+                  compact
+                />
+              </div>
+              <div v-if="selectedImmunities.length" class="manif-detail__affinity">
+                <span class="es-label">immunisé à</span>
+                <EmotionalTypeBadge
+                  v-for="affinity in selectedImmunities"
+                  :key="affinity.incomingRegister"
+                  :type="affinity.incomingRegister"
+                  compact
+                />
               </div>
             </div>
 
             <div class="manif-detail__stats">
               <div>
                 <div class="es-label">Menace</div>
-                <div class="manif-detail__threat" :style="{ color: THREAT_COLOR[selected.threat] }">
+                <div class="manif-detail__threat" :style="{ color: threatColor(selected.threat) }">
                   {{ selected.threat }}
                 </div>
               </div>
               <div class="manif-detail__mech">
                 <div class="es-label" style="margin-bottom: 7px">Mécaniques</div>
-                <div v-for="(line, i) in selected.mech" :key="i" class="manif-detail__mech-line">
+                <div v-for="(line, i) in selectedLore.mech" :key="i" class="manif-detail__mech-line">
                   <span class="manif-detail__mech-mark">—</span>{{ line }}
                 </div>
               </div>
             </div>
 
-            <p class="manif-detail__quote">{{ selected.quote }}</p>
+            <p v-if="selectedLore.quote" class="manif-detail__quote">{{ selectedLore.quote }}</p>
           </div>
         </div>
       </div>

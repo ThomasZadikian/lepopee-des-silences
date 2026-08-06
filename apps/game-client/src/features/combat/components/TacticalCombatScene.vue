@@ -47,7 +47,7 @@ import {
 } from '../composables/useTacticalBattlePlan';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
-import { EMOTIONAL_TYPE_META } from '../../../shared/theme/typeColors';
+import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
 import PortraitDetailCard from './PortraitDetailCard.vue';
 import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
@@ -67,7 +67,6 @@ import type {
   CombatantSkillRuntimeDto,
   CombatantStatusEffectDto,
   CombatUsableItemDto,
-  EmotionalType,
   TacticalCombatantRuntimeDto,
 } from '../types/combatContracts';
 
@@ -85,6 +84,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useTacticalCombatStore();
+const emotionalRegisters = useEmotionalRegisterCatalog();
 const { getSprite } = useTerrainSprites();
 const sortEffects = useSortEffects();
 const playback = useCombatPlayback();
@@ -330,15 +330,9 @@ function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
   }
 }
 
-// Couleur de la hotbar : le registre émotionnel du sort (même glyphe/teinte que
-// EmotionalTypeBadge, dupliqué ici volontairement — la barre veut le seul glyphe coloré, pas
-// la puce complète, qui ferait doublon avec la bordure teintée du bouton). Un sort sans
-// registre (attaque de base) reste neutre : la couleur porte une vraie information, elle
-// n'est pas décorative.
 function skillTypeMeta(skill: CombatantSkillRuntimeDto): { glyph: string; color: string } | null {
-  return skill.emotionalType && skill.emotionalType !== 'Neutral'
-    ? EMOTIONAL_TYPE_META[skill.emotionalType] ?? null
-    : null;
+  const definition = emotionalRegisters.definitionOf(skill.emotionalRegister);
+  return definition?.code.toLowerCase() === 'neutral' ? null : definition;
 }
 
 function skillAccent(skill: CombatantSkillRuntimeDto): string {
@@ -685,14 +679,20 @@ function cellsOnLine(from: BattleCell, to: BattleCell): BattleCell[] {
 }
 
 function affinityLabel(
-  emotionalType: EmotionalType | null | undefined,
+  emotionalRegister: string | null | undefined,
   target: CombatantRuntimeDto,
 ): { label: string; multiplier: number } {
-  if (!emotionalType || emotionalType === 'Neutral') return { label: 'Neutre', multiplier: 1 };
-  if (target.immuneTo?.includes(emotionalType)) return { label: 'Immunité', multiplier: 0 };
-  if (target.weakTo?.includes(emotionalType)) return { label: 'Faiblesse', multiplier: 1.5 };
-  if (target.resistantTo?.includes(emotionalType)) return { label: 'Résistance', multiplier: 0.75 };
-  return { label: 'Neutre', multiplier: 1 };
+  if (!emotionalRegister) return { label: '—', multiplier: 1 };
+
+  const affinity = target.incomingAffinities.find((entry) =>
+    entry.incomingRegister.localeCompare(emotionalRegister, undefined, { sensitivity: 'accent' }) === 0);
+  if (!affinity) return { label: 'Contrat incomplet', multiplier: 1 };
+
+  const label = affinity.outcome === 'Weak' ? 'Faiblesse'
+    : affinity.outcome === 'Resistant' ? 'Résistance'
+      : affinity.outcome === 'Immune' ? 'Immunité'
+        : 'Neutre';
+  return { label, multiplier: affinity.effectiveMultiplier };
 }
 
 const targetPreview = computed(() => {
@@ -773,7 +773,7 @@ const targetPreview = computed(() => {
     0,
     50,
   );
-  const affinity = affinityLabel(skill?.emotionalType, recipient.combatant);
+  const affinity = affinityLabel(skill?.emotionalRegister, recipient.combatant);
   const attack = skill?.category === 'Magic'
     ? (actor.combatant.magicAttack ?? 0)
     : (actor.combatant.attackPower ?? 0);
@@ -809,7 +809,7 @@ const targetPreview = computed(() => {
     interception: interceptor
       ? `${interceptor.combatant.displayName} intercepte ${intended?.combatant.displayName ?? 'la case'}`
       : null,
-    affinity: affinity.label,
+    affinity: skill ? `${affinity.label} · ×${affinity.multiplier.toFixed(2)}` : '—',
     position: arc,
     accuracy: skill ? accuracy : null,
     critical: skill ? critical : null,
@@ -1416,6 +1416,9 @@ function paintSorts(ctx: CanvasRenderingContext2D) {
   for (const sort of pending) {
     const def = skillCatalog.value.get(sort.skillKey);
     const sortId = sortIdForSkillKey(sort.skillKey) ?? fallbackSortId(def?.category, def?.tacticalAreaShape);
+    const registerColor = def
+      ? emotionalRegisters.definitionOf(def.emotionalRegister)?.color
+      : undefined;
 
     sortEffects.launchSort(
       sortId,
@@ -1430,6 +1433,8 @@ function paintSorts(ctx: CanvasRenderingContext2D) {
       projectionParams.value,
       sort.casterX,
       sort.casterY,
+      def?.tacticalAreaShape,
+      registerColor,
     );
   }
 
@@ -2545,7 +2550,7 @@ onBeforeUnmount(() => {
 /* Emplacements numérotés façon hotbar (XCOM/BG3) plutôt qu'une rangée de boutons texte qui
    s'enroule : largeur commune, badge de rang toujours au même endroit — l'œil retrouve un sort
    au même emplacement d'un tour à l'autre. Chaque carte porte la couleur de son registre
-   émotionnel (voir EMOTIONAL_TYPE_META) en bordure gauche ET en fond très atténué — un sort sans
+   émotionnel publié par Catalog en bordure gauche ET en fond très atténué — un sort sans
    registre (attaque de base) reste délibérément neutre, la couleur est une information, pas
    un décor systématique. */
 .tbattle__skill,

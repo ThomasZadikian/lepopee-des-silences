@@ -20,7 +20,8 @@ public sealed class RunReplaceSkillsTests
             effectType: "Guard",
             manaCost: 0,
             chargeCost: 0,
-            basePower: 5);
+            basePower: 5,
+            emotionalRegister: "Neutral");
 
     [Fact]
     public void ReplacePlayerSkills_ShouldReplaceTheProtagonistLoadout()
@@ -56,7 +57,8 @@ public sealed class RunReplaceSkillsTests
             effectType: "Damage",
             manaCost: 0,
             chargeCost: 0,
-            basePower: 8);
+            basePower: 8,
+            emotionalRegister: "Neutral");
 
         run.ReplaceCharacterSkills(character.CharacterId, [newSkill]);
 
@@ -72,7 +74,8 @@ public sealed class RunReplaceSkillsTests
             displayName: "Nouveau sort",
             skillType: "Damage",
             targetingMode: "SingleEnemy",
-            effectType: "Damage");
+            effectType: "Damage",
+            emotionalRegister: "Neutral");
 
         var act = () => run.ReplaceCharacterSkills(Guid.NewGuid(), [newSkill]);
 

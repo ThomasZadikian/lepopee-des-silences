@@ -1,7 +1,29 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
+
+const definitionRows = [
+  ['neutral', 'Neutral', '·', 'gray'],
+  ['effroi', 'Effroi', '✶', 'red'],
+  ['deni', 'Déni', '◇', 'yellow'],
+  ['melancolie', 'Mélancolie', '❍', 'blue'],
+  ['rupture', 'Rupture', '⟡', 'orange'],
+  ['memoire', 'Mémoire', '◈', 'gold'],
+  ['silence', 'Silence', '○', 'silver'],
+  ['folie', 'Folie', '✳', 'purple'],
+];
+const definitions = definitionRows.map(([code, displayName, glyph, color]) => ({
+  code, displayName, glyph, color,
+  incomingAffinities: definitionRows.map(([incomingRegister]) => ({
+    incomingRegister, outcome: 'Neutral' as const, multiplier: 1,
+  })),
+}));
+
+beforeEach(() => {
+  useEmotionalRegisterCatalog().install('test-1', definitions);
+});
 
 function mountBadge(type: string, compact = false) {
   return mount(EmotionalTypeBadge, { props: { type, compact } });
@@ -13,9 +35,9 @@ describe('EmotionalTypeBadge', () => {
     expect(wrapper.exists()).toBe(true);
   });
 
-  it('does not render for Neutral type', () => {
+  it('renders the explicit Neutral type', () => {
     const wrapper = mountBadge('Neutral');
-    expect(wrapper.find('.type-badge').exists()).toBe(false);
+    expect(wrapper.find('.type-badge__label').text()).toBe('Neutral');
   });
 
   it('renders for Effroi type', () => {
@@ -49,10 +71,11 @@ describe('EmotionalTypeBadge', () => {
     expect(wrapper.find('.type-badge__label').text()).toBe('Silence');
   });
 
-  it('falls back to Neutral for unknown type', () => {
+  it('exposes an unknown contract instead of falling back to Neutral', () => {
     const wrapper = mountBadge('UnknownType');
     expect(wrapper.find('.type-badge').exists()).toBe(true);
-    expect(wrapper.find('.type-badge__label').text()).toBe('Neutre');
+    expect(wrapper.find('.type-badge').classes()).toContain('type-badge--invalid');
+    expect(wrapper.find('.type-badge__label').text()).toBe('UnknownType');
   });
 
   it('displays the glyph', () => {

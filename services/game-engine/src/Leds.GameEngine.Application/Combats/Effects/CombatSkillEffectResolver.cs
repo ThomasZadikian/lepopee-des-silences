@@ -126,11 +126,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // "Grain du chœur" (item.grain-choeur): "les compétences de registre Silence
         // coûtent -2 Mana" — register-specific, so it can't live on the generic
         // EffectiveFlatManaCostBonus stat (that one applies to every skill regardless of
-        // register); checked directly against the equipped item, same hardcoded-item-key
-        // convention already used for Épingle du protocole/Encrier de poche below.
+        // register); enabled by the Catalog-authored runtime behavior carried by the wearer.
         if (string.Equals(skill.EmotionalRegister, "Silence", StringComparison.OrdinalIgnoreCase)
             && combat is TacticalCombat tacticalChoeur
-            && tacticalChoeur.HasEquippedItem(actor.Id.Value, "item.grain-choeur"))
+            && tacticalChoeur.HasEquipmentBehavior(actor.Id.Value, "silence-mana-minus-two"))
         {
             flatManaCostBonus -= 2;
         }
@@ -422,7 +421,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         if (!spec.IsPermanent
             && combat is TacticalCombat tacticalEquipment
             && caster.Side != recipient.Side
-            && tacticalEquipment.HasEquippedItem(caster.Id.Value, "item.epingle-protocole"))
+            && tacticalEquipment.HasEquipmentBehavior(caster.Id.Value, "hostile-status-duration-plus-one"))
         {
             durationTicks += CombatTime.TicksPerTurn;
         }
@@ -430,7 +429,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         if (spec.Kind == StatusEffectKind.DamageOverTime
             && !spec.IsPermanent
             && combat is TacticalCombat tacticalInk
-            && tacticalInk.HasEquippedItem(caster.Id.Value, "item.encrier-poche")
+            && tacticalInk.HasEquipmentBehavior(caster.Id.Value, "first-dot-duration-plus-one")
             && recipient.StatusEffects.All(effect =>
                 !string.Equals(effect.Key, spec.Key, StringComparison.OrdinalIgnoreCase)))
         {
@@ -443,7 +442,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         if (spec.Kind == StatusEffectKind.Silence
             && !spec.IsPermanent
             && combat is TacticalCombat tacticalChoeurDuration
-            && tacticalChoeurDuration.HasEquippedItem(caster.Id.Value, "item.grain-choeur")
+            && tacticalChoeurDuration.HasEquipmentBehavior(caster.Id.Value, "silence-duration-plus-one")
             && recipient.StatusEffects.All(effect =>
                 !string.Equals(effect.Key, spec.Key, StringComparison.OrdinalIgnoreCase)))
         {
@@ -498,7 +497,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
             isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat,
             isPermanent: spec.IsPermanent,
-            sourceCombatantId: caster.Id.Value));
+            sourceCombatantId: caster.Id.Value,
+            affinityOutcome: spec.AffinityOutcome,
+            affinityPriority: spec.AffinityPriority));
     }
 
     /// <returns>The ids of every target actually struck (not missed) by this skill.</returns>
@@ -655,7 +656,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             if (combat is TacticalCombat hornCombat
                 && hornCombat.DistanceBetween(actor.Id.Value, target.Id.Value) <= 1
-                && hornCombat.HasEquippedItem(target.Id.Value, "item.cornes-ivoire")
+                && hornCombat.HasEquipmentBehavior(target.Id.Value, "reflect-first-melee-hit")
                 && hornCombat.TryConsumeEquipmentTrigger(target.Id.Value, "cornes-ivoire:first-melee"))
             {
                 var reflected = (int)Math.Round(
@@ -759,7 +760,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     private void TryCastFreeSignatureSkillOnDefeat(
         TacticalCombat combat, Combatant defeated, List<CombatLogEntryDto> logEntries)
     {
-        if (!combat.HasEquippedItem(defeated.Id.Value, "item.diapason-audela")
+        if (!combat.HasEquipmentBehavior(defeated.Id.Value, "prevent-revive-signature-on-death")
             || !combat.TryConsumeEquipmentTrigger(defeated.Id.Value, "diapason-audela:signature-cast"))
             return;
 

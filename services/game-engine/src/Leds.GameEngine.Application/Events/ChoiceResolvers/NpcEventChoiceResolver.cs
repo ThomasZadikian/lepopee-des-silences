@@ -280,25 +280,24 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     return "Rien ne se produit.";
                 }
 
-                // Every companion offering is authored with its own combat kit in the
-                // catalog seed (CompanionKitSpec) — the fallback below only guards against
-                // a malformed offering (kit missing) and should never fire in practice.
-                var kit = offering.CompanionKit;
+                var kit = offering.CompanionKit
+                    ?? throw new DomainException(
+                        $"Companion offering '{offering.Key}' has no Catalog kit.");
                 await _playerProfileGateway.RecruitCompanionAsync(
                     run.PlayerId, offering.TargetKey, npc.DisplayName,
-                    maxVitality: kit?.MaxVitality ?? 100,
-                    attackPower: kit?.AttackPower ?? 12,
-                    defense: kit?.Defense ?? 6,
-                    startingGuard: kit?.StartingGuard ?? 0,
-                    speed: kit?.Speed ?? 10,
-                    initiative: kit?.Initiative ?? 10,
-                    focus: kit?.Focus ?? 0,
-                    mana: kit?.Mana ?? 0,
-                    charge: kit?.Charge ?? 0,
-                    skillKeys: kit?.SkillKeys ?? new[] { "skill.basic.guard" },
+                    maxVitality: kit.MaxVitality,
+                    attackPower: kit.AttackPower,
+                    defense: kit.Defense,
+                    startingGuard: kit.StartingGuard,
+                    speed: kit.Speed,
+                    initiative: kit.Initiative,
+                    focus: kit.Focus,
+                    mana: kit.Mana,
+                    charge: kit.Charge,
+                    skillKeys: kit.SkillKeys,
                     cancellationToken,
-                    magicAttack: kit?.MagicAttack ?? 0,
-                    magicDefense: kit?.MagicDefense ?? 0);
+                    magicAttack: kit.MagicAttack,
+                    magicDefense: kit.MagicDefense);
                 return $"{npc.DisplayName} se joint à vous, désormais — pour de bon.";
 
             case "ReputationBoost":

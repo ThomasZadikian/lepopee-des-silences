@@ -1,5 +1,6 @@
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -22,6 +23,7 @@ public static class CombatPersistenceMapper
             Id = combatant.Id.Value,
             CombatId = combatId,
             SourceKey = combatant.SourceKey,
+            SourceDefinitionKey = combatant.SourceDefinitionKey,
             CharacterInstanceId = combatant.CharacterInstanceId,
             DisplayName = combatant.DisplayName,
             Side = combatant.Side.ToString(),
@@ -38,6 +40,8 @@ public static class CombatPersistenceMapper
             HasActedThisCombat = combatant.HasActedThisCombat,
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
+            EmotionalAffinityModifiersJson = SerializeEmotionalAffinityModifiers(
+                combatant.PersistentEmotionalAffinityModifiers),
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
             DotDurationReductionPercent = combatant.DotDurationReductionPercent,
             DotDamageReductionPercent = combatant.DotDamageReductionPercent,
@@ -78,6 +82,45 @@ public static class CombatPersistenceMapper
         return snapshot.ToDictionary(kv => (EmotionalType)kv.Key, kv => kv.Value);
     }
 
+    private sealed record EmotionalAffinityModifierSnapshot(
+        string SourceKey,
+        int IncomingRegister,
+        int? OutcomeOverride,
+        int MultiplierPercent,
+        int Priority,
+        int? RemainingActivations);
+
+    private static string? SerializeEmotionalAffinityModifiers(
+        IReadOnlyCollection<EmotionalAffinityModifier> modifiers)
+    {
+        if (modifiers.Count == 0)
+            return null;
+
+        return JsonSerializer.Serialize(modifiers.Select(modifier =>
+            new EmotionalAffinityModifierSnapshot(
+                modifier.SourceKey,
+                (int)modifier.IncomingRegister,
+                modifier.OutcomeOverride is null ? null : (int)modifier.OutcomeOverride.Value,
+                modifier.MultiplierPercent,
+                modifier.Priority,
+                modifier.RemainingActivations)));
+    }
+
+    private static IReadOnlyCollection<EmotionalAffinityModifier> DeserializeEmotionalAffinityModifiers(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        var snapshots = JsonSerializer.Deserialize<EmotionalAffinityModifierSnapshot[]>(json) ?? [];
+        return snapshots.Select(snapshot => EmotionalAffinityModifier.Rehydrate(
+            snapshot.SourceKey,
+            (EmotionalType)snapshot.IncomingRegister,
+            snapshot.OutcomeOverride is null ? null : (DamageEffectiveness)snapshot.OutcomeOverride.Value,
+            snapshot.MultiplierPercent,
+            snapshot.Priority,
+            snapshot.RemainingActivations)).ToArray();
+    }
+
     private sealed record StatusEffectSnapshot(
         string Key,
         string DisplayName,
@@ -93,7 +136,9 @@ public static class CombatPersistenceMapper
         bool IsMagnitudePercentOfBaseStat = false,
         GrantedSkillSnapshot[]? GrantedSkills = null,
         bool IsPermanent = false,
-        Guid?[]? StackSourceIds = null);
+        Guid?[]? StackSourceIds = null,
+        int? AffinityOutcome = null,
+        int AffinityPriority = 0);
 
     // Kind == SkillGrant only (e.g. "Création") — a snapshot of the target's skills
     // at cast time, temporarily usable by whoever holds the status effect. Mirrors
@@ -101,7 +146,13 @@ public static class CombatPersistenceMapper
     private sealed record GrantedSkillSnapshot(
         string Key, string DisplayName, string SkillType, string TargetingType, string EffectType,
         int ManaCost, int ChargeCost, int BasePower, string[] Tags, string Category,
-        bool BasePowerIsPercentOfMaxVitality);
+        bool BasePowerIsPercentOfMaxVitality,
+        int TacticalRange,
+        int TacticalAreaShape,
+        bool RequiresLineOfSight,
+        int Cooldown,
+        bool IsUltimate,
+        string EmotionalRegister);
 
     private static string? SerializeStatusEffects(IReadOnlyCollection<CombatStatusEffect> effects)
     {
@@ -126,9 +177,12 @@ public static class CombatPersistenceMapper
                 : e.GrantedSkills.Select(s => new GrantedSkillSnapshot(
                     s.Key, s.DisplayName, s.SkillType, s.TargetingType, s.EffectType,
                     s.ManaCost, s.ChargeCost, s.BasePower, s.Tags.ToArray(), s.Category,
-                    s.BasePowerIsPercentOfMaxVitality)).ToArray(),
+                    s.BasePowerIsPercentOfMaxVitality, s.TacticalRange, (int)s.TacticalAreaShape,
+                    s.RequiresLineOfSight, s.Cooldown, s.IsUltimate, s.EmotionalRegister)).ToArray(),
             e.IsPermanent,
-            e.StackSourceIds.ToArray())).ToArray();
+            e.StackSourceIds.ToArray(),
+            e.AffinityOutcome is null ? null : (int)e.AffinityOutcome.Value,
+            e.AffinityPriority)).ToArray();
 
         return JsonSerializer.Serialize(snapshots);
     }
@@ -149,7 +203,13 @@ public static class CombatPersistenceMapper
                     g.Key, g.DisplayName, g.SkillType, g.TargetingType, g.EffectType,
                     g.ManaCost, g.ChargeCost, g.BasePower, g.Tags,
                     category: g.Category,
-                    basePowerIsPercentOfMaxVitality: g.BasePowerIsPercentOfMaxVitality))
+                    basePowerIsPercentOfMaxVitality: g.BasePowerIsPercentOfMaxVitality,
+                    tacticalRange: g.TacticalRange,
+                    tacticalAreaShape: (TacticalAreaShape)g.TacticalAreaShape,
+                    requiresLineOfSight: g.RequiresLineOfSight,
+                    cooldown: g.Cooldown,
+                    isUltimate: g.IsUltimate,
+                    emotionalRegister: g.EmotionalRegister))
                 .ToArray();
 
             yield return CombatStatusEffect.Rehydrate(
@@ -167,7 +227,9 @@ public static class CombatPersistenceMapper
                 s.IsMagnitudePercentOfBaseStat,
                 grantedSkills,
                 s.IsPermanent,
-                s.StackSourceIds);
+                s.StackSourceIds,
+                s.AffinityOutcome is null ? null : (DamageEffectiveness)s.AffinityOutcome.Value,
+                s.AffinityPriority);
         }
     }
 
@@ -286,7 +348,10 @@ public static class CombatPersistenceMapper
             naturalEmotionalType: EmotionalTypeCode.ParseRequired(
                 entity.NaturalEmotionalRegister,
                 $"Combatant '{entity.SourceKey}' natural emotional register"),
-            characterInstanceId: entity.CharacterInstanceId);
+            characterInstanceId: entity.CharacterInstanceId,
+            sourceDefinitionKey: entity.SourceDefinitionKey);
+        foreach (var modifier in DeserializeEmotionalAffinityModifiers(entity.EmotionalAffinityModifiersJson))
+            combatant.ApplyEmotionalAffinityModifier(modifier);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

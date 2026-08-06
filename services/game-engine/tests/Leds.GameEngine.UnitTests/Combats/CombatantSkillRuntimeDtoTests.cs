@@ -53,7 +53,7 @@ public sealed class CombatantSkillRuntimeDtoTests
             category: "Magic",
             tacticalRange: 3,
             tacticalAreaShape: TacticalAreaShape.Cross,
-            requiresLineOfSight: true);
+            requiresLineOfSight: true, emotionalRegister: "Neutral");
 
         var dto = CombatantSkillRuntimeDto.FromDomain(skill);
 
@@ -81,5 +81,5 @@ public sealed class CombatantSkillRuntimeDtoTests
             category: category,
             tacticalRange: tacticalRange,
             tacticalAreaShape: tacticalAreaShape,
-            requiresLineOfSight: requiresLineOfSight);
+            requiresLineOfSight: requiresLineOfSight, emotionalRegister: "Neutral");
 }

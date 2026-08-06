@@ -19,17 +19,10 @@ public sealed record SkillDefinitionView(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral",
-    // The skill's OWN "élément" (registre émotionnel intrinsèque), resolved the exact same
-    // way as CombatantSkillRuntimeDto.EmotionalType — see EmotionalTypeProfileProvider.
-    // Null for basic attacks and any skill without a declared type; distinct from
-    // EmotionalRegister above, which is a near-always-"Neutral" catalog seed field.
-    string? EmotionalType = null,
-    // Player archetypes allowed to equip this skill — empty means unrestricted. Enforced
-    // server-side by SkillArchetypeGate; surfaced here so the Grimoire can grey out
-    // incompatible skills instead of only failing on submit. This response only ever
-    // contains Audience "Player"/"Any" skills — see ListActiveSkillDefinitionsQueryHandler.
-    IReadOnlyCollection<string>? AllowedArchetypes = null,
+    string EmotionalRegister = null!,
+    // Compatibility is resolved server-side from Catalog character definitions; the
+    // client never receives a second archetype model to interpret.
+    IReadOnlyCollection<string>? CompatibleCharacterDefinitionKeys = null,
     // "Player"/"Enemy"/"Any" — always non-"Enemy" here (already filtered out server-side).
     // Surfaced anyway so the Grimoire can defensively re-filter without depending solely on
     // this endpoint's own filter staying correct.

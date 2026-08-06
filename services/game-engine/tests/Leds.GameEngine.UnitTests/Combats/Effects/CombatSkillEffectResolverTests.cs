@@ -121,7 +121,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -143,7 +143,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -164,7 +164,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -468,7 +468,7 @@ public sealed class CombatSkillEffectResolverTests
         var skill = CombatantSkill.Create(
             "skill.favorite-de-elise", "Favorite de Elise", "Heal", "Self", "Heal",
             manaCost: 0, chargeCost: 0, basePower: 15,
-            basePowerIsPercentOfMaxVitality: true);
+            basePowerIsPercentOfMaxVitality: true, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [ally]);
 
@@ -490,7 +490,7 @@ public sealed class CombatSkillEffectResolverTests
         ally.SpendMana(ally.Mana - 5);
         var skill = CombatantSkill.Create(
             "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
-            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
+            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, caster, skill, [ally]);
 
@@ -508,7 +508,7 @@ public sealed class CombatSkillEffectResolverTests
         ally.SpendMana(ally.Mana - 16);
         var skill = CombatantSkill.Create(
             "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
-            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
+            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, caster, skill, [ally]);
 
@@ -537,12 +537,12 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemySkill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 8, chargeCost: 0, basePower: 22);
+            manaCost: 8, chargeCost: 0, basePower: 22, emotionalRegister: "Neutral");
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, skills: [enemySkill]);
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.creation", "Création", "Buff", "SingleEnemy", "CopySkills",
-            manaCost: 20, chargeCost: 0, basePower: 10);
+            manaCost: 20, chargeCost: 0, basePower: 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -568,7 +568,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -593,7 +593,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "ink", "Encre vive", StatusEffectKind.DamageOverTime,
                     Magnitude: 6, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -619,7 +619,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -651,7 +651,7 @@ public sealed class CombatSkillEffectResolverTests
                     "destinee-cruelle:dot", "Une destinée cruelle", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 0, TickInterval: 1400,
                     MagnitudeIsPercentOfMax: true, AppliesToActor: true, IsPermanent: true)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -669,7 +669,7 @@ public sealed class CombatSkillEffectResolverTests
             currentTick: combat.CurrentTick, durationTicks: 1000, magnitude: 10, tickInterval: 1400));
         var skill = CombatantSkill.Create(
             "canon.skill.ecriture-continuelle", "Écriture continuelle", "Debuff", "SingleEnemy", "ExtendDotDuration",
-            manaCost: 0, chargeCost: 0, basePower: 25);
+            manaCost: 0, chargeCost: 0, basePower: 25, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -707,7 +707,7 @@ public sealed class CombatSkillEffectResolverTests
                     "liberte-retrouvee:speed", "Liberté retrouvée", StatusEffectKind.StatModifier,
                     Magnitude: 10, DurationTicks: 25000, Stat: CombatStat.Speed,
                     MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -734,7 +734,7 @@ public sealed class CombatSkillEffectResolverTests
                     "liberte-retrouvee:speed", "Liberté retrouvée", StatusEffectKind.StatModifier,
                     Magnitude: 10, DurationTicks: 25000, Stat: CombatStat.Speed,
                     MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
-            });
+            }, emotionalRegister: "Neutral");
 
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -767,7 +767,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -800,7 +800,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         var result = _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
 
@@ -839,7 +839,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -858,7 +858,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -879,7 +879,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -899,7 +899,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -925,7 +925,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -947,7 +947,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -970,7 +970,7 @@ public sealed class CombatSkillEffectResolverTests
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
-            manaCost: 3, chargeCost: 0, basePower: 10, category: "Physical");
+            manaCost: 3, chargeCost: 0, basePower: 10, category: "Physical", emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1156,7 +1156,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1177,7 +1177,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1210,7 +1210,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "slow", "Ralenti", StatusEffectKind.StatModifier,
                     Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
@@ -1232,7 +1232,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "slow", "Ralenti", StatusEffectKind.StatModifier,
                     Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
@@ -1256,7 +1256,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "slow", "Ralenti", StatusEffectKind.StatModifier,
                     Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
@@ -1290,7 +1290,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1311,7 +1311,7 @@ public sealed class CombatSkillEffectResolverTests
                 new SkillStatusEffectSpec(
                     "poison", "Poison", StatusEffectKind.DamageOverTime,
                     Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
-            });
+            }, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1327,7 +1327,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var (combat, ally, enemy) = CreateDuelCombat(duelDamageAsymmetryEnabled: true);
         var skill = CombatantSkill.Create(
-            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1341,7 +1341,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var (combat, ally, enemyA, enemyB) = CreateDuelCombatWithTwoEnemies(duelDamageAsymmetryEnabled: true);
         var skill = CombatantSkill.Create(
-            "skill.basic.blast", "Explosion", "Damage", "AllEnemies", "Damage", 0, 0, 10);
+            "skill.basic.blast", "Explosion", "Damage", "AllEnemies", "Damage", 0, 0, 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
 
@@ -1356,7 +1356,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var (combat, ally, enemy) = CreateDuelCombat(duelDamageAsymmetryEnabled: false);
         var skill = CombatantSkill.Create(
-            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
@@ -1489,6 +1489,6 @@ public sealed class CombatSkillEffectResolverTests
             effectType,
             0,
             0,
-            basePower);
+            basePower, emotionalRegister: "Neutral");
     }
 }

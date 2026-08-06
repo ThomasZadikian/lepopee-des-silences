@@ -30,12 +30,9 @@ export type SkillDefinitionView = {
   requiresLineOfSight?: boolean;
   cooldown?: number;
   isUltimate?: boolean;
-  emotionalRegister?: string;
-  /** The spell's own intrinsic "élément" — see EmotionalTypeProfileProvider. Null for
-   * basic attacks and untyped spells; distinct from emotionalRegister above. */
-  emotionalType?: string | null;
-  /** Player archetypes allowed to equip this skill — empty/absent means unrestricted. */
-  allowedArchetypes?: string[] | null;
+  /** Catalog-authored register. Neutral is explicit and is never inferred from keys or tags. */
+  emotionalRegister: string;
+  compatibleCharacterDefinitionKeys: string[];
   /** "Player"/"Enemy"/"Any" — the Grimoire filters out "Enemy" defensively even though the
    * server is also supposed to exclude them. */
   audience?: string;

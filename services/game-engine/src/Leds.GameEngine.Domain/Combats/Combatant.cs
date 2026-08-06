@@ -25,10 +25,14 @@ public sealed class Combatant
         CombatantBaseStatSnapshot baseStatSnapshot,
         CombatantRuntimeState runtimeState,
         bool hasActedThisCombat = false,
-        Guid? characterInstanceId = null)
+        Guid? characterInstanceId = null,
+        string? sourceDefinitionKey = null)
     {
         Id = id;
         SourceKey = sourceKey;
+        SourceDefinitionKey = string.IsNullOrWhiteSpace(sourceDefinitionKey)
+            ? sourceKey
+            : sourceDefinitionKey.Trim();
         DisplayName = displayName;
         Side = side;
         Archetype = archetype;
@@ -50,7 +54,7 @@ public sealed class Combatant
 
     public CombatantId Id { get; }
     public string SourceKey { get; }
-    public string SourceDefinitionKey => SourceKey;
+    public string SourceDefinitionKey { get; }
     public Guid? CharacterInstanceId { get; }
     public string DisplayName { get; }
     public CombatantSide Side { get; }
@@ -108,6 +112,51 @@ public sealed class Combatant
     /// When null, the combatant's attack type comes from its default type profile.
     /// </summary>
     public EmotionalType? AttackTypeOverride { get; private set; }
+
+    private readonly List<EmotionalAffinityModifier> _emotionalAffinityModifiers = [];
+    public IReadOnlyCollection<EmotionalAffinityModifier> PersistentEmotionalAffinityModifiers =>
+        _emotionalAffinityModifiers.AsReadOnly();
+    public IReadOnlyCollection<EmotionalAffinityModifier> EmotionalAffinityModifiers =>
+        _emotionalAffinityModifiers
+            .Concat(_statusEffects
+                .Where(effect => effect.Kind == StatusEffectKind.AffinityModifier)
+                .Select(effect => EmotionalAffinityModifier.Create(
+                    effect.Key,
+                    effect.EmotionalType!.Value,
+                    effect.AffinityOutcome,
+                    effect.Magnitude * effect.Stacks,
+                    effect.AffinityPriority)))
+            .ToArray();
+
+    public void ApplyEmotionalAffinityModifier(EmotionalAffinityModifier modifier)
+    {
+        ArgumentNullException.ThrowIfNull(modifier);
+        _emotionalAffinityModifiers.RemoveAll(existing =>
+            string.Equals(existing.SourceKey, modifier.SourceKey, StringComparison.OrdinalIgnoreCase)
+            && existing.IncomingRegister == modifier.IncomingRegister);
+        _emotionalAffinityModifiers.Add(modifier);
+    }
+
+    public void AdvanceEmotionalAffinityModifiers()
+    {
+        foreach (var modifier in _emotionalAffinityModifiers)
+            modifier.ConsumeActivation();
+
+        _emotionalAffinityModifiers.RemoveAll(modifier => modifier.IsExpired);
+    }
+
+    private readonly HashSet<string> _equipmentBehaviorCodes = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlySet<string> EquipmentBehaviorCodes => _equipmentBehaviorCodes;
+
+    public void ApplyEquipmentBehavior(string behaviorCode, string sourceDefinitionKey)
+    {
+        if (string.IsNullOrWhiteSpace(behaviorCode))
+            throw new DomainException("Equipment behavior code is required.");
+        if (string.IsNullOrWhiteSpace(sourceDefinitionKey))
+            throw new DomainException("Equipment behavior source definition key is required.");
+
+        _equipmentBehaviorCodes.Add($"{behaviorCode.Trim()}|{sourceDefinitionKey.Trim()}");
+    }
 
     /// <summary>
     /// Sets (or clears) the emotional attack type override. Applied at combat
@@ -311,7 +360,8 @@ public sealed class Combatant
         int baseGuard = 0,
         IReadOnlyCollection<CombatantSkill>? skills = null,
         EmotionalType naturalEmotionalType = EmotionalType.Neutral,
-        Guid? characterInstanceId = null)
+        Guid? characterInstanceId = null,
+        string? sourceDefinitionKey = null)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -347,7 +397,8 @@ public sealed class Combatant
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
             runtimeState,
-            characterInstanceId: characterInstanceId);
+            characterInstanceId: characterInstanceId,
+            sourceDefinitionKey: sourceDefinitionKey);
     }
 
     public static Combatant CreateEnemy(
@@ -366,7 +417,8 @@ public sealed class Combatant
         int mana = 0,
         int movement = 4,
         EmotionalType naturalEmotionalType = EmotionalType.Neutral,
-        Guid? characterInstanceId = null)
+        Guid? characterInstanceId = null,
+        string? sourceDefinitionKey = null)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -407,7 +459,8 @@ public sealed class Combatant
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
             runtimeState,
-            characterInstanceId: characterInstanceId);
+            characterInstanceId: characterInstanceId,
+            sourceDefinitionKey: sourceDefinitionKey);
     }
 
     public static Combatant Create(
@@ -432,7 +485,8 @@ public sealed class Combatant
         int magicDefense = 0,
         int movement = 4,
         EmotionalType naturalEmotionalType = EmotionalType.Neutral,
-        Guid? characterInstanceId = null)
+        Guid? characterInstanceId = null,
+        string? sourceDefinitionKey = null)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -505,7 +559,8 @@ public sealed class Combatant
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
             runtimeState,
-            characterInstanceId: characterInstanceId);
+            characterInstanceId: characterInstanceId,
+            sourceDefinitionKey: sourceDefinitionKey);
     }
 
     public void MarkDefeated()
@@ -624,7 +679,9 @@ public sealed class Combatant
         int healingBonusPercent = 0,
         bool hasActedThisCombat = false,
         EmotionalType naturalEmotionalType = EmotionalType.Neutral,
-        Guid? characterInstanceId = null)
+        Guid? characterInstanceId = null,
+        IReadOnlyCollection<EmotionalAffinityModifier>? emotionalAffinityModifiers = null,
+        string? sourceDefinitionKey = null)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -649,13 +706,15 @@ public sealed class Combatant
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, naturalEmotionalType, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat, characterInstanceId);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, naturalEmotionalType, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat, characterInstanceId, sourceDefinitionKey);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
             hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
             magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
             dotDamageBonusPercent, healingBonusPercent);
+        foreach (var modifier in emotionalAffinityModifiers ?? [])
+            combatant.ApplyEmotionalAffinityModifier(modifier);
         return combatant;
     }
 

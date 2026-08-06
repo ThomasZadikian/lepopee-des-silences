@@ -179,7 +179,8 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
     {
         var id = PlayerId.New();
         var character = PlayerCharacter.Rehydrate(
-            PlayerCharacterId.New(), "custom.key", "Custom Hero", 200, 50, 10, ["skill.custom.attack", "skill.custom.defend"]);
+            PlayerCharacterId.New(), "custom.key", "Custom Hero", 200, 50, 10,
+            ["skill.custom.attack", "skill.custom.defend"]);
         var roster = PlayerRoster.Rehydrate([character]);
         var progression = PlayerProgression.CreateDefault();
         var now = DateTimeOffset.UtcNow;
@@ -213,7 +214,8 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
             PlayerCharacterSkill.Create("skill.known.but.unequipped", now, isEquipped: false),
         };
         var character = PlayerCharacter.Create(
-            "key", "Name", PlayerCharacterStatBlock.CreateDefaultPorteur(), skills);
+            "key", "Name", PlayerCharacterStatBlock.CreateDefaultPorteur(), skills,
+            status: "Active");
         var roster = PlayerRoster.Rehydrate([character]);
         var progression = PlayerProgression.CreateDefault();
         var profile = PlayerProfile.Rehydrate(id, "Test", roster, progression, now, now);

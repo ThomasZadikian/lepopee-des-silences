@@ -17,6 +17,7 @@ function baseSkill(overrides: Partial<SkillDefinitionView> = {}): SkillDefinitio
     basePower: 12,
     category: 'Physical',
     basePowerIsPercentOfMaxVitality: false,
+    compatibleCharacterDefinitionKeys: ['character.player.self'],
     effects: [],
     acquisitionHints: [],
     ...overrides,

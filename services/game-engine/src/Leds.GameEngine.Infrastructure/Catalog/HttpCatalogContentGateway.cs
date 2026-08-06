@@ -27,6 +27,81 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         _httpClient = httpClient;
     }
 
+    private static string Require(string? value, string field) =>
+        string.IsNullOrWhiteSpace(value)
+            ? throw new InvalidOperationException($"Catalog returned an empty {field}.")
+            : value.Trim();
+
+    public async Task<CatalogEmotionalRegisterCatalog> GetEmotionalRegisterCatalogAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/emotional-registers";
+        var response = await GetJsonOrNullAsync<EmotionalRegisterCatalogHttpResponse>(url, cancellationToken)
+            ?? throw new InvalidOperationException("Catalog returned no emotional register catalog.");
+
+        if (string.IsNullOrWhiteSpace(response.Version)
+            || response.Definitions is null
+            || response.Definitions.Count == 0)
+        {
+            throw new InvalidOperationException("Catalog returned an incomplete emotional register catalog.");
+        }
+
+        var definitions = response.Definitions.Select(definition =>
+        {
+            _ = EmotionalTypeCode.ParseRequired(
+                definition.Code,
+                $"Emotional register '{definition.Code}' code");
+
+            if (string.IsNullOrWhiteSpace(definition.DisplayName)
+                || string.IsNullOrWhiteSpace(definition.Glyph)
+                || string.IsNullOrWhiteSpace(definition.Color))
+            {
+                throw new InvalidOperationException(
+                    $"Catalog returned incomplete metadata for emotional register '{definition.Code}'.");
+            }
+
+            return new CatalogEmotionalRegisterDefinition(
+                definition.Code.Trim().ToLowerInvariant(),
+                definition.DisplayName.Trim(),
+                definition.Glyph,
+                definition.Color.Trim(),
+                definition.IncomingAffinities?.Select(affinity => new CatalogBaseEmotionalAffinity(
+                    EmotionalTypeCode.ParseRequired(
+                        affinity.IncomingRegister,
+                        $"Register '{definition.Code}' incoming affinity").ToString().ToLowerInvariant(),
+                    Enum.TryParse<DamageEffectiveness>(affinity.Outcome, true, out var outcome)
+                        ? outcome.ToString()
+                        : throw new InvalidOperationException(
+                            $"Catalog returned unknown affinity outcome '{affinity.Outcome}'."),
+                    affinity.Multiplier)).ToArray()
+                    ?? throw new InvalidOperationException(
+                        $"Catalog returned no affinities for emotional register '{definition.Code}'."));
+        }).ToArray();
+
+        if (definitions.Select(definition => definition.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+            != definitions.Length)
+        {
+            throw new InvalidOperationException("Catalog returned duplicate emotional register definitions.");
+        }
+
+        var codes = definitions.Select(definition => definition.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var definition in definitions)
+        {
+            var affinities = definition.IncomingAffinities;
+            if (affinities.Count != definitions.Length
+                || affinities.Select(affinity => affinity.IncomingRegister)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(codes) is false
+                || affinities.Any(affinity => !double.IsFinite(affinity.Multiplier) || affinity.Multiplier < 0))
+            {
+                throw new InvalidOperationException(
+                    $"Catalog returned an incomplete affinity profile for emotional register '{definition.Code}'.");
+            }
+        }
+
+        return new CatalogEmotionalRegisterCatalog(response.Version.Trim(), definitions);
+    }
+
     public async Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
         CancellationToken cancellationToken = default)
     {
@@ -42,7 +117,35 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             response.Rules.Select(rule => new CatalogEmotionalAffinityRuleSnapshot(
                 rule.AttackingRegister,
                 rule.DefendingRegister,
-                rule.Outcome)).ToArray());
+                rule.Outcome,
+                rule.Multiplier)).ToArray());
+    }
+
+    public async Task<IReadOnlyCollection<CatalogCharacterCombatDefinition>> ListCharacterCombatDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/character-combat-definitions";
+        var response = await GetJsonOrNullAsync<CharacterCombatDefinitionsHttpResponse>(url, cancellationToken)
+            ?? throw new InvalidOperationException("Catalog returned no character combat definitions.");
+
+        var definitions = response.Definitions?.Select(definition => new CatalogCharacterCombatDefinition(
+            Require(definition.DefinitionKey, "Character definition key"),
+            Require(definition.Kind, $"Character '{definition.DefinitionKey}' kind"),
+            Require(definition.CombatArchetypeCode, $"Character '{definition.DefinitionKey}' archetype"),
+            EmotionalTypeCode.ParseRequired(
+                definition.EmotionalRegister,
+                $"Character '{definition.DefinitionKey}' emotional register").ToString().ToLowerInvariant()))
+            .ToArray()
+            ?? throw new InvalidOperationException("Catalog returned no character combat definitions.");
+
+        if (definitions.Length == 0
+            || definitions.Select(definition => definition.DefinitionKey)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != definitions.Length)
+        {
+            throw new InvalidOperationException("Catalog returned empty or duplicate character combat definitions.");
+        }
+
+        return definitions;
     }
 
     public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
@@ -449,6 +552,14 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         }
 
         return MapToCatalogEnemyDefinition(httpDefinition);
+    }
+
+    public async Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListActiveEnemyDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/enemy-definitions";
+        var response = await GetJsonOrNullAsync<ListEnemyDefinitionsHttpResponse>(url, cancellationToken);
+        return response?.Definitions?.Select(MapToCatalogEnemyDefinition).ToArray() ?? [];
     }
 
     public async Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListEnemyDefinitionsByRoomTypeAsync(
@@ -919,7 +1030,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                 .Select(e => new CatalogSkillEffectSpec(
                     e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat,
                     e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat, e.AppliesToActor,
-                    e.IsPermanent))
+                    e.IsPermanent, e.AffinityRegister, e.AffinityOutcome, e.AffinityPriority))
                 .ToArray(),
             Category: source.Category,
             BasePowerIsPercentOfMaxVitality: source.BasePowerIsPercentOfMaxVitality,
@@ -930,7 +1041,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             IsUltimate: source.IsUltimate,
             EmotionalRegister: EmotionalTypeCode.ParseRequired(
                 source.EmotionalRegister,
-                $"Catalog skill '{source.Key}' EmotionalRegister").ToString(),
+                $"Catalog skill '{source.Key}' EmotionalRegister").ToString().ToLowerInvariant(),
             Audience: source.Audience,
             AllowedArchetypes: source.AllowedArchetypes ?? []);
     }
@@ -961,7 +1072,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             MagicDefense: source.MagicDefense,
             Menace: source.Menace,
             Rarity: source.Rarity,
-            Registre: source.Registre,
+            Registre: EmotionalTypeCode.ParseRequired(
+                source.Registre,
+                $"Catalog enemy '{source.Key}' emotional register").ToString().ToLowerInvariant(),
             BoundRoomKeys: source.BoundRoomKeys,
             Movement: source.Movement);
     }
@@ -1027,7 +1140,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.EffectSetKey,
             source.IsPermanentEligible,
             source.EquipmentEffects?
-                .Select(e => new CatalogItemEquipmentEffect(e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister, e.Condition))
+                .Select(e => new CatalogItemEquipmentEffect(
+                    e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister, e.Condition,
+                    e.AffinityOutcome, e.Priority, e.DurationActivations, e.BehaviorCode))
                 .ToArray(),
             source.IsContainer,
             source.ContainerCapacity,
@@ -1233,10 +1348,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             CompatibleRoomClimates: source.CompatibleRoomClimates ?? [],
             MinDepth: source.MinDepth ?? 0,
             MaxDepth: source.MaxDepth ?? int.MaxValue,
-            EmotionalAffinity: string.IsNullOrWhiteSpace(source.EmotionalAffinity)
-                ? throw new InvalidOperationException(
-                    $"Catalog NPC '{source.Key}' has no emotional register.")
-                : source.EmotionalAffinity,
+            EmotionalAffinity: EmotionalTypeCode.ParseRequired(
+                source.EmotionalAffinity,
+                $"Catalog NPC '{source.Key}' emotional register").ToString().ToLowerInvariant(),
             IsRecurring: source.IsRecurring,
             Persona: source.Persona is null ? null : MapNpcPersona(source.Persona),
             DialogueGraph: source.DialogueGraph is null ? null : MapNpcDialogueGraph(source.DialogueGraph),
@@ -1500,7 +1614,11 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int? Amount,
         string? SkillKey,
         string? AffinityRegister,
-        string? Condition = null);
+        string? Condition = null,
+        string? AffinityOutcome = null,
+        int Priority = 0,
+        int? DurationActivations = null,
+        string? BehaviorCode = null);
 
     private sealed record GetEffectSetByKeyHttpResponse(
         CatalogEffectSetHttpResponse? Definition);
@@ -1736,10 +1854,36 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Version,
         IReadOnlyCollection<EmotionalAffinityRuleHttpResponse>? Rules);
 
+    private sealed record EmotionalRegisterCatalogHttpResponse(
+        string Version,
+        IReadOnlyCollection<EmotionalRegisterDefinitionHttpResponse>? Definitions);
+
+    private sealed record CharacterCombatDefinitionsHttpResponse(
+        IReadOnlyCollection<CharacterCombatDefinitionHttpResponse>? Definitions);
+
+    private sealed record CharacterCombatDefinitionHttpResponse(
+        string DefinitionKey,
+        string Kind,
+        string CombatArchetypeCode,
+        string EmotionalRegister);
+
+    private sealed record EmotionalRegisterDefinitionHttpResponse(
+        string Code,
+        string DisplayName,
+        string Glyph,
+        string Color,
+        IReadOnlyCollection<BaseEmotionalAffinityHttpResponse>? IncomingAffinities);
+
+    private sealed record BaseEmotionalAffinityHttpResponse(
+        string IncomingRegister,
+        string Outcome,
+        double Multiplier);
+
     private sealed record EmotionalAffinityRuleHttpResponse(
         string AttackingRegister,
         string DefendingRegister,
-        string Outcome);
+        string Outcome,
+        double Multiplier);
 
     // ── Template HTTP responses ───────────────────────────────────────
 

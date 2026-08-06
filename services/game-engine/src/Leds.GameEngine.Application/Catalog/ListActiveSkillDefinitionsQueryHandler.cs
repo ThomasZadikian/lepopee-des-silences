@@ -1,6 +1,6 @@
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
-using Leds.GameEngine.Application.Combats.Typing;
+using Leds.GameEngine.Domain.Combats.Typing;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Catalog;
@@ -21,12 +21,14 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
         var definitionsTask = _catalogGateway.ListActiveSkillDefinitionsAsync(cancellationToken);
         var npcsTask = _catalogGateway.ListNpcDefinitionsAsync(cancellationToken);
         var itemsTask = _catalogGateway.ListActiveItemDefinitionsAsync(cancellationToken);
+        var charactersTask = _catalogGateway.ListCharacterCombatDefinitionsAsync(cancellationToken);
 
-        await Task.WhenAll(definitionsTask, npcsTask, itemsTask);
+        await Task.WhenAll(definitionsTask, npcsTask, itemsTask, charactersTask);
 
         var definitions = definitionsTask.Result;
         var npcs = npcsTask.Result;
         var items = itemsTask.Result;
+        var characters = charactersTask.Result;
 
         var acquisitionHints = BuildAcquisitionHints(npcs, items);
 
@@ -66,12 +68,27 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                 d.RequiresLineOfSight,
                 d.Cooldown,
                 d.IsUltimate,
-                d.EmotionalRegister,
-                EmotionalTypeProfileProvider.TryResolveIntrinsicType(d.Key, d.Tags, d.EmotionalRegister, out var emotionalType)
-                    ? emotionalType.ToString()
-                    : null,
-                d.AllowedArchetypes,
+                EmotionalTypeCode.ParseRequired(
+                    d.EmotionalRegister,
+                    $"Skill '{d.Key}' EmotionalRegister").ToString().ToLowerInvariant(),
+                CompatibleCharacters(d.AllowedArchetypes, characters),
                 d.Audience)).ToArray());
+    }
+
+    private static IReadOnlyCollection<string> CompatibleCharacters(
+        IReadOnlyCollection<string>? allowedArchetypes,
+        IReadOnlyCollection<CatalogCharacterCombatDefinition> characters)
+    {
+        if (allowedArchetypes is not { Count: > 0 })
+            return characters.Select(character => character.DefinitionKey).ToArray();
+
+        return characters
+            .Where(character => string.Equals(
+                    character.CombatArchetypeCode, "Adaptive", StringComparison.OrdinalIgnoreCase)
+                || allowedArchetypes.Contains(
+                    character.CombatArchetypeCode, StringComparer.OrdinalIgnoreCase))
+            .Select(character => character.DefinitionKey)
+            .ToArray();
     }
 
     /// <summary>

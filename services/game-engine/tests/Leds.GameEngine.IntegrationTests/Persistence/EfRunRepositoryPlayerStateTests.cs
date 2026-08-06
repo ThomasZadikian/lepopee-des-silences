@@ -127,7 +127,8 @@ public sealed class EfRunRepositoryPlayerStateTests : IDisposable
             "1.0.0",
             "1.0.0",
             room,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.IntegrationTests.Common.TestEmotionalAffinityMatrix.Create());
     }
 
     public void Dispose()

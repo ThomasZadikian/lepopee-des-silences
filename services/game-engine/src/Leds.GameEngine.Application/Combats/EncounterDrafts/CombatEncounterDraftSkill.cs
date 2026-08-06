@@ -18,4 +18,4 @@ public sealed record CombatEncounterDraftSkill(
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
     bool IsUltimate = false,
-    string EmotionalRegister = "Neutral");
+    string EmotionalRegister = null!);
