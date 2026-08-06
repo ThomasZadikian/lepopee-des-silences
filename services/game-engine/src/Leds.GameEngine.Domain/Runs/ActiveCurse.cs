@@ -55,7 +55,7 @@ public sealed class ActiveCurse
     public static ActiveCurse Create(
         string key,
         string displayName,
-        string description,
+        string? description,
         double difficultyDelta,
         DateTime appliedAtUtc,
         string? curseDefinitionKey = null,

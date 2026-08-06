@@ -133,8 +133,7 @@ public sealed class SyncPartySkillsCommandHandlerTests
                 0,
                 0,
                 key == "skill.new.protagonist" ? 12 : 9,
-                [],
-                EquippedItemKeys: []));
+                []));
         var merger = new PlayerSkillMerger(catalogGateway.Object);
 
         var handler = new SyncPartySkillsCommandHandler(repo.Object, playerGateway.Object, merger);
