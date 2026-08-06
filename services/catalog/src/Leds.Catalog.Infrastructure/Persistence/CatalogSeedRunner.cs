@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Leds.Catalog.Domain.Gameplay;
 using Leds.Catalog.Domain.Items;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.RewardCursePools;

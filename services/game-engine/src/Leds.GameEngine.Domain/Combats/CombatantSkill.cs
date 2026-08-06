@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Domain.Combats;
 

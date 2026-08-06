@@ -357,7 +357,7 @@ public sealed class PlayerProfileTests
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
             speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
-        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now, "Neutral");
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
 
         profile.Roster.Characters.Should().HaveCount(2);
         var companion = profile.Roster.Characters.Single(c => c.DefinitionKey == "character.thomas");
@@ -375,8 +375,8 @@ public sealed class PlayerProfileTests
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
             speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
-        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now, "Neutral");
-        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now, "Neutral");
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
 
         profile.Roster.Characters.Should().HaveCount(2);
     }
@@ -395,7 +395,7 @@ public sealed class PlayerProfileTests
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
             speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
-        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now, "Neutral");
+        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
         profile.Progression.UnspentStatPoints.Should().Be(3); // 1 leftover + 2 catch-up
         profile.Progression.TotalStatPointsEarned.Should().Be(5); // 3 awarded + 2 catch-up
@@ -410,7 +410,7 @@ public sealed class PlayerProfileTests
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
             speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
-        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now, "Neutral");
+        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
         profile.Progression.UnspentStatPoints.Should().Be(0);
         profile.Progression.TotalStatPointsEarned.Should().Be(0);
@@ -425,7 +425,7 @@ public sealed class PlayerProfileTests
         var firstCompanionStatBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 110, attackPower: 8, defense: 12, startingGuard: 8,
             speed: 8, initiative: 8,focus: 2, mana: 14, charge: 0);
-        profile.RecruitCompanion("character.thomas", "Thomas", firstCompanionStatBlock, ["skill.basic.guard"], now, "Neutral");
+        profile.RecruitCompanion("character.thomas", "Thomas", firstCompanionStatBlock, ["skill.basic.guard"], now);
         var thomas = profile.Roster.Characters.Single(c => c.DefinitionKey == "character.thomas");
         profile.AwardStatPoint(now, amount: 4);
         profile.SpendStatPoint(thomas.Id, PlayerStatKind.AttackPower, now);
@@ -436,7 +436,7 @@ public sealed class PlayerProfileTests
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
             speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
-        profile.RecruitCompanion("character.mane", "Mané", secondCompanionStatBlock, ["skill.basic.strike"], now, "Neutral");
+        profile.RecruitCompanion("character.mane", "Mané", secondCompanionStatBlock, ["skill.basic.strike"], now);
 
         profile.Progression.UnspentStatPoints.Should().Be(1 + 3); // 1 leftover + catch-up to Thomas's 3
         protagonist.StatPointsInvested.Should().Be(0);
