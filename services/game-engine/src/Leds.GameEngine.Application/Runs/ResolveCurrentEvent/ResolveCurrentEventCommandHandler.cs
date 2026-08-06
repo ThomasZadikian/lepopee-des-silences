@@ -595,12 +595,12 @@ public sealed class ResolveCurrentEventCommandHandler
             // catalog key like "canon.skill.regard-infantile:StatModifier" and would otherwise
             // leak straight into player-facing combat log lines).
             var key = string.IsNullOrWhiteSpace(effect.StatusKey) ? $"{d.Key}:{effect.Kind}" : effect.StatusKey;
-            var affinityRegister = string.IsNullOrWhiteSpace(effect.AffinityRegister)
+            EmotionalType? affinityRegister = string.IsNullOrWhiteSpace(effect.AffinityRegister)
                 ? null
                 : EmotionalTypeCode.ParseRequired(
                     effect.AffinityRegister,
                     $"Skill '{d.Key}' affinity modifier register");
-            var affinityOutcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
+            DamageEffectiveness? affinityOutcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
                 ? null
                 : Enum.TryParse<DamageEffectiveness>(effect.AffinityOutcome, true, out var parsedOutcome)
                     ? parsedOutcome

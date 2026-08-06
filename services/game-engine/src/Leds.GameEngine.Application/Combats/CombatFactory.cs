@@ -324,7 +324,8 @@ public sealed class CombatFactory : ICombatFactory
         foreach (var combatant in allies.Where(ally => ally.CharacterInstanceId is not null))
         {
             if (equipmentEffectsByCharacterId?.TryGetValue(
-                    combatant.CharacterInstanceId!.Value, out var characterEffects) != true)
+                    combatant.CharacterInstanceId!.Value, out var characterEffects) != true
+                || characterEffects is null)
                 continue;
 
             ApplyConditionalEquipmentStatBundle(combatant, roomTheme, activeClimate, characterEffects);
@@ -784,7 +785,7 @@ public sealed class CombatFactory : ICombatFactory
             var incoming = EmotionalTypeCode.ParseRequired(
                 effect.AffinityRegister,
                 $"Equipment '{effect.SourceDefinitionKey ?? "<unknown>"}' affinity register");
-            var outcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
+            DamageEffectiveness? outcome = string.IsNullOrWhiteSpace(effect.AffinityOutcome)
                 ? null
                 : Enum.TryParse<DamageEffectiveness>(effect.AffinityOutcome, true, out var parsed)
                     ? parsed
