@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.GetRunInventory;
@@ -24,7 +25,8 @@ public sealed record RunItemDto(
     string? ContainedLiquidDefinitionKey = null,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
-    bool RequiresLineOfSight = false)
+    bool RequiresLineOfSight = false,
+    string? EquipSlot = null)
 {
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
@@ -44,5 +46,6 @@ public sealed record RunItemDto(
         item.ContainedLiquidDefinitionKey,
         item.TacticalRange,
         item.TacticalAreaShape,
-        item.RequiresLineOfSight);
+        item.RequiresLineOfSight,
+        CatalogRunItemMapper.MapEquipSlot(item.Type));
 }

@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.PalaceLaws;
+﻿using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.Dtos;
@@ -190,7 +191,11 @@ public sealed record RunItemDto(
     string? ContainedLiquidDefinitionKey = null,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
-    bool RequiresLineOfSight = false)
+    bool RequiresLineOfSight = false,
+    // Weapon/Accessory/Relic, or null when this Type isn't equippable at all — same
+    // CatalogRunItemMapper.MapEquipSlot authority as the catalog item listing and the
+    // actual equip command, so the frontend never re-derives it.
+    string? EquipSlot = null)
 {
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
@@ -209,5 +214,6 @@ public sealed record RunItemDto(
         item.ContainedLiquidDefinitionKey,
         item.TacticalRange,
         item.TacticalAreaShape,
-        item.RequiresLineOfSight);
+        item.RequiresLineOfSight,
+        CatalogRunItemMapper.MapEquipSlot(item.Type));
 }
