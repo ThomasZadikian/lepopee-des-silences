@@ -32,7 +32,6 @@ import {
   projectToScreenCamera,
   screenToCellCamera,
   visibleCellRange,
-  type CameraParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
 import {
   GROUND_ANCHOR_RATIO,
@@ -47,12 +46,13 @@ import {
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
+import { useCombatCamera } from '../composables/useCombatCamera';
 import {
   FLOAT_MS,
   FLOAT_RISE_PX,
   IMPACT_MS,
   PACE,
-  useCombatPlayback,
+  type CombatCameraCue,
   type PendingSort,
 } from '../composables/useCombatPlayback';
 import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
@@ -99,7 +99,6 @@ const store = useTacticalCombatStore();
 const emotionalRegisters = useEmotionalRegisterCatalog();
 const { getSprite } = useTerrainSprites();
 const sortEffects = useSortEffects();
-const playback = useCombatPlayback();
 
 const canvasEl = ref<HTMLCanvasElement | null>(null);
 const bottomEl = ref<HTMLElement | null>(null);
@@ -202,26 +201,55 @@ const roomTheme = computed<RoomTheme>(() =>
 );
 
 // ── Caméra de combat ────────────────────────────────────────────────────────
-// Contrairement à l'ancienne projection « fit-to-grid », la taille d'une case ne dépend plus
-// des dimensions de l'arène. Une grande carte déborde donc naturellement du viewport au lieu
-// d'être réduite jusqu'à devenir illisible.
-const COMBAT_DEFAULT_ZOOM = 0.70;
-
-const combatCamera = ref<CameraParams>({
-  camX: 0,
-  camY: 0,
-  zoom: COMBAT_DEFAULT_ZOOM,
-});
+// Échelle fixe à 0.55 (voir useCombatCamera) : la taille visuelle des cases ne dépend plus de
+// la taille de l'arène. La caméra se recentre séquentiellement sur l'acteur, cadre l'action
+// avant un sort/objet et accompagne l'unité pendant sa marche.
+const combatCameraController = useCombatCamera();
+const combatCamera = combatCameraController.camera;
 
 function centerCombatCamera(): void {
   const field = battlefield.value;
   if (!field) return;
 
-  combatCamera.value = {
-    ...combatCamera.value,
-    camX: (field.width - 1) / 2,
-    camY: (field.height - 1) / 2,
-  };
+  combatCameraController.jumpTo(
+    (field.width - 1) / 2,
+    (field.height - 1) / 2,
+  );
+}
+
+function focusInitialCombatCamera(): void {
+  const active = store.activeCombatant;
+  if (active) {
+    combatCameraController.jumpTo(active.x, active.y);
+    return;
+  }
+
+  centerCombatCamera();
+}
+
+/**
+ * Pont entre la chronologie métier et la caméra. `useCombatPlayback` attend cette Promise :
+ * aucun télégraphe, sort ou impact ne peut donc commencer tant que le recentrage précédent
+ * n'est pas terminé.
+ */
+async function playCameraCue(cue: CombatCameraCue): Promise<void> {
+  let focusX = cue.actorX;
+  let focusY = cue.actorY;
+
+  if (
+    cue.kind === 'action'
+      && typeof cue.targetX === 'number'
+      && typeof cue.targetY === 'number'
+  ) {
+    // Cadre l'acteur et la cible ensemble. À zoom fixe, le milieu est le cadrage le plus stable
+    // et évite de téléporter brutalement la caméra de l'un vers l'autre.
+    focusX = (cue.actorX + cue.targetX) / 2;
+    focusY = (cue.actorY + cue.targetY) / 2;
+  }
+
+  await combatCameraController.focusTo(focusX, focusY, {
+    instant: prefersReducedMotion,
+  });
 }
 
 /**
@@ -1032,9 +1060,8 @@ const drawPlan = computed(() => {
   const field = battlefield.value;
   if (!field || canvasSize.value.width === 0 || canvasSize.value.height === 0) return [];
 
-  // `buildBattlePlan` reste pour l'instant la source de vérité des sprites, surbrillances et
-  // sortKey. Ses coordonnées écran historiques sont remplacées juste après par la projection
-  // caméra ; cela permet de migrer la scène sans dupliquer toute la logique tactique.
+  // Le plan reçoit directement la caméra et les limites visibles : aucune projection
+  // fit-to-grid intermédiaire et aucune boucle sur les cases hors viewport.
   const plan = buildBattlePlan({
     canvasWidth: canvasSize.value.width,
     canvasHeight: canvasSize.value.height,
@@ -1045,6 +1072,8 @@ const drawPlan = computed(() => {
     floor: field.floor,
     theme: roomTheme.value,
     ambientTint: 'neutral',
+    camera: combatCamera.value,
+    visibleBounds: visibleBounds.value,
     // La portée de l'allié survolé emprunte la même surbrillance que le déplacement du
     // combattant actif : c'est la même information, lue à l'avance sur quelqu'un d'autre.
     reachableCells: new Set([...reachableCells.value, ...hoveredAllyCells.value]),
@@ -1060,18 +1089,7 @@ const drawPlan = computed(() => {
     hoveredCell: hoveredCell.value,
   });
 
-  const bounds = visibleBounds.value;
-
-  return plan
-    .filter((entry) =>
-      entry.x >= bounds.minX
-        && entry.x <= bounds.maxX
-        && entry.y >= bounds.minY
-        && entry.y <= bounds.maxY)
-    .map((entry) => ({
-      ...entry,
-      ...projectBattlePoint(entry.x, entry.y),
-    }));
+  return plan;
 });
 
 /**
@@ -1494,7 +1512,9 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
 }
 
 function paintSorts(ctx: CanvasRenderingContext2D) {
-  sortEffects.renderSorts(ctx);
+  // La projection est relue à chaque frame : même si le canvas vient de changer de taille,
+  // le sort reste attaché à ses coordonnées monde.
+  sortEffects.renderSorts(ctx, cameraProjectionParams.value);
 }
 
 async function playSortAnimation(sort: PendingSort): Promise<void> {
@@ -1716,10 +1736,36 @@ function onCanvasMove(event: MouseEvent) {
   hoveredCell.value = cellAtPointer(event);
 }
 
+let previousFrameTimestamp: number | null = null;
+
+function followWalkingCombatant(timestamp: number): void {
+  const currentWalk = store.playback.walk;
+  const deltaSeconds = previousFrameTimestamp === null
+    ? 0
+    : (timestamp - previousFrameTimestamp) / 1000;
+  previousFrameTimestamp = timestamp;
+
+  if (!currentWalk) return;
+
+  const unit = store.allCombatants.find(
+    (candidate) => candidate.combatant.id === currentWalk.combatantId,
+  );
+  if (!unit) return;
+
+  const at = store.playback.positionOf(
+    unit.combatant.id,
+    { x: unit.x, y: unit.y },
+    timestamp,
+  );
+
+  combatCameraController.follow(at.x, at.y, deltaSeconds);
+}
+
 function renderLoop(timestamp: number) {
-  // La frame suivante est demandée quoi qu'il arrive : sans ce garde-fou, une seule erreur de
-  // peinture arrête la boucle définitivement et fige tout le champ de bataille, ce qui est
-  // toujours pire que d'avoir sauté une image.
+  // Le suivi de marche est mis à jour avant toute projection de la frame : terrain, unités,
+  // hit-test indirect, FX et chiffres lisent tous exactement la même position de caméra.
+  followWalkingCombatant(timestamp);
+
   try {
     paintCanvas(timestamp);
   } catch (error) {
@@ -1806,10 +1852,29 @@ watch(
     battlefield.value?.height ?? 0,
   ] as const,
   () => {
-    centerCombatCamera();
+    focusInitialCombatCamera();
     hoveredCell.value = null;
   },
   { immediate: true },
+);
+
+// Quand la chronologie est au repos, le changement d'initiative recentre doucement la caméra
+// sur la nouvelle entité active. Pendant playback, c'est la chronologie elle-même qui pilote la
+// caméra événement par événement afin qu'aucun recentrage ne concurrence un FX en cours.
+watch(
+  () => [
+    store.combat?.activeCombatantId ?? null,
+    store.playback.isPlaying,
+    store.isLoading,
+  ] as const,
+  () => {
+    if (store.playback.isPlaying || store.isLoading) return;
+    const active = store.activeCombatant;
+    if (!active) return;
+    void combatCameraController.focusTo(active.x, active.y, {
+      instant: prefersReducedMotion,
+    });
+  },
 );
 
 watch(
@@ -1826,6 +1891,7 @@ watch(
 onMounted(() => {
   store.playback.setSortAnimator(playSortAnimation);
   store.playback.setSceneTransitionWaiter(waitForSceneTransition);
+  store.playback.setCameraAnimator(playCameraCue);
 
   skillsApi.listActive()
     .then((response) => {
@@ -1852,6 +1918,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   store.playback.setSortAnimator(null);
   store.playback.setSceneTransitionWaiter(null);
+  store.playback.setCameraAnimator(null);
+  combatCameraController.cancel();
   sortEffects.reset();
   globalThis.cancelAnimationFrame(frameHandle);
   observer?.disconnect();
@@ -1863,7 +1931,7 @@ onBeforeUnmount(() => {
   <section
     v-if="store.combat"
     class="tbattle"
-    :class="{ 'tbattle--transitioning': playback.isTransitioning }"
+    :class="{ 'tbattle--transitioning': store.playback.isTransitioning }"
   >
     <!-- ── Initiative rail (left) ── -->
     <aside class="tbattle__initiative-rail">

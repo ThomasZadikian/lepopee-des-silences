@@ -6,100 +6,21 @@ import type {
   TacticalCombatRuntimeDto,
 } from '../types/combatContracts';
 
-/**
- * Le rythme du combat tactique.
- *
- * Le serveur résout un tour entier d'un coup ; sans mise en scène, le joueur verrait des
- * figures se téléporter et des dégâts surgir sans cause. Ce lecteur déroule la chronologie
- * renvoyée à côté de l'état final, en respectant les temps de la référence de conception.
- *
- * Aucune de ces durées n'est cosmétique. Le temps de réflexion donne à l'adversaire l'air de
- * décider plutôt que de réagir ; le pas de marche rend le trajet lisible, en particulier quand
- * il contourne un mur ; la pause finale laisse le coup se déposer avant que la main revienne.
- *
- * Optimisé pour O-014 : timings dynamiques en fonction de la distance.
- * Optimisé pour O-017 : transitions entre les tours (fondu).
- * Optimisé pour O-018 : timings spécifiques pour les ennemis.
- */
-
-/**
- * Multiplicateur global de rythme, appliqué à toutes les durées de mise en scène du combat
- * (ici, mais aussi useSortEffects et TacticalCombatScene, qui l'importent) — un seul cadran
- * plutôt que de retoucher chaque BALANCE KNOB séparément. >1 ralentit l'ensemble, <1
- * l'accélère. // BALANCE KNOB
- */
+/** Multiplicateur global de rythme. >1 ralentit, <1 accélère. */
 export const PACE = 1.25;
 
-/** Avant qu'un ennemi n'entame son tour : il regarde le terrain. // BALANCE KNOB */
 export const THINK_MS = Math.round(520 * PACE);
-
-/** Par case franchie (base). // BALANCE KNOB */
 export const BASE_STEP_MS = Math.round(145 * PACE);
-
-/** Après le geste d'un ennemi, avant de passer la main. // BALANCE KNOB */
 export const SETTLE_MS = Math.round(620 * PACE);
-
-/** Durée de vie d'un chiffre flottant, et hauteur de sa montée. */
 export const FLOAT_MS = Math.round(1100 * PACE);
 export const FLOAT_RISE_PX = 30;
-
-/**
- * Durée de vie d'une onde d'impact — partagée entre la file qui la conserve ici (pruneImpacts)
- * et le rendu qui la fait s'estomper (TacticalCombatScene.paintImpacts). Deux copies de cette
- * valeur qui divergent font disparaître l'impact d'un coup, avant la fin de son fondu.
- */
 export const IMPACT_MS = Math.round(800 * PACE);
-
-/** Durée de la transition entre les tours (fondu). // O-017 */
 export const TURN_TRANSITION_MS = Math.round(300 * PACE);
-
-/**
- * Pause après un tick de DoT/HoT — assez pour que le chiffre qui vient de s'envoler se lise
- * avant que la chronologie n'enchaîne, sans le temps de réflexion ni le settle d'une vraie
- * action : personne n'a rien décidé, un statut vient seulement de faire ce pour quoi il a été
- * posé. // BALANCE KNOB
- */
 export const TICK_SETTLE_MS = Math.round(400 * PACE);
-
-/**
- * Pause entre deux impacts d'un même tick — sans elle, plusieurs DoT/HoT empilés sur la même
- * cible (ou deux cibles différentes touchées à l'instant du même tick) font s'envoler leurs
- * chiffres au même pixel et au même instant, et l'un efface visuellement l'autre. Chaque
- * impact se lit donc l'un après l'autre plutôt que tous à la fois. // BALANCE KNOB
- */
 export const TICK_IMPACT_STAGGER_MS = Math.round(260 * PACE);
-
-/**
- * Durée pendant laquelle la zone d'un geste adverse reste allumée avant qu'il ne parte.
- *
- * C'est un temps de lecture, pas une temporisation : sans lui, l'adversaire se déplace et
- * frappe dans le même souffle, et le joueur découvre la portée d'une compétence en la
- * subissant. Calé assez haut pour qu'on ait le temps de compter les cases, assez bas pour
- * qu'une file de six créatures ne devienne pas une attente. // BALANCE KNOB
- */
 export const TELEGRAPH_MS = Math.round(1200 * PACE);
-
-/**
- * L'annonce d'un geste à venir : ce que l'adversaire s'apprête à couvrir.
- *
- * Vit ici et non dans le rendu parce que sa durée fait partie du rythme du combat, au même
- * titre que le pas de marche ou la retombée d'un coup.
- */
-export type Telegraph = {
-  /**
-   * `Move` trace un trajet, une action trace une zone d'impact — deux lectures distinctes.
-   * `Tick` ne s'annonce jamais (voir `play()`) mais figure ici pour que ce type reste celui
-   * de `TacticalCombatEventDto['kind']` sans conversion.
-   */
-  kind: 'Move' | 'Skill' | 'Item' | 'Tick';
-  cells: Array<{ x: number; y: number }>;
-  label: string;
-};
-
-/** Multiplicateur de timing pour les ennemis (O-018). */
-export const ENEMY_STEP_MULTIPLIER = 1.2; // 20% plus lent
-/** Multiplicateur de timing pour le settle des ennemis (O-018). */
-export const ENEMY_SETTLE_MULTIPLIER = 1.5; // 50% plus long
+export const ENEMY_STEP_MULTIPLIER = 1.2;
+export const ENEMY_SETTLE_MULTIPLIER = 1.5;
 
 export function dynamicStepDurationMs(pathLength: number, isEnemy = false): number {
   const baseStep = isEnemy
@@ -118,11 +39,6 @@ export type FloatingNumber = {
   text: string;
   color: string;
   bornAt: number;
-  /** `guard` paints a small shield glyph beside the number (see TacticalCombatScene's
-   * paintFloatingNumbers) — what Garde absorbed reads as a distinct event from a real hit,
-   * never as a duller version of the same one. `effectiveness` is the Faiblesse/Résistance/
-   * Immunisé label from the type system, painted higher up so it never overlaps the
-   * damage number it explains. */
   kind?: 'damage' | 'guard' | 'effectiveness';
 };
 
@@ -142,8 +58,18 @@ export type PendingSort = {
   casterY: number;
 };
 
-type SortAnimator = (sort: PendingSort) => Promise<void>;
-type SceneTransitionWaiter = () => Promise<void>;
+/**
+ * Ordre cinématique envoyé par la chronologie à la scène.
+ * La scène doit résoudre la Promise uniquement lorsque le mouvement de caméra est terminé.
+ */
+export type CombatCameraCue = {
+  kind: 'actor' | 'action';
+  actorId: string;
+  actorX: number;
+  actorY: number;
+  targetX?: number;
+  targetY?: number;
+};
 
 export type WalkAnimation = {
   combatantId: string;
@@ -152,20 +78,23 @@ export type WalkAnimation = {
   isEnemy: boolean;
 };
 
+export type Telegraph = {
+  kind: 'Move' | 'Skill' | 'Item' | 'Tick';
+  cells: Array<{ x: number; y: number }>;
+  label: string;
+};
+
+type SortAnimator = (sort: PendingSort) => Promise<void>;
+type SceneTransitionWaiter = () => Promise<void>;
+type CameraAnimator = (cue: CombatCameraCue) => Promise<void>;
+
 const ALLY_HIT_COLOR = '#ff8f7a';
 const ENEMY_HIT_COLOR = '#ffd98a';
 const HEAL_COLOR = '#86dcb4';
-/** Gris froid : un coup manqué n'est pas une quantité, il ne doit pas se lire comme un chiffre. */
 const MISS_COLOR = '#c3c0d6';
-/** Jaune franc, associé au petit bouclier peint à côté (voir paintFloatingNumbers) — jamais
- * confondu avec ENEMY_HIT_COLOR malgré la parenté de teinte, l'icône fait la différence. */
 const GUARD_COLOR = '#ffcc33';
-/** Rouge vif : une Faiblesse amplifie les dégâts, elle doit lire comme une bonne nouvelle
- * pour qui frappe. */
 const WEAKNESS_COLOR = '#ff5c4d';
-/** Bleu froid : une Résistance atténue les dégâts, à l'opposé de la Faiblesse. */
 const RESISTANT_COLOR = '#7fb2e0';
-/** Gris neutre, même famille que MISS_COLOR : une immunité n'est pas un chiffre non plus. */
 const IMMUNE_COLOR = '#c3c0d6';
 
 const EFFECTIVENESS_LABELS: Record<'Weak' | 'Resistant' | 'Immune', string> = {
@@ -180,46 +109,25 @@ const EFFECTIVENESS_COLORS: Record<'Weak' | 'Resistant' | 'Immune', string> = {
   Immune: IMMUNE_COLOR,
 };
 
+/**
+ * Lecteur séquentiel de la chronologie tactique.
+ *
+ * Principe central : caméra → annonce → déplacement/sort → impacts → settle. Chaque étape est
+ * attendue avant la suivante. La seule animation volontairement concomitante est le suivi de
+ * caméra pendant une marche, qui appartient au même geste de déplacement et est piloté par la
+ * scène via `walk`/`positionOf`.
+ */
 export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
   const floats = ref<FloatingNumber[]>([]);
   const impacts = ref<ImpactEffect[]>([]);
   const isPlaying = ref(false);
-
   const actionBanner = ref<string | null>(null);
-
   const pinned = ref<Record<string, { x: number; y: number }>>({});
-
-  /**
-   * Vitalité affichée pendant une chronologie, par combattant.
-   *
-   * Le serveur résout un tour entier (les deux ennemis compris) avant de répondre : sans ce
-   * relevé, `combat.value` porte déjà le total final dès la réponse, et la barre de vie du
-   * joueur s'effondre au premier instant du tour ennemi — avant même que le premier ennemi
-   * n'ait animé son geste. Reconstruit la vitalité de départ en additionnant les
-   * `vitalityDelta` de la chronologie (positif = perdu) par-dessus la valeur finale, puis les
-   * retranche un à un au fil de la lecture, pour que la barre ne bouge qu'au moment exact où
-   * le coup qui l'explique atterrit.
-   */
   const displayVitals = ref<Record<string, number>>({});
-
-  /**
-   * États actifs affichés pendant une chronologie, par combattant.
-   *
-   * Contrairement à la vitalité, la chronologie ne détaille pas quel geste applique, empile ou
-   * expire un état (`TacticalImpactDto` ne porte qu'un delta de vitalité) — impossible de la
-   * reconstruire coup par coup. On fige donc la liste telle qu'elle était juste avant l'action
-   * (voir `pinBefore`) pendant toute la lecture, et on la relâche une fois la chronologie
-   * terminée : un stack de dégât continu ou un affaiblissement n'apparaît/ne change qu'une fois
-   * le geste qui l'explique effectivement joué à l'écran, jamais dès la réponse serveur.
-   */
   const displayStatusEffects = ref<Record<string, CombatantStatusEffectDto[]>>({});
-
-  // O-017: État de transition entre les tours
   const isTransitioning = ref(false);
   const transitionPhase = ref<'fadeOut' | 'fadeIn' | null>(null);
-
-  /** La zone annoncée par le geste adverse en cours de préparation. */
   const telegraph = shallowRef<Telegraph | null>(null);
 
   let floatSeq = 0;
@@ -227,6 +135,7 @@ export function useCombatPlayback() {
   let timers: ReturnType<typeof globalThis.setTimeout>[] = [];
   let sortAnimator: SortAnimator | null = null;
   let sceneTransitionWaiter: SceneTransitionWaiter | null = null;
+  let cameraAnimator: CameraAnimator | null = null;
 
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -243,38 +152,8 @@ export function useCombatPlayback() {
     actionBanner.value = null;
     telegraph.value = null;
     isPlaying.value = false;
-    // O-017: Réinitialiser l'état de transition
     isTransitioning.value = false;
     transitionPhase.value = null;
-  }
-
-  /**
-   * Branche la peinture canvas sur la chronologie métier. Le lecteur reste testable sans DOM,
-   * mais, dans la scène réelle, une compétence n'est considérée terminée qu'une fois son effet
-   * peint achevé.
-   */
-  function setSortAnimator(animator: SortAnimator | null) {
-    sortAnimator = animator;
-  }
-
-  /** Attend le repli/agrandissement réel du plateau avant de calculer la projection d'un FX. */
-  function setSceneTransitionWaiter(waiter: SceneTransitionWaiter | null) {
-    sceneTransitionWaiter = waiter;
-  }
-
-  /** La vitalité d'un combattant à cet instant : reconstruite pendant la lecture, réelle sinon. */
-  function vitalsOf(combatantId: string, settled: number): number {
-    const tracked = displayVitals.value[combatantId];
-    return tracked === undefined ? settled : tracked;
-  }
-
-  /** Les états actifs d'un combattant à cet instant : figés pendant la lecture, réels sinon. */
-  function statusEffectsOf(
-    combatantId: string,
-    settled: CombatantStatusEffectDto[],
-  ): CombatantStatusEffectDto[] {
-    const tracked = displayStatusEffects.value[combatantId];
-    return tracked === undefined ? settled : tracked;
   }
 
   function reset() {
@@ -283,15 +162,38 @@ export function useCombatPlayback() {
     impacts.value = [];
   }
 
+  function setSortAnimator(animator: SortAnimator | null) {
+    sortAnimator = animator;
+  }
+
+  function setSceneTransitionWaiter(waiter: SceneTransitionWaiter | null) {
+    sceneTransitionWaiter = waiter;
+  }
+
+  function setCameraAnimator(animator: CameraAnimator | null) {
+    cameraAnimator = animator;
+  }
+
+  function vitalsOf(combatantId: string, settled: number): number {
+    const tracked = displayVitals.value[combatantId];
+    return tracked === undefined ? settled : tracked;
+  }
+
+  function statusEffectsOf(
+    combatantId: string,
+    settled: CombatantStatusEffectDto[],
+  ): CombatantStatusEffectDto[] {
+    const tracked = displayStatusEffects.value[combatantId];
+    return tracked === undefined ? settled : tracked;
+  }
+
   function pruneFloats(now: number) {
     if (floats.value.length === 0) return;
-
     floats.value = floats.value.filter((f) => now - f.bornAt < FLOAT_MS);
   }
 
   function pruneImpacts(now: number) {
     if (impacts.value.length === 0) return;
-
     impacts.value = impacts.value.filter((i) => now - i.bornAt < IMPACT_MS);
   }
 
@@ -308,21 +210,6 @@ export function useCombatPlayback() {
     ];
   }
 
-  /**
-   * Calcule le timing dynamique pour un pas de déplacement (O-014 + O-018).
-   * - Déplacements courts (1-2 cases) : plus rapides (70% de BASE_STEP_MS).
-   * - Déplacements longs (5+ cases) : plus lents (130% de BASE_STEP_MS).
-   * - Ennemis : 20% plus lents (ENEMY_STEP_MULTIPLIER).
-   */
-  /**
-   * La position d'un combattant à cet instant : posée case par case s'il marche, épinglée
-   * sinon — jamais interpolée en continu entre deux cases.
-   *
-   * Aligné sur `usePartyTokenPath` (exploration) : la figure tient chaque case le temps de
-   * `stepMs` avant de sauter d'un bloc à la suivante, plutôt que de glisser en continu d'une
-   * case à l'autre. Un glissé continu se lit comme flou/approximatif à côté du pas net de
-   * l'exploration ; la case par case est le rythme voulu partout, pas seulement hors combat.
-   */
   function positionOf(
     combatantId: string,
     settled: { x: number; y: number },
@@ -333,14 +220,8 @@ export function useCombatPlayback() {
     if (current && current.combatantId === combatantId && current.path.length > 0) {
       const stepMs = dynamicStepDurationMs(current.path.length - 1, current.isEnemy);
       const progress = (now - current.startedAt) / stepMs;
-
-      // `now` vient de l'horodatage de `requestAnimationFrame`, qui date du DÉBUT de la frame
-      // et peut donc précéder le `performance.now()` relevé au lancement de la marche. Sans ce
-      // plancher, la progression passe négative, l'index aussi, et la lecture d'une case
-      // inexistante fait tomber toute la boucle de rendu.
       const step = Math.max(0, Math.floor(progress));
       const at = Math.min(current.path.length - 1, step);
-
       return { x: current.path[at].x, y: current.path[at].y };
     }
 
@@ -348,20 +229,20 @@ export function useCombatPlayback() {
   }
 
   function pushFloat(
-    x: number, y: number, delta: number, targetIsAlly: boolean, now: number, missed = false,
+    x: number,
+    y: number,
+    delta: number,
+    targetIsAlly: boolean,
+    now: number,
+    missed = false,
   ) {
-    // Un soin monte en vert avec un signe explicite : « +8 » et « −8 » ne doivent jamais se
-    // confondre d'un coup d'œil.
     const healed = delta < 0;
-
     floats.value = [
       ...floats.value,
       {
         id: (floatSeq += 1),
         x,
         y,
-        // Un coup manqué monte en toutes lettres et en gris : c'est un événement, pas une
-        // quantité, et rien ne doit laisser croire qu'il a coûté quelque chose.
         text: missed ? 'Manqué' : healed ? `+${Math.abs(delta)}` : `−${delta}`,
         color: missed
           ? MISS_COLOR
@@ -371,11 +252,6 @@ export function useCombatPlayback() {
     ];
   }
 
-  /**
-   * Ce que la Garde vient d'encaisser — un événement en soi, jamais une variante plus terne
-   * d'un coup normal : sans lui, un coup entièrement absorbé (vitalité inchangée) ne laissait
-   * absolument rien voir, comme si l'action n'avait eu aucun effet.
-   */
   function pushGuardFloat(x: number, y: number, amount: number, now: number) {
     floats.value = [
       ...floats.value,
@@ -391,10 +267,11 @@ export function useCombatPlayback() {
     ];
   }
 
-  /** Le petit mot "Faiblesse"/"Résistance"/"Immunisé" du système de types émotionnels — un
-   * float à part, jamais fondu dans le chiffre de dégâts qu'il explique. */
   function pushEffectivenessFloat(
-    x: number, y: number, effectiveness: 'Weak' | 'Resistant' | 'Immune', now: number,
+    x: number,
+    y: number,
+    effectiveness: 'Weak' | 'Resistant' | 'Immune',
+    now: number,
   ) {
     floats.value = [
       ...floats.value,
@@ -410,15 +287,8 @@ export function useCombatPlayback() {
     ];
   }
 
-  /**
-   * Allume la zone du geste à venir, laisse au joueur le temps de la lire, puis l'éteint.
-   *
-   * Un geste sans cases annoncées (chronologie tronquée, ancien serveur) retombe sur le simple
-   * temps de réflexion : mieux vaut une pause muette qu'une annonce vide.
-   */
   async function announce(event: TacticalCombatEventDto) {
     const cells = event.telegraphCells ?? [];
-
     if (cells.length === 0) {
       await wait(THINK_MS);
       return;
@@ -436,32 +306,103 @@ export function useCombatPlayback() {
     telegraph.value = null;
   }
 
-  /**
-   * Déroule une chronologie. Résout quand tout est joué — l'appelant peut alors rendre la main
-   * au joueur en sachant que plus rien ne bouge.
-   *
-   * Optimisé pour O-014 : utilise des timings dynamiques pour les déplacements.
-   * Optimisé pour O-017 : ajoute des transitions entre les tours.
-   * Optimisé pour O-018 : timings spécifiques pour les ennemis.
-   */
+  function settledPositionMap(finalState: TacticalCombatRuntimeDto) {
+    return new Map(
+      [...finalState.allies, ...finalState.enemies]
+        .map((unit) => [unit.combatant.id, { x: unit.x, y: unit.y }] as const),
+    );
+  }
+
+  function actorPosition(
+    event: TacticalCombatEventDto,
+    settled: ReadonlyMap<string, { x: number; y: number }>,
+  ): { x: number; y: number } {
+    const pinnedActor = pinned.value[event.actorId];
+    if (pinnedActor) return pinnedActor;
+
+    // À l'ouverture du combat il peut ne pas y avoir de pinBefore. Pour un déplacement, la
+    // première case du chemin est alors un meilleur point de départ visuel que la position
+    // finale déjà présente dans `finalState`.
+    if (event.kind === 'Move' && event.path.length > 0) return event.path[0];
+
+    return settled.get(event.actorId)
+      ?? event.path[0]
+      ?? {
+        x: typeof event.targetX === 'number' ? event.targetX : 0,
+        y: typeof event.targetY === 'number' ? event.targetY : 0,
+      };
+  }
+
+  async function cueActor(
+    event: TacticalCombatEventDto,
+    position: { x: number; y: number },
+  ) {
+    if (!cameraAnimator || event.kind === 'Tick') return;
+    await cameraAnimator({
+      kind: 'actor',
+      actorId: event.actorId,
+      actorX: position.x,
+      actorY: position.y,
+    });
+  }
+
+  async function cueAction(
+    event: TacticalCombatEventDto,
+    position: { x: number; y: number },
+  ) {
+    if (!cameraAnimator) return;
+    if (typeof event.targetX !== 'number' || typeof event.targetY !== 'number') return;
+
+    await cameraAnimator({
+      kind: 'action',
+      actorId: event.actorId,
+      actorX: position.x,
+      actorY: position.y,
+      targetX: event.targetX,
+      targetY: event.targetY,
+    });
+  }
+
+  function applyImpact(
+    impact: TacticalCombatEventDto['impacts'][number],
+    allyIds: ReadonlySet<string>,
+    at: number,
+  ) {
+    const targetIsAlly = allyIds.has(impact.combatantId);
+    const guardAbsorbed = impact.guardAbsorbed ?? 0;
+
+    if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
+    if (impact.missed || impact.vitalityDelta !== 0) {
+      pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+    }
+    if (impact.effectiveness) {
+      pushEffectivenessFloat(impact.x, impact.y, impact.effectiveness, at);
+    }
+
+    if (!impact.missed) {
+      displayVitals.value = {
+        ...displayVitals.value,
+        [impact.combatantId]:
+          (displayVitals.value[impact.combatantId] ?? 0) - impact.vitalityDelta,
+      };
+      pushImpact(impact.x, impact.y, targetIsAlly, at);
+    }
+  }
+
   async function play(
     events: readonly TacticalCombatEventDto[],
     finalState: TacticalCombatRuntimeDto,
     now: () => number,
   ): Promise<void> {
     if (events.length === 0) {
-      // Rien à rejouer : relâche immédiatement le gel posé par `pinBefore`, sans quoi les
-      // états actifs resteraient figés sur leur valeur d'avant l'action indéfiniment.
       displayStatusEffects.value = {};
       return;
     }
 
-    const allyIds = new Set(finalState.allies.map((a) => a.combatant.id));
+    const allyIds = new Set<string>(finalState.allies.map((a) => a.combatant.id));
+    const settledPositions = settledPositionMap(finalState);
     let previousActorId: string | null = null;
 
-    // Reconstruit la vitalité de départ (avant cette chronologie) en additionnant, par
-    // combattant, tout ce que la chronologie lui fera perdre ou lui rendra par-dessus l'état
-    // final déjà reçu — voir la doc de `displayVitals` plus haut.
     const startingVitals: Record<string, number> = {};
     for (const combatant of [...finalState.allies, ...finalState.enemies]) {
       startingVitals[combatant.combatant.id] = combatant.combatant.currentVitality;
@@ -478,18 +419,14 @@ export function useCombatPlayback() {
     isPlaying.value = true;
 
     try {
-      // `isPlaying` rétracte le HUD et rend de la hauteur au canvas. La projection du sort ne
-      // doit être calculée qu'après cette transition : sinon son centre conserve les coordonnées
-      // de l'ancien plateau et l'effet paraît partir en retard ou à côté de la case choisie.
+      // Le HUD finit d'abord sa transition. La caméra ne commence qu'ensuite.
       if (sceneTransitionWaiter) await sceneTransitionWaiter();
 
       for (const event of events) {
         const actorIsAlly = allyIds.has(event.actorId);
-
         const beginsEnemyTurn = !actorIsAlly && event.actorId !== previousActorId;
+        const actorPos = actorPosition(event, settledPositions);
 
-        // Un déplacement et la compétence qui le suit appartiennent au même tour : la
-        // transition et le temps de réflexion ne se jouent qu'une fois pour cette paire.
         if (beginsEnemyTurn) {
           isTransitioning.value = true;
           transitionPhase.value = 'fadeOut';
@@ -500,59 +437,39 @@ export function useCombatPlayback() {
           transitionPhase.value = null;
         }
 
-        // L'adversaire annonce avant d'agir — chaque geste, pas seulement le premier du tour :
-        // un déplacement puis une frappe sont deux zones différentes, et c'est justement la
-        // seconde que le joueur doit pouvoir lire. Un allié agit sur ordre du joueur, qui vient
-        // de désigner sa cible : lui montrer sa propre zone ne lui apprendrait rien et le faire
-        // attendre passerait pour de la latence. Un tick n'est ni l'un ni l'autre — personne ne
-        // vient de choisir quoi que ce soit, il n'a pas de zone à annoncer.
+        // Le recentrage sur l'entité active est une vraie étape de la chronologie : rien ne
+        // s'annonce et aucun effet ne part avant sa fin.
+        await cueActor(event, actorPos);
+
+        // Pour un geste adverse, la caméra cadre l'acteur + sa cible AVANT le télégraphe : la
+        // zone annoncée doit forcément être visible pendant son temps de lecture. Le joueur,
+        // lui, n'a pas besoin de télégraphe sur l'ordre qu'il vient de donner ; son cadrage
+        // d'action se fera juste avant le FX plus bas.
+        if (!actorIsAlly && (event.kind === 'Skill' || event.kind === 'Item')) {
+          await cueAction(event, actorPos);
+        }
         if (!actorIsAlly && event.kind !== 'Tick') await announce(event);
         previousActorId = event.actorId;
 
         if (event.kind === 'Tick') {
-          const tickImpacts = event.impacts;
-          for (let i = 0; i < tickImpacts.length; i += 1) {
-            const impact = tickImpacts[i];
-            const at = now();
-            const targetIsAlly = allyIds.has(impact.combatantId);
-            const guardAbsorbed = impact.guardAbsorbed ?? 0;
-            if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
-            // Une garde qui absorbe tout laisse la vitalité intacte — un « −0 » ne dirait rien
-            // que le chiffre de garde ci-dessus ne dise déjà mieux.
-            if (impact.missed || impact.vitalityDelta !== 0) {
-              pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
-            }
-            if (!impact.missed) {
-              displayVitals.value = {
-                ...displayVitals.value,
-                [impact.combatantId]:
-                  (displayVitals.value[impact.combatantId] ?? 0) - impact.vitalityDelta,
-              };
-              pushImpact(impact.x, impact.y, targetIsAlly, at);
-            }
-            // Plusieurs ticks à la fois (plusieurs DoT/HoT empilés) se lisent l'un après
-            // l'autre, jamais tous d'un coup au même pixel — voir TICK_IMPACT_STAGGER_MS.
-            if (i < tickImpacts.length - 1) await wait(TICK_IMPACT_STAGGER_MS);
+          for (let i = 0; i < event.impacts.length; i += 1) {
+            const impact = event.impacts[i];
+            applyImpact(impact, allyIds, now());
+            if (i < event.impacts.length - 1) await wait(TICK_IMPACT_STAGGER_MS);
           }
-          // Le tick suivant (ou le geste suivant) ne démarre pas pendant que les chiffres et
-          // impacts du dernier tick sont encore visibles : ils forment une seule animation de
-          // groupe, mais ce groupe doit être entièrement terminé avant la suite.
           await wait(Math.max(TICK_SETTLE_MS, FLOAT_MS, IMPACT_MS));
           continue;
         }
 
         if (event.kind === 'Move' && event.path.length > 0) {
-          // Le chemin serveur ne contient que les cases foulées, origine exclue. Celle-ci vient
-          // du relevé pris avant l'appel ; à défaut, on part de la première case du trajet —
-          // une case d'écart, jamais un saut à travers le plateau.
-          const origin = pinned.value[event.actorId] ?? event.path[0];
+          const pinnedOrigin = pinned.value[event.actorId];
+          const path = pinnedOrigin
+            ? [
+                { x: pinnedOrigin.x, y: pinnedOrigin.y },
+                ...event.path.map((step) => ({ x: step.x, y: step.y })),
+              ]
+            : event.path.map((step) => ({ x: step.x, y: step.y }));
 
-          const path = [
-            { x: origin.x, y: origin.y },
-            ...event.path.map((s) => ({ x: s.x, y: s.y })),
-          ];
-
-          // O-014 + O-018: Utiliser un timing dynamique basé sur la longueur du chemin et le type (allié/ennemi)
           const stepMs = dynamicStepDurationMs(path.length - 1, !actorIsAlly);
           walk.value = {
             combatantId: event.actorId,
@@ -560,106 +477,73 @@ export function useCombatPlayback() {
             startedAt: now(),
             isEnemy: !actorIsAlly,
           };
-          await wait((path.length - 1) * stepMs); // -1 car origin n'est pas comptée dans le chemin
+
+          // La scène suit `walk` pendant cette attente. Ce suivi caméra et la marche sont un
+          // même geste ; l'événement suivant ne commence qu'une fois les deux arrivés.
+          await wait((path.length - 1) * stepMs);
           walk.value = null;
 
-          // Arrivé : la figure reste où le serveur l'a mise.
           const { [event.actorId]: _removed, ...rest } = pinned.value;
           pinned.value = rest;
           continue;
         }
 
         if (event.kind === 'Skill' || event.kind === 'Item') {
-          const at = now();
-
           actionBanner.value = event.skillName
             ? `${event.actorName} — ${event.skillName}`
             : event.actorName;
 
-          const actorPos = pinned.value[event.actorId] ?? event.path[0] ?? null;
+          // Pour le joueur, la cible n'a pas encore été cadrée (pas de télégraphe allié) :
+          // on place donc la caméra entre acteur et cible maintenant. Pour l'adversaire, ce
+          // cadrage a déjà été attendu avant le télégraphe et ne doit surtout pas être rejoué.
+          if (actorIsAlly) await cueAction(event, actorPos);
 
-          let sortCompletion = Promise.resolve();
+          // 1) animation du sort, seule ;
+          // 2) impacts/chiffres ; leur temps de lisibilité englobe le settle ;
+          // puis seulement l'événement suivant. Aucun Promise.all avec le sort : le chevauchement était
+          // précisément la source des effets qui partaient pendant un dézoom/recentrage.
           if (
             event.kind === 'Skill'
               && event.skillKey
               && typeof event.targetX === 'number'
               && typeof event.targetY === 'number'
+              && sortAnimator
           ) {
-            const sort = {
+            await sortAnimator({
               skillKey: event.skillKey,
               x: event.targetX,
               y: event.targetY,
-              casterX: actorPos?.x ?? event.targetX,
-              casterY: actorPos?.y ?? event.targetY,
-            };
-
-            // Sans scène (tests ou rendu non monté), aucune peinture n'est possible et la
-            // chronologie conserve simplement son temps de lisibilité. Dans la scène réelle,
-            // l'animateur est toujours branché au montage.
-            if (sortAnimator) sortCompletion = sortAnimator(sort);
+              casterX: actorPos.x,
+              casterY: actorPos.y,
+            });
           }
 
-          for (const impact of event.impacts) {
-            const targetIsAlly = allyIds.has(impact.combatantId);
-            const guardAbsorbed = impact.guardAbsorbed ?? 0;
-            if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
-            // Un coup entièrement absorbé laisse la vitalité intacte — un « −0 » ne dirait rien
-            // que le chiffre de garde ci-dessus ne dise déjà mieux.
-            if (impact.missed || impact.vitalityDelta !== 0) {
-              pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
-            }
-            if (impact.effectiveness) {
-              pushEffectivenessFloat(impact.x, impact.y, impact.effectiveness, at);
-            }
-            // La barre ne s'effondre qu'ici, au moment exact où ce coup précis atterrit —
-            // jamais avant, quel que soit l'ordre dans lequel `combat.value` a déjà tout reçu.
-            if (!impact.missed) {
-              displayVitals.value = {
-                ...displayVitals.value,
-                [impact.combatantId]:
-                  (displayVitals.value[impact.combatantId] ?? 0) - impact.vitalityDelta,
-              };
-            }
-            // Un coup manqué n'a rien percuté : pas d'onde d'impact, seulement la mention.
-            if (!impact.missed) pushImpact(impact.x, impact.y, targetIsAlly, at);
-          }
-
-          // O-018: Temps de settle plus long pour les ennemis. L'allié gardait la moitié du
-          // temps de base (le joueur "sait déjà" ce qu'il vient de faire) — mais divisé par
-          // deux plutôt que simplement égal au temps de base, l'écart avec l'ennemi (×1.5)
-          // atteignait un facteur 3 : le coup du héros se lisait bien plus vite que celui d'un
-          // ennemi même après le ralenti global (PACE). Retour au temps de base, sans réduction.
           const settleMs = actorIsAlly ? SETTLE_MS : SETTLE_MS * ENEMY_SETTLE_MULTIPLIER;
-          // La pause de lisibilité et la peinture appartiennent à la même action. L'événement
-          // suivant attend la plus longue des deux, ce qui interdit tout chevauchement entre
-          // deux gestes sans ajouter leur durée l'une à l'autre artificiellement.
-          const impactCompletion = event.impacts.length > 0
-            ? wait(Math.max(FLOAT_MS, IMPACT_MS))
-            : Promise.resolve();
-          await Promise.all([sortCompletion, impactCompletion, wait(settleMs)]);
+          if (event.impacts.length > 0) {
+            const at = now();
+            for (const impact of event.impacts) applyImpact(impact, allyIds, at);
+            // Le settle n'est pas une animation distincte : c'est le temps minimal pendant
+            // lequel on laisse l'impact se lire. On attend donc la plus longue durée, sans
+            // rallonger artificiellement la séquence après la disparition des FX.
+            await wait(Math.max(FLOAT_MS, IMPACT_MS, settleMs));
+          } else {
+            await wait(settleMs);
+          }
           actionBanner.value = null;
         }
       }
     } finally {
       walk.value = null;
       pinned.value = {};
-      // Relâche le gel : les états actifs affichés redeviennent la vérité reçue du serveur,
-      // maintenant que la mise en scène qui y menait a fini de jouer.
       displayStatusEffects.value = {};
       actionBanner.value = null;
       telegraph.value = null;
       isPlaying.value = false;
-      // O-017: Réinitialiser l'état de transition
       isTransitioning.value = false;
       transitionPhase.value = null;
     }
   }
 
-  /**
-   * Épingle les positions ET les états actifs de départ AVANT que le nouvel état ne soit
-   * appliqué — voir la doc de `displayStatusEffects` pour pourquoi ces derniers ne peuvent pas
-   * se reconstruire coup par coup comme la vitalité.
-   */
   function pinBefore(state: TacticalCombatRuntimeDto | null) {
     if (!state) return;
 
@@ -681,8 +565,8 @@ export function useCombatPlayback() {
     actionBanner,
     telegraph,
     isPlaying: computed(() => isPlaying.value),
-    isTransitioning: computed(() => isTransitioning.value), // O-017
-    transitionPhase: computed(() => transitionPhase.value), // O-017
+    isTransitioning: computed(() => isTransitioning.value),
+    transitionPhase: computed(() => transitionPhase.value),
     positionOf,
     vitalsOf,
     statusEffectsOf,
@@ -690,6 +574,7 @@ export function useCombatPlayback() {
     pruneImpacts,
     setSortAnimator,
     setSceneTransitionWaiter,
+    setCameraAnimator,
     play,
     pinBefore,
     reset,

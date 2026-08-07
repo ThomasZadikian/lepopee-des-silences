@@ -1,13 +1,16 @@
+import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
 import {
   isoUnit,
   projectToScreen,
+  projectToScreenCamera,
+  type CameraParams,
   type ProjectionParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
-import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   obstacleVariantCount,
   type FloorTint,
+  type HighlightVariant,
   type RoomTheme,
   type SpriteKey,
 } from '../../palace-map/composables/useTerrainSprites';
@@ -15,14 +18,20 @@ import {
 /**
  * Le plan de dessin d'un champ de bataille tactique.
  *
- * Fonction pure, sans canvas ni DOM — c'est ce qui la rend testable sans navigateur, comme son
- * homologue d'exploration (`buildDrawPlan`). Elle réutilise la même projection isométrique et
- * la même forge de tuiles : le terrain de combat EST la salle d'exploration, vidée de ses
- * nœuds. Ce qu'elle n'emprunte pas, ce sont les préoccupations d'exploration — nœuds, brouillard,
- * caches à fouiller — qui n'ont plus cours une fois le combat engagé.
+ * Fonction pure, sans canvas ni DOM. Elle accepte désormais directement une caméra : le plan
+ * n'a plus besoin d'être projeté une première fois en fit-to-grid puis reprojeté dans la scène.
+ * Sans caméra, le comportement historique reste disponible pour les tests/consommateurs qui
+ * n'ont pas encore migré.
  */
 
 export type BattleCell = { x: number; y: number };
+
+export type BattleVisibleBounds = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+};
 
 export type BattleDrawPlanEntry = {
   cellKey: string;
@@ -46,6 +55,10 @@ export type BuildBattlePlanInput = {
   floor?: boolean[];
   theme: RoomTheme;
   ambientTint: FloorTint;
+  /** Caméra fixe/animée du combat. Absente = projection historique fit-to-grid. */
+  camera?: CameraParams;
+  /** Limites déjà calculées par visibleCellRange : évite de parcourir toute une immense carte. */
+  visibleBounds?: BattleVisibleBounds;
   reachableCells?: Set<string>;
   targetableCells?: Set<string>;
   blockedCells?: Set<string>;
@@ -54,15 +67,11 @@ export type BuildBattlePlanInput = {
   heightCells?: Set<string>;
   occupiedCells?: Set<string>;
   hoveredCell?: BattleCell | null;
-  pathCells?: Set<string>; // Ajout pour TS2339/TS2353
+  pathCells?: Set<string>;
 };
 
 export const battleCellKey = (x: number, y: number): string => `${x},${y}`;
 
-/**
- * Variation de brosse du sol, pour qu'un terrain uni ne se répète pas visiblement. Même
- * formule que l'exploration : deux rendus de la même salle doivent se ressembler.
- */
 const surfaceSeedFor = (x: number, y: number): number => ((x * 7) + (y * 13)) % 5;
 
 const elevationAt = (input: BuildBattlePlanInput, x: number, y: number): number =>
@@ -70,23 +79,16 @@ const elevationAt = (input: BuildBattlePlanInput, x: number, y: number): number 
 
 const isWalkable = (input: BuildBattlePlanInput, x: number, y: number): boolean => {
   if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
-
   return input.walkable[(y * input.gridWidth) + x] ?? false;
 };
 
-/** Faute de masque, on retombe sur « praticable = dans la salle » : aucun obstacle peint. */
 const isFloor = (input: BuildBattlePlanInput, x: number, y: number): boolean => {
   if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
-
   return input.floor
     ? input.floor[(y * input.gridWidth) + x] ?? false
     : isWalkable(input, x, y);
 };
 
-/**
- * Profondeur du peintre. L'élévation entre dans la clé pour qu'une case haute et proche ne se
- * fasse pas recouvrir par une case basse et lointaine.
- */
 const sortKeyFor = (x: number, y: number, elevation: number): number =>
   ((x + y) * 4) + elevation;
 
@@ -98,25 +100,39 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
     gridHeight: input.gridHeight,
   };
 
+  const project = input.camera
+    ? (x: number, y: number) => projectToScreenCamera(x, y, {
+        canvasWidth: input.canvasWidth,
+        canvasHeight: input.canvasHeight,
+        ...input.camera!,
+      })
+    : (x: number, y: number) => projectToScreen(x, y, projection);
+
+  const bounds = input.visibleBounds ?? {
+    minX: 0,
+    maxX: input.gridWidth - 1,
+    minY: 0,
+    maxY: input.gridHeight - 1,
+  };
+
+  const minX = Math.max(0, bounds.minX);
+  const maxX = Math.min(input.gridWidth - 1, bounds.maxX);
+  const minY = Math.max(0, bounds.minY);
+  const maxY = Math.min(input.gridHeight - 1, bounds.maxY);
+
   const entries: BattleDrawPlanEntry[] = [];
 
-  for (let y = 0; y < input.gridHeight; y += 1) {
-    for (let x = 0; x < input.gridWidth; x += 1) {
-      // Hors de la salle : rien du tout. Ni sol, ni obstacle — le vide se peint en ne peignant
-      // pas, et c'est ce qui donne au champ de bataille ses vrais bords.
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
       if (!isFloor(input, x, y)) continue;
 
       const cellKey = battleCellKey(x, y);
       const elevation = elevationAt(input, x, y);
-      const { screenX, screenY } = projectToScreen(x, y, projection);
+      const { screenX, screenY } = project(x, y);
       const walkable = isWalkable(input, x, y);
       const sortKey = sortKeyFor(x, y, elevation);
 
       if (!walkable) {
-        // Comme en exploration : le sprite d'obstacle est un remplacement complet du
-        // sol (il peint déjà son propre socle), pas une silhouette posée par-dessus —
-        // peindre un sol séparé dessous fait apparaître une géométrie de falaise qui
-        // ne correspond à rien une fois l'obstacle dessiné.
         const wallVariants = obstacleVariantCount(input.theme);
         entries.push({
           cellKey,
@@ -146,9 +162,6 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
           theme: input.theme,
           elevation,
           surfaceSeed: surfaceSeedFor(x, y),
-          // Une falaise se dessine là où la case avant-gauche ou avant-droite sort de la SALLE,
-          // pas là où elle est simplement encombrée : un éboulis voisin ne creuse pas un
-          // précipice. C'est ce qui donne au champ de bataille de vrais bords.
           cliffLeft: !isFloor(input, x, y + 1),
           cliffRight: !isFloor(input, x + 1, y),
         },
@@ -158,125 +171,31 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
         sortKey,
       });
 
-      // Les surbrillances se posent juste au-dessus de leur tuile, jamais au-dessus de la
-      // suivante — d'où l'incrément fractionnaire.
-      if (input.reachableCells?.has(cellKey)) {
+      const pushHighlight = (suffix: string, variant: HighlightVariant, order: number) => {
         entries.push({
-          cellKey: `${cellKey}:move`,
+          cellKey: `${cellKey}:${suffix}`,
           x,
           y,
-          spriteKey: { kind: 'highlight', variant: 'move', elevation },
+          spriteKey: { kind: 'highlight', variant, elevation },
           screenX,
           screenY,
           elevation,
-          sortKey: sortKey + 0.1,
+          sortKey: sortKey + order,
         });
-      }
+      };
 
-      if (input.threatCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:threat`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'threat', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.12,
-        });
-      }
-
-      // La zone d'effet passe par-dessus la zone de déplacement : quand une compétence est
-      // armée, c'est elle que le joueur doit lire.
-      if (input.targetableCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:attack`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'attack', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.2,
-        });
-      }
-
-      if (input.blockedCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:blocked`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'blocked', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.21,
-        });
-      }
-
-      if (input.pathCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:path`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'path', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.24,
-        });
-      }
-
-      if (input.aoeCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:aoe`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'aoe', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.26,
-        });
-      }
-
-      if (input.heightCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:height`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'height', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.28,
-        });
-      }
-
+      if (input.reachableCells?.has(cellKey)) pushHighlight('move', 'move', 0.1);
+      if (input.threatCells?.has(cellKey)) pushHighlight('threat', 'threat', 0.12);
+      if (input.targetableCells?.has(cellKey)) pushHighlight('attack', 'attack', 0.2);
+      if (input.blockedCells?.has(cellKey)) pushHighlight('blocked', 'blocked', 0.21);
+      if (input.pathCells?.has(cellKey)) pushHighlight('path', 'path', 0.24);
+      if (input.aoeCells?.has(cellKey)) pushHighlight('aoe', 'aoe', 0.26);
+      if (input.heightCells?.has(cellKey)) pushHighlight('height', 'height', 0.28);
       if (input.occupiedCells?.has(cellKey) && !input.aoeCells?.has(cellKey)) {
-        entries.push({
-          cellKey: `${cellKey}:occupied`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'occupied', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.29,
-        });
+        pushHighlight('occupied', 'occupied', 0.29);
       }
-
       if (input.hoveredCell && input.hoveredCell.x === x && input.hoveredCell.y === y) {
-        entries.push({
-          cellKey: `${cellKey}:cursor`,
-          x,
-          y,
-          spriteKey: { kind: 'highlight', variant: 'cursor', elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + 0.3,
-        });
+        pushHighlight('cursor', 'cursor', 0.3);
       }
     }
   }
@@ -286,11 +205,7 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
 
 /**
  * Les cases atteignables par un combattant, à budget donné.
- *
- * A* (A-Star) sur le sous-graphe praticable, coût d'un pas `1 + |Δélévation|` — la même règle que
- * `TacticalMovement.StepCost` côté serveur. Cette copie est <b>un aperçu</b>, pas une autorité :
- * le serveur retranche seul, et son refus reste le dernier mot. Elle existe pour que le joueur
- * voie où il peut aller avant de cliquer, pas pour valider quoi que ce soit.
+ * A* sur le sous-graphe praticable, coût d'un pas `1 + |Δélévation|`.
  */
 export function reachableCellsFrom(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable'>,
@@ -301,19 +216,14 @@ export function reachableCellsFrom(
   return reachableCellsWithPathsFrom(input, origin, budget, occupied).cells;
 }
 
-// Structure pour la frontière A* (priorité = f = g + h)
 type AStarFrontierNode = {
   cell: BattleCell;
-  g: number; // Coût réel depuis l'origine
-  h: number; // Heuristique vers le but (0 si pas de but fixe)
-  f: number; // g + h
+  g: number;
+  h: number;
+  f: number;
   previous: BattleCell;
 };
 
-/**
- * Version A* de reachableCellsWithPathsFrom pour une exploration optimisée.
- * Utilise une heuristique de Manhattan (h = 0 si pas de but fixe, car on explore tout dans le budget).
- */
 export function reachableCellsWithPathsFrom(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable'>,
   origin: BattleCell,
@@ -325,7 +235,7 @@ export function reachableCellsWithPathsFrom(
   const frontier: AStarFrontierNode[] = [{
     cell: origin,
     g: 0,
-    h: 0, // Pas de but fixe, donc h = 0
+    h: 0,
     f: 0,
     previous: origin,
   }];
@@ -339,11 +249,8 @@ export function reachableCellsWithPathsFrom(
   };
 
   while (frontier.length > 0) {
-    // Trier par f (priorité A*) : les cases avec le plus petit f sont traitées en premier
     frontier.sort((a, b) => a.f - b.f);
     const current = frontier.shift()!;
-
-    // Si on dépasse le budget, on saute (optimisation)
     if (current.g > budget) continue;
 
     const neighbours: BattleCell[] = [
@@ -363,7 +270,6 @@ export function reachableCellsWithPathsFrom(
         cellElevation(next.x, next.y) - cellElevation(current.cell.x, current.cell.y),
       );
       const g = current.g + 1 + climb;
-
       if (g > budget) continue;
 
       const best = reached.get(key);
@@ -374,8 +280,8 @@ export function reachableCellsWithPathsFrom(
       frontier.push({
         cell: next,
         g,
-        h: 0, // Pas de but fixe
-        f: g, // f = g + h = g
+        h: 0,
+        f: g,
         previous: current.cell,
       });
     }
@@ -385,16 +291,6 @@ export function reachableCellsWithPathsFrom(
   return { cells: new Set(reached.keys()), previous };
 }
 
-/**
- * Vérifie si une ligne de vue (Line of Sight) existe entre deux cases,
- * en tenant compte des obstacles et des différences d'élévation.
- *
- * @param input - Données du champ de bataille (grille, élévations, etc.).
- * @param from - Case de départ.
- * @param to - Case d'arrivée.
- * @param maxClimb - Différence d'élévation maximale autorisée entre deux cases adjacentes (défaut: 1).
- * @returns true si la ligne de vue est dégagée, false sinon.
- */
 export function hasLos(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable' | 'floor'>,
   from: BattleCell,
@@ -403,7 +299,7 @@ export function hasLos(
 ): boolean {
   if (manhattan(from, to) <= 1) return true;
 
-  const isFloor = (x: number, y: number): boolean => {
+  const floorAt = (x: number, y: number): boolean => {
     if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
     return input.floor
       ? input.floor[(y * input.gridWidth) + x] ?? false
@@ -420,7 +316,6 @@ export function hasLos(
   let err = dx - dy;
   let x = from.x;
   let y = from.y;
-
   let prevElev = cellElevation(from.x, from.y);
 
   while (x !== to.x || y !== to.y) {
@@ -429,30 +324,20 @@ export function hasLos(
     if (e2 < dx) { err += dx; y += sy; }
 
     if (x === to.x && y === to.y) break;
-
-    // Vérifier que la case est bien dans la salle
-    if (!isFloor(x, y)) return false;
+    if (!floorAt(x, y)) return false;
 
     const currentElev = cellElevation(x, y);
-    // Bloquer si la différence d'élévation avec la case précédente est trop grande
     if (Math.abs(currentElev - prevElev) > maxClimb) return false;
-
     prevElev = currentElev;
   }
 
   return true;
 }
 
-/** Distance de Manhattan — la métrique du déplacement orthogonal. */
 export const manhattan = (a: BattleCell, b: BattleCell): number =>
   Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-/**
- * Vérifie si une ligne de vue (Line of Sight) existe entre deux cases,
- * en utilisant l'algorithme de Bresenham pour tracer une ligne droite.
- *
- * @deprecated Utiliser `hasLos` à la place (plus complet).
- */
+/** @deprecated Utiliser `hasLos` à la place. */
 export function hasDirectLos(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable' | 'floor'>,
   from: BattleCell,
@@ -461,4 +346,5 @@ export function hasDirectLos(
   return hasLos(input, from, to);
 }
 
+// Compatibilité avec les tests/anciens consommateurs qui importent encore ces helpers ici.
 export { isoUnit, projectToScreen };

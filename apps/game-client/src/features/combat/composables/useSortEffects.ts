@@ -11,49 +11,62 @@ import {
 } from '../../palace-map/composables/useTerrainDrawPlan';
 import { PACE } from './useCombatPlayback';
 
-// Type pour les cellules de sort (corrige TS2305)
 export type SortCell = {
   x: number;
   y: number;
   d: number;
 };
 
+type SortWorldCell = {
+  x: number;
+  y: number;
+  d: number;
+  center: boolean;
+  dist: number;
+};
+
+type PaintedSortCell = {
+  cx: number;
+  cy: number;
+  ux: number;
+  uy: number;
+  d: number;
+  center: boolean;
+  dist: number;
+};
+
+/**
+ * Contrat compatible avec l'ancien fit-to-grid et la caméra fixe/animée du combat.
+ */
+export type SortProjectionParams = ProjectionParams & Partial<CameraParams>;
+
 export type SortEffect = {
   id: number;
   sortId: string;
-  cells: Array<{
-    cx: number;
-    cy: number;
-    ux: number;
-    uy: number;
-    d: number;
-    center: boolean;
-    dist: number;
-  }>;
+  /** Projection initiale conservée pour compatibilité/debug. */
+  cells: PaintedSortCell[];
+  /** Coordonnées monde : source réelle du rendu à chaque frame. */
+  worldCells: SortWorldCell[];
   startedAt: number;
   duration: number;
+  /** Position écran initiale, conservée pour compatibilité/debug. */
   from: { x: number; y: number } | null;
+  fromWorld: { x: number; y: number } | null;
+  battlefieldWidth: number;
+  elevation: number[];
+  projection: SortProjectionParams;
   color: string;
   timer: ReturnType<typeof globalThis.setTimeout>;
   finish: () => void;
 };
 
-/**
- * Contrat transitoire compatible avec les deux modes de projection :
- * - sans camX/camY/zoom : ancien fit-to-grid ;
- * - avec camX/camY/zoom : caméra fixe du combat.
- *
- * Cela évite de casser les autres consommateurs/tests pendant la migration de la scène.
- */
-export type SortProjectionParams = ProjectionParams & Partial<CameraParams>;
-
 const SORT_DURATION_MS = Math.round(1500 * PACE);
 const renderPaintedSort = playSort as unknown as (
   ctx: CanvasRenderingContext2D,
   id: string,
-  cells: SortEffect['cells'],
+  cells: PaintedSortCell[],
   progress: number,
-  from: SortEffect['from'],
+  from: { x: number; y: number } | null,
   color: string,
 ) => void;
 
@@ -84,6 +97,36 @@ function projectSortPoint(
   return isCameraProjection(projection)
     ? projectToScreenCamera(x, y, projection)
     : projectToScreen(x, y, projection);
+}
+
+function paintCellsFor(
+  worldCells: SortWorldCell[],
+  battlefieldWidth: number,
+  elevation: number[],
+  projection: SortProjectionParams,
+): PaintedSortCell[] {
+  const { isoUnitX } = sortTileUnit(projection);
+  const destW = isoUnitX * 2.05;
+  const ux = destW / 2;
+  const uy = destW / 4;
+
+  return worldCells
+    .map((cell) => {
+      const { screenX, screenY } = projectSortPoint(cell.x, cell.y, projection);
+      const elev = elevation[(cell.y * battlefieldWidth) + cell.x] ?? 0;
+      const lift = elev * 20 * (destW / 128);
+
+      return {
+        cx: screenX,
+        cy: screenY - lift,
+        ux,
+        uy,
+        d: cell.d,
+        center: cell.center,
+        dist: cell.dist,
+      };
+    })
+    .sort((a, b) => (a.cx + a.cy) - (b.cx + b.cy));
 }
 
 export function useSortEffects() {
@@ -129,42 +172,34 @@ export function useSortEffects() {
       }),
     ).filter((_, index) => battlefield.floor?.[index] ?? true);
 
-    const { isoUnitX } = sortTileUnit(projection);
-    const destW = isoUnitX * 2.05;
-    const ux = destW / 2;
-    const uy = destW / 4;
+    const worldCells: SortWorldCell[] = rawCells
+      .filter((cell: SortCell) =>
+        cell.x >= 0
+          && cell.y >= 0
+          && cell.x < battlefield.width
+          && cell.y < battlefield.height)
+      .map((cell: SortCell) => ({
+        x: cell.x,
+        y: cell.y,
+        d: cell.d,
+        center: cell.d === 0,
+        dist: casterX !== undefined && casterY !== undefined
+          ? Math.abs(cell.x - casterX) + Math.abs(cell.y - casterY)
+          : cell.d,
+      }));
 
-    const cells = rawCells
-      .filter((c: SortCell) =>
-        c.x >= 0
-          && c.y >= 0
-          && c.x < battlefield.width
-          && c.y < battlefield.height)
-      .map((c: SortCell) => {
-        const { screenX, screenY } = projectSortPoint(c.x, c.y, projection);
-        const elev = battlefield.elevation[(c.y * battlefield.width) + c.x] ?? 0;
-        const lift = elev * 20 * (destW / 128);
-        const dist = casterX !== undefined && casterY !== undefined
-          ? Math.abs(c.x - casterX) + Math.abs(c.y - casterY)
-          : c.d;
+    const cells = paintCellsFor(
+      worldCells,
+      battlefield.width,
+      battlefield.elevation,
+      projection,
+    );
 
-        return {
-          cx: screenX,
-          cy: screenY - lift,
-          ux,
-          uy,
-          d: c.d,
-          center: c.d === 0,
-          dist,
-        };
-      })
-      .sort(
-        (a: { cx: number; cy: number }, b: { cx: number; cy: number }) =>
-          (a.cx + a.cy) - (b.cx + b.cy),
-      );
-
-    const from = casterX !== undefined && casterY !== undefined
-      ? projectSortPoint(casterX, casterY, projection)
+    const fromWorld = casterX !== undefined && casterY !== undefined
+      ? { x: casterX, y: casterY }
+      : null;
+    const projectedFrom = fromWorld
+      ? projectSortPoint(fromWorld.x, fromWorld.y, projection)
       : null;
 
     const id = (effectSequence += 1);
@@ -174,9 +209,14 @@ export function useSortEffects() {
         id,
         sortId,
         cells,
+        worldCells,
         startedAt: performance.now(),
         duration: SORT_DURATION_MS,
-        from: from ? { x: from.screenX, y: from.screenY } : null,
+        from: projectedFrom ? { x: projectedFrom.screenX, y: projectedFrom.screenY } : null,
+        fromWorld,
+        battlefieldWidth: battlefield.width,
+        elevation: battlefield.elevation,
+        projection: { ...projection },
         color: catalogColor,
         timer: globalThis.setTimeout(() => completeSort(id), SORT_DURATION_MS),
         finish: resolve,
@@ -195,11 +235,34 @@ export function useSortEffects() {
     }
   }
 
-  function renderSorts(ctx: CanvasRenderingContext2D): void {
+  /**
+   * `projection` est optionnelle pour ne pas casser les tests/anciens consommateurs. Dans la
+   * scène tactique, on fournit la caméra courante à chaque frame : l'effet reste donc attaché
+   * aux cases monde même si le viewport/caméra a changé depuis son lancement.
+   */
+  function renderSorts(
+    ctx: CanvasRenderingContext2D,
+    projection?: SortProjectionParams,
+  ): void {
     const now = performance.now();
+
     for (const sort of activeSorts.value) {
+      const activeProjection = projection ?? sort.projection;
+      const cells = paintCellsFor(
+        sort.worldCells,
+        sort.battlefieldWidth,
+        sort.elevation,
+        activeProjection,
+      );
+      const projectedFrom = sort.fromWorld
+        ? projectSortPoint(sort.fromWorld.x, sort.fromWorld.y, activeProjection)
+        : null;
+      const from = projectedFrom
+        ? { x: projectedFrom.screenX, y: projectedFrom.screenY }
+        : null;
       const progress = (now - sort.startedAt) / sort.duration;
-      renderPaintedSort(ctx, sort.sortId, sort.cells, progress, sort.from, sort.color);
+
+      renderPaintedSort(ctx, sort.sortId, cells, progress, from, sort.color);
     }
   }
 
@@ -216,9 +279,7 @@ export function useSortEffects() {
   };
 }
 
-/**
- * Retourne l'ID du sort associé à une clé de compétence (pour les animations).
- */
+/** Retourne l'ID du sort associé à une clé de compétence. */
 export function sortIdForSkillKey(skillKey: string): string | null {
   const skillToSortMap: Record<string, string> = {
     'canon.skill.fondations-de-thomas': 'fondations',
@@ -239,15 +300,6 @@ export function sortIdForSkillKey(skillKey: string): string | null {
   return skillToSortMap[skillKey] ?? null;
 }
 
-/**
- * Repli générique quand aucune peinture dédiée n'existe pour ce sort (voir sorts.ts : le
- * catalogue en compte 138, 19 sont peints à la main) — correct sur sa forme et sa couleur
- * (physique/magique) plutôt que silencieux. `category`/`tacticalAreaShape` viennent de la
- * définition catalogue du sort, pas du combattant qui l'a lancé : la forme est une propriété
- * du sort, pas de qui le joue. `TacticalAreaShape` côté backend n'a que 4 valeurs (Single,
- * Cross, Diamond, Map), donc ce repli ne peut jamais désigner un `generique-*` absent de
- * sorts.ts.
- */
 export function fallbackSortId(
   category: string | undefined,
   tacticalAreaShape: string | undefined,

@@ -1,7 +1,7 @@
 import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
-import { hashSeed } from './usePalaceTerrain';
 import { propKindFor } from './useNodePresentation';
+import { hashSeed } from './usePalaceTerrain';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
@@ -69,13 +69,12 @@ export type ProjectionParams = {
 };
 
 // ── Camera layer ─────────────────────────────────────────────────────────────────
-// Additive to everything above: isoUnit/projectToScreen/unprojectFromScreen/screenToCell stay
-// byte-for-byte unchanged because the tactical combat scene calls them directly, with no camera
-// concept of its own (see TacticalCombatScene.vue, useTacticalBattlePlan.ts, useSortEffects.ts).
-// A camera must never change what those produce. This layer instead centers the projection on
-// an arbitrary grid point (camX/camY — normally the party's own animated position) at a fixed
-// pixel-per-cell scale, independent of the grid's own size, so the exploration map can be
-// larger than the viewport and still read as "real tiles" rather than shrinking to fit.
+// Additive to everything above: isoUnit/projectToScreen/unprojectFromScreen/screenToCell restent
+// disponibles pour les consommateurs qui veulent explicitement un fit-to-grid. L'exploration
+// ET le combat tactique utilisent désormais cette couche caméra : centrage sur un point monde
+// arbitraire (camX/camY), échelle pixel-par-case fixe et indépendante de la taille de la grille.
+// Une grande salle/arène est donc réellement plus grande que le viewport au lieu d'être réduite
+// jusqu'à tenir entièrement à l'écran.
 
 /** Pixel width of one grid cell at zoom = 1 — the camera-mode equivalent of isoUnit's
  * fit-to-canvas unit, but a fixed balance knob instead of a function of grid/canvas size. */
