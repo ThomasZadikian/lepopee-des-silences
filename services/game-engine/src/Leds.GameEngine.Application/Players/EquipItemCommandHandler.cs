@@ -1,5 +1,7 @@
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Players.Ports;
 using MediatR;
 
@@ -27,12 +29,17 @@ public sealed class EquipItemCommandHandler : IRequestHandler<EquipItemCommand, 
         if (definition.IsFailure)
             throw new DomainException($"Unknown equipment item '{request.ItemKey}'.");
 
-        var slot = definition.Value.ItemType switch
+        // Derived from the same catalog-authored (itemType, category) pair — and the same
+        // CatalogRunItemMapper — that resolves every other item classification in the
+        // runtime, rather than re-deriving an independent notion of "what kind of item is
+        // this" here. Grimoire/WeatherInstrument/SkillEssence share the Relic slot: none
+        // of the three has a dedicated equipment slot of its own.
+        var runItemType = CatalogRunItemMapper.MapType(definition.Value.ItemType, definition.Value.Category);
+        var slot = runItemType switch
         {
-            "Weapon" => "Weapon",
-            "Accessory" => "Accessory",
-            "Relic" or "Heritage" => "Relic",
-            _ when string.Equals(definition.Value.Category, "Relic", StringComparison.OrdinalIgnoreCase)
+            RunItemType.Weapon => "Weapon",
+            RunItemType.Equipment => "Accessory",
+            RunItemType.Relic or RunItemType.Grimoire or RunItemType.WeatherInstrument or RunItemType.SkillEssence
                 => "Relic",
             _ => throw new DomainException(
                 $"Item '{request.ItemKey}' is not an equippable weapon, accessory or relic.")
