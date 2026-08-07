@@ -9,24 +9,16 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
-import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
-import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
-import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
 import {
-  ALLY_RIM,
-  drawActionPips,
-  drawAmbient,
-  drawBackdrop,
-  drawDeployFx,
-  drawFireFx,
-  drawImpactFx,
-  drawStarFx,
-  drawUnitRing,
-  ENEMY_RIM,
-  RISK_TIERS,
-  themeLabel,
-} from '../../palace-map/composables/tilecraft';
+  GROUND_ANCHOR_RATIO,
+  PROP_GROUND_ANCHOR_RATIO,
+  TERRAIN_SPRITE_CONSTANTS,
+  useTerrainSprites,
+  usesPropRect,
+  resolveRoomVisual,
+  type RoomTheme,
+  type RenderTheme,
+} from '../../palace-map/composables/useTerrainSprites';
 import {
   cameraTileUnit,
   projectToScreenCamera,
@@ -34,28 +26,19 @@ import {
   visibleCellRange,
 } from '../../palace-map/composables/useTerrainDrawPlan';
 import {
-  GROUND_ANCHOR_RATIO,
-  PROP_GROUND_ANCHOR_RATIO,
-  resolveRoomVisual,
-  TERRAIN_SPRITE_CONSTANTS,
-  usesPropRect,
-  useTerrainSprites,
-  type RenderTheme,
-  type RoomTheme,
-} from '../../palace-map/composables/useTerrainSprites';
-import { skillsApi } from '../../party/api/skillsApi';
-import type { SkillDefinitionView } from '../../party/types/skillTypes';
-import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
-import { useCombatCamera } from '../composables/useCombatCamera';
-import {
-  FLOAT_MS,
-  FLOAT_RISE_PX,
-  IMPACT_MS,
-  PACE,
-  type CombatCameraCue,
-  type PendingSort,
-} from '../composables/useCombatPlayback';
-import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
+  drawAmbient,
+  drawBackdrop,
+  drawUnitRing,
+  drawActionPips,
+  drawImpactFx,
+  drawDeployFx,
+  drawFireFx,
+  drawStarFx,
+  themeLabel,
+  RISK_TIERS,
+  ALLY_RIM,
+  ENEMY_RIM,
+} from '../../palace-map/composables/tilecraft';
 import {
   battleCellKey,
   buildBattlePlan,
@@ -65,14 +48,31 @@ import {
   reachableCellsWithPathsFrom,
   type BattleCell,
 } from '../composables/useTacticalBattlePlan';
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
+import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
+import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
+import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
+import PortraitDetailCard from './PortraitDetailCard.vue';
+import CombatItemMenu from './CombatItemMenu.vue';
+import { skillsApi } from '../../party/api/skillsApi';
+import type { SkillDefinitionView } from '../../party/types/skillTypes';
+import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
+import {
+  FLOAT_MS,
+  FLOAT_RISE_PX,
+  IMPACT_MS,
+  PACE,
+  type CombatCameraCue,
+  type PendingSort,
+} from '../composables/useCombatPlayback';
+import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
+import { useCombatCamera } from '../composables/useCombatCamera';
+import { ticksToTurns } from '../constants/combatTime';
 import {
   tacticalSkillProfile,
   type TacticalShape,
 } from '../composables/useTacticalSkillProfile';
-import { ticksToTurns } from '../constants/combatTime';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
-import CombatItemMenu from './CombatItemMenu.vue';
-import PortraitDetailCard from './PortraitDetailCard.vue';
 
 import type {
   CombatantRuntimeDto,
@@ -233,23 +233,54 @@ function focusInitialCombatCamera(): void {
  * n'est pas terminé.
  */
 async function playCameraCue(cue: CombatCameraCue): Promise<void> {
-  let focusX = cue.actorX;
-  let focusY = cue.actorY;
-
-  if (
-    cue.kind === 'action'
-      && typeof cue.targetX === 'number'
-      && typeof cue.targetY === 'number'
-  ) {
-    // Cadre l'acteur et la cible ensemble. À zoom fixe, le milieu est le cadrage le plus stable
-    // et évite de téléporter brutalement la caméra de l'un vers l'autre.
-    focusX = (cue.actorX + cue.targetX) / 2;
-    focusY = (cue.actorY + cue.targetY) / 2;
+  if (cue.kind === 'actor') {
+    await combatCameraController.focusTo(cue.actorX, cue.actorY, {
+      instant: prefersReducedMotion,
+    });
+    return;
   }
 
-  await combatCameraController.focusTo(focusX, focusY, {
-    instant: prefersReducedMotion,
-  });
+  if (typeof cue.targetX !== 'number' || typeof cue.targetY !== 'number') return;
+
+  // Une action ne provoque PAS un deuxième recentrage systématique. Tant que la cible reste
+  // dans la zone de confort du viewport, la caméra demeure ancrée sur l'acteur — particulièrement
+  // important après un déplacement, où Move + Skill doivent se lire comme une seule séquence.
+  const width = canvasSize.value.width;
+  const height = canvasSize.value.height;
+  if (width <= 0 || height <= 0) return;
+
+  const targetScreen = projectBattlePoint(cue.targetX, cue.targetY);
+  const safeLeft = width * 0.14;
+  const safeRight = width * 0.86;
+  const safeTop = height * 0.16;
+  const safeBottom = height * 0.84;
+
+  const desiredX = clamp(targetScreen.screenX, safeLeft, safeRight);
+  const desiredY = clamp(targetScreen.screenY, safeTop, safeBottom);
+  const shiftScreenX = desiredX - targetScreen.screenX;
+  const shiftScreenY = desiredY - targetScreen.screenY;
+
+  // Déjà visible : aucun mouvement caméra, donc aucune impression de « dézoom » entre
+  // déplacement et action.
+  if (Math.abs(shiftScreenX) < 0.5 && Math.abs(shiftScreenY) < 0.5) return;
+
+  // Déplacement MINIMAL nécessaire pour ramener la cible dans la safe-zone. On inverse ici
+  // localement la projection isométrique : au lieu de viser le milieu acteur/cible (qui faisait
+  // passer la caméra par le centre de la carte), on conserve le cadrage courant et on ne le
+  // translate que de ce qui manque réellement pour voir la cible.
+  const { isoUnitX, isoUnitY } = cameraTileUnit(combatCamera.value);
+  if (isoUnitX <= 0 || isoUnitY <= 0) return;
+
+  const diffDelta = shiftScreenX / isoUnitX;       // ΔcamX - ΔcamY
+  const sumDelta = -shiftScreenY / isoUnitY;       // ΔcamX + ΔcamY
+  const deltaCamX = (diffDelta + sumDelta) / 2;
+  const deltaCamY = (sumDelta - diffDelta) / 2;
+
+  await combatCameraController.focusTo(
+    combatCamera.value.camX + deltaCamX,
+    combatCamera.value.camY + deltaCamY,
+    { instant: prefersReducedMotion },
+  );
 }
 
 /**
@@ -1547,18 +1578,45 @@ async function playSortAnimation(sort: PendingSort): Promise<void> {
 }
 
 /**
- * Attend les transitions qui changent réellement la taille du plateau. `nextTick` pose la
- * classe collapsed, la première frame matérialise les CSSAnimation, `finished` garantit leur
- * fin ; la dernière frame laisse ResizeObserver publier la projection finale au canvas.
+ * Barrière globale de mise en scène.
+ *
+ * Le repli de la barre d'actions est le signal qui autorise le début de TOUTE animation
+ * de combat. Tant qu'il n'est pas terminé, ni caméra, ni déplacement, ni ciblage, ni FX ne
+ * doivent démarrer. Une fois le repli fini, on force une dernière mesure du plateau : cette
+ * géométrie devient le référentiel de projection pour toute la séquence qui suit.
+ *
+ * On attend aussi en prefers-reduced-motion : dans ce cas le CSS ne s'anime pas, mais le
+ * changement de layout et le ResizeObserver ont tout de même besoin d'au moins une frame.
  */
 async function waitForSceneTransition(): Promise<void> {
-  if (prefersReducedMotion) return;
-
   await nextTick();
+
+  // Première frame : la classe --collapsed est effectivement appliquée et le navigateur
+  // matérialise les éventuelles transitions CSS.
   await new Promise<void>((resolve) => globalThis.requestAnimationFrame(() => resolve()));
 
   const animations = bottomEl.value?.getAnimations?.() ?? [];
-  await Promise.allSettled(animations.map((animation) => animation.finished));
+  if (animations.length > 0) {
+    await Promise.allSettled(animations.map((animation) => animation.finished));
+  }
+
+  // Après la fin du repli, on laisse le layout se stabiliser puis on publie explicitement la
+  // taille finale du board. La caméra qui démarre juste après ne peut donc jamais utiliser
+  // l'ancienne hauteur du canvas.
+  await new Promise<void>((resolve) => globalThis.requestAnimationFrame(() => resolve()));
+
+  const parent = canvasEl.value?.parentElement;
+  if (parent) {
+    const rect = parent.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    if (canvasSize.value.width !== width || canvasSize.value.height !== height) {
+      canvasSize.value = { width, height };
+    }
+  }
+
+  // Une frame supplémentaire garantit que les computed de projection ont tous observé la
+  // géométrie finale avant que playback n'enchaîne sur le premier cue caméra.
   await new Promise<void>((resolve) => globalThis.requestAnimationFrame(() => resolve()));
 }
 
@@ -1931,7 +1989,6 @@ onBeforeUnmount(() => {
   <section
     v-if="store.combat"
     class="tbattle"
-    :class="{ 'tbattle--transitioning': store.playback.isTransitioning }"
   >
     <!-- ── Initiative rail (left) ── -->
     <aside class="tbattle__initiative-rail">
@@ -2097,11 +2154,14 @@ onBeforeUnmount(() => {
       @close="isItemMenuOpen = false"
     />
 
-    <!-- ── Bottom bar: sorts + objets — ancrée, jamais flottante. Se rétracte entièrement
-         pendant le tour adverse (rien à y montrer, le bandeau d'action au-dessus du plateau
-         porte déjà l'annonce) : le plateau récupère tout l'espace, façon plan large cinématique
-         sur l'action ennemie plutôt qu'un HUD figé en arrière-plan. ── -->
-    <footer ref="bottomEl" class="tbattle__bottom" :class="{ 'tbattle__bottom--collapsed': !store.isPlayerTurn }">
+    <!-- ── Bottom bar: sorts + objets. Son repli est la frontière de séquence : aucune
+         animation de combat ne démarre avant sa disparition complète. Une fois repliée, la
+         taille libérée pour le plateau devient le référentiel de projection de toute la scène. ── -->
+    <footer
+      ref="bottomEl"
+      class="tbattle__bottom"
+      :class="{ 'tbattle__bottom--collapsed': !store.isPlayerTurn }"
+    >
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
         <div
@@ -2243,8 +2303,7 @@ onBeforeUnmount(() => {
         </template>
       </div>
 
-      <!-- Rien pour le tour adverse : la barre entière se rétracte alors (voir
-           .tbattle__bottom--collapsed), le bandeau d'annonce au-dessus du plateau suffit. -->
+      <!-- Hors tour joueur, les commandes restent visibles mais désactivées : le viewport ne change pas. -->
       <p v-if="store.selectedSkillKey || store.selectedItemId" class="tbattle__hint">
         Clique une case dans la zone rouge pour lancer.
       </p>
@@ -2283,10 +2342,6 @@ onBeforeUnmount(() => {
   gap: 0;
 }
 
-.tbattle--transitioning {
-  opacity: 0.5;
-  transition: opacity 300ms ease-in-out;
-}
 
 /* ── Initiative rail (left) ──────────────────────────────────────────────── */
 .tbattle__initiative-rail {
@@ -2493,8 +2548,8 @@ onBeforeUnmount(() => {
   background: rgba(12, 13, 18, .92);
   backdrop-filter: blur(12px);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .35);
-  /* 280ms/200ms de base × PACE (1.25, voir useCombatPlayback.ts) : ce repli fait partie de la
-     mise en scène, il suit le même rythme que le reste plutôt qu'un minutage isolé. */
+  /* Le repli fait partie de la timeline de combat. Le playback attend explicitement sa fin
+     avant d'autoriser la caméra ou toute autre animation. */
   transition: max-height 350ms ease, opacity 250ms ease, padding 350ms ease, border-top-width 350ms ease;
 }
 

@@ -15,7 +15,9 @@ export const SETTLE_MS = Math.round(620 * PACE);
 export const FLOAT_MS = Math.round(1100 * PACE);
 export const FLOAT_RISE_PX = 30;
 export const IMPACT_MS = Math.round(800 * PACE);
-export const TURN_TRANSITION_MS = Math.round(300 * PACE);
+// Conservé pour compatibilité avec les tests/consommateurs historiques.
+// Le fondu de changement de tour a été supprimé : il ne doit plus ajouter de latence visuelle.
+export const TURN_TRANSITION_MS = 0;
 export const TICK_SETTLE_MS = Math.round(400 * PACE);
 export const TICK_IMPACT_STAGGER_MS = Math.round(260 * PACE);
 export const TELEGRAPH_MS = Math.round(1200 * PACE);
@@ -424,22 +426,14 @@ export function useCombatPlayback() {
 
       for (const event of events) {
         const actorIsAlly = allyIds.has(event.actorId);
-        const beginsEnemyTurn = !actorIsAlly && event.actorId !== previousActorId;
+        const actorChanged = event.actorId !== previousActorId;
         const actorPos = actorPosition(event, settledPositions);
 
-        if (beginsEnemyTurn) {
-          isTransitioning.value = true;
-          transitionPhase.value = 'fadeOut';
-          await wait(TURN_TRANSITION_MS / 2);
-          transitionPhase.value = 'fadeIn';
-          await wait(TURN_TRANSITION_MS / 2);
-          isTransitioning.value = false;
-          transitionPhase.value = null;
-        }
-
-        // Le recentrage sur l'entité active est une vraie étape de la chronologie : rien ne
-        // s'annonce et aucun effet ne part avant sa fin.
-        await cueActor(event, actorPos);
+        // Un même tour peut être découpé en plusieurs événements (Move puis Skill/Item).
+        // La caméra ne doit pas rejouer un recentrage sur le même acteur entre ces deux morceaux :
+        // elle continue depuis la position atteinte pendant la marche. On ne recentre donc
+        // l'acteur qu'au premier événement de sa séquence.
+        if (actorChanged) await cueActor(event, actorPos);
 
         // Pour un geste adverse, la caméra cadre l'acteur + sa cible AVANT le télégraphe : la
         // zone annoncée doit forcément être visible pendant son temps de lecture. Le joueur,

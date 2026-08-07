@@ -13,8 +13,9 @@ const CAMERA_FOCUS_BASE_MS = 260;
 const CAMERA_FOCUS_MAX_MS = 620;
 const CAMERA_FOCUS_MS_PER_CELL = 34;
 
-/** Vitesse de rattrapage pendant qu'une unité marche, en unités exponentielles/seconde. */
-const CAMERA_FOLLOW_SPEED = 9;
+/** Vitesse de rattrapage pendant qu'une unité marche. Élevée pour que la caméra reste au contact
+ * de l'unité et n'ait pas à effectuer un second recentrage perceptible à la fin du trajet. */
+const CAMERA_FOLLOW_SPEED = 16;
 
 export type CombatCameraFocusOptions = {
   instant?: boolean;

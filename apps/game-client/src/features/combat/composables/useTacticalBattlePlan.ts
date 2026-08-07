@@ -1,4 +1,3 @@
-import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
 import {
   isoUnit,
   projectToScreen,
@@ -6,6 +5,7 @@ import {
   type CameraParams,
   type ProjectionParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
+import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   obstacleVariantCount,

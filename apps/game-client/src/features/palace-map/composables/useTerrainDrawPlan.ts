@@ -1,7 +1,7 @@
 import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
-import { propKindFor } from './useNodePresentation';
 import { hashSeed } from './usePalaceTerrain';
+import { propKindFor } from './useNodePresentation';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
