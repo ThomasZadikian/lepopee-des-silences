@@ -58,18 +58,6 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
         }
     }
 
-    // ── Templates ─────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetItemTemplateByKeyAsync_ShouldFail_ForUnknownKey()
-    {
-        // Item templates reuse ItemDefinitionEntity; no dedicated item templates are seeded.
-        var result = await _gateway.GetItemTemplateByKeyAsync("item-nonexistent");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("catalog.item_template_not_found");
-    }
-
     // ── Palace Laws ───────────────────────────────────────────────────
 
     [Fact]

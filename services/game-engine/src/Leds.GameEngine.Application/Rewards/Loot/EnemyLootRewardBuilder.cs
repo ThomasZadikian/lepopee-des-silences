@@ -85,7 +85,7 @@ public sealed class EnemyLootRewardBuilder
                 RewardType.TemporaryItem,
                 item.DisplayName,
                 item.Description,
-                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{CatalogRunItemMapper.MapType(item.ItemType, item.Category)}:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
+                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{CatalogRunItemMapper.MapType(item.Category)}:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
                 loot.SourceEnemyKey,
                 loot.SourceEnemyDisplayName));
         }

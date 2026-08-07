@@ -31,24 +31,24 @@ public sealed class ItemEventContentResolutionStrategy : IEventContentResolution
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var itemTemplateResult = await _catalogContentGateway.GetItemTemplateByKeyAsync(
+        var itemDefinitionResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(
             DefaultItemTemplateKey,
             cancellationToken);
 
-        if (itemTemplateResult.IsFailure)
+        if (itemDefinitionResult.IsFailure)
         {
-            return Result<ResolvedNodeEventContent>.Failure(itemTemplateResult.Error);
+            return Result<ResolvedNodeEventContent>.Failure(itemDefinitionResult.Error);
         }
 
-        var itemTemplate = itemTemplateResult.Value;
+        var itemDefinition = itemDefinitionResult.Value;
 
         return Result<ResolvedNodeEventContent>.Success(
             new ResolvedItemEventContent(
                 EventTemplateKey: DefaultEventTemplateKey,
                 EventTemplateVersion: TemplateVersion,
                 Tags: [],
-                ItemTemplateKey: itemTemplate.Key,
-                ItemTemplateVersion: itemTemplate.Version,
+                ItemTemplateKey: itemDefinition.Key,
+                ItemTemplateVersion: itemDefinition.Version,
                 RewardProfile: context.RewardProfile));
     }
 }

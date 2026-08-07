@@ -44,7 +44,8 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         item.Key.Should().Be("canon.item.monocle-pomenian");
         item.DisplayName.Should().Be("Le monocle de Pomenian");
         item.Category.Should().Be("Equipment");
-        item.ItemType.Should().Be("Accessory");
+        item.FlavorTag.Should().Be("Accessory");
+        item.EquipSlot.Should().Be("Accessory");
         item.Rarity.Should().Be("Epic");
         item.TacticalRange.Should().Be(2);
         item.TacticalAreaShape.Should().Be("Diamond");

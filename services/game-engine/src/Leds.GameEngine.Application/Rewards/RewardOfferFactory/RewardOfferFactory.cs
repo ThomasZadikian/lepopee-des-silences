@@ -143,7 +143,7 @@ public sealed class RewardOfferFactory
                     $"Catalog reward option '{option.Label}' must declare item type, rarity and effect.");
             }
 
-            var itemType = CatalogRunItemMapper.MapType(option.ItemType, option.ItemType).ToString();
+            var itemType = CatalogRunItemMapper.MapType(option.ItemType).ToString();
             var itemRarity = CatalogRunItemMapper.MapRarity(option.ItemRarity).ToString();
             var itemEffectType = CatalogRunItemMapper.MapEffect(option.ItemEffectType).ToString();
             return $"item:{option.PayloadKey}:{option.Label}:{option.Description}:{itemType}:{itemRarity}:{itemEffectType}:{option.BaseAmount}";

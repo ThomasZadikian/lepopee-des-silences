@@ -24,10 +24,13 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.DisplayName,
                 d.Description,
                 d.Category,
-                d.ItemType,
+                d.FlavorTag,
                 d.Rarity,
                 d.EffectRunType,
                 d.EffectValue,
+                CatalogRunItemMapper.TryMapType(d.Category, out var runItemType)
+                    ? CatalogRunItemMapper.MapEquipSlot(runItemType)
+                    : null,
                 d.ReadablePages,
                 (d.EquipmentEffects ?? []).Select(effect => new ItemEquipmentEffectView(
                     effect.Kind,

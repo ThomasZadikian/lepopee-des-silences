@@ -29,21 +29,14 @@ public sealed class EquipItemCommandHandler : IRequestHandler<EquipItemCommand, 
         if (definition.IsFailure)
             throw new DomainException($"Unknown equipment item '{request.ItemKey}'.");
 
-        // Derived from the same catalog-authored (itemType, category) pair — and the same
+        // Derived from the same catalog-authored category — via the same
         // CatalogRunItemMapper — that resolves every other item classification in the
-        // runtime, rather than re-deriving an independent notion of "what kind of item is
-        // this" here. Grimoire/WeatherInstrument/SkillEssence share the Relic slot: none
-        // of the three has a dedicated equipment slot of its own.
-        var runItemType = CatalogRunItemMapper.MapType(definition.Value.ItemType, definition.Value.Category);
-        var slot = runItemType switch
-        {
-            RunItemType.Weapon => "Weapon",
-            RunItemType.Equipment => "Accessory",
-            RunItemType.Relic or RunItemType.Grimoire or RunItemType.WeatherInstrument or RunItemType.SkillEssence
-                => "Relic",
-            _ => throw new DomainException(
-                $"Item '{request.ItemKey}' is not an equippable weapon, accessory or relic.")
-        };
+        // runtime, rather than re-deriving an independent notion of "what kind of item
+        // is this" here.
+        var runItemType = CatalogRunItemMapper.MapType(definition.Value.Category);
+        var slot = CatalogRunItemMapper.MapEquipSlot(runItemType)
+            ?? throw new DomainException(
+                $"Item '{request.ItemKey}' is not an equippable weapon, accessory or relic.");
 
         return await _playerProfileGateway.EquipItemAsync(
             request.PlayerId,

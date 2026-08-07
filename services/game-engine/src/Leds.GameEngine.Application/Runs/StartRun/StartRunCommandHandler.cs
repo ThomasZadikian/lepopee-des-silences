@@ -90,7 +90,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 .Select(effect => effect with { SourceDefinitionKey = item.Key }))
             .ToArray();
         var equippedWeapon = equippedDefinitions.FirstOrDefault(item =>
-            string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
+            string.Equals(item.Category, "Weapon", StringComparison.OrdinalIgnoreCase));
 
         var effectiveStats = _statMerger.ComputeEffectiveStats(mainCharacter.Stats, equipmentEffects);
 
@@ -243,7 +243,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             var effects = definitions.SelectMany(item => item.EquipmentEffects ?? []).ToArray();
             var effective = _statMerger.ComputeEffectiveStats(character.Stats, effects);
             var weapon = definitions.FirstOrDefault(item =>
-                string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
+                string.Equals(item.Category, "Weapon", StringComparison.OrdinalIgnoreCase));
             var skills = await _skillMerger.MergeSkillsAsync(
                 character, effects, cancellationToken, weapon);
 

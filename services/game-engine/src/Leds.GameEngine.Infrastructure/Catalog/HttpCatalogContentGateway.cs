@@ -32,6 +32,64 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             ? throw new InvalidOperationException($"Catalog returned an empty {field}.")
             : value.Trim();
 
+    public async Task<CatalogItemTypeCatalog> GetItemTypeCatalogAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/item-types";
+        var response = await GetJsonOrNullAsync<ItemTypeCatalogHttpResponse>(url, cancellationToken)
+            ?? throw new InvalidOperationException("Catalog returned no item type catalog.");
+
+        if (string.IsNullOrWhiteSpace(response.Version)
+            || response.Definitions is null
+            || response.Definitions.Count == 0)
+        {
+            throw new InvalidOperationException("Catalog returned an incomplete item type catalog.");
+        }
+
+        var definitions = response.Definitions.Select(definition => new CatalogItemTypeDefinition(
+            Require(definition.Code, "item type code").ToLowerInvariant(),
+            Require(definition.DisplayName, $"item type '{definition.Code}' display name"),
+            Require(definition.Glyph, $"item type '{definition.Code}' glyph"),
+            Require(definition.Color, $"item type '{definition.Code}' color"))).ToArray();
+
+        if (definitions.Select(d => d.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != definitions.Length)
+        {
+            throw new InvalidOperationException("Catalog returned duplicate item type definitions.");
+        }
+
+        return new CatalogItemTypeCatalog(response.Version.Trim(), definitions);
+    }
+
+    public async Task<CatalogItemRarityCatalog> GetItemRarityCatalogAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/item-rarities";
+        var response = await GetJsonOrNullAsync<ItemRarityCatalogHttpResponse>(url, cancellationToken)
+            ?? throw new InvalidOperationException("Catalog returned no item rarity catalog.");
+
+        if (string.IsNullOrWhiteSpace(response.Version)
+            || response.Definitions is null
+            || response.Definitions.Count == 0)
+        {
+            throw new InvalidOperationException("Catalog returned an incomplete item rarity catalog.");
+        }
+
+        var definitions = response.Definitions.Select(definition => new CatalogItemRarityDefinition(
+            Require(definition.Code, "item rarity code").ToLowerInvariant(),
+            Require(definition.DisplayName, $"item rarity '{definition.Code}' display name"),
+            Require(definition.Glyph, $"item rarity '{definition.Code}' glyph"),
+            Require(definition.Color, $"item rarity '{definition.Code}' color"),
+            definition.PalaceShardCost,
+            definition.HimLitShardCost)).ToArray();
+
+        if (definitions.Select(d => d.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != definitions.Length)
+        {
+            throw new InvalidOperationException("Catalog returned duplicate item rarity definitions.");
+        }
+
+        return new CatalogItemRarityCatalog(response.Version.Trim(), definitions);
+    }
+
     public async Task<CatalogEmotionalRegisterCatalog> GetEmotionalRegisterCatalogAsync(
         CancellationToken cancellationToken = default)
     {
@@ -146,13 +204,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         }
 
         return definitions;
-    }
-
-    public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default)
-    {
-        return GetItemTemplateByKeyCoreAsync(key, cancellationToken);
     }
 
     public Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(
@@ -376,34 +427,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
         return Result<CatalogRewardTemplateSnapshot>.Success(
             MapToCatalogRewardTemplateSnapshot(wrapper.Definition));
-    }
-
-    // ── Item Templates ────────────────────────────────────────────────
-
-    private async Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyCoreAsync(
-        string key,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return Result<ItemTemplateSnapshot>.Failure(Error.Create(
-                "catalog.item_template_key_required",
-                "Item template key is required."));
-        }
-
-        var encodedKey = Uri.EscapeDataString(key.Trim());
-        var url = $"/api/v2/catalog/items/{encodedKey}";
-        var wrapper = await GetJsonOrNullAsync<GetItemTemplateByKeyHttpResponse>(url, cancellationToken);
-
-        if (wrapper?.Template is null)
-        {
-            return Result<ItemTemplateSnapshot>.Failure(Error.Create(
-                "catalog.item_template_not_found",
-                $"Item template '{key}' was not found."));
-        }
-
-        return Result<ItemTemplateSnapshot>.Success(
-            MapToItemTemplateSnapshot(wrapper.Template));
     }
 
     public async Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
@@ -1137,7 +1160,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.Description,
             source.NarrativeText,
             source.Category,
-            source.ItemType,
+            source.FlavorTag,
             source.Rarity,
             source.UsageMode,
             source.Lifecycle,
@@ -1206,21 +1229,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.ItemType,
             source.ItemRarity,
             source.ItemEffectType);
-    }
-
-    private static ItemTemplateSnapshot MapToItemTemplateSnapshot(
-        ItemTemplateHttpResponse source)
-    {
-        return new ItemTemplateSnapshot(
-            Key: source.Key,
-            Name: source.Name,
-            Description: source.Description,
-            Version: source.Version,
-            Status: source.Status,
-            ItemType: source.Category,
-            Rarity: source.Rarity,
-            IsTemporary: false,
-            EffectTags: []);
     }
 
     public async Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
@@ -1591,7 +1599,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Description,
         string? NarrativeText,
         string Category,
-        string ItemType,
+        string FlavorTag,
         string Rarity,
         string UsageMode,
         string Lifecycle,
@@ -1866,6 +1874,28 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Version,
         IReadOnlyCollection<EmotionalRegisterDefinitionHttpResponse>? Definitions);
 
+    private sealed record ItemTypeCatalogHttpResponse(
+        string Version,
+        IReadOnlyCollection<ItemTypeDefinitionHttpResponse>? Definitions);
+
+    private sealed record ItemTypeDefinitionHttpResponse(
+        string Code,
+        string DisplayName,
+        string Glyph,
+        string Color);
+
+    private sealed record ItemRarityCatalogHttpResponse(
+        string Version,
+        IReadOnlyCollection<ItemRarityDefinitionHttpResponse>? Definitions);
+
+    private sealed record ItemRarityDefinitionHttpResponse(
+        string Code,
+        string DisplayName,
+        string Glyph,
+        string Color,
+        int PalaceShardCost,
+        int HimLitShardCost);
+
     private sealed record CharacterCombatDefinitionsHttpResponse(
         IReadOnlyCollection<CharacterCombatDefinitionHttpResponse>? Definitions);
 
@@ -1892,23 +1922,5 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string DefendingRegister,
         string Outcome,
         double Multiplier);
-
-    // ── Template HTTP responses ───────────────────────────────────────
-
-    private sealed record GetItemTemplateByKeyHttpResponse(
-        ItemTemplateHttpResponse? Template);
-
-    private sealed record ItemTemplateHttpResponse(
-        Guid Id,
-        string Key,
-        string Name,
-        string Description,
-        string Version,
-        string Status,
-        string Category,
-        string Rarity,
-        string Duration,
-        int EffectValue,
-        int Price);
 
 }

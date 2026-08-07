@@ -135,7 +135,7 @@ public sealed class PlayerSkillMerger
     {
         if (!string.Equals(skill.Key, "skill.basic.strike", StringComparison.OrdinalIgnoreCase)
             || weapon is null
-            || !string.Equals(weapon.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase))
+            || !string.Equals(weapon.Category, "Weapon", StringComparison.OrdinalIgnoreCase))
         {
             return skill;
         }

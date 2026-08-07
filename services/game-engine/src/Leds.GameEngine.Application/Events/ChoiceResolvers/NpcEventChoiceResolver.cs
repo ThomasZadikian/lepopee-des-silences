@@ -330,7 +330,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 // no RunItemRarity equivalent). Map defensively instead of trusting an exact match.
                 run.AddRunItem(RunItem.Create(
                     itemDef.Key, itemDef.DisplayName, itemDef.Description,
-                    CatalogRunItemMapper.MapType(itemDef.ItemType, itemDef.Category),
+                    CatalogRunItemMapper.MapType(itemDef.Category),
                     CatalogRunItemMapper.MapRarity(itemDef.Rarity),
                     quantity: offering.Amount > 0 ? offering.Amount : 1,
                     CatalogRunItemMapper.MapEffect(itemDef.EffectRunType),

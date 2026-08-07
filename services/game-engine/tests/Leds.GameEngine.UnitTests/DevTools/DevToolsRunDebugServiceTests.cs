@@ -98,7 +98,7 @@ public sealed class DevToolsRunDebugServiceTests
                 Description: "Restaure 25% de Vitalité maximale.",
                 NarrativeText: null,
                 Category: "Consumable",
-                ItemType: "Consumable",
+                FlavorTag: "Consumable",
                 Rarity: "Common",
                 UsageMode: "UseAnywhere",
                 Lifecycle: "RuntimeRunOnly",

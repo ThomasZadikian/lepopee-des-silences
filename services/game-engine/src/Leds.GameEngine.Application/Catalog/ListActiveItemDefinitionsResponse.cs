@@ -5,10 +5,15 @@ public sealed record ItemDefinitionView(
     string DisplayName,
     string Description,
     string Category,
-    string ItemType,
+    string FlavorTag,
     string Rarity,
     string? EffectRunType,
     int EffectValue,
+    // Weapon/Accessory/Relic, or null when this category isn't equippable at all
+    // (Consumable/Key/Currency/Material/...) — resolved server-side from Category via
+    // CatalogRunItemMapper, the same authority the actual equip command uses, so the
+    // frontend never re-derives it from raw category/type fields.
+    string? EquipSlot = null,
     IReadOnlyCollection<string>? ReadablePages = null,
     IReadOnlyCollection<ItemEquipmentEffectView>? EquipmentEffects = null,
     bool IsContainer = false,

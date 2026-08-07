@@ -12,14 +12,16 @@ public interface ICatalogContentGateway
     Task<CatalogEmotionalRegisterCatalog> GetEmotionalRegisterCatalogAsync(
         CancellationToken cancellationToken = default);
 
+    Task<CatalogItemTypeCatalog> GetItemTypeCatalogAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<CatalogItemRarityCatalog> GetItemRarityCatalogAsync(
+        CancellationToken cancellationToken = default);
+
     Task<CatalogEmotionalAffinityMatrixSnapshot> GetEmotionalAffinityMatrixAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<CatalogCharacterCombatDefinition>> ListCharacterCombatDefinitionsAsync(
-        CancellationToken cancellationToken = default);
-
-    Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
-        string key,
         CancellationToken cancellationToken = default);
 
     Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(

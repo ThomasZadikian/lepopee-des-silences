@@ -171,21 +171,6 @@ public sealed class HttpCatalogContentGatewayTests
     }
 
     [Fact]
-    public async Task GetItemTemplateByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
-    {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
-        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
-        var gateway = new HttpCatalogContentGateway(client);
-
-        var act = async () => await gateway.GetItemTemplateByKeyAsync("item-memory-fragment-v1");
-
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
-    }
-
-    [Fact]
     public async Task GetPalaceLawDefinitionByKeyAsync_ShouldReturnDefinition_WhenCatalogReturns200()
     {
         var httpResponse = new

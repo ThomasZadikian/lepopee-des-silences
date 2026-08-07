@@ -327,7 +327,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         // "Item" offering — these are free-authored catalog strings, not enum-backed at rest.
         run.AddRunItem(RunItem.Create(
             itemDef.Key, itemDef.DisplayName, itemDef.Description,
-            CatalogRunItemMapper.MapType(itemDef.ItemType, itemDef.Category),
+            CatalogRunItemMapper.MapType(itemDef.Category),
             CatalogRunItemMapper.MapRarity(itemDef.Rarity),
             quantity: quantity,
             CatalogRunItemMapper.MapEffect(itemDef.EffectRunType),

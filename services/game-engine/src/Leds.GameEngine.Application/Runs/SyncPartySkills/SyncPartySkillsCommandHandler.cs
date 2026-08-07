@@ -61,7 +61,7 @@ public sealed class SyncPartySkillsCommandHandler
                 .SelectMany(item => item.EquipmentEffects ?? [])
                 .ToArray();
             var weapon = equippedDefinitions.SingleOrDefault(item =>
-                string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
+                string.Equals(item.Category, "Weapon", StringComparison.OrdinalIgnoreCase));
             var mergedSkills = await _skillMerger.MergeSkillsAsync(
                 character, equipmentEffects, cancellationToken, weapon);
 

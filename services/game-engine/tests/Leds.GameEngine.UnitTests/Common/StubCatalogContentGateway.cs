@@ -27,6 +27,28 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
         CancellationToken cancellationToken = default) =>
         Task.FromResult(EmotionalRegisterCatalog);
 
+    public CatalogItemTypeCatalog ItemTypeCatalog { get; set; } =
+        new("item-types-test-1.0.0",
+        [
+            new("consumable", "Consommable", "✳", "green"),
+            new("weapon", "Arme", "⚔", "red")
+        ]);
+
+    public Task<CatalogItemTypeCatalog> GetItemTypeCatalogAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ItemTypeCatalog);
+
+    public CatalogItemRarityCatalog ItemRarityCatalog { get; set; } =
+        new("item-rarities-test-1.0.0",
+        [
+            new("common", "Commune", "○", "gray", 150, 0),
+            new("legendary", "Légendaire", "✶", "gold", 750, 50)
+        ]);
+
+    public Task<CatalogItemRarityCatalog> GetItemRarityCatalogAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ItemRarityCatalog);
+
     public CatalogEmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; set; } =
         new(
             "emotional-affinity-test-1.0.0",
@@ -54,32 +76,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     public Task<IReadOnlyCollection<CatalogCharacterCombatDefinition>> ListCharacterCombatDefinitionsAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult(CharacterCombatDefinitions);
-
-    private static readonly IReadOnlyDictionary<string, ItemTemplateSnapshot> ItemTemplates =
-        new Dictionary<string, ItemTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["item-memory-fragment-v1"] = new ItemTemplateSnapshot(
-                Key: "item-memory-fragment-v1",
-                Name: "Fragment de Mémoire",
-                Description: "Un éclat de souvenir. Peut être utilisé pour restaurer un peu de vitalité.",
-                Version: "1.0.0",
-                Status: "Active",
-                ItemType: "Consumable",
-                Rarity: "Common",
-                IsTemporary: true,
-                EffectTags: ["heal", "memory"]),
-            ["canon.item.lanterne"] = new ItemTemplateSnapshot(
-                Key: "canon.item.lanterne",
-                Name: "Lanterne à huile",
-                Description: "Seules les chaumières éclairées ne furent pas touchées. La lumière est un abri.",
-                Version: "canon-1.0.0",
-                Status: "Active",
-                ItemType: "Consumable",
-                Rarity: "Common",
-                IsTemporary: true,
-                EffectTags: ["light"])
-        };
-
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =
         new Dictionary<string, PalaceLawDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)
@@ -227,6 +223,22 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     private static readonly IReadOnlyDictionary<string, CatalogItemDefinitionSnapshot> ItemDefinitions =
         new Dictionary<string, CatalogItemDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
+            ["canon.item.lanterne"] = new CatalogItemDefinitionSnapshot(
+                "canon.item.lanterne",
+                "canon-1.0.0",
+                "Lanterne à huile",
+                "Seules les chaumières éclairées ne furent pas touchées. La lumière est un abri.",
+                null,
+                "Consumable",
+                "Light",
+                "Common",
+                "UseOutsideCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                20,
+                false,
+                true,
+                null),
             ["item.consumable.minor-heal"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal",
                 "1.0",
@@ -473,16 +485,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 RewardOption("Heal", "Soin du marchand", "Soin du marchand", null, null, 12)])
         };
 
-    public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(GetByKey(
-            ItemTemplates,
-            key,
-            "catalog.item_template_not_found",
-            "Item template was not found."));
-    }
 
     public Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(
         string key,
