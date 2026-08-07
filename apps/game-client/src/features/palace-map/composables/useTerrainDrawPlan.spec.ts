@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import type { NodeDto } from '../../runs/types/runTypes';
-import { buildDrawPlan, isoUnit, projectToScreen, screenToCell, unprojectFromScreen, type ProjectionParams } from './useTerrainDrawPlan';
+import {
+  buildDrawPlan,
+  cameraTileUnit,
+  isoUnit,
+  projectToScreen,
+  projectToScreenCamera,
+  screenToCell,
+  screenToCellCamera,
+  unprojectFromScreen,
+  unprojectFromScreenCamera,
+  visibleCellRange,
+  type CameraParams,
+  type ProjectionParams,
+} from './useTerrainDrawPlan';
 import { TERRAIN_SPRITE_CONSTANTS } from './useTerrainSprites';
 import type { Cell } from './useGridCells';
 
@@ -613,5 +626,119 @@ describe('screenToCell', () => {
 
   it('returns null well outside any tile', () => {
     expect(screenToCell({ ...screenToCellBase, screenX: -500, screenY: -500 })).toBeNull();
+  });
+});
+
+// Combat (TacticalCombatScene.vue, useTacticalBattlePlan.ts, useSortEffects.ts) imports and
+// calls isoUnit/projectToScreen/screenToCell directly — never anything camera-aware. Adding the
+// camera layer must not change what these produce for a "combat-shaped" call (small fixed grid,
+// no camera params), or combat's rendering/hit-testing would silently drift. This is the safety
+// net the exploration-camera plan calls for.
+describe('combat-shape regression — camera layer does not change existing exports', () => {
+  const COMBAT_PARAMS: ProjectionParams = { canvasWidth: 900, canvasHeight: 600, gridWidth: 8, gridHeight: 6 };
+
+  it('projectToScreen is unaffected by the camera additions', () => {
+    for (const [x, y] of [[0, 0], [3, 2], [7, 5]]) {
+      expect(projectToScreen(x, y, COMBAT_PARAMS)).toEqual({
+        screenX: (COMBAT_PARAMS.canvasWidth / 2) - ((x - y) * isoUnit(COMBAT_PARAMS).isoUnitX),
+        screenY: expect.any(Number),
+      });
+    }
+  });
+
+  it('screenToCell round-trips through projectToScreen exactly as before', () => {
+    const base = {
+      gridWidth: COMBAT_PARAMS.gridWidth,
+      gridHeight: COMBAT_PARAMS.gridHeight,
+      canvasWidth: COMBAT_PARAMS.canvasWidth,
+      canvasHeight: COMBAT_PARAMS.canvasHeight,
+      elevation: new Array(COMBAT_PARAMS.gridWidth * COMBAT_PARAMS.gridHeight).fill(0),
+      obstacleCells: new Set<string>(),
+    };
+    for (const [x, y] of [[0, 0], [3, 2], [7, 5]]) {
+      const { screenX, screenY } = projectToScreen(x, y, COMBAT_PARAMS);
+      expect(screenToCell({ ...base, screenX, screenY })).toEqual({ x, y });
+    }
+  });
+});
+
+describe('projectToScreenCamera / unprojectFromScreenCamera', () => {
+  const CANVAS = { canvasWidth: 800, canvasHeight: 600 };
+  const CENTERED: CameraParams = { camX: 5, camY: 5, zoom: 1 };
+
+  it('places the camera focus point at the canvas center', () => {
+    const { screenX, screenY } = projectToScreenCamera(CENTERED.camX, CENTERED.camY, { ...CANVAS, ...CENTERED });
+    expect(screenX).toBeCloseTo(CANVAS.canvasWidth / 2, 5);
+  });
+
+  it('is independent of grid size, unlike the fit-to-canvas projection', () => {
+    const { isoUnitX: smallGrid } = cameraTileUnit(CENTERED);
+    const { isoUnitX: sameZoomDifferentFocus } = cameraTileUnit({ ...CENTERED, camX: 40, camY: 40 });
+    expect(smallGrid).toBe(sameZoomDifferentFocus);
+  });
+
+  it('scales tile size with zoom', () => {
+    const base = cameraTileUnit({ ...CENTERED, zoom: 1 });
+    const doubled = cameraTileUnit({ ...CENTERED, zoom: 2 });
+    expect(doubled.isoUnitX).toBeCloseTo(base.isoUnitX * 2, 5);
+  });
+
+  it('round-trips screen -> grid -> screen for an off-center cell', () => {
+    const params = { ...CANVAS, ...CENTERED };
+    for (const [x, y] of [[3, 3], [8, 2], [5, 9]]) {
+      const { screenX, screenY } = projectToScreenCamera(x, y, params);
+      expect(unprojectFromScreenCamera(screenX, screenY, params)).toEqual({ x, y });
+    }
+  });
+});
+
+describe('visibleCellRange', () => {
+  it('centers the visible range on the camera focus point', () => {
+    const camera: CameraParams = { camX: 20, camY: 15, zoom: 1 };
+    const bounds = visibleCellRange(camera, 800, 600, 40, 30, 2);
+    const midX = (bounds.minX + bounds.maxX) / 2;
+    const midY = (bounds.minY + bounds.maxY) / 2;
+    // Rounded to whole grid cells at each of the four corners, so the midpoint can land up to
+    // half a cell off the exact focus point rather than exactly on it.
+    expect(Math.abs(midX - camera.camX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(midY - camera.camY)).toBeLessThanOrEqual(1);
+  });
+
+  it('clamps to the grid when the camera sits near a corner', () => {
+    const camera: CameraParams = { camX: 0, camY: 0, zoom: 1 };
+    const bounds = visibleCellRange(camera, 800, 600, 40, 30, 2);
+    expect(bounds.minX).toBeGreaterThanOrEqual(0);
+    expect(bounds.minY).toBeGreaterThanOrEqual(0);
+    expect(bounds.maxX).toBeLessThanOrEqual(39);
+    expect(bounds.maxY).toBeLessThanOrEqual(29);
+  });
+});
+
+describe('screenToCellCamera', () => {
+  const camera: CameraParams = { camX: 4, camY: 4, zoom: 1 };
+  const base = {
+    canvasWidth: 800,
+    canvasHeight: 600,
+    gridWidth: 9,
+    gridHeight: 9,
+    camera,
+    elevation: new Array(81).fill(0),
+    obstacleCells: new Set<string>(),
+  };
+
+  it('resolves a click at a projected cell back to that same cell', () => {
+    for (const [x, y] of [[4, 4], [2, 6], [7, 1]]) {
+      const { screenX, screenY } = projectToScreenCamera(x, y, { canvasWidth: base.canvasWidth, canvasHeight: base.canvasHeight, ...camera });
+      expect(screenToCellCamera({ ...base, screenX, screenY })).toEqual({ x, y });
+    }
+  });
+
+  it('finds nothing outside a restricted visibleBounds even if the projected point matches', () => {
+    const { screenX, screenY } = projectToScreenCamera(8, 8, { canvasWidth: base.canvasWidth, canvasHeight: base.canvasHeight, ...camera });
+    const restricted = screenToCellCamera({
+      ...base, screenX, screenY,
+      visibleBounds: { minX: 0, maxX: 3, minY: 0, maxY: 3 },
+    });
+    expect(restricted).toBeNull();
   });
 });

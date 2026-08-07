@@ -68,6 +68,99 @@ export type ProjectionParams = {
   gridHeight: number;
 };
 
+// ── Camera layer ─────────────────────────────────────────────────────────────────
+// Additive to everything above: isoUnit/projectToScreen/unprojectFromScreen/screenToCell stay
+// byte-for-byte unchanged because the tactical combat scene calls them directly, with no camera
+// concept of its own (see TacticalCombatScene.vue, useTacticalBattlePlan.ts, useSortEffects.ts).
+// A camera must never change what those produce. This layer instead centers the projection on
+// an arbitrary grid point (camX/camY — normally the party's own animated position) at a fixed
+// pixel-per-cell scale, independent of the grid's own size, so the exploration map can be
+// larger than the viewport and still read as "real tiles" rather than shrinking to fit.
+
+/** Pixel width of one grid cell at zoom = 1 — the camera-mode equivalent of isoUnit's
+ * fit-to-canvas unit, but a fixed balance knob instead of a function of grid/canvas size. */
+export const BASE_TILE_PX = 96;
+
+/** No manual zoom yet (see plan) — one named knob so promoting it to a user-adjustable ref
+ * later touches no projection math. */
+export const DEFAULT_ZOOM = 1;
+
+export type CameraParams = {
+  /** Grid-space focus point the camera centers on — fractional so it can sit mid-step during
+   * party movement, in lockstep with usePartyTokenPath's own animated coordinates. */
+  camX: number;
+  camY: number;
+  /** Multiplier on BASE_TILE_PX. 1 = default scale. */
+  zoom: number;
+};
+
+export function cameraTileUnit(camera: CameraParams): { isoUnitX: number; isoUnitY: number } {
+  const isoUnitX = BASE_TILE_PX * camera.zoom;
+  return { isoUnitX, isoUnitY: isoUnitX / 2 };
+}
+
+/** Camera-space equivalent of projectToScreen: centers on (camX, camY) instead of the grid's
+ * own center, and scales by the camera's fixed zoom instead of isoUnit's fit-to-canvas unit. */
+export function projectToScreenCamera(
+  x: number,
+  y: number,
+  params: { canvasWidth: number; canvasHeight: number } & CameraParams,
+): { screenX: number; screenY: number } {
+  const { isoUnitX, isoUnitY } = cameraTileUnit(params);
+  const dx = x - params.camX;
+  const dy = y - params.camY;
+  return {
+    screenX: (params.canvasWidth / 2) - ((dx - dy) * isoUnitX),
+    screenY: (params.canvasHeight * ISO_V_CENTER) + ((dx + dy) * isoUnitY),
+  };
+}
+
+/** Inverse of projectToScreenCamera. */
+export function unprojectFromScreenCamera(
+  screenX: number,
+  screenY: number,
+  params: { canvasWidth: number; canvasHeight: number } & CameraParams,
+): { x: number; y: number } {
+  const { isoUnitX, isoUnitY } = cameraTileUnit(params);
+  const diff = isoUnitX === 0 ? 0 : ((params.canvasWidth / 2) - screenX) / isoUnitX; // dx - dy
+  const sum = isoUnitY === 0 ? 0 : (screenY - (params.canvasHeight * ISO_V_CENTER)) / isoUnitY; // dx + dy
+  // See unprojectFromScreen's own comment: `+ 0` folds a possible -0 into +0.
+  return {
+    x: Math.round(params.camX + ((sum + diff) / 2)) + 0,
+    y: Math.round(params.camY + ((sum - diff) / 2)) + 0,
+  };
+}
+
+/** Grid-space bounding box (inclusive, clamped to the grid, with a margin so partially-visible
+ * edge tiles keep painting) of what the camera's viewport can actually show — computed from the
+ * four screen corners' unprojected grid coordinates, since an isometric camera's visible region
+ * is a rotated shape in grid space, not an axis-aligned rectangle. Used to cull both the draw
+ * plan and screenToCellCamera's hit-test scan once the grid is bigger than the viewport. */
+export function visibleCellRange(
+  camera: CameraParams,
+  canvasWidth: number,
+  canvasHeight: number,
+  gridWidth: number,
+  gridHeight: number,
+  margin = 2,
+): { minX: number; maxX: number; minY: number; maxY: number } {
+  const params = { canvasWidth, canvasHeight, ...camera };
+  const corners = [
+    unprojectFromScreenCamera(0, 0, params),
+    unprojectFromScreenCamera(canvasWidth, 0, params),
+    unprojectFromScreenCamera(0, canvasHeight, params),
+    unprojectFromScreenCamera(canvasWidth, canvasHeight, params),
+  ];
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  return {
+    minX: Math.max(0, Math.min(...xs) - margin),
+    maxX: Math.min(gridWidth - 1, Math.max(...xs) + margin),
+    minY: Math.max(0, Math.min(...ys) - margin),
+    maxY: Math.min(gridHeight - 1, Math.max(...ys) + margin),
+  };
+}
+
 export function isoUnit(params: ProjectionParams): { isoUnitX: number; isoUnitY: number } {
   const span = params.gridWidth + params.gridHeight;
   if (span === 0) return { isoUnitX: 0, isoUnitY: 0 };
@@ -143,14 +236,21 @@ export type ScreenToCellInput = {
  * overlap in favor of the higher sortKey, matching the painter's-algorithm draw order (the tile
  * actually visible at that pixel wins the hit test, same as it wins the paint).
  */
-export function screenToCell(input: ScreenToCellInput): Cell | null {
-  const projection: ProjectionParams = {
-    canvasWidth: input.canvasWidth,
-    canvasHeight: input.canvasHeight,
-    gridWidth: input.gridWidth,
-    gridHeight: input.gridHeight,
-  };
-  const { isoUnitX } = isoUnit(projection);
+/** Shape shared by screenToCell and screenToCellCamera's hit-test — everything except how a
+ * cell's own (x, y) turns into a screen position, which the caller supplies as `project` so
+ * this stays agnostic to fit-to-canvas vs. fixed-zoom-camera projection. */
+function hitTestCells(
+  screenX: number,
+  screenY: number,
+  gridWidth: number,
+  gridHeight: number,
+  elevation: number[],
+  obstacleCells: Set<string>,
+  isFloor: (x: number, y: number) => boolean,
+  isoUnitX: number,
+  project: (x: number, y: number) => { screenX: number; screenY: number },
+  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+): Cell | null {
   if (isoUnitX === 0) return null;
 
   // Mirrors TacticalGridMap's spriteDest/elevationLiftPx exactly (destW/destH/lift scale) —
@@ -169,26 +269,28 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
   let best: { x: number; y: number; sortKey: number } | null = null;
   let bestObstacle: { x: number; y: number; sortKey: number } | null = null;
 
-  const isFloor = input.isFloor
-    ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
+  const minX = Math.max(0, bounds.minX);
+  const maxX = Math.min(gridWidth - 1, bounds.maxX);
+  const minY = Math.max(0, bounds.minY);
+  const maxY = Math.min(gridHeight - 1, bounds.maxY);
 
-  for (let y = 0; y < input.gridHeight; y++) {
-    for (let x = 0; x < input.gridWidth; x++) {
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
       if (!isFloor(x, y)) continue;
 
-      const isObstacle = input.obstacleCells.has(`${x},${y}`);
+      const isObstacle = obstacleCells.has(`${x},${y}`);
       // An obstacle's own cell height, like every other cell. This used to be MAX_ELEVATION,
       // which lifted the clickable diamond three steps above where the tile is actually
       // painted — so it drifted over the cells BEHIND it and, ranking highest, stole their
       // clicks. Depth order still pins obstacles at MAX so a wall paints in front; that is a
       // painting concern and has no business deciding what the pointer is over.
-      const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
+      const elevationLevel = elevation[(y * gridWidth) + x] ?? 0;
 
-      const { screenX: cx, screenY: flatCy } = projectToScreen(x, y, projection);
+      const { screenX: cx, screenY: flatCy } = project(x, y);
       const cy = flatCy - (elevationLevel * liftPerLevel);
 
-      const dx = Math.abs(input.screenX - cx) / halfW;
-      const dy = Math.abs(input.screenY - cy) / halfH;
+      const dx = Math.abs(screenX - cx) / halfW;
+      const dy = Math.abs(screenY - cy) / halfH;
       if (dx + dy > 1) continue;
 
       const sortKey = ((x + y) * 4) + elevationLevel;
@@ -203,6 +305,57 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
 
   const hit = best ?? bestObstacle;
   return hit ? { x: hit.x, y: hit.y } : null;
+}
+
+export function screenToCell(input: ScreenToCellInput): Cell | null {
+  const projection: ProjectionParams = {
+    canvasWidth: input.canvasWidth,
+    canvasHeight: input.canvasHeight,
+    gridWidth: input.gridWidth,
+    gridHeight: input.gridHeight,
+  };
+  const { isoUnitX } = isoUnit(projection);
+  const isFloor = input.isFloor
+    ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
+
+  return hitTestCells(
+    input.screenX, input.screenY, input.gridWidth, input.gridHeight,
+    input.elevation, input.obstacleCells, isFloor, isoUnitX,
+    (x, y) => projectToScreen(x, y, projection),
+    { minX: 0, maxX: input.gridWidth - 1, minY: 0, maxY: input.gridHeight - 1 },
+  );
+}
+
+export type ScreenToCellCameraInput = {
+  screenX: number;
+  screenY: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  camera: CameraParams;
+  elevation: number[];
+  obstacleCells: Set<string>;
+  isFloor?: (x: number, y: number) => boolean;
+  /** Restricts the scan to this range instead of the full 0..gridWidth/0..gridHeight — the perf
+   * fix for a grid bigger than the viewport (see visibleCellRange). Defaults to the full grid. */
+  visibleBounds?: { minX: number; maxX: number; minY: number; maxY: number };
+};
+
+/** Camera-space equivalent of screenToCell — same hit-test, projected through the camera
+ * instead of the fit-to-canvas grid projection, and scan-bounded to the camera's viewport. */
+export function screenToCellCamera(input: ScreenToCellCameraInput): Cell | null {
+  const { isoUnitX } = cameraTileUnit(input.camera);
+  const isFloor = input.isFloor
+    ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
+  const params = { canvasWidth: input.canvasWidth, canvasHeight: input.canvasHeight, ...input.camera };
+
+  return hitTestCells(
+    input.screenX, input.screenY, input.gridWidth, input.gridHeight,
+    input.elevation, input.obstacleCells, isFloor, isoUnitX,
+    (x, y) => projectToScreenCamera(x, y, params),
+    input.visibleBounds ?? { minX: 0, maxX: input.gridWidth - 1, minY: 0, maxY: input.gridHeight - 1 },
+  );
 }
 
 export type DrawPlanEntry = {
@@ -261,6 +414,15 @@ export type BuildDrawPlanInput = {
   /** The cell under the pointer, if any — painted as a highlight sprite hugging that tile's
    * own diamond at its own elevation. Null when the pointer is off the board. */
   hoveredCell?: { x: number; y: number } | null;
+  /** When present, every position in this plan is projected through the camera (see
+   * useCamera.ts) instead of the fit-to-canvas grid projection. Absent means today's behavior:
+   * the whole grid scaled to fit the canvas, centered on its own middle. */
+  camera?: CameraParams;
+  /** Restricts which cells are even considered, before any per-cell work (sprite key
+   * resolution, projection, sort key) — the perf fix for a grid bigger than the viewport.
+   * Ignored when `camera` is absent (today's rooms fit the canvas in one screen, nothing to
+   * cull). Defaults to the full grid when `camera` is present but this is omitted. */
+  visibleBounds?: { minX: number; maxX: number; minY: number; maxY: number };
 };
 
 /**
@@ -279,6 +441,17 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     gridWidth: input.gridWidth,
     gridHeight: input.gridHeight,
   };
+  const cameraParams = input.camera
+    ? { canvasWidth: input.canvasWidth, canvasHeight: input.canvasHeight, ...input.camera }
+    : null;
+  const project = cameraParams
+    ? (x: number, y: number) => projectToScreenCamera(x, y, cameraParams)
+    : (x: number, y: number) => projectToScreen(x, y, projection);
+  const bounds = input.camera
+    ? (input.visibleBounds ?? { minX: 0, maxX: input.gridWidth - 1, minY: 0, maxY: input.gridHeight - 1 })
+    : null;
+  const inBounds = (x: number, y: number) =>
+    !bounds || (x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY);
 
   const entries: DrawPlanEntry[] = [];
 
@@ -290,6 +463,9 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     // A hole in the room's shape paints nothing at all — that void is what makes the
     // surrounding tiles read as an edge, via the cliff faces they grow towards it.
     if (!isFloor(cell.x, cell.y)) continue;
+    // Outside the camera's viewport (plus margin) — skip before any per-cell work at all.
+    // Absent camera (today's fit-to-canvas rooms) never culls anything.
+    if (!inBounds(cell.x, cell.y)) continue;
 
     const cellKey = `${cell.x},${cell.y}`;
     const node = input.nodesByCell.get(cellKey) ?? null;
@@ -299,7 +475,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     // must also SORT at full height — otherwise a tall floor tile beside it would paint over
     // the wall it is supposed to stand behind.
     const sortElevation = obstacle ? TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION : cellElevation;
-    const { screenX, screenY } = projectToScreen(cell.x, cell.y, projection);
+    const { screenX, screenY } = project(cell.x, cell.y);
 
     let spriteKey: SpriteKey;
 
@@ -354,6 +530,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   // prop on its own cell.
   for (const cell of input.cells) {
     if (!isFloor(cell.x, cell.y)) continue;
+    if (!inBounds(cell.x, cell.y)) continue;
 
     const node = input.nodesByCell.get(`${cell.x},${cell.y}`);
     if (!node || node.state === 'Resolved') continue;
@@ -362,7 +539,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     if (!prop) continue;
 
     const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
-    const { screenX, screenY } = projectToScreen(cell.x, cell.y, projection);
+    const { screenX, screenY } = project(cell.x, cell.y);
 
     entries.push({
       cellKey: `prop:${cell.x},${cell.y}`,
@@ -380,7 +557,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     for (const cellKey of input.reachableCells) {
       const [x, y] = cellKey.split(',').map(Number);
       const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
-      const { screenX, screenY } = projectToScreen(x, y, projection);
+      const { screenX, screenY } = project(x, y);
 
       entries.push({
         cellKey: `move:${cellKey}`,
@@ -401,7 +578,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   // the detour a wall or a climb forces before paying for it.
   for (const step of input.pathCells ?? []) {
     const elevationLevel = input.elevation[(step.y * input.gridWidth) + step.x] ?? 0;
-    const { screenX, screenY } = projectToScreen(step.x, step.y, projection);
+    const { screenX, screenY } = project(step.x, step.y);
 
     entries.push({
       cellKey: `path:${step.x},${step.y}`,
@@ -420,7 +597,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   if (input.hoveredCell) {
     const { x, y } = input.hoveredCell;
     const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
-    const { screenX, screenY } = projectToScreen(x, y, projection);
+    const { screenX, screenY } = project(x, y);
 
     entries.push({
       cellKey: 'hover',
@@ -438,7 +615,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   if (input.party) {
     const { x, y } = input.party;
     const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
-    const { screenX, screenY } = projectToScreen(x, y, projection);
+    const { screenX, screenY } = project(x, y);
 
     entries.push({
       cellKey: 'party',

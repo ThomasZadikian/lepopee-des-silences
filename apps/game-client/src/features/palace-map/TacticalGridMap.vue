@@ -24,7 +24,14 @@ import {
   TERRAIN_SPRITE_CONSTANTS,
   type FloorTint,
 } from './composables/useTerrainSprites';
-import { buildDrawPlan, isoUnit, projectToScreen, screenToCell } from './composables/useTerrainDrawPlan';
+import {
+  buildDrawPlan,
+  cameraTileUnit,
+  projectToScreenCamera,
+  screenToCellCamera,
+  visibleCellRange,
+} from './composables/useTerrainDrawPlan';
+import { useCamera } from './composables/useCamera';
 import { buildMovementRange } from './composables/useMovementRange';
 import { getCombatantSprite } from './composables/bestiaire';
 
@@ -65,6 +72,11 @@ const { isRevealed, nodeAt, isParty, cells, obstacleCells, isFloor, nodesByCell 
 const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, grid);
 
 const { terrainHeight } = usePalaceTerrain(room, grid);
+
+// Follows the party token exactly (see useCamera.ts) — decouples tile pixel size from the
+// grid's own size so a bigger room reads as a real place to walk through instead of shrinking
+// to fit the viewport.
+const { camera } = useCamera(displayPartyX, displayPartyY);
 
 // ── Canvas terrain renderer ──────────────────────────────────────────────────────
 // A single `<canvas>` paints hand-painted isometric tiles (see useTerrainSprites.ts, backed by
@@ -175,7 +187,11 @@ function paintGroundItems(
 
   for (const item of g.groundItems ?? []) {
     if (!isRevealed(item.x, item.y)) continue;
-    const { screenX, screenY } = projectToScreen(item.x, item.y, projectionParams.value);
+    const { screenX, screenY } = projectToScreenCamera(item.x, item.y, {
+      canvasWidth: canvasSize.value.width,
+      canvasHeight: canvasSize.value.height,
+      ...camera.value,
+    });
     const elevation = g.elevation[(item.y * g.width) + item.x] ?? 0;
     const cy = screenY - elevationLiftPx(elevation) - (destH * 0.12);
     const pulse = 1 + (Math.sin((timestamp * 0.003) + item.x + item.y) * 0.08);
@@ -402,14 +418,15 @@ const hintCells = computed(() => {
   return set;
 });
 
-const projectionParams = computed(() => {
+// The camera-space bounding box of what's actually visible right now — computed once, reused
+// both to cull the draw plan and to bound screenToCellCamera's hit-test scan, so the two stay
+// in lockstep by construction rather than by two separately-tuned margins.
+const visibleBounds = computed(() => {
   const g = grid.value;
-  return {
-    canvasWidth: canvasSize.value.width,
-    canvasHeight: canvasSize.value.height,
-    gridWidth: g?.width ?? 0,
-    gridHeight: g?.height ?? 0,
-  };
+  if (!g) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  return visibleCellRange(
+    camera.value, canvasSize.value.width, canvasSize.value.height, g.width, g.height,
+  );
 });
 
 const drawPlan = computed(() => {
@@ -434,6 +451,8 @@ const drawPlan = computed(() => {
     reachableCells: reachableCells.value,
     pathCells: hoveredRoute.value?.path,
     hoveredCell: hoveredCell.value,
+    camera: camera.value,
+    visibleBounds: visibleBounds.value,
   });
 });
 
@@ -448,7 +467,7 @@ const { getSprite, spriteAspectRatio, propAspectRatio, usesPropRect } = useTerra
 // well above its own tile and would be chopped flat otherwise). Blitting a wall with the floor
 // anchor sinks it into the ground, so both rects are computed here and picked per sprite key.
 const spriteDest = computed(() => {
-  const { isoUnitX } = isoUnit(projectionParams.value);
+  const { isoUnitX } = cameraTileUnit(camera.value);
   const destW = isoUnitX * 2.05; // slight overlap hides seams, matches the old CSS tile ratio
   return { destW, destH: destW / spriteAspectRatio, propH: destW / propAspectRatio };
 });
@@ -606,17 +625,27 @@ function paintFogOfWar(ctx: CanvasRenderingContext2D, width: number, height: num
   const g = grid.value;
   if (!g) return;
 
-  const { isoUnitX } = isoUnit(projectionParams.value);
+  const { isoUnitX } = cameraTileUnit(camera.value);
   if (isoUnitX === 0) return;
 
-  const centers = g.revealedCells.map(([x, y]) => {
-    const { screenX, screenY } = projectToScreen(x, y, projectionParams.value);
-    return {
-      x: screenX,
-      y: screenY - elevationLiftPx(terrainHeight(x, y)),
-      radius: visionRadius(1, isoUnitX),
-    };
-  });
+  const bounds = visibleBounds.value;
+  const cameraParams = {
+    canvasWidth: canvasSize.value.width,
+    canvasHeight: canvasSize.value.height,
+    ...camera.value,
+  };
+  const centers = g.revealedCells
+    // Skip cells outside what the camera can currently show — a fog hole nobody can see is
+    // wasted work, and revealedCells only grows over the room's lifetime.
+    .filter(([x, y]) => x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY)
+    .map(([x, y]) => {
+      const { screenX, screenY } = projectToScreenCamera(x, y, cameraParams);
+      return {
+        x: screenX,
+        y: screenY - elevationLiftPx(terrainHeight(x, y)),
+        radius: visionRadius(1, isoUnitX),
+      };
+    });
 
   if (centers.length === 0) return;
 
@@ -690,16 +719,18 @@ function canvasPointToCell(event: MouseEvent): Cell | null {
   if (!canvas || !g) return null;
 
   const rect = canvas.getBoundingClientRect();
-  return screenToCell({
+  return screenToCellCamera({
     screenX: event.clientX - rect.left,
     screenY: event.clientY - rect.top,
     canvasWidth: rect.width,
     canvasHeight: rect.height,
     gridWidth: g.width,
     gridHeight: g.height,
+    camera: camera.value,
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
     isFloor,
+    visibleBounds: visibleBounds.value,
   });
 }
 
@@ -823,7 +854,11 @@ function computeNodePopupPosition() {
   if (!containerEl || !g) return;
 
   const rect = containerEl.getBoundingClientRect();
-  const { screenX, screenY } = projectToScreen(g.partyX, g.partyY, projectionParams.value);
+  const { screenX, screenY } = projectToScreenCamera(g.partyX, g.partyY, {
+    canvasWidth: canvasSize.value.width,
+    canvasHeight: canvasSize.value.height,
+    ...camera.value,
+  });
   const elevation = g.elevation[(g.partyY * g.width) + g.partyX] ?? 0;
   // Anchored above the party's own head, not the tile's centre — otherwise the popup would
   // sit squarely over the figure it's describing.
