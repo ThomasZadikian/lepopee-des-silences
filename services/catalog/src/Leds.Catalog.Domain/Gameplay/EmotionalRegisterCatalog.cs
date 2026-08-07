@@ -14,13 +14,13 @@ public static class EmotionalRegisterCatalog
     private static readonly IReadOnlyList<EmotionalRegisterDefinition> Definitions =
     [
         new("neutral", "Neutral", "·", "oklch(0.62 0.02 272)", EmotionalRegister.Neutral),
-        new("effroi", "Effroi", "✶", "oklch(0.80 0.11 18)", EmotionalRegister.Effroi),
-        new("deni", "Déni", "◇", "oklch(0.85 0.09 78)", EmotionalRegister.Deni),
-        new("melancolie", "Mélancolie", "❍", "oklch(0.82 0.08 248)", EmotionalRegister.Melancolie),
-        new("rupture", "Rupture", "⟡", "oklch(0.80 0.11 38)", EmotionalRegister.Rupture),
-        new("memoire", "Mémoire", "◈", "oklch(0.88 0.08 86)", EmotionalRegister.Memoire),
+        new("effroi", "Effroi", "✶", "oklch(0.81 0.16 18)", EmotionalRegister.Effroi),
+        new("deni", "Déni", "◇", "oklch(0.86 0.131 78)", EmotionalRegister.Deni),
+        new("melancolie", "Mélancolie", "❍", "oklch(0.83 0.116 248)", EmotionalRegister.Melancolie),
+        new("rupture", "Rupture", "⟡", "oklch(0.81 0.16 38)", EmotionalRegister.Rupture),
+        new("memoire", "Mémoire", "◈", "oklch(0.88 0.116 86)", EmotionalRegister.Memoire),
         new("silence", "Silence", "○", "oklch(0.83 0.02 272)", EmotionalRegister.Silence),
-        new("folie", "Folie", "✳", "oklch(0.80 0.13 340)", EmotionalRegister.Folie)
+        new("folie", "Folie", "✳", "oklch(0.81 0.18 340)", EmotionalRegister.Folie)
     ];
 
     private static readonly IReadOnlyDictionary<string, EmotionalRegisterDefinition> ByCode =

@@ -20,11 +20,11 @@ public static class ItemRarityCatalog
         (string Code, string DisplayName, string Glyph, string Color, ItemRarity Value)[] raw =
         [
             ("common", "Commune", "○", "oklch(0.65 0.02 270)", ItemRarity.Common),
-            ("uncommon", "Peu commune", "◇", "oklch(0.80 0.10 150)", ItemRarity.Uncommon),
-            ("rare", "Rare", "◈", "oklch(0.80 0.10 230)", ItemRarity.Rare),
-            ("epic", "Épique", "❖", "oklch(0.80 0.12 300)", ItemRarity.Epic),
-            ("legendary", "Légendaire", "✶", "oklch(0.85 0.12 85)", ItemRarity.Legendary),
-            ("unique", "Unique", "✺", "oklch(0.78 0.15 20)", ItemRarity.Unique)
+            ("uncommon", "Peu commune", "◇", "oklch(0.81 0.145 150)", ItemRarity.Uncommon),
+            ("rare", "Rare", "◈", "oklch(0.81 0.145 230)", ItemRarity.Rare),
+            ("epic", "Épique", "❖", "oklch(0.81 0.174 300)", ItemRarity.Epic),
+            ("legendary", "Légendaire", "✶", "oklch(0.86 0.174 85)", ItemRarity.Legendary),
+            ("unique", "Unique", "✺", "oklch(0.81 0.18 20)", ItemRarity.Unique)
         ];
 
         return raw

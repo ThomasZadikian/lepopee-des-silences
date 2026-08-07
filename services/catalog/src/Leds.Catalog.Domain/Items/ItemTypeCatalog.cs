@@ -15,16 +15,16 @@ public static class ItemTypeCatalog
 
     private static readonly IReadOnlyList<ItemTypeDefinition> Definitions =
     [
-        new("consumable", "Consommable", "✳", "oklch(0.83 0.10 150)", ItemCategory.Consumable),
-        new("equipment", "Équipement", "◆", "oklch(0.82 0.09 255)", ItemCategory.Equipment),
-        new("relic", "Relique", "◈", "oklch(0.82 0.10 305)", ItemCategory.Relic),
-        new("key", "Clé", "⚷", "oklch(0.83 0.08 220)", ItemCategory.Key),
-        new("currency", "Monnaie", "○", "oklch(0.85 0.11 60)", ItemCategory.Currency),
-        new("material", "Matériau", "▲", "oklch(0.75 0.06 130)", ItemCategory.Material),
-        new("weapon", "Arme", "⚔", "oklch(0.80 0.12 30)", ItemCategory.Weapon),
-        new("grimoire", "Grimoire", "❍", "oklch(0.86 0.09 90)", ItemCategory.Grimoire),
-        new("weatherinstrument", "Instrument météorologique", "❋", "oklch(0.84 0.09 190)", ItemCategory.WeatherInstrument),
-        new("skillessence", "Essence de sort", "✶", "oklch(0.82 0.12 335)", ItemCategory.SkillEssence)
+        new("consumable", "Consommable", "✳", "oklch(0.84 0.145 150)", ItemCategory.Consumable),
+        new("equipment", "Équipement", "◆", "oklch(0.83 0.131 255)", ItemCategory.Equipment),
+        new("relic", "Relique", "◈", "oklch(0.83 0.145 305)", ItemCategory.Relic),
+        new("key", "Clé", "⚷", "oklch(0.84 0.116 220)", ItemCategory.Key),
+        new("currency", "Monnaie", "○", "oklch(0.86 0.16 60)", ItemCategory.Currency),
+        new("material", "Matériau", "▲", "oklch(0.78 0.087 130)", ItemCategory.Material),
+        new("weapon", "Arme", "⚔", "oklch(0.81 0.174 30)", ItemCategory.Weapon),
+        new("grimoire", "Grimoire", "❍", "oklch(0.87 0.131 90)", ItemCategory.Grimoire),
+        new("weatherinstrument", "Instrument météorologique", "❋", "oklch(0.85 0.131 190)", ItemCategory.WeatherInstrument),
+        new("skillessence", "Essence de sort", "✶", "oklch(0.83 0.174 335)", ItemCategory.SkillEssence)
     ];
 
     private static readonly IReadOnlyDictionary<string, ItemTypeDefinition> ByCode =
