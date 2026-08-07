@@ -43,7 +43,6 @@ public sealed partial class CatalogSeedRunner
             item.MaxStack = 1;
             item.IsUsableInCombat = false;
             item.IsUsableOutsideCombat = false;
-            item.EffectSetId = null;
             item.MinDepth = weapon.MinDepth;
             item.MaxDepth = null;
             item.BaseWeight = weapon.BaseWeight;

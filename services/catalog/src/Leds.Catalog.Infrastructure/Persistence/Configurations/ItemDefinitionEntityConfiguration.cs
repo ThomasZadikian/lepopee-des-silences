@@ -29,13 +29,12 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.MaxStack).HasColumnName("max_stack").HasDefaultValue(1);
         builder.Property(e => e.IsUsableInCombat).HasColumnName("is_usable_in_combat");
         builder.Property(e => e.IsUsableOutsideCombat).HasColumnName("is_usable_outside_combat");
-        builder.Property(e => e.EffectSetId).HasColumnName("effect_set_id");
         builder.Property(e => e.MinDepth).HasColumnName("min_depth");
         builder.Property(e => e.MaxDepth).HasColumnName("max_depth");
         builder.Property(e => e.BaseWeight).HasColumnName("base_weight").HasDefaultValue(1);
         builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);
-        builder.Property(e => e.Duration).HasColumnName("duration").HasMaxLength(64).IsRequired().HasComment("Legacy compatibility column. Use lifecycle/usage_mode/effect_set_id for data-model-0.1 definitions.");
-        builder.Property(e => e.EffectValue).HasColumnName("effect_value").HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
+        builder.Property(e => e.Duration).HasColumnName("duration").HasMaxLength(64).IsRequired().HasComment("Legacy compatibility column. Use lifecycle/usage_mode for data-model-0.1 definitions.");
+        builder.Property(e => e.EffectValue).HasColumnName("effect_value").HasComment("Sole source of truth for a used item's effect magnitude, alongside effect_run_type. See ItemDefinitionEntity.EffectRunType.");
         builder.Property(e => e.EffectRunType).HasColumnName("effect_run_type").HasMaxLength(32);
         builder.Property(e => e.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1);
         builder.Property(e => e.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();
@@ -53,6 +52,5 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
 
         builder.HasIndex(e => e.Key).IsUnique();
         builder.HasIndex(e => e.Status);
-        builder.HasOne(e => e.EffectSet).WithMany().HasForeignKey(e => e.EffectSetId).OnDelete(DeleteBehavior.SetNull);
     }
 }

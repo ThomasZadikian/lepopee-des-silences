@@ -18,7 +18,6 @@ public sealed record ItemDefinitionDto(
     int MaxStack,
     bool IsUsableInCombat,
     bool IsUsableOutsideCombat,
-    string? EffectSetKey,
     string Status,
     bool IsPermanentEligible,
     IReadOnlyCollection<ItemEquipmentEffectDto> EquipmentEffects,

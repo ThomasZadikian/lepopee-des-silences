@@ -14,7 +14,7 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         var dto = new ItemDefinitionDto(
             Guid.NewGuid(), "canon.item.monocle-pomenian", "canon-1.0.0", "Le monocle de Pomenian",
             "Une lentille gravée.", null, "Equipment", "Accessory", "Epic",
-            "NotUsable", "PersistentMeta", "Additive", 1, false, false, null, "Active",
+            "NotUsable", "PersistentMeta", "Additive", 1, false, false, "Active",
             IsPermanentEligible: true, EquipmentEffects: []);
 
         var readStore = Substitute.For<IItemDefinitionReadStore>();

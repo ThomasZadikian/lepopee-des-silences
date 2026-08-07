@@ -27,7 +27,6 @@ public sealed class EfItemDefinitionReadStore : IItemDefinitionReadStore
     public async Task<ItemDefinitionDto?> GetDtoByKeyAsync(string key, CancellationToken cancellationToken)
     {
         var entity = await _context.ItemDefinitions
-            .Include(e => e.EffectSet)
             .FirstOrDefaultAsync(e => e.Key == key, cancellationToken);
 
         return entity is null ? null : MapToDto(entity);
@@ -36,7 +35,6 @@ public sealed class EfItemDefinitionReadStore : IItemDefinitionReadStore
     public async Task<IReadOnlyCollection<ItemDefinitionDto>> ListActiveDtosAsync(CancellationToken cancellationToken)
     {
         var entities = await _context.ItemDefinitions
-            .Include(e => e.EffectSet)
             .Where(e => e.Status == "Active")
             .ToListAsync(cancellationToken);
 
@@ -67,7 +65,6 @@ public sealed class EfItemDefinitionReadStore : IItemDefinitionReadStore
             entity.MaxStack,
             entity.IsUsableInCombat,
             entity.IsUsableOutsideCombat,
-            entity.EffectSet?.Key,
             entity.Status,
             IsPermanentEligible: string.Equals(entity.Duration, nameof(ItemDuration.Permanent), StringComparison.OrdinalIgnoreCase),
             EquipmentEffects: equipmentEffects.Select(ItemEquipmentEffectDto.FromDomain).ToArray(),

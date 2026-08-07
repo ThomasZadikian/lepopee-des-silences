@@ -24,7 +24,6 @@ public sealed class ItemDefinitionEntity
     public int MaxStack { get; set; } = 1;
     public bool IsUsableInCombat { get; set; }
     public bool IsUsableOutsideCombat { get; set; }
-    public Guid? EffectSetId { get; set; }
     public int? MinDepth { get; set; }
     public int? MaxDepth { get; set; }
     public int BaseWeight { get; set; } = 1;
@@ -36,7 +35,12 @@ public sealed class ItemDefinitionEntity
     /// The RunItemEffectType (as a string, e.g. "Heal"/"Guard"/"ManaRestore") this
     /// item applies when used/granted directly as a consumable — distinct from
     /// EquipmentEffectsJson, which drives equipped-item passive bonuses. Null/"None"
-    /// for items with no intrinsic instant effect (relics, equipment, etc.).
+    /// for items with no intrinsic instant effect (relics, equipment, etc.). This pair
+    /// (EffectRunType, EffectValue) is the sole source of truth for a used item's
+    /// effect — CatalogRunItemMapper.MapEffect is the only place it's interpreted. An
+    /// earlier, unfinished migration toward a richer effect-set system
+    /// (catalog_effect_sets/catalog_effect_definitions, shared with curses/NPCs) was
+    /// never actually wired to anything for items and has been removed.
     /// </summary>
     public string? EffectRunType { get; set; }
 
@@ -66,6 +70,5 @@ public sealed class ItemDefinitionEntity
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
-    public EffectSetEntity? EffectSet { get; set; }
     public ICollection<ItemTagEntity> Tags { get; set; } = [];
 }

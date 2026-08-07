@@ -40,63 +40,22 @@ public sealed partial class CatalogSeedRunner
 
         var item = await _ctx.ItemDefinitions
             .FirstOrDefaultAsync(i => i.Key == definition.Key, cancellationToken);
-
-        if (item is not null)
-            return;
-
-        var effectSetKey = $"effect.{definition.Key}";
-        var effectSet = await _ctx.EffectSets
-            .Include(e => e.Effects)
-            .FirstOrDefaultAsync(e => e.Key == effectSetKey, cancellationToken);
-
-        if (effectSet is null)
+        var isNew = item is null;
+        item ??= new ItemDefinitionEntity { Id = Guid.NewGuid(), Key = definition.Key, CreatedAtUtc = _now };
+        if (isNew)
         {
-            effectSet = new EffectSetEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = effectSetKey,
-                DisplayName = definition.Name,
-                Description = definition.Description,
-                Version = PalaceItemVersion,
-                Status = "Active",
-                CreatedAtUtc = _now,
-                UpdatedAtUtc = _now
-            };
-            _ctx.EffectSets.Add(effectSet);
+            _ctx.ItemDefinitions.Add(item);
         }
 
-        for (var index = 0; index < definition.Effects.Count; index++)
-        {
-            var effect = definition.Effects[index];
-            effectSet.Effects.Add(new EffectDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                EffectSetId = effectSet.Id,
-                EffectType = effect.Type,
-                TargetScope = effect.Target,
-                Value = effect.Value,
-                ValueMode = effect.ValueMode,
-                Duration = effect.Duration,
-                StackPolicy = effect.StackPolicy,
-                Condition = effect.Condition,
-                Order = index,
-                BehaviorTag = effect.BehaviorTag,
-                GenerationTag = definition.Pool,
-                SelectionGroup = definition.SelectionGroup
-            });
-        }
-
+        // definition.Effects also feeds DeriveAlwaysOnEquipmentEffects below (the live,
+        // actually-read equip-time bonus system) — it isn't dead data, only its former
+        // second destination (a per-item EffectSet/EffectDefinition row set) was: nothing
+        // ever read it back for an item, EffectValue/EffectRunType already being the sole
+        // source of truth for what a used item does (see ItemDefinitionEntity.EffectRunType).
         var equipmentEffects = (definition.EquipmentEffects ?? [])
             .Concat(DeriveAlwaysOnEquipmentEffects(definition))
             .ToArray();
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects, J);
-        item = new ItemDefinitionEntity
-        {
-            Id = Guid.NewGuid(),
-            Key = definition.Key,
-            CreatedAtUtc = _now
-        };
-        _ctx.ItemDefinitions.Add(item);
 
         item.Name = definition.Name;
         item.DisplayName = definition.Name;
@@ -113,7 +72,6 @@ public sealed partial class CatalogSeedRunner
         item.MaxStack = definition.MaxStack;
         item.IsUsableInCombat = definition.IsUsableInCombat;
         item.IsUsableOutsideCombat = definition.IsUsableOutsideCombat;
-        item.EffectSetId = effectSet.Id;
         item.MinDepth = definition.MinDepth;
         item.MaxDepth = null;
         item.BaseWeight = definition.BaseWeight;
