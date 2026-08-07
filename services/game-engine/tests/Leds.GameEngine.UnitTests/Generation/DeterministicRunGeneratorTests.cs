@@ -129,7 +129,7 @@ public sealed class DeterministicRunGeneratorTests
         room.Theme.Should().Be("Threshold");
         room.State.Should().Be(RoomState.Active);
 
-        room.TotalNodeCount.Should().BeInRange(10, 14);
+        room.TotalNodeCount.Should().BeInRange(22, 30);
         room.Nodes.Should().HaveCount(room.TotalNodeCount);
         room.Nodes.Should().ContainSingle(node => node.IsBoss);
         room.Nodes.Should().OnlyContain(node => node.State == NodeState.Available);

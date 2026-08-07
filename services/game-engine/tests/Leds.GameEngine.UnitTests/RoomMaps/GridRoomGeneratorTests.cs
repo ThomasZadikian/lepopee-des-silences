@@ -44,10 +44,10 @@ public sealed class GridRoomGeneratorTests
         var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.Grid.Should().NotBeNull();
-        room.Grid!.Width.Should().Be(14);
-        room.Grid.Height.Should().Be(10);
+        room.Grid!.Width.Should().Be(26);
+        room.Grid.Height.Should().Be(18);
         room.Grid.PartyX.Should().Be(0);
-        room.Grid.PartyY.Should().Be(5);
+        room.Grid.PartyY.Should().Be(9);
 
         // The budget is no longer the template's constant: it is derived from the cheapest route
         // to the boss on the room actually generated, plus slack. Asserted as the contract that
@@ -189,7 +189,7 @@ public sealed class GridRoomGeneratorTests
 
         var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
-        room.TotalNodeCount.Should().BeInRange(14, 20);
+        room.TotalNodeCount.Should().BeInRange(22, 30);
     }
 
     [Fact]
@@ -294,18 +294,35 @@ public sealed class GridRoomGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateRoom_ShouldPlaceBossAtTheSameCell_RegardlessOfRandomRolls()
+    public async Task GenerateRoom_ShouldPlaceBossAtTheFarthestFloorCellFromSpawn()
     {
+        // FindFarthestFloorCell is deterministic given (start, size, floor) — but the floor mask
+        // itself is randomized (GenerateFloorMask consumes the seeded Random before the boss cell
+        // is picked), so two different seeds can legitimately carve different shapes and end up
+        // with a different farthest corner. That's not a bug: at the previous, smaller template
+        // (14x10, a modest carve budget) the farthest corner rarely moved across seeds, which is
+        // what the old version of this test actually measured, coincidentally, rather than a real
+        // invariant. What IS guaranteed — and what this asserts instead — is the boss's own
+        // contract: it always sits on an actual floor cell, at (or tied for) the maximum
+        // Manhattan distance from spawn among every floor cell the generated room actually has.
         var sut = CreateSut();
 
-        var room1 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(1));
-        var room2 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(999));
+        foreach (var seedValue in new[] { 1, 999 })
+        {
+            var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(seedValue));
+            var boss = room.Nodes.Single(n => n.IsBoss);
 
-        var boss1 = room1.Nodes.Single(n => n.IsBoss);
-        var boss2 = room2.Nodes.Single(n => n.IsBoss);
+            room.Grid!.IsFloor(boss.Lane, boss.Row).Should().BeTrue();
 
-        (boss1.Lane, boss1.Row).Should().Be((boss2.Lane, boss2.Row),
-            "the boss's position only depends on the template shape, not on the seeded random rolls.");
+            var bossDistance = Math.Abs(boss.Lane - room.Grid.StartX) + Math.Abs(boss.Row - room.Grid.StartY);
+            var maxFloorDistance = Enumerable.Range(0, room.Grid.Width)
+                .SelectMany(x => Enumerable.Range(0, room.Grid.Height).Select(y => (x, y)))
+                .Where(cell => room.Grid.IsFloor(cell.x, cell.y))
+                .Max(cell => Math.Abs(cell.x - room.Grid.StartX) + Math.Abs(cell.y - room.Grid.StartY));
+
+            bossDistance.Should().Be(maxFloorDistance,
+                "the boss must sit on the floor cell farthest from spawn, whatever shape this seed carved");
+        }
     }
 
     [Theory]

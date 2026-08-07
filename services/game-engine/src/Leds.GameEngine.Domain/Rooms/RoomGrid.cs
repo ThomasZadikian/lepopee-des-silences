@@ -13,8 +13,10 @@ namespace Leds.GameEngine.Domain.Rooms;
 public sealed class RoomGrid
 {
     // BALANCE KNOB — how many cells around the party are revealed by fog of war. Not
-    // configurable per-room in v1.
-    public const int VisionRadius = 2;
+    // configurable per-room in v1. Raised from 2 alongside the room-size increase
+    // (exploration-camera plan, Workstream B) so the explored halo stays roughly proportional
+    // to the bigger board instead of reading as stingier.
+    public const int VisionRadius = 3;
 
     // BALANCE KNOB — elevation levels are 0 (flat ground) through this value.
     public const int MaxElevation = 3;

@@ -24,8 +24,10 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     private const int MaxCarveBlobSize = 3;
 
     // BALANCE KNOB — how many hidden caches a room tries to place, one per dead-end it can
-    // find. A room with no dead end simply gets none.
-    private const int MaxHiddenNodes = 2;
+    // find. A room with no dead end simply gets none. Raised alongside the room-size increase
+    // (exploration-camera plan, Workstream B) — a bigger board has more dead-end pockets worth
+    // finding.
+    private const int MaxHiddenNodes = 4;
 
     // BALANCE KNOB — movement budget kept ON TOP of the cheapest route to the boss, so reaching
     // the objective is never the only thing the budget affords. Roughly one detour into a recess
