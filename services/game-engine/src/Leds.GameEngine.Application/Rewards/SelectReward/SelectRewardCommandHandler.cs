@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Players.Ports;
@@ -80,11 +81,14 @@ public sealed class SelectRewardCommandHandler
             await SpendForPurchaseAsync(run.PlayerId, selectedChoice, cancellationToken);
         }
 
-        // Validate + apply the reward effect before marking the offer as selected,
-        // so a failed ApplyRewardEffect does not corrupt the in-memory offer state.
-        run.ApplyReward(selectedChoice);
-
-        // Enrich items with catalog snapshot data when an item reward is selected.
+        // Item rewards are resolved against the catalog up front — both to enrich the
+        // granted RunItem with display data (as before) and, per the "modèle Hadès",
+        // to decide whether the item ever touches the run's temporary inventory at
+        // all: a permanent-eligible item (CatalogItemDefinitionSnapshot.IsPermanentEligible
+        // — weapons, relics, anything meant to be owned for good) joins the player's
+        // permanent backpack immediately instead of waiting in the Besace for an
+        // end-of-run keepsake confirmation. Only consumables still take the old path.
+        CatalogItemDefinitionSnapshot? itemDefinition = null;
         if (selectedChoice.RewardType == RewardType.TemporaryItem)
         {
             var defKey = ParseItemDefinitionKey(selectedChoice.PayloadKey);
@@ -93,27 +97,46 @@ public sealed class SelectRewardCommandHandler
                 var definitionResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(defKey, cancellationToken);
                 if (definitionResult.IsSuccess)
                 {
-                    var def = definitionResult.Value;
-                    run.EnrichLastAddedItem(
-                        definitionVersion: def.Version,
-                        narrativeText: def.NarrativeText,
-                        category: def.Category,
-                        usageMode: def.UsageMode,
-                        lifecycle: def.Lifecycle,
-                        maxStack: def.MaxStack,
-                        isUsableInCombat: def.IsUsableInCombat,
-                        isUsableOutsideCombat: def.IsUsableOutsideCombat,
-                        sourceRewardOptionId: selectedChoice.Id.Value,
-                        isContainer: def.IsContainer,
-                        containerCapacity: def.ContainerCapacity,
-                        isLiquid: def.IsLiquid,
-                        tacticalRange: def.TacticalRange,
-                        tacticalAreaShape: def.TacticalAreaShape,
-                        requiresLineOfSight: def.RequiresLineOfSight);
-
-                    run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
-                        run.CurrentRoom.CatalogBinding?.DisplayName, def.DisplayName));
+                    itemDefinition = definitionResult.Value;
                 }
+            }
+        }
+
+        if (itemDefinition is { IsPermanentEligible: true })
+        {
+            await _playerProfileGateway.AddPermanentItemsAsync(
+                run.PlayerId, [itemDefinition.Key], run.Id.Value, cancellationToken);
+
+            run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
+                run.CurrentRoom.CatalogBinding?.DisplayName, itemDefinition.DisplayName));
+        }
+        else
+        {
+            // Validate + apply the reward effect before marking the offer as selected,
+            // so a failed ApplyRewardEffect does not corrupt the in-memory offer state.
+            run.ApplyReward(selectedChoice);
+
+            if (itemDefinition is not null)
+            {
+                run.EnrichLastAddedItem(
+                    definitionVersion: itemDefinition.Version,
+                    narrativeText: itemDefinition.NarrativeText,
+                    category: itemDefinition.Category,
+                    usageMode: itemDefinition.UsageMode,
+                    lifecycle: itemDefinition.Lifecycle,
+                    maxStack: itemDefinition.MaxStack,
+                    isUsableInCombat: itemDefinition.IsUsableInCombat,
+                    isUsableOutsideCombat: itemDefinition.IsUsableOutsideCombat,
+                    sourceRewardOptionId: selectedChoice.Id.Value,
+                    isContainer: itemDefinition.IsContainer,
+                    containerCapacity: itemDefinition.ContainerCapacity,
+                    isLiquid: itemDefinition.IsLiquid,
+                    tacticalRange: itemDefinition.TacticalRange,
+                    tacticalAreaShape: itemDefinition.TacticalAreaShape,
+                    requiresLineOfSight: itemDefinition.RequiresLineOfSight);
+
+                run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
+                    run.CurrentRoom.CatalogBinding?.DisplayName, itemDefinition.DisplayName));
             }
         }
 

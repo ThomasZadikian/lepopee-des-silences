@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.DevTools;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
@@ -119,6 +120,42 @@ public sealed class DevToolsRunDebugServiceTests
     }
 
     [Fact]
+    public async Task AddDebugItem_ShouldGrantPermanentEligibleItemDirectlyToPermanentBackpack()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(gateway => gateway.GetItemDefinitionByKeyAsync("item.weapon.arc-relieur", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                Key: "item.weapon.arc-relieur",
+                Version: "1",
+                DisplayName: "Arc du relieur",
+                Description: "Un arc.",
+                NarrativeText: null,
+                Category: "Weapon",
+                FlavorTag: "Arme",
+                Rarity: "Rare",
+                UsageMode: "Equip",
+                Lifecycle: "PersistentMeta",
+                StackPolicy: "None",
+                MaxStack: 1,
+                IsUsableInCombat: false,
+                IsUsableOutsideCombat: false,
+                IsPermanentEligible: true)));
+        var playerProfileGateway = new Mock<IPlayerProfileGateway>();
+        var service = await CreateServiceAsync(run, catalogGateway.Object, playerProfileGateway.Object);
+
+        var result = await service.AddDebugItemAsync(run.Id.Value, "item.weapon.arc-relieur", quantity: 1);
+
+        result.Run.InventoryItems.Should().BeEmpty();
+        playerProfileGateway.Verify(gateway => gateway.AddPermanentItemsAsync(
+            run.PlayerId,
+            It.Is<IReadOnlyCollection<string>>(keys => keys.Single() == "item.weapon.arc-relieur"),
+            run.Id.Value,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task AddDebugItem_ShouldRejectUnknownItemKey()
     {
         var run = TestGameEngineFactory.CreateRun();
@@ -146,7 +183,9 @@ public sealed class DevToolsRunDebugServiceTests
     }
 
     private static async Task<DevToolsRunDebugService> CreateServiceAsync(
-        Run run, ICatalogContentGateway? catalogContentGateway = null)
+        Run run,
+        ICatalogContentGateway? catalogContentGateway = null,
+        IPlayerProfileGateway? playerProfileGateway = null)
     {
         var runRepository = new StubRunRepository();
         await runRepository.AddAsync(run, CancellationToken.None);
@@ -156,7 +195,8 @@ public sealed class DevToolsRunDebugServiceTests
             Mock.Of<IRunGenerator>(),
             catalogContentGateway ?? Mock.Of<ICatalogContentGateway>(),
             Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IRewardOfferRepository>());
+            Mock.Of<IRewardOfferRepository>(),
+            playerProfileGateway ?? Mock.Of<IPlayerProfileGateway>());
     }
 
     private static (Run Run, TacticalCombat Combat) CreateRunWithActiveCombat(int enemyCount)

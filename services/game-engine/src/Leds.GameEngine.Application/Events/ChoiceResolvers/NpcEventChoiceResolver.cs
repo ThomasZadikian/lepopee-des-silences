@@ -324,6 +324,18 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 }
 
                 var itemDef = itemResult.Value;
+
+                // Modèle Hadès : un objet permanent-eligible (arme, relique, tout ce qui
+                // est fait pour être possédé pour de bon) rejoint directement le sac
+                // permanent du joueur plutôt que d'entrer dans l'inventaire temporaire de
+                // la run — même règle qu'à la sélection de récompense.
+                if (itemDef.IsPermanentEligible)
+                {
+                    await _playerProfileGateway.AddPermanentItemsAsync(
+                        run.PlayerId, [itemDef.Key], run.Id.Value, cancellationToken);
+                    return $"{npc.DisplayName} te tend {itemDef.DisplayName}.";
+                }
+
                 // Category/ItemType/Rarity are free-authored strings in the catalog (not enum-backed
                 // at rest) — mapping them straight through Enum.Parse throws for almost any real
                 // catalog value (e.g. ItemType "Container"/"Potion", Rarity "Legendary"/"Unique" has

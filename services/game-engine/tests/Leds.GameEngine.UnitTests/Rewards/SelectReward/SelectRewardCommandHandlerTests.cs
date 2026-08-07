@@ -488,6 +488,69 @@ public sealed class SelectRewardCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldGrantPermanentEligibleItemDirectlyToPermanentBackpack_AndSkipRunInventory()
+    {
+        // Modèle Hadès : un objet permanent-eligible (une arme, ici) rejoint le sac
+        // permanent dès sa sélection en récompense — il n'entre jamais dans
+        // run.RunItems, contrairement aux consommables couverts par les autres tests
+        // de ce fichier (ex. Handle_ShouldGrantItemAndDeductBothCurrencies...).
+        var run = TestGameEngineFactory.CreateRun();
+
+        var itemChoice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Arc du relieur",
+            "Un arc.",
+            "item:item.weapon.arc-relieur:Arc du relieur:Un arc.:Weapon:Rare:None:0");
+
+        var offer = RewardOffer.Create(RewardSource.Combat, [itemChoice]);
+        run.SetPendingRewardOffer(offer.Id);
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository.Setup(repo => repo.GetByIdAsync(offer.Id, CancellationToken.None)).ReturnsAsync(offer);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync("item.weapon.arc-relieur", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                Key: "item.weapon.arc-relieur",
+                Version: "1",
+                DisplayName: "Arc du relieur",
+                Description: "Un arc.",
+                NarrativeText: null,
+                Category: "Weapon",
+                FlavorTag: "Arme",
+                Rarity: "Rare",
+                UsageMode: "Equip",
+                Lifecycle: "PersistentMeta",
+                StackPolicy: "None",
+                MaxStack: 1,
+                IsUsableInCombat: false,
+                IsUsableOutsideCombat: false,
+                IsPermanentEligible: true)));
+
+        var playerProfileGateway = new StubPlayerProfileGateway();
+
+        var handler = new SelectRewardCommandHandler(
+            runRepository.Object, rewardRepository.Object, catalogGateway.Object, playerProfileGateway);
+
+        var response = await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, itemChoice.Id.Value),
+            CancellationToken.None);
+
+        run.RunItems.Should().BeEmpty(
+            because: "a permanent-eligible item must never sit in the run's temporary inventory");
+        var grant = playerProfileGateway.AddedPermanentItems.Should().ContainSingle().Subject;
+        grant.PlayerId.Should().Be(run.PlayerId);
+        grant.ItemDefinitionKeys.Should().ContainSingle().Which.Should().Be("item.weapon.arc-relieur");
+        grant.SourceRunId.Should().Be(run.Id.Value);
+        response.Run.PendingRewardOfferId.Should().BeNull();
+        offer.State.Should().Be(RewardOfferState.Selected);
+    }
+
+    [Fact]
     public async Task Handle_ShouldApplyDeclineAsNoOp_WithoutTouchingCurrency()
     {
         var (run, offer, _, declineChoice) = CreateRunWithMerchantOffer(palaceShardCost: 500, himLitShardCost: 25);

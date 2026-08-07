@@ -6,6 +6,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
@@ -33,19 +34,22 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly ICombatResolutionService _combatResolution;
     private readonly IRewardOfferRepository _rewardOfferRepository;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
 
     public DevToolsRunDebugService(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
         ICatalogContentGateway catalogContentGateway,
         ICombatResolutionService combatResolution,
-        IRewardOfferRepository rewardOfferRepository)
+        IRewardOfferRepository rewardOfferRepository,
+        IPlayerProfileGateway playerProfileGateway)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
         _catalogContentGateway = catalogContentGateway;
         _combatResolution = combatResolution;
         _rewardOfferRepository = rewardOfferRepository;
+        _playerProfileGateway = playerProfileGateway;
     }
 
     public async Task<DevToolsRunDebugResult> AdvanceRoomAsync(
@@ -323,6 +327,20 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             throw new NotFoundException("Item definition", itemDefinitionKey);
 
         var itemDef = itemResult.Value;
+
+        // Modèle Hadès : un objet permanent-eligible rejoint directement le sac
+        // permanent du joueur, sans jamais transiter par l'inventaire temporaire de
+        // la run — même règle qu'à la sélection de récompense et aux offrandes PNJ.
+        if (itemDef.IsPermanentEligible)
+        {
+            await _playerProfileGateway.AddPermanentItemsAsync(
+                run.PlayerId, [itemDef.Key], run.Id.Value, cancellationToken);
+
+            return new DevToolsRunDebugResult(
+                $"'{itemDef.DisplayName}' added to the permanent backpack (×{quantity}).",
+                RunDto.FromDomain(run));
+        }
+
         // Same defensive Category/Rarity/EffectRunType mapping as NpcEventChoiceResolver's
         // "Item" offering — these are free-authored catalog strings, not enum-backed at rest.
         run.AddRunItem(RunItem.Create(
