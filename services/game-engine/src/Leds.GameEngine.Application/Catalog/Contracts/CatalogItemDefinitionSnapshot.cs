@@ -15,7 +15,6 @@ public sealed record CatalogItemDefinitionSnapshot(
     int MaxStack,
     bool IsUsableInCombat,
     bool IsUsableOutsideCombat,
-    string? EffectSetKey,
     bool IsPermanentEligible = false,
     IReadOnlyCollection<CatalogItemEquipmentEffect>? EquipmentEffects = null,
     bool IsContainer = false,

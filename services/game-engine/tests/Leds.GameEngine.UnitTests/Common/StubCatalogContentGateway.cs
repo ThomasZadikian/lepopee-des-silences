@@ -237,8 +237,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 20,
                 false,
-                true,
-                null),
+                true),
             ["item.consumable.minor-heal"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal",
                 "1.0",
@@ -254,7 +253,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 99,
                 true,
                 true,
-                null,
                 EffectValue: 25,
                 EffectRunType: "Heal"),
             ["item.consumable.guard-shard"] = new CatalogItemDefinitionSnapshot(
@@ -271,8 +269,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 99,
                 true,
-                false,
-                null),
+                false),
             ["item.consumable.eclat-de-garde"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.eclat-de-garde",
                 "alpha-0.8.1",
@@ -287,8 +284,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 3,
                 false,
-                true,
-                "effect.item.eclat-de-garde"),
+                true),
             ["item.consumable.peau-de-serpent"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.peau-de-serpent",
                 "1.0",
@@ -303,8 +299,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 3,
                 false,
-                true,
-                null),
+                true),
             ["item.consumable.crocs-figes"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.crocs-figes",
                 "1.0",
@@ -319,8 +314,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 3,
                 true,
-                false,
-                null),
+                false),
             ["item.consumable.venin-cristallise"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.venin-cristallise",
                 "1.0",
@@ -335,8 +329,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 2,
                 true,
-                false,
-                null),
+                false),
             ["item.consumable.fragment-de-silence"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.fragment-de-silence",
                 "1.0",
@@ -351,8 +344,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 3,
                 false,
-                false,
-                null),
+                false),
             ["item.consumable.oeil-de-verre"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.oeil-de-verre",
                 "1.0",
@@ -367,8 +359,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 2,
                 false,
-                true,
-                null),
+                true),
             ["item.consumable.eclat-instable"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.eclat-instable",
                 "1.0",
@@ -383,8 +374,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 3,
                 true,
-                false,
-                null),
+                false),
             ["item.consumable.reliquaire-fele"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.reliquaire-fele",
                 "1.0",
@@ -399,8 +389,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 1,
                 false,
-                true,
-                null),
+                true),
             ["item.consumable.poussiere-de-couloir"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.poussiere-de-couloir",
                 "1.0",
@@ -415,8 +404,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 5,
                 false,
-                false,
-                null),
+                false),
             // Category/ItemType/Rarity are free-authored strings in the catalog, not enum-backed.
             // This fixture deliberately uses values with no RunItemType/RunItemRarity equivalent
             // ("Equipment"/"Container"/"Legendary") to prove the offering-grant mapping is defensive.
@@ -434,8 +422,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 "Additive",
                 1,
                 false,
-                true,
-                null)
+                true)
         };
 
     private static readonly IReadOnlyDictionary<string, CatalogEffectSetSnapshot> EffectSets =

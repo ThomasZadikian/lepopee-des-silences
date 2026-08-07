@@ -93,7 +93,6 @@ public sealed class StartRunCommandHandlerTests
                 1,
                 false,
                 false,
-                null,
                 EquipmentEffects:
                 [new CatalogItemEquipmentEffect(
                     "RuntimeBehavior", null, null, null, null, BehaviorCode: behaviorCode)])));
@@ -393,7 +392,6 @@ public sealed class StartRunCommandHandlerTests
                 1,
                 false,
                 false,
-                null,
                 IsPermanentEligible: true,
                 EquipmentEffects:
                 [
@@ -510,7 +508,6 @@ public sealed class StartRunCommandHandlerTests
                 1,
                 false,
                 false,
-                null,
                 IsPermanentEligible: true,
                 EquipmentEffects:
                 [
@@ -716,7 +713,6 @@ public sealed class StartRunCommandHandlerTests
                 1,
                 false,
                 false,
-                null,
                 IsPermanentEligible: true,
                 EquipmentEffects:
                 [

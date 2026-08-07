@@ -28,7 +28,6 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
         builder.Property(item => item.Lifecycle).HasColumnName("lifecycle").HasMaxLength(64);
         builder.Property(item => item.EffectType).HasColumnName("effect_type").HasMaxLength(64).IsRequired();
         builder.Property(item => item.EffectAmount).HasColumnName("effect_amount");
-        builder.Property(item => item.EffectSetKey).HasColumnName("effect_set_key").HasMaxLength(160);
         builder.Property(item => item.EffectSummary).HasColumnName("effect_summary");
         builder.Property(item => item.IsUsableInCombat).HasColumnName("is_usable_in_combat");
         builder.Property(item => item.IsUsableOutsideCombat).HasColumnName("is_usable_outside_combat");

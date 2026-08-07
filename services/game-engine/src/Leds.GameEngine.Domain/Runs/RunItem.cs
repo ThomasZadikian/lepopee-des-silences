@@ -23,7 +23,6 @@ public sealed class RunItem
         string? usageMode,
         string? lifecycle,
         int? maxStack,
-        string? effectSetKey,
         string? effectSummary,
         bool? isUsableInCombat,
         bool? isUsableOutsideCombat,
@@ -54,7 +53,6 @@ public sealed class RunItem
         MaxStack = maxStack;
         EffectType = effectType;
         EffectAmount = effectAmount;
-        EffectSetKey = effectSetKey;
         EffectSummary = effectSummary;
         IsUsableInCombat = isUsableInCombat ?? IsCombatEffect(effectType);
         IsUsableOutsideCombat = isUsableOutsideCombat ?? true;
@@ -92,7 +90,6 @@ public sealed class RunItem
         : 1;
     public RunItemEffectType EffectType { get; }
     public int EffectAmount { get; }
-    public string? EffectSetKey { get; }
     public string? EffectSummary { get; }
     public bool IsUsableInCombat { get; }
     public bool IsUsableOutsideCombat { get; }
@@ -147,7 +144,6 @@ public sealed class RunItem
             usageMode: null,
             lifecycle: null,
             maxStack: null,
-            effectSetKey: null,
             effectSummary: null,
             isUsableInCombat: null,
             isUsableOutsideCombat: null,
@@ -188,7 +184,6 @@ public sealed class RunItem
         string? usageMode = null,
         string? lifecycle = null,
         int? maxStack = null,
-        string? effectSetKey = null,
         string? effectSummary = null,
         bool? isUsableInCombat = null,
         bool? isUsableOutsideCombat = null,
@@ -208,7 +203,7 @@ public sealed class RunItem
             id, definitionKey, displayName, description,
             type, rarity, quantity, effectType, effectAmount, createdAtUtc,
             definitionVersion, narrativeText, category, usageMode, lifecycle,
-            maxStack, effectSetKey, effectSummary, isUsableInCombat, isUsableOutsideCombat,
+            maxStack, effectSummary, isUsableInCombat, isUsableOutsideCombat,
             sourceRewardOptionId, isContainer, containerCapacity, isLiquid, containedLiquidDefinitionKey,
             tacticalRange, tacticalAreaShape, requiresLineOfSight,
             groundRoomId, groundX, groundY);

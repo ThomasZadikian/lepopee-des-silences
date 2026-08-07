@@ -101,7 +101,6 @@ public sealed class SelectRewardCommandHandler
                         usageMode: def.UsageMode,
                         lifecycle: def.Lifecycle,
                         maxStack: def.MaxStack,
-                        effectSetKey: def.EffectSetKey,
                         isUsableInCombat: def.IsUsableInCombat,
                         isUsableOutsideCombat: def.IsUsableOutsideCombat,
                         sourceRewardOptionId: selectedChoice.Id.Value,

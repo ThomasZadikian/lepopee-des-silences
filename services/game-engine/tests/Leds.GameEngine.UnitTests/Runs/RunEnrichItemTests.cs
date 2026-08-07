@@ -23,7 +23,6 @@ public sealed class RunEnrichItemTests
             usageMode: "UseInCombat",
             lifecycle: "RuntimeRunOnly",
             maxStack: 99,
-            effectSetKey: null,
             isUsableInCombat: true,
             isUsableOutsideCombat: true,
             sourceRewardOptionId: Guid.NewGuid());
@@ -45,7 +44,7 @@ public sealed class RunEnrichItemTests
 
         var act = () => run.EnrichLastAddedItem(
             "1.0", null, "Consumable", "UseInCombat", "RuntimeRunOnly",
-            99, null, true, true, Guid.NewGuid());
+            99, true, true, Guid.NewGuid());
 
         act.Should().NotThrow();
     }
@@ -67,7 +66,6 @@ public sealed class RunEnrichItemTests
             usageMode: "UseInCombat",
             lifecycle: "RuntimeRunOnly",
             maxStack: 5,
-            effectSetKey: null,
             isUsableInCombat: true,
             isUsableOutsideCombat: false,
             sourceRewardOptionId: Guid.NewGuid());
@@ -91,7 +89,7 @@ public sealed class RunEnrichItemTests
 
         run.EnrichLastAddedItem(
             "1.0", null, "Consumable", "UseInCombat", "RuntimeRunOnly",
-            99, null, true, true, Guid.NewGuid());
+            99, true, true, Guid.NewGuid());
 
         run.RunItems.First().DefinitionVersion.Should().BeNull();
         run.RunItems.Last().DefinitionVersion.Should().Be("1.0");
@@ -107,7 +105,7 @@ public sealed class RunEnrichItemTests
         var sourceId = Guid.NewGuid();
         run.EnrichLastAddedItem(
             "1.0", null, "Consumable", "UseInCombat", "RuntimeRunOnly",
-            99, null, true, true, sourceId);
+            99, true, true, sourceId);
 
         run.RunItems.Last().SourceRewardOptionId.Should().Be(sourceId);
     }

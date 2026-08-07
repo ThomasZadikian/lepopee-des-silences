@@ -1168,7 +1168,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.MaxStack,
             source.IsUsableInCombat,
             source.IsUsableOutsideCombat,
-            source.EffectSetKey,
             source.IsPermanentEligible,
             source.EquipmentEffects?
                 .Select(e => new CatalogItemEquipmentEffect(
@@ -1607,7 +1606,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int MaxStack,
         bool IsUsableInCombat,
         bool IsUsableOutsideCombat,
-        string? EffectSetKey,
         bool IsPermanentEligible = false,
         IReadOnlyCollection<CatalogItemEquipmentEffectHttpResponse>? EquipmentEffects = null,
         bool IsContainer = false,

@@ -106,7 +106,6 @@ public sealed class DevToolsRunDebugServiceTests
                 MaxStack: 20,
                 IsUsableInCombat: true,
                 IsUsableOutsideCombat: true,
-                EffectSetKey: null,
                 EffectValue: 25,
                 EffectRunType: "HealPercent")));
         var service = await CreateServiceAsync(run, catalogGateway.Object);

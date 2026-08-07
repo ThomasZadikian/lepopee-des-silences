@@ -141,7 +141,7 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
     private static CatalogItemDefinitionSnapshot CreateSnapshot(string key, bool isPermanentEligible) => new(
         key, "1.0", key, "Description.", null,
         "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly", "Additive",
-        99, true, true, null,
+        99, true, true,
         IsPermanentEligible: isPermanentEligible,
         EquipmentEffects: []);
 }

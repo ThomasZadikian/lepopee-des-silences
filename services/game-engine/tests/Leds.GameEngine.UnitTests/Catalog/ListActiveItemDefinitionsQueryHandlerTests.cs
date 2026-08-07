@@ -19,7 +19,7 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
                 new CatalogItemDefinitionSnapshot(
                     "canon.item.monocle-pomenian", "canon-1.0.0", "Le monocle de Pomenian",
                     "Une lentille gravée.", null, "Equipment", "Accessory", "Epic",
-                    "NotUsable", "PersistentMeta", "Additive", 1, false, false, null,
+                    "NotUsable", "PersistentMeta", "Additive", 1, false, false,
                     IsPermanentEligible: true,
                     EquipmentEffects:
                     [

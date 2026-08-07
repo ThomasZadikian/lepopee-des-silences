@@ -51,7 +51,7 @@ public sealed class SelectRewardItemEnrichmentTests
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
                 "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
-                "Additive", 99, true, true, null)));
+                "Additive", 99, true, true)));
 
         var handler = new SelectRewardCommandHandler(
             runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
@@ -100,7 +100,7 @@ public sealed class SelectRewardItemEnrichmentTests
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
                 "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
-                "Additive", 99, true, true, null)));
+                "Additive", 99, true, true)));
 
         var handler = new SelectRewardCommandHandler(
             runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
@@ -224,7 +224,7 @@ public sealed class SelectRewardItemEnrichmentTests
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
                 "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
-                "Additive", 99, true, true, null,
+                "Additive", 99, true, true,
                 // Matches CatalogSeedRunner.UpsertItemAsync's now-corrected default for a
                 // usable-in-combat consumable — see the "Handle_ShouldNotEnrich..." tests
                 // above for the case where the catalog lookup fails and RunItem.Create's own

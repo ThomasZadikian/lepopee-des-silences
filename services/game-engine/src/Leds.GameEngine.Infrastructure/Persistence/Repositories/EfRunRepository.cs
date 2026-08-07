@@ -267,7 +267,6 @@ public sealed class EfRunRepository : IRunRepository
                     Lifecycle = incomingItem.Lifecycle,
                     EffectType = incomingItem.EffectType,
                     EffectAmount = incomingItem.EffectAmount,
-                    EffectSetKey = incomingItem.EffectSetKey,
                     EffectSummary = incomingItem.EffectSummary,
                     IsUsableInCombat = incomingItem.IsUsableInCombat,
                     IsUsableOutsideCombat = incomingItem.IsUsableOutsideCombat,

@@ -18,7 +18,6 @@ public sealed class RunItemEntity
     public string? Lifecycle { get; set; }
     public string EffectType { get; set; } = string.Empty;
     public int EffectAmount { get; set; }
-    public string? EffectSetKey { get; set; }
     public string? EffectSummary { get; set; }
     public bool? IsUsableInCombat { get; set; }
     public bool? IsUsableOutsideCombat { get; set; }
