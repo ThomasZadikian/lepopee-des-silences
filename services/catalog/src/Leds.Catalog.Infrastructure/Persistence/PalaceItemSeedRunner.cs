@@ -187,34 +187,34 @@ public sealed partial class CatalogSeedRunner
         // Armes — elles remplacent le contrat de l'attaque de base.
         P("item.weapon.lame-seuil", "Lame du Seuil",
             "Une lame courte, fiable dans les couloirs étroits du Palais.",
-            "Weapon", "Arme", "Common", "Equip",
+            "Weapon", "Arme", "Common", "Equip", lifecycle: "PersistentMeta",
             range: 1, shape: "Single", los: false,
             basicAttackPower: 11, basicAttackCategory: "Physical"),
         P("item.weapon.lance-pelerin", "Lance du Pèlerin",
             "Une hampe longue qui permet de frapper au-delà de la première case.",
-            "Weapon", "Arme", "Uncommon", "Equip", pool: "Montagne",
+            "Weapon", "Arme", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Montagne",
             range: 2, shape: "Single", los: true,
             basicAttackPower: 10, basicAttackCategory: "Physical"),
         P("item.weapon.arc-relieur", "Arc du Relieur",
             "Ses traits suivent les lignes que le Palais accepte encore de montrer.",
-            "Weapon", "Arme", "Uncommon", "Equip", pool: "Labyrinthe",
+            "Weapon", "Arme", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Labyrinthe",
             range: 5, shape: "Single", los: true,
             basicAttackPower: 9, basicAttackCategory: "Physical"),
         P("item.weapon.marteau-forge", "Marteau de la Forge",
             "Lent et brutal, conçu pour briser la Garde au contact.",
-            "Weapon", "Arme", "Rare", "Equip", pool: "Enfers",
+            "Weapon", "Arme", "Rare", "Equip", lifecycle: "PersistentMeta", pool: "Enfers",
             range: 1, shape: "Single", los: false,
             basicAttackPower: 14, basicAttackCategory: "Physical"),
         P("item.weapon.baton-silences", "Bâton des Silences",
             "Canalise une frappe magique à travers les salles du Palais.",
-            "Weapon", "Arme", "Rare", "Equip", pool: "Palier,Labyrinthe",
+            "Weapon", "Arme", "Rare", "Equip", lifecycle: "PersistentMeta", pool: "Palier,Labyrinthe",
             range: 4, shape: "Single", los: true,
             basicAttackPower: 12, basicAttackCategory: "Magic"),
 
         // Accessoires
         P("item.gants-service-muet", "Gants du service muet",
             "+5% Défense ; +10% supplémentaires si aucune compétence magique n'a été utilisée à l'activation précédente.",
-            "Equipment", "Accessory", "Common", "Equip", effects:
+            "Equipment", "Accessory", "Common", "Equip", lifecycle: "PersistentMeta", effects:
             [
                 Fx("StatModifier", "Wearer", 5, "Percent", "WhileEquipped", behavior: "defense"),
                 Fx("StatModifier", "Wearer", 10, "Percent", "BearerActivation",
@@ -223,13 +223,13 @@ public sealed partial class CatalogSeedRunner
             [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "defense-after-no-magic")]),
         P("item.epingle-protocole", "Épingle du protocole",
             "Les affaiblissements appliqués par le porteur durent une activation supplémentaire.",
-            "Equipment", "Accessory", "Uncommon", "Equip", effects:
+            "Equipment", "Accessory", "Uncommon", "Equip", lifecycle: "PersistentMeta", effects:
             [Fx("StatusDurationModifier", "HostileEffectsAppliedByWearer", 1, "BearerActivations", "WhileEquipped")],
             equipmentEffects:
             [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "hostile-status-duration-plus-one")]),
         P("item.encrier-poche", "Encrier de poche",
             "+5% dégâts des effets périodiques ; leur première application dure une activation supplémentaire.",
-            "Equipment", "Accessory", "Uncommon", "Equip", pool: "Palier,Labyrinthe", effects:
+            "Equipment", "Accessory", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Palier,Labyrinthe", effects:
             [
                 Fx("PeriodicDamageModifier", "EffectsAppliedByWearer", 5, "Percent", "WhileEquipped"),
                 Fx("StatusDurationModifier", "PeriodicEffectsAppliedByWearer", 1, "BearerActivations", "first-stack")
@@ -244,7 +244,7 @@ public sealed partial class CatalogSeedRunner
             [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "tactical-extend-periodic-duration")]),
         P("item.gantelet-trempe", "Gantelet de trempe",
             "+10% Attaque ; chaque buff d'Attaque reçu accorde +2 Défense pour la même durée.",
-            "Equipment", "Accessory", "Uncommon", "Equip", pool: "Enfers,room.enfer3", effects:
+            "Equipment", "Accessory", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Enfers,room.enfer3", effects:
             [
                 Fx("StatModifier", "Wearer", 10, "Percent", "WhileEquipped", behavior: "attack"),
                 Fx("StatModifier", "Wearer", 2, "Flat", "SourceStatusDuration",
@@ -252,14 +252,14 @@ public sealed partial class CatalogSeedRunner
             ]),
         P("item.boussole-pelerin", "Boussole du Pèlerin",
             "+10% Vitesse dans la Montagne ; les Stations ennemies exigent une Prière supplémentaire.",
-            "Equipment", "Accessory", "Common", "Equip", pool: "Montagne", effects:
+            "Equipment", "Accessory", "Common", "Equip", lifecycle: "PersistentMeta", pool: "Montagne", effects:
             [
                 Fx("StatModifier", "Wearer", 10, "Percent", "WhileEquipped", "room:Montagne", behavior: "speed"),
                 Fx("StationPrayerRequirement", "EnemyStations", 1, "Flat", "WhileInRoom", "room:Montagne")
             ]),
         P("item.couronne-sel", "Couronne de sel",
             "Immunité au poison ; sous Pluie violacée, +10% Attaque magique et -2 Mana aux compétences de l'équipe.",
-            "Equipment", "Accessory", "Epic", "Equip", pool: "loot.imperatrice", effects:
+            "Equipment", "Accessory", "Epic", "Equip", lifecycle: "PersistentMeta", pool: "loot.imperatrice", effects:
             [
                 Fx("StatusImmunity", "Wearer", null, "Boolean", "WhileEquipped", behavior: "poison"),
                 Fx("StatModifier", "Wearer", 10, "Percent", "WhileWeatherActive", "weather:PluieViolacee", behavior: "magic-attack"),
@@ -267,7 +267,7 @@ public sealed partial class CatalogSeedRunner
             ]),
         P("item.cornes-ivoire", "Petites cornes d'ivoire",
             "La première attaque de mêlée réussie subie par combat est annulée et renvoie 50% des dégâts finaux.",
-            "Equipment", "Accessory", "Epic", "Equip", pool: "room.cellulehopital", effects:
+            "Equipment", "Accessory", "Epic", "Equip", lifecycle: "PersistentMeta", pool: "room.cellulehopital", effects:
             [Fx("ReflectMeleeDamage", "Attacker", 50, "Percent", "Immediate",
                 "first-successful-melee-hit-per-combat", behavior: "damage-only;generate-charge")],
             equipmentEffects:
@@ -290,7 +290,7 @@ public sealed partial class CatalogSeedRunner
             [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "tactical-temporal-slow")]),
         P("item.diapason-audela", "Diapason de l'au-delà",
             "À la mort du porteur, disparition irréversible pour le combat, +10% à toutes les statistiques de l'équipe et lancement gratuit du sort signature.",
-            "Equipment", "Accessory", "Rare", "Equip", effects:
+            "Equipment", "Accessory", "Rare", "Equip", lifecycle: "PersistentMeta", effects:
             [
                 Fx("StatModifier", "Team", 10, "Percent", "Combat", "on-wearer-defeated;max-stacks:5", behavior: "all-stats"),
                 Fx("CastSignatureSkill", "NearestRelevantTarget", null, "FreeCast", "Immediate",
@@ -300,14 +300,14 @@ public sealed partial class CatalogSeedRunner
             [new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "prevent-revive-signature-on-death")]),
         P("item.ombrelle-jardinier", "Ombrelle du jardinier",
             "Ignore les malus météorologiques ; sous Accalmie, +5% à toutes les statistiques.",
-            "Equipment", "Accessory", "Rare", "Equip", pool: "room.jardin", effects:
+            "Equipment", "Accessory", "Rare", "Equip", lifecycle: "PersistentMeta", pool: "room.jardin", effects:
             [
                 Fx("IgnoreWeatherPenalties", "Wearer", null, "Boolean", "WhileEquipped"),
                 Fx("StatModifier", "Wearer", 5, "Percent", "WhileWeatherActive", "weather:Accalmie", behavior: "all-stats")
             ]),
         P("item.grain-choeur", "Grain du chœur",
             "Les compétences de registre Silence coûtent -2 Mana ; le Silence appliqué dure une activation supplémentaire.",
-            "Equipment", "Accessory", "Uncommon", "Equip", pool: "Enfers", effects:
+            "Equipment", "Accessory", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Enfers", effects:
             [
                 Fx("ManaCostModifier", "Wearer", -2, "Flat", "WhileEquipped", "register:Silence;max-stacks:5"),
                 Fx("StatusDurationModifier", "SilenceAppliedByWearer", 1, "BearerActivations", "first-stack")
@@ -410,14 +410,14 @@ public sealed partial class CatalogSeedRunner
             ]),
         P("item.yeux-marchand", "Yeux du marchand",
             "À l'acquisition, le porteur perd 25% de Vitalité maximale ; révèle Vitalité exacte, menace et prochaine action des ennemis.",
-            "Relic", "Relic", "Epic", "Equip", effects:
+            "Relic", "Relic", "Epic", "Equip", lifecycle: "PersistentMeta", effects:
             [
                 Fx("MaxVitalityCost", "Wearer", 25, "Percent", "Run", "on-acquire;minimum-current-and-max:1"),
                 Fx("RevealEnemyIntent", "Team", null, "Boolean", "WhileEquipped", behavior: "vitality-threat-next-action")
             ]),
         P("item.fleche-meridienne", "Flèche méridienne",
             "À l'acquisition : 50% d'invoquer un Écho intérieur une fois par combat, sinon perte de 30% de Vitalité actuelle.",
-            "Relic", "Relic", "Legendary", "Equip", effects:
+            "Relic", "Relic", "Legendary", "Equip", lifecycle: "PersistentMeta", effects:
             [
                 Fx("DeterministicChoice", "Wearer", 50, "Percent", "Run", behavior: "grant-echo|lose-current-vitality:30"),
                 Fx("SummonEcho", "AdjacentCell", 60, "PercentWearerStats", "2BearerActivations",
@@ -505,7 +505,7 @@ public sealed partial class CatalogSeedRunner
             ]),
         P("item.cendrier-forgeron", "Cendrier du Forgeron",
             "Sous Pluie de cendres : régénère 2% Vitalité max par activation et +10% dégâts de feu ; aucun effet sous Pluie violacée.",
-            "Equipment", "Accessory", "Uncommon", "Equip", pool: "Enfers", effects:
+            "Equipment", "Accessory", "Uncommon", "Equip", lifecycle: "PersistentMeta", pool: "Enfers", effects:
             [
                 Fx("PeriodicHeal", "Wearer", 2, "PercentMaxVitality", "EachBearerActivation", "weather:PluieDeCendres"),
                 Fx("DamageModifier", "Wearer", 10, "Percent", "WhileWeatherActive", "weather:PluieDeCendres", behavior: "fire")
