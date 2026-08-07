@@ -34,7 +34,7 @@ public sealed class EquipItemCommandHandler : IRequestHandler<EquipItemCommand, 
         // runtime, rather than re-deriving an independent notion of "what kind of item
         // is this" here.
         var runItemType = CatalogRunItemMapper.MapType(definition.Value.Category);
-        var slot = CatalogRunItemMapper.MapEquipSlot(runItemType)
+        var slot = CatalogRunItemMapper.MapEquipSlot(runItemType, definition.Value.UsageMode)
             ?? throw new DomainException(
                 $"Item '{request.ItemKey}' is not an equippable weapon, accessory or relic.");
 

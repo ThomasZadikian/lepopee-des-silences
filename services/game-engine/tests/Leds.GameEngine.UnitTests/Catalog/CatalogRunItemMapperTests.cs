@@ -42,9 +42,9 @@ public sealed class CatalogRunItemMapperTests
     [InlineData(RunItemType.Grimoire, "Relic")]
     [InlineData(RunItemType.WeatherInstrument, "Relic")]
     [InlineData(RunItemType.SkillEssence, "Relic")]
-    public void MapEquipSlot_ShouldResolveEquippableKinds(RunItemType type, string expectedSlot)
+    public void MapEquipSlot_ShouldResolveEquippableKinds_WhenUsageModeIsEquip(RunItemType type, string expectedSlot)
     {
-        CatalogRunItemMapper.MapEquipSlot(type).Should().Be(expectedSlot);
+        CatalogRunItemMapper.MapEquipSlot(type, "Equip").Should().Be(expectedSlot);
     }
 
     [Theory]
@@ -53,7 +53,24 @@ public sealed class CatalogRunItemMapperTests
     [InlineData(RunItemType.Fragment)]
     public void MapEquipSlot_ShouldReturnNull_ForNonEquippableKinds(RunItemType type)
     {
-        CatalogRunItemMapper.MapEquipSlot(type).Should().BeNull();
+        CatalogRunItemMapper.MapEquipSlot(type, "Equip").Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(RunItemType.Weapon)]
+    [InlineData(RunItemType.Equipment)]
+    [InlineData(RunItemType.Relic)]
+    [InlineData(RunItemType.Grimoire)]
+    [InlineData(RunItemType.WeatherInstrument)]
+    [InlineData(RunItemType.SkillEssence)]
+    public void MapEquipSlot_ShouldReturnNull_ForEquippableKinds_WhenUsageModeIsNotEquip(RunItemType type)
+    {
+        // A category that is structurally equip-slot-shaped (e.g. SkillEssence -> Relic)
+        // must not offer an equip action for an item actually meant to be consumed
+        // once (UsageMode "UseOutsideCombat"/"UseInCombat"/etc.) — usageMode is the
+        // deciding signal, not the category collapse table alone.
+        CatalogRunItemMapper.MapEquipSlot(type, "UseOutsideCombat").Should().BeNull();
+        CatalogRunItemMapper.MapEquipSlot(type, null).Should().BeNull();
     }
 
     [Fact]

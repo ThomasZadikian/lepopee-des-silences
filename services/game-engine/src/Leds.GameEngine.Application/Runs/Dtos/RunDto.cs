@@ -215,5 +215,5 @@ public sealed record RunItemDto(
         item.TacticalRange,
         item.TacticalAreaShape,
         item.RequiresLineOfSight,
-        CatalogRunItemMapper.MapEquipSlot(item.Type));
+        CatalogRunItemMapper.MapEquipSlot(item.Type, item.UsageMode));
 }

@@ -88,21 +88,33 @@ public static class CatalogRunItemMapper
 
     /// <summary>
     /// Resolves the equipment slot a <see cref="RunItemType"/> belongs in, or
-    /// <c>null</c> if that kind is not equippable at all (Consumable/Passive/
-    /// Fragment). The single place this decision is made — <see cref="MapType"/>'s
-    /// result flows straight in, both for the actual equip command
-    /// (EquipItemCommandHandler) and for the <c>equipSlot</c> exposed on item
-    /// listings so the frontend never has to re-derive it from raw category/type
-    /// fields.
+    /// <c>null</c> if that kind either isn't equippable at all (Consumable/Passive/
+    /// Fragment) or is equippable-shaped by category but not actually meant to be
+    /// equipped by this particular item — <c>usageMode</c> (Catalog's authored
+    /// <c>UsageMode</c>, "Equip" being the only value that means "occupies a slot")
+    /// is the deciding signal, not the category collapse table alone. Without this
+    /// gate, a single-use item like a SkillEssence read once for skill points (its
+    /// Category collapses to RunItemType.SkillEssence, which structurally maps to
+    /// the Relic slot) would wrongly offer an "Équiper" action. The single place
+    /// this decision is made — used both by the actual equip command
+    /// (EquipItemCommandHandler) and by the <c>equipSlot</c> exposed on item
+    /// listings so the frontend never has to re-derive it from raw category/type/
+    /// usageMode fields.
     /// </summary>
-    public static string? MapEquipSlot(RunItemType type) => type switch
+    public static string? MapEquipSlot(RunItemType type, string? usageMode)
     {
-        RunItemType.Weapon => "Weapon",
-        RunItemType.Equipment => "Accessory",
-        RunItemType.Relic or RunItemType.Grimoire or RunItemType.WeatherInstrument or RunItemType.SkillEssence
-            => "Relic",
-        _ => null
-    };
+        if (!string.Equals(usageMode, "Equip", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return type switch
+        {
+            RunItemType.Weapon => "Weapon",
+            RunItemType.Equipment => "Accessory",
+            RunItemType.Relic or RunItemType.Grimoire or RunItemType.WeatherInstrument or RunItemType.SkillEssence
+                => "Relic",
+            _ => null
+        };
+    }
 
     public static RunItemEffectType MapEffect(string? effectRunType)
     {

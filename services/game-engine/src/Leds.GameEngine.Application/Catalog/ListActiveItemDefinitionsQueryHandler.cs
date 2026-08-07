@@ -29,7 +29,7 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.EffectRunType,
                 d.EffectValue,
                 CatalogRunItemMapper.TryMapType(d.Category, out var runItemType)
-                    ? CatalogRunItemMapper.MapEquipSlot(runItemType)
+                    ? CatalogRunItemMapper.MapEquipSlot(runItemType, d.UsageMode)
                     : null,
                 d.ReadablePages,
                 (d.EquipmentEffects ?? []).Select(effect => new ItemEquipmentEffectView(
