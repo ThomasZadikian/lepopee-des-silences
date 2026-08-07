@@ -2,6 +2,8 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 
 import { DEFAULT_ZOOM, type CameraParams } from './useTerrainDrawPlan';
 
+const EXPLORATION_ZOOM = 0.55; 
+
 /**
  * The exploration map's camera: centered on the party's own animated grid position
  * (usePartyTokenPath's displayPartyX/displayPartyY, the same refs the step animation already
@@ -19,7 +21,7 @@ export function useCamera(
   const camera = computed<CameraParams>(() => ({
     camX: displayPartyX.value,
     camY: displayPartyY.value,
-    zoom: DEFAULT_ZOOM,
+    zoom: DEFAULT_ZOOM * EXPLORATION_ZOOM,
   }));
 
   return { camera };
