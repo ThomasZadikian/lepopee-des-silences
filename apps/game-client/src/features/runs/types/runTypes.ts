@@ -207,6 +207,8 @@ export type RunItemDto = {
   tacticalRange?: number;
   tacticalAreaShape?: 'Single' | 'Cross' | 'Diamond' | 'Map';
   requiresLineOfSight?: boolean;
+  /** Weapon/Accessory/Relic, or null when not equippable — resolved server-side. */
+  equipSlot?: string | null;
 };
 
 export type MovePartyResponse = {

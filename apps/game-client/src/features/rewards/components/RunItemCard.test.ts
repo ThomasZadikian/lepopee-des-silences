@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import RunItemCard from './RunItemCard.vue';
 import type { RunItemDto } from '../../runs/types/runTypes';
+import { useItemVocabulary } from '../../item-vocabulary/store';
+import { TEST_ITEM_EFFECT_TYPES, TEST_ITEM_RARITIES, TEST_ITEM_TYPES } from '../../item-vocabulary/testFixtures';
+
+beforeEach(() => {
+  useItemVocabulary().install(TEST_ITEM_TYPES, TEST_ITEM_RARITIES, TEST_ITEM_EFFECT_TYPES);
+});
 
 const baseItem: RunItemDto = {
   id: 'item-1',
@@ -39,7 +45,7 @@ describe('RunItemCard', () => {
   });
 
   it('displays the rarity label', () => {
-    expect(mountCard(baseItem).text()).toContain('Peu commun');
+    expect(mountCard(baseItem).text()).toContain('Peu commune');
   });
 
   it('displays the item type', () => {
@@ -58,7 +64,7 @@ describe('RunItemCard', () => {
 
   it('displays the effect badge when effectAmount > 0', () => {
     expect(mountCard(baseItem).find('.ric__effect-badge').exists()).toBe(true);
-    expect(mountCard(baseItem).text()).toContain('+25 Vitalité');
+    expect(mountCard(baseItem).text()).toContain('+25 Soin');
   });
 
   it('hides the effect badge when effectAmount is 0', () => {

@@ -48,6 +48,7 @@ import {
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
 import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
+import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
 import PortraitDetailCard from './PortraitDetailCard.vue';
 import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
@@ -461,15 +462,6 @@ function itemMeta(item: CombatUsableItemDto): string {
   return `P${item.tacticalRange} · ${itemShape(item)} · ×${item.quantity}`;
 }
 
-function itemEffectLabel(effectType: string): string {
-  if (effectType.includes('Heal')) return 'Soin';
-  if (effectType.includes('Mana')) return 'Mana';
-  if (effectType.includes('Charge')) return 'Charge';
-  if (effectType.includes('Guard')) return 'Garde';
-  if (effectType.includes('Revive')) return 'Réanimation';
-  return effectType;
-}
-
 function isFloorCell(x: number, y: number): boolean {
   const field = battlefield.value;
   if (!field || x < 0 || y < 0 || x >= field.width || y >= field.height) return false;
@@ -811,7 +803,7 @@ const targetPreview = computed(() => {
   const effect = item
     ? item.effectType === 'RevivePercent'
       ? `Réanimation à ${item.effectAmount} %`
-      : `${itemEffectLabel(item.effectType)} ${itemAmount}`
+      : `${itemEffectTypeMeta(item.effectType).label} ${itemAmount}`
     : skill && skill.effectType !== 'Damage'
       ? `${skill.effectType} ${skill.basePower}`
       : null;

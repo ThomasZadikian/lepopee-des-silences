@@ -28,12 +28,12 @@ function itemDisplayName(itemKey: string): string {
 }
 
 function itemTypeAccent(itemKey: string) {
-  return itemTypeMeta(allItems.value.find((i) => i.key === itemKey)?.itemType);
+  return itemTypeMeta(allItems.value.find((i) => i.key === itemKey)?.category);
 }
 
 function weaponContract(itemKey: string): string | null {
   const item = allItems.value.find((candidate) => candidate.key === itemKey);
-  if (!item || item.itemType !== 'Weapon') return null;
+  if (!item || item.category !== 'Weapon') return null;
   const category = item.basicAttackCategory === 'Magic' ? 'magique' : 'physique';
   const lineOfSight = item.requiresLineOfSight ? ' · ligne de vue' : '';
   return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1}`
@@ -109,16 +109,12 @@ const equipmentSlots = computed(() => {
 
 function slotFor(itemKey: string): keyof typeof slotLimits | null {
   const definition = allItems.value.find((item) => item.key === itemKey);
-  const type = definition?.itemType;
-  if (type === 'Weapon') return 'Weapon';
-  if (type === 'Accessory') return 'Accessory';
-  if (type === 'Relic' || type === 'Heritage' || definition?.category === 'Relic') return 'Relic';
+  // Server-resolved (CatalogRunItemMapper.MapEquipSlot) — never re-derived here from
+  // raw category/type fields.
+  if (definition) return (definition.equipSlot as keyof typeof slotLimits | null) ?? null;
   // Permanent inventory only contains equippable run rewards. Keep legacy
   // entries usable while their catalog metadata is loading or being migrated.
-  if (!definition) {
-    return props.character.items.find((item) => item.itemKey === itemKey)?.slot ?? 'Relic';
-  }
-  return null;
+  return props.character.items.find((item) => item.itemKey === itemKey)?.slot ?? 'Relic';
 }
 
 function slotLabel(slot: keyof typeof slotLimits): string {

@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import InventoryDrawer from './InventoryDrawer.vue';
 import type { RunItemDto } from '../types/runTypes';
+import { useItemVocabulary } from '../../item-vocabulary/store';
+import { TEST_ITEM_EFFECT_TYPES, TEST_ITEM_RARITIES, TEST_ITEM_TYPES } from '../../item-vocabulary/testFixtures';
+
+beforeEach(() => {
+  useItemVocabulary().install(TEST_ITEM_TYPES, TEST_ITEM_RARITIES, TEST_ITEM_EFFECT_TYPES);
+});
 
 vi.mock('../../runs/stores/runStore', () => ({
   useRunStore: vi.fn(() => ({
@@ -101,7 +107,7 @@ describe('InventoryDrawer', () => {
   it('displays effect label in sheet', async () => {
     const wrapper = mountDrawer([baseItem]);
     await wrapper.find('.bp-cell').trigger('click');
-    expect(wrapper.text()).toContain('+20 Vitalité');
+    expect(wrapper.text()).toContain('+20 Soin');
   });
 
   it('displays the tactical contract when supplied by the run API', async () => {
@@ -131,7 +137,7 @@ describe('InventoryDrawer', () => {
         displayName: 'Le carnet',
         description: 'Un carnet.',
         category: 'Relic',
-        itemType: 'Lore',
+        flavorTag: 'Lore',
         rarity: 'Unique',
         effectRunType: null,
         effectValue: 0,
@@ -166,14 +172,14 @@ describe('InventoryDrawer', () => {
     const item = { ...baseItem, rarity: 'Rare' };
     const wrapper = mountDrawer([item]);
     expect(wrapper.text()).toContain('rare');
-    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('--mint-dim');
+    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('oklch(0.8 0.1 230)');
   });
 
   it('applies the epic rarity tone', () => {
     const item = { ...baseItem, rarity: 'Epic' };
     const wrapper = mountDrawer([item]);
     expect(wrapper.text()).toContain('épique');
-    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('--mint)');
+    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('oklch(0.8 0.12 300)');
   });
 
   it('applies the uncommon rarity tone', () => {
@@ -220,14 +226,14 @@ describe('InventoryDrawer', () => {
     const item = { ...baseItem, effectType: 'ManaRestore', effectAmount: 5 };
     const wrapper = mountDrawer([item]);
     await wrapper.find('.bp-cell').trigger('click');
-    expect(wrapper.text()).toContain('+5 Mana');
+    expect(wrapper.text()).toContain('+5 Restauration de mana');
   });
 
   it('handles ChargeRestore effect type', async () => {
     const item = { ...baseItem, effectType: 'ChargeRestore', effectAmount: 3 };
     const wrapper = mountDrawer([item]);
     await wrapper.find('.bp-cell').trigger('click');
-    expect(wrapper.text()).toContain('+3 Charge');
+    expect(wrapper.text()).toContain('+3 Restauration de charge');
   });
 
   it('handles NextCombatGuard effect type', async () => {

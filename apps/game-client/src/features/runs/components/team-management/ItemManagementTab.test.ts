@@ -74,7 +74,7 @@ describe('ItemManagementTab', () => {
       items: [
         {
           key: 'item.relic.tome', displayName: 'Le Tome 38', description: '', category: 'Relic',
-          itemType: 'Lore', rarity: 'Unique', effectRunType: null, effectValue: 0,
+          flavorTag: 'Lore', rarity: 'Unique', effectRunType: null, effectValue: 0, equipSlot: 'Relic',
         },
       ],
     });
@@ -112,9 +112,10 @@ describe('ItemManagementTab', () => {
         key: 'item.relic.tome',
         displayName: 'Bâton des Silences',
         description: '',
-        category: 'Equipment',
-        itemType: 'Weapon',
+        category: 'Weapon',
+        flavorTag: 'Arme',
         rarity: 'Rare',
+        equipSlot: 'Weapon',
         effectRunType: null,
         effectValue: 0,
         tacticalRange: 4,

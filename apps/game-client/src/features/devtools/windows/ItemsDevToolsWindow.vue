@@ -77,7 +77,7 @@ function add() {
           <div class="devtools-catalog-sheet__facts">
             <span class="devtools-catalog-fact">{{ selectedItem.rarity }}</span>
             <span class="devtools-catalog-fact">{{ selectedItem.category }}</span>
-            <span class="devtools-catalog-fact">{{ selectedItem.itemType }}</span>
+            <span class="devtools-catalog-fact">{{ selectedItem.flavorTag }}</span>
           </div>
           <div class="devtools-inline-form">
             <input v-model.number="quantity" class="devtools-input devtools-input--small" type="number" min="1" max="99">

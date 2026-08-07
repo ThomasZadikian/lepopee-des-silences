@@ -7,6 +7,7 @@
 import { watch } from 'vue';
 
 import type { CombatUsableItemDto } from '../types/combatContracts';
+import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
 
 const props = defineProps<{
   open: boolean;
@@ -25,19 +26,10 @@ watch(() => props.open, (open) => {
   else document.removeEventListener('keydown', onKeydown);
 });
 
-function itemEffectLabel(effectType: string): string {
-  if (effectType.includes('Heal')) return 'Soin';
-  if (effectType.includes('Mana')) return 'Mana';
-  if (effectType.includes('Charge')) return 'Charge';
-  if (effectType.includes('Guard')) return 'Garde';
-  if (effectType.includes('Revive')) return 'Réanimation';
-  return effectType;
-}
-
 function itemEffectSummary(item: CombatUsableItemDto): string {
-  if (item.effectType === 'RevivePercent') return `Réanimation à ${item.effectAmount} %`;
+  const label = itemEffectTypeMeta(item.effectType).label;
   const isPercent = item.effectType.toLowerCase().includes('percent');
-  return `${itemEffectLabel(item.effectType)} ${item.effectAmount}${isPercent ? ' %' : ''}`;
+  return `${label} ${item.effectAmount}${isPercent ? ' %' : ''}`;
 }
 
 function itemMeta(item: CombatUsableItemDto): string {

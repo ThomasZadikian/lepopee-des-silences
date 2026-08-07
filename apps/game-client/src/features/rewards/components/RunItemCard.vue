@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RunItemDto } from '../../runs/types/runTypes';
+import { itemEffectTypeMeta, itemRarityMeta } from '../../../shared/theme/typeColors';
 
 const props = defineProps<{
   item: RunItemDto;
@@ -10,52 +11,64 @@ const emit = defineEmits<{
   use: [itemId: string];
 }>();
 
-function rarityTone(rarity: string): 'sap' | 'frost' | 'gold' | '' {
+// Tone bucketing is this card's own visual language (4 fixed CSS classes), kept
+// separate from the canonical label/color — but it must stay exhaustive over the 5
+// rarity tiers so a tier never silently falls back to the "Common" look, which is
+// exactly the bug this replaces (Legendary items rendered indistinguishable from
+// Common ones).
+function rarityTone(rarity: string): 'sap' | 'frost' | 'gold' | 'blood' | '' {
   switch (rarity) {
-    case 'Uncommon': return 'sap';
-    case 'Rare':     return 'frost';
-    case 'Epic':     return 'gold';
-    default:         return '';
+    case 'Uncommon':  return 'sap';
+    case 'Rare':      return 'frost';
+    case 'Epic':      return 'gold';
+    case 'Legendary': return 'blood';
+    default:          return '';
   }
 }
 
 function rarityLabel(rarity: string): string {
-  switch (rarity) {
-    case 'Uncommon': return 'Peu commun';
-    case 'Rare':     return 'Rare';
-    case 'Epic':     return 'Épique';
-    default:         return 'Commun';
-  }
+  return itemRarityMeta(rarity).label;
 }
 
 function effectLabel(effectType: string, effectAmount: number): string {
-  switch (effectType) {
-    case 'Heal':              return `+${effectAmount} Vitalité`;
-    case 'Guard':             return `+${effectAmount} Garde`;
-    case 'ManaRestore':       return `+${effectAmount} Mana`;
-    case 'ChargeRestore':     return `+${effectAmount} Charge`;
-    case 'NextCombatGuard':   return `+${effectAmount} Garde (prochain combat)`;
-    case 'NarrativeFragment': return 'Fragment narratif';
-    case 'HealAndManaRestorePercent': return `+${effectAmount}% Vitalité et Mana`;
-    default:                  return '';
-  }
+  if (effectType === 'None') return '';
+  const meta = itemEffectTypeMeta(effectType);
+  if (effectType === 'NarrativeFragment') return meta.label;
+  if (effectAmount <= 0) return '';
+  const isPercent = effectType.toLowerCase().includes('percent');
+  return `+${effectAmount}${isPercent ? '%' : ''} ${meta.label}`;
 }
 
 function effectTone(effectType: string): 'sap' | 'frost' | 'gold' | 'blood' | '' {
   switch (effectType) {
     case 'Heal':
+    case 'HealPercent':
+    case 'HealAndManaRestorePercent':
+    case 'HealPercentAndCleanseDot':
+    case 'HealPercentAndSilence':
+    case 'HealPercentAndEvasion':
+    case 'RevivePercent':
     case 'ManaRestore':
     case 'ChargeRestore':
-    case 'HealAndManaRestorePercent':
-    case 'NextCombatGuard': return 'sap';
-    case 'Guard':           return 'frost';
-    case 'NarrativeFragment': return 'gold';
-    case 'Damage':          return 'blood';
-    default:                return '';
+    case 'NextCombatGuard':
+    case 'TeamSpeedBonus':
+    case 'GrantTeamSkillPoints':
+    case 'GrantTemporarySkill':
+      return 'sap';
+    case 'Guard':
+      return 'frost';
+    case 'NarrativeFragment':
+    case 'ForceWeatherAccalmie':
+    case 'RerollWeather':
+      return 'gold';
+    case 'ConditionalHealOrPoison':
+    case 'AttackTypeOverride':
+    case 'ForceWeatherOrage':
+      return 'blood';
+    default:
+      return '';
   }
 }
-
-
 </script>
 
 <template>

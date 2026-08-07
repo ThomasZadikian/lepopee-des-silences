@@ -3,10 +3,12 @@ export type ItemDefinitionView = {
   displayName: string;
   description: string;
   category: string;
-  itemType: string;
+  flavorTag: string;
   rarity: string;
   effectRunType: string | null;
   effectValue: number;
+  /** Weapon/Accessory/Relic, or null when not equippable — resolved server-side. */
+  equipSlot?: string | null;
   readablePages?: string[] | null;
   tacticalRange?: number;
   tacticalAreaShape?: string;

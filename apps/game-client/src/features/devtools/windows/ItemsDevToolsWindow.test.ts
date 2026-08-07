@@ -7,11 +7,11 @@ import type { ItemDefinitionView } from '../../party/types/itemTypes';
 const allItems: ItemDefinitionView[] = [
   {
     key: 'item.the-seuil', displayName: 'Thé du seuil', description: 'Restaure 25% de Vitalité.',
-    category: 'Consumable', itemType: 'Consumable', rarity: 'Common', effectRunType: 'HealPercent', effectValue: 25,
+    category: 'Consumable', flavorTag: 'Consumable', rarity: 'Common', effectRunType: 'HealPercent', effectValue: 25,
   },
   {
     key: 'item.sceau-invite', displayName: "Sceau de l'invité reconnu", description: 'Accorde de la réputation.',
-    category: 'Heritage', itemType: 'MetaPassive', rarity: 'Epic', effectRunType: null, effectValue: 0,
+    category: 'Relic', flavorTag: 'Trophée', rarity: 'Epic', effectRunType: null, effectValue: 0,
   },
 ];
 

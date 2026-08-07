@@ -1,43 +1,39 @@
 /**
  * Centralized "coloration selon le type" palette — a pastel accent color assigned
- * per spell "registre émotionnel" or per item type, so the same principle used in
- * the combat spell hotbar reads consistently across the Grimoire, Besace and
+ * per spell "registre émotionnel" or per item category, so the same principle used
+ * in the combat spell hotbar reads consistently across the Grimoire, Besace and
  * Équipement menus (see docs/design/direction-visuelle-palais-respire.md: cold
  * dark chrome, pastel accents carrying information, not decoration).
+ *
+ * Item label/glyph/color are Catalog-owned (see useItemVocabulary) — this module is
+ * now only a thin, template-friendly wrapper around that store, with a neutral
+ * fallback for a category the vocabulary hasn't loaded yet or doesn't recognize.
+ * It never re-derives a classification of its own.
  */
+import { useItemVocabulary } from '../../features/item-vocabulary/store';
+
 export type TypeColorMeta = { label: string; glyph: string; color: string };
 
-export type ItemTypeKey = 'Weapon' | 'Accessory' | 'Relic' | 'Grimoire' | 'Consumable' | 'Other';
-
-const ITEM_TYPE_META: Record<ItemTypeKey, TypeColorMeta> = {
-  Weapon: { label: 'Arme', glyph: '⚔', color: 'oklch(0.80 0.12 30)' },
-  Accessory: { label: 'Accessoire', glyph: '◆', color: 'oklch(0.82 0.09 255)' },
-  Relic: { label: 'Relique', glyph: '◈', color: 'oklch(0.82 0.10 305)' },
-  Grimoire: { label: 'Grimoire', glyph: '❍', color: 'oklch(0.86 0.09 90)' },
-  Consumable: { label: 'Consommable', glyph: '✳', color: 'oklch(0.83 0.10 150)' },
-  Other: { label: 'Objet', glyph: '·', color: 'oklch(0.62 0.02 272)' },
+const FALLBACK_ITEM_TYPE_META: TypeColorMeta = {
+  label: 'Objet',
+  glyph: '·',
+  color: 'oklch(0.62 0.02 272)',
 };
 
-/** Normalizes the several catalog/run-item type vocabularies into one axis. */
-export function normalizeItemType(rawType: string | undefined | null): ItemTypeKey {
-  switch (rawType) {
-    case 'Weapon':
-      return 'Weapon';
-    case 'Accessory':
-    case 'Equipment':
-      return 'Accessory';
-    case 'Relic':
-    case 'Heritage':
-      return 'Relic';
-    case 'Grimoire':
-      return 'Grimoire';
-    case 'Consumable':
-      return 'Consumable';
-    default:
-      return 'Other';
-  }
+export function itemTypeMeta(category: string | undefined | null): TypeColorMeta {
+  const definition = useItemVocabulary().itemTypeOf(category);
+  if (!definition) return FALLBACK_ITEM_TYPE_META;
+  return { label: definition.displayName, glyph: definition.glyph, color: definition.color };
 }
 
-export function itemTypeMeta(rawType: string | undefined | null): TypeColorMeta {
-  return ITEM_TYPE_META[normalizeItemType(rawType)];
+export function itemRarityMeta(rarity: string | undefined | null): TypeColorMeta {
+  const definition = useItemVocabulary().itemRarityOf(rarity);
+  if (!definition) return FALLBACK_ITEM_TYPE_META;
+  return { label: definition.displayName, glyph: definition.glyph, color: definition.color };
+}
+
+export function itemEffectTypeMeta(effectType: string | undefined | null): TypeColorMeta {
+  const definition = useItemVocabulary().itemEffectTypeOf(effectType);
+  if (!definition) return FALLBACK_ITEM_TYPE_META;
+  return { label: definition.displayName, glyph: definition.glyph, color: definition.color };
 }

@@ -5,7 +5,7 @@ import { usePlayerStore } from '../../features/party/stores/playerStore';
 import type { RunItemDto } from '../../features/runs/types/runTypes';
 import { inventoryApi } from '../../features/inventory/api/inventoryApi';
 import { itemsApi } from '../../features/party/api/itemsApi';
-import { itemTypeMeta } from '../theme/typeColors';
+import { itemEffectTypeMeta, itemRarityMeta, itemTypeMeta } from '../theme/typeColors';
 import BookReader from './BookReader.vue';
 
 /**
@@ -61,34 +61,21 @@ const CATEGORY_LABELS: Record<CategoryKey, string> = {
 };
 
 function categoryOf(item: RunItemDto): CategoryKey {
-  if (item.type === 'Weapon') return 'arme';
-  if (item.type === 'Equipment' || item.type === 'Relic') return 'accessoire';
+  // Bucketed from the server-resolved equip slot rather than re-matching category/type
+  // strings here — a new equippable category naturally lands in "arme"/"accessoire"
+  // without this file needing to learn its name.
+  if (item.equipSlot === 'Weapon') return 'arme';
+  if (item.equipSlot === 'Accessory' || item.equipSlot === 'Relic') return 'accessoire';
   if (item.type === 'Consumable') return 'soin';
   return 'autre';
 }
 
-const RARITY_LABELS: Record<string, string> = {
-  Common: 'commune',
-  Uncommon: 'peu commune',
-  Rare: 'rare',
-  Epic: 'épique',
-  Legendary: 'légendaire',
-};
-
-const RARITY_COLORS: Record<string, string> = {
-  Common: 'var(--ink-3)',
-  Uncommon: 'var(--ink-2)',
-  Rare: 'var(--mint-dim)',
-  Epic: 'var(--mint)',
-  Legendary: 'var(--mint)',
-};
-
 function rarityLabel(rarity: string): string {
-  return RARITY_LABELS[rarity] ?? rarity.toLowerCase();
+  return itemRarityMeta(rarity).label.toLowerCase();
 }
 
 function rarityColor(rarity: string): string {
-  return RARITY_COLORS[rarity] ?? 'var(--ink-3)';
+  return itemRarityMeta(rarity).color;
 }
 
 function tacticalShapeLabel(shape?: RunItemDto['tacticalAreaShape']): string {
@@ -107,17 +94,12 @@ function tacticalContract(item: RunItemDto): string | undefined {
 }
 
 function effectLabel(item: RunItemDto): string | undefined {
+  if (item.effectType === 'None') return undefined;
+  const meta = itemEffectTypeMeta(item.effectType);
+  if (item.effectType === 'NarrativeFragment') return meta.label;
   if (item.effectAmount <= 0) return undefined;
-  switch (item.effectType) {
-    case 'Heal':              return `+${item.effectAmount} Vitalité`;
-    case 'Guard':             return `+${item.effectAmount} Garde`;
-    case 'ManaRestore':       return `+${item.effectAmount} Mana`;
-    case 'ChargeRestore':     return `+${item.effectAmount} Charge`;
-    case 'NextCombatGuard':   return `+${item.effectAmount} Garde (prochain combat)`;
-    case 'NarrativeFragment': return 'Fragment narratif';
-    case 'HealAndManaRestorePercent': return `+${item.effectAmount}% Vitalité et Mana`;
-    default: return undefined;
-  }
+  const isPercent = item.effectType.toLowerCase().includes('percent');
+  return `+${item.effectAmount}${isPercent ? '%' : ''} ${meta.label}`;
 }
 
 function valueLabel(definitionKey: string): string | undefined {
@@ -198,20 +180,15 @@ async function readGrimoire() {
   }
 }
 
-// Weapon/Equipment/Relic run items map to a permanent equipment slot (see
-// EnemyLootRewardBuilder.MapToRunItemType on the server for the reverse mapping).
+// Weapon/Equipment/Relic run items map to a permanent equipment slot — resolved
+// server-side (CatalogRunItemMapper.MapEquipSlot) and carried on RunItemDto.equipSlot,
+// never re-derived here from type/category strings.
 const equipSlotLabels = { Weapon: 'Arme', Accessory: 'Accessoire', Relic: 'Relique' } as const;
 type EquipSlot = keyof typeof equipSlotLabels;
 const slotLimits: Record<EquipSlot, number> = { Weapon: 1, Accessory: 1, Relic: 3 };
 
-function equipSlotFor(item: RunItemDto): EquipSlot | null {
-  if (item.type === 'Weapon') return 'Weapon';
-  if (item.type === 'Equipment') return 'Accessory';
-  if (item.type === 'Relic') return 'Relic';
-  return null;
-}
-
-const selectedItemEquipSlot = computed(() => selectedItem.value ? equipSlotFor(selectedItem.value) : null);
+const selectedItemEquipSlot = computed(() =>
+  (selectedItem.value?.equipSlot as EquipSlot | undefined) ?? null);
 
 // Equipping requires the item to already be in the player's permanent backpack — a
 // freshly-found run item normally only gets there through the end-of-run keepsake ceremony,
