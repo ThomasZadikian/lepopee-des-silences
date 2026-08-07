@@ -1,3 +1,4 @@
+using Leds.Catalog.Domain.Items;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,8 @@ public sealed partial class CatalogSeedRunner
     {
         foreach (var weapon in CanonicalWeapons)
         {
+            ItemRarityCatalog.Parse(weapon.Rarity);
+
             var item = await _ctx.ItemDefinitions
                 .FirstOrDefaultAsync(i => i.Key == weapon.Key, cancellationToken);
 
@@ -31,8 +34,8 @@ public sealed partial class CatalogSeedRunner
             item.NarrativeText = weapon.Description;
             item.Version = CanonicalWeaponVersion;
             item.Status = "Active";
-            item.Category = "Equipment";
-            item.ItemType = "Weapon";
+            item.Category = nameof(ItemCategory.Weapon);
+            item.FlavorTag = "Arme";
             item.Rarity = weapon.Rarity;
             item.UsageMode = "Equip";
             item.Lifecycle = "PersistentMeta";

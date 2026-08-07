@@ -6,7 +6,7 @@ public interface IItemDefinition : ICatalogContent
 {
     string? NarrativeText { get; }
     string Category { get; }
-    string ItemType { get; }
+    string FlavorTag { get; }
     string Rarity { get; }
     string UsageMode { get; }
     string Lifecycle { get; }

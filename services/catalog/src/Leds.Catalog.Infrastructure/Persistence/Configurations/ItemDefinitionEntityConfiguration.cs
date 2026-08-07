@@ -21,7 +21,7 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.Version).HasColumnName("version").HasMaxLength(64).IsRequired();
         builder.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
         builder.Property(e => e.Category).HasColumnName("category").HasMaxLength(64).IsRequired();
-        builder.Property(e => e.ItemType).HasColumnName("item_type").HasMaxLength(64).IsRequired();
+        builder.Property(e => e.FlavorTag).HasColumnName("flavor_tag").HasMaxLength(64).IsRequired();
         builder.Property(e => e.Rarity).HasColumnName("rarity").HasMaxLength(64).IsRequired();
         builder.Property(e => e.UsageMode).HasColumnName("usage_mode").HasMaxLength(64).HasDefaultValue("NotUsable").IsRequired();
         builder.Property(e => e.Lifecycle).HasColumnName("lifecycle").HasMaxLength(64).HasDefaultValue("RuntimeRunOnly").IsRequired();

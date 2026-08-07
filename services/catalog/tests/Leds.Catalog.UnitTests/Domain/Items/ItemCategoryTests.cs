@@ -14,12 +14,16 @@ public sealed class ItemCategoryTests
         ((int)ItemCategory.Key).Should().Be(3);
         ((int)ItemCategory.Currency).Should().Be(4);
         ((int)ItemCategory.Material).Should().Be(5);
+        ((int)ItemCategory.Weapon).Should().Be(6);
+        ((int)ItemCategory.Grimoire).Should().Be(7);
+        ((int)ItemCategory.WeatherInstrument).Should().Be(8);
+        ((int)ItemCategory.SkillEssence).Should().Be(9);
     }
 
     [Fact]
-    public void ShouldHaveSixValues()
+    public void ShouldHaveTenValues()
     {
-        Enum.GetValues<ItemCategory>().Should().HaveCount(6);
+        Enum.GetValues<ItemCategory>().Should().HaveCount(10);
     }
 
     [Fact]

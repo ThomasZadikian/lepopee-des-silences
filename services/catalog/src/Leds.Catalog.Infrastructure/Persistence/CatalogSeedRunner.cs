@@ -4710,7 +4710,7 @@ public sealed partial class CatalogSeedRunner
 
     private async Task UpsertItemAsync(
         string key, string name, string description,
-        string category, string itemType, string rarity, string durability,
+        string category, string flavorTag, string rarity, string durability,
         bool usableInCombat, int effectValue, CancellationToken cancellationToken,
         IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
         bool isContainer = false, int? containerCapacity = null, bool isLiquid = false,
@@ -4720,51 +4720,52 @@ public sealed partial class CatalogSeedRunner
         var now = DateTime.UtcNow;
         var lifecycle = durability == "Permanent" ? "PersistentMeta" : "RuntimeRunOnly";
         var duration = durability == "Permanent" ? "Permanent" : "RunOnly";
+        // Fail the seed run, not a combat three layers downstream — Category/Rarity are
+        // the single vocabulary the runtime maps by name (CatalogRunItemMapper); a typo
+        // here must never reach a saved row.
+        ItemTypeCatalog.Parse(category);
+        ItemRarityCatalog.Parse(rarity);
         ItemEquipmentEffectValidator.Validate(key, equipmentEffects ?? []);
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects ?? [], J);
         var readablePagesJson = JsonSerializer.Serialize(readablePages ?? [], J);
         var existing = await _ctx.ItemDefinitions.FirstOrDefaultAsync(i => i.Key == key, cancellationToken);
+        var item = existing ?? new ItemDefinitionEntity { Id = Guid.NewGuid(), Key = key, CreatedAtUtc = now };
         if (existing is null)
         {
-            _ctx.ItemDefinitions.Add(new ItemDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = key,
-                Name = name,
-                DisplayName = name,
-                Description = description,
-                NarrativeText = description,
-                Version = version,
-                Status = "Active",
-                Category = category,
-                ItemType = itemType,
-                Rarity = rarity,
-                UsageMode = usableInCombat ? "UseInCombat" : "NotUsable",
-                Lifecycle = lifecycle,
-                StackPolicy = "Additive",
-                MaxStack = 1,
-                IsUsableInCombat = usableInCombat,
-                IsUsableOutsideCombat = false,
-                Duration = duration,
-                EffectValue = effectValue,
-                EffectRunType = effectRunType,
-                EquipmentEffectsJson = equipmentEffectsJson,
-                IsContainer = isContainer,
-                ContainerCapacity = containerCapacity,
-                IsLiquid = isLiquid,
-                ReadablePagesJson = readablePagesJson,
-                Price = 0,
-                BaseWeight = 1,
-                // Left unset, TacticalRange defaults to 1 (see ItemDefinitionEntity) — usable
-                // only on an adjacent cell. For a SingleAlly-targeted item (any heal/guard/
-                // restore consumable) that meant "cannot select the ally I actually want to
-                // target" as soon as the party wasn't standing shoulder to shoulder.
-                TacticalRange = usableInCombat ? 4 : 1,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
-            return;
+            _ctx.ItemDefinitions.Add(item);
         }
+
+        item.Name = name;
+        item.DisplayName = name;
+        item.Description = description;
+        item.NarrativeText = description;
+        item.Version = version;
+        item.Status = "Active";
+        item.Category = category;
+        item.FlavorTag = flavorTag;
+        item.Rarity = rarity;
+        item.UsageMode = usableInCombat ? "UseInCombat" : "NotUsable";
+        item.Lifecycle = lifecycle;
+        item.StackPolicy = "Additive";
+        item.MaxStack = 1;
+        item.IsUsableInCombat = usableInCombat;
+        item.IsUsableOutsideCombat = false;
+        item.Duration = duration;
+        item.EffectValue = effectValue;
+        item.EffectRunType = effectRunType;
+        item.EquipmentEffectsJson = equipmentEffectsJson;
+        item.IsContainer = isContainer;
+        item.ContainerCapacity = containerCapacity;
+        item.IsLiquid = isLiquid;
+        item.ReadablePagesJson = readablePagesJson;
+        item.Price = 0;
+        item.BaseWeight = 1;
+        // TacticalRange defaults to 1 (see ItemDefinitionEntity) — usable only on an
+        // adjacent cell. For a SingleAlly-targeted item (any heal/guard/restore
+        // consumable) that meant "cannot select the ally I actually want to target" as
+        // soon as the party wasn't standing shoulder to shoulder.
+        item.TacticalRange = usableInCombat ? 4 : 1;
+        item.UpdatedAtUtc = now;
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────
     private async Task SeedCanonCursesAsync(CancellationToken cancellationToken)

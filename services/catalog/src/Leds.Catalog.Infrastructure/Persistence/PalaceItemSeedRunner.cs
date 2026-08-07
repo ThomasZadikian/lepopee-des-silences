@@ -35,6 +35,9 @@ public sealed partial class CatalogSeedRunner
         PalaceItemSeed definition,
         CancellationToken cancellationToken)
     {
+        ItemTypeCatalog.Parse(definition.Category);
+        ItemRarityCatalog.Parse(definition.Rarity);
+
         var item = await _ctx.ItemDefinitions
             .FirstOrDefaultAsync(i => i.Key == definition.Key, cancellationToken);
 
@@ -102,7 +105,7 @@ public sealed partial class CatalogSeedRunner
         item.Version = PalaceItemVersion;
         item.Status = "Active";
         item.Category = definition.Category;
-        item.ItemType = definition.ItemType;
+        item.FlavorTag = definition.FlavorTag;
         item.Rarity = definition.Rarity;
         item.UsageMode = definition.UsageMode;
         item.Lifecycle = definition.Lifecycle;
@@ -226,27 +229,27 @@ public sealed partial class CatalogSeedRunner
         // Armes — elles remplacent le contrat de l'attaque de base.
         P("item.weapon.lame-seuil", "Lame du Seuil",
             "Une lame courte, fiable dans les couloirs étroits du Palais.",
-            "Equipment", "Weapon", "Common", "Equip",
+            "Weapon", "Arme", "Common", "Equip",
             range: 1, shape: "Single", los: false,
             basicAttackPower: 11, basicAttackCategory: "Physical"),
         P("item.weapon.lance-pelerin", "Lance du Pèlerin",
             "Une hampe longue qui permet de frapper au-delà de la première case.",
-            "Equipment", "Weapon", "Uncommon", "Equip", pool: "Montagne",
+            "Weapon", "Arme", "Uncommon", "Equip", pool: "Montagne",
             range: 2, shape: "Single", los: true,
             basicAttackPower: 10, basicAttackCategory: "Physical"),
         P("item.weapon.arc-relieur", "Arc du Relieur",
             "Ses traits suivent les lignes que le Palais accepte encore de montrer.",
-            "Equipment", "Weapon", "Uncommon", "Equip", pool: "Labyrinthe",
+            "Weapon", "Arme", "Uncommon", "Equip", pool: "Labyrinthe",
             range: 5, shape: "Single", los: true,
             basicAttackPower: 9, basicAttackCategory: "Physical"),
         P("item.weapon.marteau-forge", "Marteau de la Forge",
             "Lent et brutal, conçu pour briser la Garde au contact.",
-            "Equipment", "Weapon", "Rare", "Equip", pool: "Enfers",
+            "Weapon", "Arme", "Rare", "Equip", pool: "Enfers",
             range: 1, shape: "Single", los: false,
             basicAttackPower: 14, basicAttackCategory: "Physical"),
         P("item.weapon.baton-silences", "Bâton des Silences",
             "Canalise une frappe magique à travers les salles du Palais.",
-            "Equipment", "Weapon", "Rare", "Equip", pool: "Palier,Labyrinthe",
+            "Weapon", "Arme", "Rare", "Equip", pool: "Palier,Labyrinthe",
             range: 4, shape: "Single", los: true,
             basicAttackPower: 12, basicAttackCategory: "Magic"),
 
@@ -408,11 +411,11 @@ public sealed partial class CatalogSeedRunner
 
         // Progression
         P("item.grain-chapelet", "Grain de chapelet", "+2 points de compétence à chaque membre de l'équipe.",
-            "Consumable", "SkillEssence", "Common", "UseOutsideCombat", stack: 20, outside: true,
+            "SkillEssence", "Essence de sort", "Common", "UseOutsideCombat", stack: 20, outside: true,
             effectRunType: "GrantTeamSkillPoints", effectValue: 2,
             effects: [Fx("GrantSkillPoints", "Team", 2, "Flat", "Immediate")]),
         P("item.osselet-grave", "Osselet gravé", "+5 points de compétence à l'équipe, ou +7 dans la Calamité.",
-            "Consumable", "SkillEssence", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Enfers", effects:
+            "SkillEssence", "Essence de sort", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Enfers", effects:
             // Calamité (+7) is resolved from the current room by the game engine.
             [
                 Fx("GrantSkillPoints", "Team", 5, "Flat", "Immediate", "room:not-enfer1"),
@@ -420,20 +423,20 @@ public sealed partial class CatalogSeedRunner
             ], effectRunType: "GrantTeamSkillPoints", effectValue: 5),
         P("item.cristal-resonance", "Cristal de résonance",
             "+10 points de compétence à l'équipe ; les prochains Gardiens de Crystal commencent avec +2 Résonance, cumulable cinq fois.",
-            "Consumable", "SkillEssence", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "SousTerrains,CaverneCrystal", effects:
+            "SkillEssence", "Essence de sort", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "SousTerrains,CaverneCrystal", effects:
             [
                 Fx("GrantSkillPoints", "Team", 10, "Flat", "Immediate"),
                 Fx("NextEncounterModifier", "CrystalGuardians", 2, "Flat", "UntilTriggered", "max-stacks:5", behavior: "resonance")
             ], effectRunType: "GrantTeamSkillPoints", effectValue: 10),
         P("item.page-arrachee", "Page arrachée",
             "Au choix : +15 points de compétence à l'équipe ou un troisième emplacement de compétence temporaire pour la run.",
-            "Consumable", "SkillEssence", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.palier", effects:
+            "SkillEssence", "Essence de sort", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.palier", effects:
             [
                 Fx("Choice", "User", null, "Choice", "Immediate", behavior: "team-skill-points:15|temporary-skill-slot:+1")
             ], effectRunType: "GrantTeamSkillPoints", effectValue: 15),
         P("item.dent-de-lait", "Dent de lait",
             "+1 point de compétence à l'équipe ; 10% de chance déterministe d'accorder +4 supplémentaires.",
-            "Consumable", "SkillEssence", "Common", "UseOutsideCombat", stack: 20, outside: true, effects:
+            "SkillEssence", "Essence de sort", "Common", "UseOutsideCombat", stack: 20, outside: true, effects:
             [
                 Fx("GrantSkillPoints", "Team", 1, "Flat", "Immediate"),
                 Fx("GrantSkillPoints", "Team", 4, "Flat", "Immediate", "deterministic-chance:10")
@@ -491,17 +494,17 @@ public sealed partial class CatalogSeedRunner
 
         // Grimoires
         P("item.tome-marees", "Tome des marées", "Apprend temporairement Déluge mineur.",
-            "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 20, outside: true, pool: "loot.imperatrice",
+            "Grimoire", "Grimoire", "Epic", "UseOutsideCombat", stack: 20, outside: true, pool: "loot.imperatrice",
             effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.deluge-mineur")],
             equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.deluge-mineur")]),
         P("item.feuillet-copiste", "Feuillet du copiste", "Apprend temporairement Écriture appliquée.",
-            "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "Labyrinthe",
+            "Grimoire", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "Labyrinthe",
             effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.ecriture-appliquee")],
             equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.ecriture-appliquee")]),
         P("item.braise-volee", "Braise volée", "Apprend temporairement Souffle emprunté ; si l'offrande supérieure est connue, accorde 8 points de compétence.",
-            "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "room.enfer3",
+            "Grimoire", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "room.enfer3",
             effectRunType: "GrantTemporarySkill", effects:
             [
                 Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", "skill:not-known:souffle-forge", behavior: "skill.temp.souffle-emprunte"),
@@ -512,32 +515,32 @@ public sealed partial class CatalogSeedRunner
                 new ItemEquipmentEffect(ItemEquipmentEffectKind.RuntimeBehavior, BehaviorCode: "known-forge-skill-awards-eight-points")
             ]),
         P("item.retable-portatif", "Retable portatif", "Apprend temporairement Prière ; en présence de Pénitents, crée une Station près du lanceur.",
-            "Consumable", "Grimoire", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne",
+            "Grimoire", "Grimoire", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne",
             effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "canon.skill.priere-aspiration")],
             equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "canon.skill.priere-aspiration")]),
         P("item.carnet-croquis", "Carnet de croquis", "Apprend temporairement Construction éphémère.",
-            "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.cellule",
+            "Grimoire", "Grimoire", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.cellule",
             effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.construction-ephemere")],
             equipmentEffects: [new ItemEquipmentEffect(ItemEquipmentEffectKind.GrantSkill, SkillKey: "skill.temp.construction-ephemere")]),
 
         // Instruments météo
         P("item.girouette-os", "Girouette d'os", "Hors combat, trois charges par run : relance la météo de la salle actuelle.",
-            "Consumable", "WeatherInstrument", "Uncommon", "UseOutsideCombat", stack: 3, outside: true,
+            "WeatherInstrument", "Instrument météorologique", "Uncommon", "UseOutsideCombat", stack: 3, outside: true,
             effectRunType: "RerollWeather", effects:
             [Fx("RerollWeather", "CurrentRoom", 3, "RunCharges", "Run", "room:not-weather-immune")]),
         P("item.flacon-orage", "Flacon d'orage", "Impose Orage pendant trois salles ; une salle immunisée consomme tout de même une charge de durée.",
-            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true,
+            "WeatherInstrument", "Instrument météorologique", "Rare", "UseOutsideCombat", stack: 20, outside: true,
             effectRunType: "ForceWeatherOrage", effectValue: 3, effects:
             [Fx("ForceWeather", "NextRooms", 3, "Rooms", "3Rooms", "room:not-weather-immune", behavior: "Orage;immune-room-consumes-duration")]),
         P("item.pierre-accalmie", "Pierre d'accalmie", "Impose Accalmie dans la salle actuelle.",
-            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true,
+            "WeatherInstrument", "Instrument météorologique", "Rare", "UseOutsideCombat", stack: 20, outside: true,
             effectRunType: "ForceWeatherAccalmie", effectValue: 1, pool: "Montagne", effects:
             [Fx("ForceWeather", "CurrentRoom", 1, "Room", "CurrentRoom", "room:not-weather-immune", behavior: "Accalmie")]),
         P("item.barometre-palais", "Baromètre du Palais",
             "Révèle la météo de la prochaine salle ; une fois par étage, permet de choisir cette météo.",
-            "Relic", "WeatherInstrument", "Rare", "UseOutsideCombat", outside: true, effects:
+            "WeatherInstrument", "Instrument météorologique", "Rare", "UseOutsideCombat", outside: true, effects:
             [
                 Fx("RevealWeather", "NextRoom", null, "Boolean", "WhileEquipped"),
                 Fx("ChooseWeather", "NextRoom", 1, "FloorCharge", "Floor", "room:not-weather-immune")
@@ -622,7 +625,7 @@ public sealed partial class CatalogSeedRunner
         string name,
         string description,
         string category,
-        string itemType,
+        string flavorTag,
         string rarity,
         string usageMode,
         string lifecycle = "RuntimeRunOnly",
@@ -642,7 +645,7 @@ public sealed partial class CatalogSeedRunner
         int? basicAttackPower = null,
         string? basicAttackCategory = null)
         => new(
-            key, name, description, category, itemType, rarity, usageMode, lifecycle,
+            key, name, description, category, flavorTag, rarity, usageMode, lifecycle,
             stack, combat, outside, range, shape, los, effectValue, effectRunType,
             pool, baseWeight, minDepth, $"palace-items:{rarity}", effects ?? [], equipmentEffects,
             basicAttackPower, basicAttackCategory);
@@ -652,7 +655,7 @@ public sealed partial class CatalogSeedRunner
         string Name,
         string Description,
         string Category,
-        string ItemType,
+        string FlavorTag,
         string Rarity,
         string UsageMode,
         string Lifecycle,

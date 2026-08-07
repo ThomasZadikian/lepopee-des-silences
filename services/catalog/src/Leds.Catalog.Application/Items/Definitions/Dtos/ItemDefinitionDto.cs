@@ -10,7 +10,7 @@ public sealed record ItemDefinitionDto(
     string Description,
     string? NarrativeText,
     string Category,
-    string ItemType,
+    string FlavorTag,
     string Rarity,
     string UsageMode,
     string Lifecycle,

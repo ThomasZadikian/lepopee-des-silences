@@ -4,7 +4,6 @@ using Leds.Catalog.Application.Rewards.GenericLoot.Ports;
 using Leds.Catalog.Application.Curses.Ports;
 using Leds.Catalog.Application.EffectSets.Ports;
 using Leds.Catalog.Application.Items.Definitions.Ports;
-using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.Npcs.Definitions.Ports;
 using Leds.Catalog.Application.NpcReputationAffinities.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
@@ -38,7 +37,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<CatalogIntegrityValidator>();
         services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
         services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
-        services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
         services.AddScoped<IItemDefinitionReadStore, EfItemDefinitionReadStore>();
         services.AddScoped<IEffectSetReadStore, EfEffectSetReadStore>();
         services.AddScoped<IRewardTemplateReadStore, EfRewardTemplateReadStore>();

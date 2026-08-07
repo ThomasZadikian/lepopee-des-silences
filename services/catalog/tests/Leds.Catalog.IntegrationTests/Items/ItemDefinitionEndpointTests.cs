@@ -138,7 +138,7 @@ public sealed class ItemDefinitionEndpointTests
 
     private sealed record ItemDefinitionResponseDto(
         Guid Id, string Key, string Version, string DisplayName, string Description, string? NarrativeText,
-        string Category, string ItemType, string Rarity, string UsageMode, string Lifecycle, string StackPolicy,
+        string Category, string FlavorTag, string Rarity, string UsageMode, string Lifecycle, string StackPolicy,
         int MaxStack, bool IsUsableInCombat, bool IsUsableOutsideCombat, string? EffectSetKey, string Status,
         bool IsPermanentEligible, IReadOnlyCollection<object> EquipmentEffects,
         bool IsContainer, int? ContainerCapacity, bool IsLiquid,

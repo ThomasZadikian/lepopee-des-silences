@@ -10,8 +10,13 @@ public sealed class ItemDefinitionEntity
     public string? NarrativeText { get; set; }
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    // Closed vocabulary, ItemCategory (catalog) — the sole field the runtime maps to
+    // RunItemType (CatalogRunItemMapper). Validated against ItemTypeCatalog at every
+    // seed write, never parsed with a fallback.
     public string Category { get; set; } = string.Empty;
-    public string ItemType { get; set; } = string.Empty;
+    // Free narrative subtype (e.g. "Lore", "Potion", "Trophée") — flavor text only,
+    // never consulted by gameplay logic. Do not switch on this field.
+    public string FlavorTag { get; set; } = string.Empty;
     public string Rarity { get; set; } = string.Empty;
     public string UsageMode { get; set; } = "NotUsable";
     public string Lifecycle { get; set; } = "RuntimeRunOnly";
