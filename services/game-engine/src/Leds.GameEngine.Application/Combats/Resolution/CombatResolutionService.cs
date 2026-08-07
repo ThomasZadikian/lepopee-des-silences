@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.IntegrationEvents;
 using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs;
 using Leds.GameEngine.Domain.Combats;
@@ -28,17 +29,20 @@ public interface ICombatResolutionService
 public sealed class CombatResolutionService : ICombatResolutionService
 {
     private readonly RewardOfferFactory _rewardOfferFactory;
+    private readonly GroundLootBuilder _groundLootBuilder;
     private readonly IPlayerProfileGateway _playerProfileGateway;
     private readonly IOutboxWriter _outboxWriter;
     private readonly ILogger<CombatResolutionService> _logger;
 
     public CombatResolutionService(
         RewardOfferFactory rewardOfferFactory,
+        GroundLootBuilder groundLootBuilder,
         IPlayerProfileGateway playerProfileGateway,
         IOutboxWriter outboxWriter,
         ILogger<CombatResolutionService> logger)
     {
         _rewardOfferFactory = rewardOfferFactory;
+        _groundLootBuilder = groundLootBuilder;
         _playerProfileGateway = playerProfileGateway;
         _outboxWriter = outboxWriter;
         _logger = logger;
@@ -65,6 +69,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 run.SetPendingRewardOffer(rewardOffer.Id);
                 await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
                 await AwardHimLitShardsAsync(run, combat, combatNode, cancellationToken);
+                await DropCombatLootOnGroundAsync(run, combat, combatNode, cancellationToken);
                 return rewardOffer;
 
             case CombatStatus.Failed:
@@ -174,6 +179,34 @@ public sealed class CombatResolutionService : ICombatResolutionService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to award combat Éclats de Him'Lit for player {PlayerId}", run.PlayerId);
+        }
+    }
+
+    /// <summary>
+    /// Modèle Hadès (ambiance) : un petit butin secondaire tombe visiblement au sol à
+    /// l'endroit du combat, en plus de l'offre de récompense à choix — jamais à sa place (voir
+    /// GroundLootBuilder, qui tire d'un pool distinct et n'écrit jamais dans RewardOffer). Sans
+    /// combatNode (ex. ChallengeBossRemotely, où le groupe n'est pas physiquement sur le nœud),
+    /// il n'y a pas de cellule sensée où déposer quoi que ce soit — le butin secondaire est
+    /// simplement omis, la récompense principale reste inchangée. Ne doit jamais bloquer ni
+    /// faire échouer la résolution du combat : même posture non-bloquante que
+    /// AwardCombatEclatsAsync/AwardHimLitShardsAsync.
+    /// </summary>
+    private async Task DropCombatLootOnGroundAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
+    {
+        if (combatNode is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var items = await _groundLootBuilder.BuildAsync(run.Seed, run.Id.Value, combat.Id.Value, cancellationToken);
+            run.DropCombatLootOnGround(items, combatNode.Lane, combatNode.Row);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to drop ground loot for player {PlayerId}", run.PlayerId);
         }
     }
 }

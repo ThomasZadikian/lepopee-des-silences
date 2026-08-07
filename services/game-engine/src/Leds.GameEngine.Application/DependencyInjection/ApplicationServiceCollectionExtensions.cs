@@ -57,6 +57,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<IAmbientPalaceLawPromulgator, AmbientPalaceLawPromulgator>();
         services.AddScoped<EnemyLootRewardBuilder>();
+        services.AddScoped<GroundLootBuilder>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<PlayerSkillMerger>();
         services.AddScoped<PlayerStatMerger>();

@@ -1667,6 +1667,49 @@ public sealed class Run
     }
 
     /// <summary>
+    /// Scatters combat loot (see GroundLootBuilder — a small, secondary pool, independent from
+    /// the curated reward-choice offer) onto the ground at/near the given cell, one item per
+    /// distinct nearby floor cell where possible so multiple pickups don't visually stack.
+    /// Collected automatically by walking over it, exactly like a player-dropped item (see
+    /// MoveParty) — never capacity-checked, matching every other ground item: only converting
+    /// ground to held inventory checks RunItemCapacity.
+    /// </summary>
+    public void DropCombatLootOnGround(IReadOnlyCollection<RunItem> items, int centerX, int centerY)
+    {
+        EnsureActive();
+
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var candidateCells = new (int X, int Y)[]
+            {
+                (centerX, centerY),
+                (centerX + 1, centerY),
+                (centerX - 1, centerY),
+                (centerX, centerY + 1),
+                (centerX, centerY - 1),
+            }
+            .Where(cell => CurrentRoom.Grid.IsWalkable(cell.X, cell.Y))
+            .ToArray();
+
+        // The combat's own cell is walkable by construction (nodes only ever stand on floor),
+        // so this is only reached if every neighbor happens to be blocked — stack on the
+        // center rather than drop nothing.
+        var fallbackCell = candidateCells.Length > 0 ? candidateCells[0] : (centerX, centerY);
+
+        var cellIndex = 0;
+        foreach (var item in items)
+        {
+            var (x, y) = cellIndex < candidateCells.Length ? candidateCells[cellIndex] : fallbackCell;
+            item.PlaceOnGround(CurrentRoom.Id.Value, x, y);
+            _runItems.Add(item);
+            cellIndex++;
+        }
+    }
+
+    /// <summary>
     /// Resolves the explicit inventory choice made after a ground pickup was blocked.
     /// The selected held item is left on the exact loot cell and the ground item takes
     /// its inventory slot, so the operation never deletes loot or exceeds capacity.

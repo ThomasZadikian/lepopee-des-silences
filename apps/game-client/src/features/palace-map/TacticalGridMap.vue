@@ -34,6 +34,7 @@ import {
 import { useCamera } from './composables/useCamera';
 import { buildMovementRange } from './composables/useMovementRange';
 import { getCombatantSprite } from './composables/bestiaire';
+import { itemRarityMeta } from '../../shared/theme/typeColors';
 
 // The same painted figure the player sees standing in for them in combat (see
 // useCombatantSprites.ts's PROTAGONIST_FIGURE) — used here too, so the party token on the
@@ -197,10 +198,13 @@ function paintGroundItems(
     const pulse = 1 + (Math.sin((timestamp * 0.003) + item.x + item.y) * 0.08);
     const radius = Math.max(5, destW * 0.105) * pulse;
 
+    const rarityColor = itemRarityMeta(item.rarity).color;
+
     ctx.save();
-    ctx.shadowColor = item.rarity === 'Legendary' ? '#ffd778' : '#a9c9ff';
+    ctx.shadowColor = rarityColor;
     ctx.shadowBlur = radius * 1.4;
-    ctx.fillStyle = item.rarity === 'Legendary' ? 'rgba(255,205,105,.92)' : 'rgba(210,224,255,.9)';
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = rarityColor;
     ctx.beginPath();
     ctx.moveTo(screenX, cy - radius);
     ctx.lineTo(screenX + radius * 0.7, cy);
