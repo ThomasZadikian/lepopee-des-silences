@@ -1,10 +1,15 @@
 import { ref } from 'vue';
 
 import { playSort, shapeCells, SORTS } from '../../palace-map/composables/sorts';
-import { isoUnit, projectToScreen } from '../../palace-map/composables/useTerrainDrawPlan';
+import {
+  cameraTileUnit,
+  isoUnit,
+  projectToScreen,
+  projectToScreenCamera,
+  type CameraParams,
+  type ProjectionParams,
+} from '../../palace-map/composables/useTerrainDrawPlan';
 import { PACE } from './useCombatPlayback';
-
-import type { ProjectionParams } from '../../palace-map/composables/useTerrainDrawPlan';
 
 // Type pour les cellules de sort (corrige TS2305)
 export type SortCell = {
@@ -33,6 +38,15 @@ export type SortEffect = {
   finish: () => void;
 };
 
+/**
+ * Contrat transitoire compatible avec les deux modes de projection :
+ * - sans camX/camY/zoom : ancien fit-to-grid ;
+ * - avec camX/camY/zoom : caméra fixe du combat.
+ *
+ * Cela évite de casser les autres consommateurs/tests pendant la migration de la scène.
+ */
+export type SortProjectionParams = ProjectionParams & Partial<CameraParams>;
+
 const SORT_DURATION_MS = Math.round(1500 * PACE);
 const renderPaintedSort = playSort as unknown as (
   ctx: CanvasRenderingContext2D,
@@ -42,6 +56,35 @@ const renderPaintedSort = playSort as unknown as (
   from: SortEffect['from'],
   color: string,
 ) => void;
+
+function isCameraProjection(
+  projection: SortProjectionParams,
+): projection is ProjectionParams & CameraParams {
+  return typeof projection.camX === 'number'
+    && Number.isFinite(projection.camX)
+    && typeof projection.camY === 'number'
+    && Number.isFinite(projection.camY)
+    && typeof projection.zoom === 'number'
+    && Number.isFinite(projection.zoom);
+}
+
+function sortTileUnit(
+  projection: SortProjectionParams,
+): { isoUnitX: number; isoUnitY: number } {
+  return isCameraProjection(projection)
+    ? cameraTileUnit(projection)
+    : isoUnit(projection);
+}
+
+function projectSortPoint(
+  x: number,
+  y: number,
+  projection: SortProjectionParams,
+): { screenX: number; screenY: number } {
+  return isCameraProjection(projection)
+    ? projectToScreenCamera(x, y, projection)
+    : projectToScreen(x, y, projection);
+}
 
 export function useSortEffects() {
   const activeSorts = ref<SortEffect[]>([]);
@@ -66,7 +109,7 @@ export function useSortEffects() {
       elevation: number[];
       floor?: boolean[];
     },
-    projection: ProjectionParams,
+    projection: SortProjectionParams,
     casterX?: number,
     casterY?: number,
     catalogShape?: string,
@@ -86,15 +129,19 @@ export function useSortEffects() {
       }),
     ).filter((_, index) => battlefield.floor?.[index] ?? true);
 
-    const { isoUnitX } = isoUnit(projection);
+    const { isoUnitX } = sortTileUnit(projection);
     const destW = isoUnitX * 2.05;
     const ux = destW / 2;
     const uy = destW / 4;
 
     const cells = rawCells
-      .filter((c: SortCell) => c.x >= 0 && c.y >= 0 && c.x < battlefield.width && c.y < battlefield.height)
+      .filter((c: SortCell) =>
+        c.x >= 0
+          && c.y >= 0
+          && c.x < battlefield.width
+          && c.y < battlefield.height)
       .map((c: SortCell) => {
-        const { screenX, screenY } = projectToScreen(c.x, c.y, projection);
+        const { screenX, screenY } = projectSortPoint(c.x, c.y, projection);
         const elev = battlefield.elevation[(c.y * battlefield.width) + c.x] ?? 0;
         const lift = elev * 20 * (destW / 128);
         const dist = casterX !== undefined && casterY !== undefined
@@ -111,10 +158,13 @@ export function useSortEffects() {
           dist,
         };
       })
-      .sort((a: { cx: number; cy: number }, b: { cx: number; cy: number }) => (a.cx + a.cy) - (b.cx + b.cy));
+      .sort(
+        (a: { cx: number; cy: number }, b: { cx: number; cy: number }) =>
+          (a.cx + a.cy) - (b.cx + b.cy),
+      );
 
     const from = casterX !== undefined && casterY !== undefined
-      ? projectToScreen(casterX, casterY, projection)
+      ? projectSortPoint(casterX, casterY, projection)
       : null;
 
     const id = (effectSequence += 1);
@@ -198,7 +248,10 @@ export function sortIdForSkillKey(skillKey: string): string | null {
  * Cross, Diamond, Map), donc ce repli ne peut jamais désigner un `generique-*` absent de
  * sorts.ts.
  */
-export function fallbackSortId(category: string | undefined, tacticalAreaShape: string | undefined): string {
+export function fallbackSortId(
+  category: string | undefined,
+  tacticalAreaShape: string | undefined,
+): string {
   const flavor = category === 'Magic' ? 'magique' : 'physique';
   const shape = (tacticalAreaShape ?? 'Single').toLowerCase();
   return `generique-${flavor}-${shape}`;

@@ -9,48 +9,41 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
+import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
+import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
+import {
+  ALLY_RIM,
+  drawActionPips,
+  drawAmbient,
+  drawBackdrop,
+  drawDeployFx,
+  drawFireFx,
+  drawImpactFx,
+  drawStarFx,
+  drawUnitRing,
+  ENEMY_RIM,
+  RISK_TIERS,
+  themeLabel,
+} from '../../palace-map/composables/tilecraft';
+import {
+  cameraTileUnit,
+  projectToScreenCamera,
+  screenToCellCamera,
+  visibleCellRange,
+  type CameraParams,
+} from '../../palace-map/composables/useTerrainDrawPlan';
 import {
   GROUND_ANCHOR_RATIO,
   PROP_GROUND_ANCHOR_RATIO,
-  TERRAIN_SPRITE_CONSTANTS,
-  useTerrainSprites,
-  usesPropRect,
   resolveRoomVisual,
-  type RoomTheme,
+  TERRAIN_SPRITE_CONSTANTS,
+  usesPropRect,
+  useTerrainSprites,
   type RenderTheme,
+  type RoomTheme,
 } from '../../palace-map/composables/useTerrainSprites';
-import { screenToCell } from '../../palace-map/composables/useTerrainDrawPlan';
-import {
-  drawAmbient,
-  drawBackdrop,
-  drawUnitRing,
-  drawActionPips,
-  drawImpactFx,
-  drawDeployFx,
-  drawFireFx,
-  drawStarFx,
-  themeLabel,
-  RISK_TIERS,
-  ALLY_RIM,
-  ENEMY_RIM,
-} from '../../palace-map/composables/tilecraft';
-import {
-  battleCellKey,
-  buildBattlePlan,
-  hasLos,
-  isoUnit,
-  manhattan,
-  projectToScreen,
-  reachableCellsFrom,
-  reachableCellsWithPathsFrom,
-  type BattleCell,
-} from '../composables/useTacticalBattlePlan';
-import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
-import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
-import { useEmotionalRegisterCatalog } from '../../emotional-registers/store';
-import { itemEffectTypeMeta } from '../../../shared/theme/typeColors';
-import PortraitDetailCard from './PortraitDetailCard.vue';
-import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
@@ -63,12 +56,23 @@ import {
   type PendingSort,
 } from '../composables/useCombatPlayback';
 import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
-import { ticksToTurns } from '../constants/combatTime';
+import {
+  battleCellKey,
+  buildBattlePlan,
+  hasLos,
+  manhattan,
+  reachableCellsFrom,
+  reachableCellsWithPathsFrom,
+  type BattleCell,
+} from '../composables/useTacticalBattlePlan';
 import {
   tacticalSkillProfile,
   type TacticalShape,
 } from '../composables/useTacticalSkillProfile';
+import { ticksToTurns } from '../constants/combatTime';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
+import CombatItemMenu from './CombatItemMenu.vue';
+import PortraitDetailCard from './PortraitDetailCard.vue';
 
 import type {
   CombatantRuntimeDto,
@@ -197,19 +201,81 @@ const roomTheme = computed<RoomTheme>(() =>
   resolveRoomVisual(props.catalogRoomKey, (props.theme ?? 'Threshold') as RenderTheme),
 );
 
-const projectionParams = computed(() => ({
+// ── Caméra de combat ────────────────────────────────────────────────────────
+// Contrairement à l'ancienne projection « fit-to-grid », la taille d'une case ne dépend plus
+// des dimensions de l'arène. Une grande carte déborde donc naturellement du viewport au lieu
+// d'être réduite jusqu'à devenir illisible.
+const COMBAT_DEFAULT_ZOOM = 0.70;
+
+const combatCamera = ref<CameraParams>({
+  camX: 0,
+  camY: 0,
+  zoom: COMBAT_DEFAULT_ZOOM,
+});
+
+function centerCombatCamera(): void {
+  const field = battlefield.value;
+  if (!field) return;
+
+  combatCamera.value = {
+    ...combatCamera.value,
+    camX: (field.width - 1) / 2,
+    camY: (field.height - 1) / 2,
+  };
+}
+
+/**
+ * Paramètres communs à toutes les projections du combat.
+ *
+ * `gridWidth/gridHeight` sont volontairement conservés : ils gardent la structure compatible
+ * avec l'ancien contrat de `useSortEffects` pendant la migration. Le rendu caméra, lui, ne les
+ * utilise pas pour déterminer l'échelle.
+ */
+const cameraProjectionParams = computed(() => ({
   canvasWidth: canvasSize.value.width,
   canvasHeight: canvasSize.value.height,
   gridWidth: battlefield.value?.width ?? 1,
   gridHeight: battlefield.value?.height ?? 1,
+  ...combatCamera.value,
 }));
+
+function projectBattlePoint(x: number, y: number): { screenX: number; screenY: number } {
+  return projectToScreenCamera(x, y, cameraProjectionParams.value);
+}
+
+const visibleBounds = computed(() => {
+  const field = battlefield.value;
+  if (!field || canvasSize.value.width === 0 || canvasSize.value.height === 0) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+
+  return visibleCellRange(
+    combatCamera.value,
+    canvasSize.value.width,
+    canvasSize.value.height,
+    field.width,
+    field.height,
+  );
+});
+
+const obstacleCells = computed<Set<string>>(() => {
+  const field = battlefield.value;
+  if (!field) return new Set<string>();
+
+  return new Set(
+    field.walkable
+      .map((walkable, index) =>
+        walkable ? null : `${index % field.width},${Math.floor(index / field.width)}`)
+      .filter((key): key is string => key !== null),
+  );
+});
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
 const spriteDest = computed(() => {
-  const { isoUnitX } = isoUnit(projectionParams.value);
+  const { isoUnitX } = cameraTileUnit(combatCamera.value);
   const destW = isoUnitX * 2.05;
   const { BASE_TILE_W, SPRITE_H, PROP_SPRITE_H } = TERRAIN_SPRITE_CONSTANTS;
 
@@ -964,9 +1030,12 @@ const telegraphImpactCells = computed<Set<string>>(() => {
 
 const drawPlan = computed(() => {
   const field = battlefield.value;
-  if (!field || canvasSize.value.width === 0) return [];
+  if (!field || canvasSize.value.width === 0 || canvasSize.value.height === 0) return [];
 
-  return buildBattlePlan({
+  // `buildBattlePlan` reste pour l'instant la source de vérité des sprites, surbrillances et
+  // sortKey. Ses coordonnées écran historiques sont remplacées juste après par la projection
+  // caméra ; cela permet de migrer la scène sans dupliquer toute la logique tactique.
+  const plan = buildBattlePlan({
     canvasWidth: canvasSize.value.width,
     canvasHeight: canvasSize.value.height,
     gridWidth: field.width,
@@ -990,6 +1059,19 @@ const drawPlan = computed(() => {
     occupiedCells: occupiedHighlightCells.value,
     hoveredCell: hoveredCell.value,
   });
+
+  const bounds = visibleBounds.value;
+
+  return plan
+    .filter((entry) =>
+      entry.x >= bounds.minX
+        && entry.x <= bounds.maxX
+        && entry.y >= bounds.minY
+        && entry.y <= bounds.maxY)
+    .map((entry) => ({
+      ...entry,
+      ...projectBattlePoint(entry.x, entry.y),
+    }));
 });
 
 /**
@@ -1016,7 +1098,7 @@ function buildCombatantPlan(now: number) {
       // Hauteur affichée : lissée en continu le long du même chemin fractionnaire que
       // screenX/screenY, pour ne jamais sauter d'un palier à l'autre à mi-pas.
       const liftElevation = elevationAtFractional(at.x, at.y);
-      const { screenX, screenY } = projectToScreen(at.x, at.y, projectionParams.value);
+      const { screenX, screenY } = projectBattlePoint(at.x, at.y);
 
       return {
         unit,
@@ -1096,11 +1178,10 @@ function paintFacingArrow(
     : entry.unit.facing === 'East' ? { x: 1, y: 0 }
       : entry.unit.facing === 'South' ? { x: 0, y: 1 }
         : { x: -1, y: 0 };
-  const origin = projectToScreen(entry.unit.x, entry.unit.y, projectionParams.value);
-  const destination = projectToScreen(
+  const origin = projectBattlePoint(entry.unit.x, entry.unit.y);
+  const destination = projectBattlePoint(
     entry.unit.x + delta.x,
     entry.unit.y + delta.y,
-    projectionParams.value,
   );
   const dx = destination.screenX - origin.screenX;
   const dy = destination.screenY - origin.screenY;
@@ -1166,7 +1247,7 @@ function paintEscape(ctx: CanvasRenderingContext2D, destW: number, destH: number
   const exit = store.combat?.escape;
   if (!exit) return;
 
-  const { screenX, screenY } = projectToScreen(exit.x, exit.y, projectionParams.value);
+  const { screenX, screenY } = projectBattlePoint(exit.x, exit.y);
   const lift = elevationLiftPx(elevationAt(exit.x, exit.y));
   const pulse = prefersReducedMotion ? 1 : 0.88 + (Math.sin(timestamp * 0.003) * 0.12);
 
@@ -1396,7 +1477,7 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
     const progress = (timestamp - impact.bornAt) / IMPACT_MS;
     if (progress > 1) continue;
 
-    const { screenX, screenY } = projectToScreen(impact.x, impact.y, projectionParams.value);
+    const { screenX, screenY } = projectBattlePoint(impact.x, impact.y);
     const lift = elevationLiftPx(elevationAt(impact.x, impact.y));
 
     drawImpactFx(
@@ -1437,7 +1518,7 @@ async function playSortAnimation(sort: PendingSort): Promise<void> {
       elevation: field.elevation,
       floor: field.floor,
     },
-    projectionParams.value,
+    cameraProjectionParams.value,
     sort.casterX,
     sort.casterY,
     def?.tacticalAreaShape,
@@ -1490,7 +1571,7 @@ function paintFloatingNumbers(ctx: CanvasRenderingContext2D, timestamp: number) 
 
   for (const float of store.playback.floats) {
     const progress = (timestamp - float.bornAt) / FLOAT_MS;
-    const { screenX, screenY } = projectToScreen(float.x, float.y, projectionParams.value);
+    const { screenX, screenY } = projectBattlePoint(float.x, float.y);
     const lift = elevationLiftPx(elevationAt(float.x, float.y));
 
     const isEffectiveness = float.kind === 'effectiveness';
@@ -1545,10 +1626,9 @@ function paintCombatCartouche(
 /**
  * La case sous un point de l'écran.
  *
- * `screenToCell` teste le losange réellement peint de chaque tuile, élévation comprise — là
- * où l'inverse plat de la projection ne connaît que la grille au niveau zéro. Sur un terrain
- * en relief, l'inverse plat décale visiblement la sélection sous la tuile visée : c'est
- * exactement ce que ce chemin évite.
+ * `screenToCellCamera` teste le losange réellement peint de chaque tuile avec exactement la
+ * même caméra, le même zoom et la même élévation que le rendu. Affichage et hit-test restent
+ * donc superposés même quand l'arène est plus grande que le viewport.
  */
 function cellAtPointer(event: MouseEvent): { x: number; y: number } | null {
   const canvas = canvasEl.value;
@@ -1557,7 +1637,7 @@ function cellAtPointer(event: MouseEvent): { x: number; y: number } | null {
 
   const bounds = canvas.getBoundingClientRect();
 
-  return screenToCell({
+  return screenToCellCamera({
     // Le canvas est dimensionné en pixels CSS ; si sa taille d'affichage diffère de sa toile
     // (marges, zoom), ce rapport remet le pointeur dans le repère de ce qui est peint.
     screenX: (event.clientX - bounds.left) * (canvas.width / bounds.width),
@@ -1566,15 +1646,13 @@ function cellAtPointer(event: MouseEvent): { x: number; y: number } | null {
     gridHeight: field.height,
     canvasWidth: canvasSize.value.width,
     canvasHeight: canvasSize.value.height,
+    camera: combatCamera.value,
     elevation: field.elevation,
-    // Une case impraticable est peinte en obstacle : `screenToCell` la déclasse au profit du
-    // sol libre, ce qui est précisément le comportement voulu ici aussi.
-    obstacleCells: new Set(
-      field.walkable
-        .map((walkable, index) =>
-          walkable ? null : `${index % field.width},${Math.floor(index / field.width)}`)
-        .filter((key): key is string => key !== null),
-    ),
+    obstacleCells: obstacleCells.value,
+    visibleBounds: visibleBounds.value,
+    // Même masque que le dessin : un trou ne peint aucune dalle et ne doit jamais être
+    // sélectionnable, même si son losange théorique tombe sous le pointeur.
+    isFloor: isFloorCell,
   });
 }
 
@@ -1717,6 +1795,19 @@ watch(
       autoEndedThisTurn = true;
       void store.endTurn(props.runId);
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [
+    store.combat?.id ?? null,
+    battlefield.value?.width ?? 0,
+    battlefield.value?.height ?? 0,
+  ] as const,
+  () => {
+    centerCombatCamera();
+    hoveredCell.value = null;
   },
   { immediate: true },
 );
