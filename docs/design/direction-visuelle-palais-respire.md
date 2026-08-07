@@ -94,10 +94,17 @@ Le Palais est un corps qui respire, pas une machine :
 
 ## Ce qui ne bouge pas
 
-- Le moteur de rendu `tilecraft.js`/`bestiaire.js` (carte + combat) reste vendoré tel quel, non
-  modifié — confirmé par les maquettes Claude Design elles-mêmes, qui le réutilisent à l'identique.
+- **Amendé (2026-08, refonte exploration murs/décor/échelle des salles)** : `tilecraft.js` n'est
+  plus figé. Le générateur de salle (murs, décor d'ambiance par salle, chambres internes,
+  agrandissement) a besoin d'y ajouter des silhouettes et un semis de décor — voir
+  `brief-murs-et-decor-exploration.md`. Ce qui reste vrai : ce n'est **pas** un reskin de chrome au
+  sens de ce document (la carte d'exploration garde sa propre grammaire de rendu isométrique, elle
+  ne bascule pas sur `void/panel/mint`) — seule la richesse structurelle/visuelle de la carte
+  évolue, pas sa palette ni son vocabulaire de rendu. `bestiaire.js` (combat) n'est pas concerné
+  par cette levée, voir point suivant.
 - La grammaire de couleur fonctionnelle du combat (surbrillances de case, silhouettes, registres de
-  sorts) — voir portée ci-dessus.
+  sorts) — voir portée ci-dessus. `bestiaire.js` reste vendoré tel quel pour cette raison : c'est un
+  système de lisibilité tactique distinct, non concerné par la refonte exploration.
 - La mécanique de superposition des nœuds (3 formes, carte assombrie/bloquée) — seul son habillage
   visuel change.
 
