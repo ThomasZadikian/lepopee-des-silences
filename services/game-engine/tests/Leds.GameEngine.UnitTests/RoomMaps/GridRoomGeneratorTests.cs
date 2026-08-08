@@ -20,7 +20,8 @@ public sealed class GridRoomGeneratorTests
             new GridRoomLayoutTemplateProvider(),
             new RoomThemeResolver(),
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
-            new HardcodedRoomTypeGenerationProfileProvider());
+            new HardcodedRoomTypeGenerationProfileProvider(),
+            new HardcodedRoomStructuralProfileProvider());
     }
 
     [Fact]
@@ -424,5 +425,120 @@ public sealed class GridRoomGeneratorTests
         // candidates, so this only guards against a gross regression (e.g. no obstacles at all,
         // or so many the board becomes unplayable).
         grid.Obstacles.Count.Should().BeInRange(0, (int)(totalCells * 0.3));
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-catalog-room templates and structural profiles (Chantiers 1-3)
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("room.jardin", "room.jardin-v1")]
+    [InlineData("room.hopital", "room.hopital-v1")]
+    [InlineData("room.enfer3", "room.enfer3-v1")]
+    [InlineData("room.cavernedecrystal", "room.cavernedecrystal-v1")]
+    [InlineData("room.labyrinthe", "room.labyrinthe-v1")]
+    public async Task GenerateRoom_ShouldUseTheRoomSpecificTemplate_WhenCatalogRoomKeyIsProfiled(
+        string catalogRoomKey, string expectedTemplateKey)
+    {
+        var sut = CreateSut();
+        var random = new Random(42);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random,
+            catalogRoomKey: catalogRoomKey);
+
+        room.LayoutTemplateKey.Should().Be(expectedTemplateKey);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldKeepFloorFullyConnected_ForOrganicCarving(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Forest, random,
+            catalogRoomKey: "room.jardin");
+        var grid = room.Grid!;
+
+        grid.IsFloor(grid.StartX, grid.StartY).Should().BeTrue();
+
+        var floorCells = Enumerable.Range(0, grid.Width)
+            .SelectMany(x => Enumerable.Range(0, grid.Height).Select(y => (x, y)))
+            .Where(cell => grid.IsFloor(cell.x, cell.y) && !grid.IsObstacle(cell.x, cell.y))
+            .ToList();
+
+        floorCells.Should().AllSatisfy(cell =>
+            grid.FindPath(cell.x, cell.y).Should().NotBeNull(
+                $"organic carving must never strand a floor cell — ({cell.x},{cell.y}) is unreachable"));
+    }
+
+    [Fact]
+    public async Task GenerateRoom_ShouldNeverProduceARectangularSilhouette_ForOrganicCarving()
+    {
+        // Canary: an organic room whose floor mask is a perfect bounding rectangle would mean
+        // the carving branch silently fell through to the rectangular algorithm.
+        var sut = CreateSut();
+        var random = new Random(42);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Forest, random,
+            catalogRoomKey: "room.jardin");
+        var grid = room.Grid!;
+
+        var floorCount = grid.FloorMask.Count(cell => cell);
+        var total = grid.Width * grid.Height;
+
+        floorCount.Should().BeLessThan(total,
+            "an organic disc must leave the bounding rectangle's corners void");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldKeepFloorFullyConnected_AfterSubRoomPartitioning(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Silence, random,
+            catalogRoomKey: "room.hopital");
+        var grid = room.Grid!;
+
+        var floorCells = Enumerable.Range(0, grid.Width)
+            .SelectMany(x => Enumerable.Range(0, grid.Height).Select(y => (x, y)))
+            .Where(cell => grid.IsFloor(cell.x, cell.y) && !grid.IsObstacle(cell.x, cell.y))
+            .ToList();
+
+        floorCells.Should().AllSatisfy(cell =>
+            grid.FindPath(cell.x, cell.y).Should().NotBeNull(
+                $"sub-room partitioning must never strand a floor cell — ({cell.x},{cell.y}) is unreachable"));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    public async Task GenerateRoom_ShouldKeepStartAndBossOutsideAnySubRoomRing(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Silence, random,
+            catalogRoomKey: "room.hopital");
+        var grid = room.Grid!;
+        var boss = room.Nodes.Single(n => n.IsBoss);
+
+        grid.IsFloor(grid.StartX, grid.StartY).Should().BeTrue();
+        grid.IsFloor(boss.Lane, boss.Row).Should().BeTrue();
+        grid.FindPath(boss.Lane, boss.Row).Should().NotBeNull();
     }
 }

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
@@ -34,23 +35,34 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     // plus a search or two (see Room.SearchCost).
     private const int MovementBudgetSlack = 12;
 
+    // BALANCE KNOB — sub-room count/size, for the Rectangular carving style when
+    // RoomStructuralProfile.SubRoomsAllowed. Kept small and modest: this is a first pass at
+    // "chambers behind a door," not full architectural layout.
+    private const int MaxSubRoomAttempts = 6;
+    private const int MaxSubRoomCount = 3;
+    private const int MinSubRoomSize = 4;
+    private const int MaxSubRoomSize = 6;
+
     private static readonly (int Dx, int Dy)[] Neighbors = { (1, 0), (-1, 0), (0, 1), (0, -1) };
 
     private readonly IGridRoomLayoutTemplateProvider _templateProvider;
     private readonly IRoomThemeResolver _themeResolver;
     private readonly IRoomBossProfileResolver _bossProfileResolver;
     private readonly IRoomTypeGenerationProfileProvider _generationProfileProvider;
+    private readonly IRoomStructuralProfileProvider _structuralProfileProvider;
 
     public GridRoomGenerator(
         IGridRoomLayoutTemplateProvider templateProvider,
         IRoomThemeResolver themeResolver,
         IRoomBossProfileResolver bossProfileResolver,
-        IRoomTypeGenerationProfileProvider generationProfileProvider)
+        IRoomTypeGenerationProfileProvider generationProfileProvider,
+        IRoomStructuralProfileProvider structuralProfileProvider)
     {
         _templateProvider = templateProvider;
         _themeResolver = themeResolver;
         _bossProfileResolver = bossProfileResolver;
         _generationProfileProvider = generationProfileProvider;
+        _structuralProfileProvider = structuralProfileProvider;
     }
 
     public async Task<Room> GenerateAsync(
@@ -60,14 +72,16 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         RoomType roomType,
         Random random,
         CancellationToken cancellationToken = default,
-        PalaceRoomState palaceState = PalaceRoomState.Neutral)
+        PalaceRoomState palaceState = PalaceRoomState.Neutral,
+        string? catalogRoomKey = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(generatorVersion);
         ArgumentNullException.ThrowIfNull(random);
 
-        var template = _templateProvider.GetTemplate(roomType, generatorVersion);
+        var template = _templateProvider.GetTemplate(roomType, generatorVersion, catalogRoomKey);
         var profile = _generationProfileProvider.GetProfile(roomType);
+        var structuralProfile = _structuralProfileProvider.GetProfile(roomType, catalogRoomKey);
 
         var (width, height, startX, startY) = (template.Width, template.Height, template.StartX, template.StartY);
 
@@ -75,9 +89,16 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         // placed on it, so that recesses and dead ends genuinely exist and hidden caches can be
         // tucked into them — rather than nodes being scattered first and the terrain having to
         // work around them.
-        var floor = GenerateFloorMask(width, height, startX, startY, random);
-        var elevation = GenerateElevation(width, height, startX, startY, floor, random);
+        var floor = GenerateFloorMask(width, height, startX, startY, structuralProfile.CarvingStyle, random);
         var (bossX, bossY) = FindFarthestFloorCell(startX, startY, width, height, floor);
+
+        if (structuralProfile.SubRoomsAllowed)
+        {
+            floor = PartitionSubRooms(
+                width, height, startX, startY, (bossX, bossY), floor, structuralProfile.SubRoomsAllowed, random);
+        }
+
+        var elevation = GenerateElevation(width, height, startX, startY, floor, random);
 
         var obstacles = GenerateObstacles(
             width, height, startX, startY, floor, new[] { (bossX, bossY) }, random);
@@ -176,7 +197,22 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         return edgeCells;
     }
 
-    private static bool[] GenerateFloorMask(int width, int height, int startX, int startY, Random random)
+    /// <summary>
+    /// Dispatches to the room's silhouette-carving algorithm per <see cref="CarvingStyle"/> —
+    /// see <see cref="RoomStructuralProfile"/>. <see cref="CarvingStyle.Rectangular"/> is
+    /// today's only algorithm (edge bites); <see cref="CarvingStyle.Organic"/> is new, for
+    /// rooms like a jardin or a crystal caverne where the terrain itself — not a built enceinte
+    /// — should define the shape.
+    /// </summary>
+    private static bool[] GenerateFloorMask(
+        int width, int height, int startX, int startY, CarvingStyle carvingStyle, Random random)
+    {
+        return carvingStyle == CarvingStyle.Organic
+            ? GenerateOrganicFloorMask(width, height, startX, startY, random)
+            : GenerateRectangularFloorMask(width, height, startX, startY, random);
+    }
+
+    private static bool[] GenerateRectangularFloorMask(int width, int height, int startX, int startY, Random random)
     {
         var floor = Enumerable.Repeat(true, width * height).ToArray();
         var target = (int)(width * height * FloorCarveDensity);
@@ -217,6 +253,230 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         }
 
         return floor;
+    }
+
+    /// <summary>
+    /// Carves a wavering disc around the room's center — formula straight from the Claude
+    /// Design "salle" handoff's README (§ "Cohérence des sous-pièces"): a radius that ripples
+    /// with the angle around the center, instead of a rectangle with bites taken out. Never
+    /// produces an enclosed interior chamber — the contour IS the room, by construction, which
+    /// is exactly why <see cref="RoomStructuralProfile.SubRoomsAllowed"/> is always false for
+    /// this style.
+    /// </summary>
+    private static bool[] GenerateOrganicFloorMask(int width, int height, int startX, int startY, Random random)
+    {
+        var floor = new bool[width * height];
+        var centerX = (width - 1) / 2.0;
+        var centerY = (height - 1) / 2.0;
+        var maxRadius = Math.Min(width, height) / 2.0;
+        var phase = random.NextDouble() * Math.PI * 2;
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var nx = (x - centerX) / maxRadius;
+                var ny = (y - centerY) / maxRadius;
+                var distance = Math.Sqrt((nx * nx) + (ny * ny));
+                var angle = Math.Atan2(ny, nx);
+                var threshold = 0.9 + (0.22 * Math.Sin((3 * angle) + phase));
+
+                floor[(y * width) + x] = distance < threshold;
+            }
+        }
+
+        // The party's spawn sits wherever the template says (an edge cell, by the same
+        // convention every template uses) — almost certainly outside the organic disc, which is
+        // centered. Force it to floor and stitch it to the disc with a straight corridor rather
+        // than assume every template's start position happens to land inside the silhouette.
+        floor[(startY * width) + startX] = true;
+        ConnectCellToFloor(floor, width, height, startX, startY);
+
+        return floor;
+    }
+
+    /// <summary>
+    /// If <paramref name="cellX"/>/<paramref name="cellY"/> isn't already connected to the rest
+    /// of the floor, carves a straight L-shaped corridor (horizontal then vertical) from it to
+    /// the nearest other floor cell, forcing every cell along the way to floor. A single such
+    /// corridor is enough to stitch a start cell to a convex-ish blob like the organic carve
+    /// produces.
+    /// </summary>
+    private static void ConnectCellToFloor(bool[] floor, int width, int height, int cellX, int cellY)
+    {
+        if (AllFloorConnected(width, height, cellX, cellY, floor))
+        {
+            return;
+        }
+
+        var nearest = (X: -1, Y: -1);
+        var nearestDistance = int.MaxValue;
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                if (!floor[(y * width) + x] || (x == cellX && y == cellY))
+                {
+                    continue;
+                }
+
+                var distance = Math.Abs(x - cellX) + Math.Abs(y - cellY);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = (x, y);
+                }
+            }
+        }
+
+        if (nearest.X < 0)
+        {
+            // Nothing else is floor at all — the disc missed entirely (a vanishingly small
+            // template would have to produce this). Leave just the spawn cell as floor; the
+            // caller's own downstream checks (Room.Create's node-reachability guard) would
+            // reject a room this degenerate before it ever reaches a player.
+            return;
+        }
+
+        var stepX = Math.Sign(nearest.X - cellX);
+        for (var x = cellX; x != nearest.X; x += stepX)
+        {
+            floor[(cellY * width) + x] = true;
+        }
+
+        var stepY = Math.Sign(nearest.Y - cellY);
+        for (var y = cellY; y != nearest.Y; y += stepY)
+        {
+            floor[(y * width) + nearest.X] = true;
+        }
+
+        floor[(nearest.Y * width) + nearest.X] = true;
+    }
+
+    /// <summary>
+    /// Partitions a handful of small enclosed chambers into an already-carved
+    /// <see cref="CarvingStyle.Rectangular"/> silhouette — a "sub-room" is a rectangle whose
+    /// border becomes void (so a wall renders around it, per the arête-based wall model) except
+    /// for one door cell left as floor. Only ever called when
+    /// <see cref="RoomStructuralProfile.SubRoomsAllowed"/> — the flag is threaded through as an
+    /// explicit parameter (rather than trusted implicitly from the call site) so a regression
+    /// that calls this without checking the profile fails loudly instead of silently
+    /// partitioning a room that was never supposed to have interior chambers.
+    /// </summary>
+    private static bool[] PartitionSubRooms(
+        int width,
+        int height,
+        int startX,
+        int startY,
+        (int X, int Y) bossCell,
+        bool[] floor,
+        bool subRoomsAllowed,
+        Random random)
+    {
+        if (!subRoomsAllowed)
+        {
+            throw new DomainException(
+                "PartitionSubRooms must not be called for a room whose structural profile disallows sub-rooms.");
+        }
+
+        var placed = 0;
+
+        for (var attempt = 0; attempt < MaxSubRoomAttempts && placed < MaxSubRoomCount; attempt++)
+        {
+            var rectWidth = MinSubRoomSize + random.Next(MaxSubRoomSize - MinSubRoomSize + 1);
+            var rectHeight = MinSubRoomSize + random.Next(MaxSubRoomSize - MinSubRoomSize + 1);
+
+            // Kept strictly interior (never touching the outer boundary) so a sub-room's ring
+            // reads as its own partition, not a redundant trace over the room's own outer wall.
+            var maxRectX = width - rectWidth - 1;
+            var maxRectY = height - rectHeight - 1;
+
+            if (maxRectX < 1 || maxRectY < 1)
+            {
+                continue;
+            }
+
+            var rectX = 1 + random.Next(maxRectX);
+            var rectY = 1 + random.Next(maxRectY);
+
+            if (!IsRectangleFullyFloor(floor, width, rectX, rectY, rectWidth, rectHeight)
+                || RectangleContains(rectX, rectY, rectWidth, rectHeight, startX, startY)
+                || RectangleContains(rectX, rectY, rectWidth, rectHeight, bossCell.X, bossCell.Y))
+            {
+                continue;
+            }
+
+            var ring = ComputeRectangleRing(rectX, rectY, rectWidth, rectHeight);
+            var doorCell = ring[random.Next(ring.Count)];
+            var reverted = new List<(int X, int Y)>();
+
+            foreach (var cell in ring)
+            {
+                if (cell == doorCell)
+                {
+                    continue;
+                }
+
+                floor[(cell.Y * width) + cell.X] = false;
+                reverted.Add(cell);
+            }
+
+            if (AllFloorConnected(width, height, startX, startY, floor))
+            {
+                placed++;
+            }
+            else
+            {
+                foreach (var (x, y) in reverted)
+                {
+                    floor[(y * width) + x] = true;
+                }
+            }
+        }
+
+        return floor;
+    }
+
+    private static bool IsRectangleFullyFloor(bool[] floor, int width, int rectX, int rectY, int rectWidth, int rectHeight)
+    {
+        for (var y = rectY; y < rectY + rectHeight; y++)
+        {
+            for (var x = rectX; x < rectX + rectWidth; x++)
+            {
+                if (!floor[(y * width) + x])
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool RectangleContains(int rectX, int rectY, int rectWidth, int rectHeight, int x, int y)
+    {
+        return x >= rectX && x < rectX + rectWidth && y >= rectY && y < rectY + rectHeight;
+    }
+
+    /// <summary>The border cells of a rectangle — what becomes void to wall the sub-room off.</summary>
+    private static List<(int X, int Y)> ComputeRectangleRing(int rectX, int rectY, int rectWidth, int rectHeight)
+    {
+        var ring = new List<(int X, int Y)>();
+
+        for (var y = rectY; y < rectY + rectHeight; y++)
+        {
+            for (var x = rectX; x < rectX + rectWidth; x++)
+            {
+                var isRing = x == rectX || x == rectX + rectWidth - 1 || y == rectY || y == rectY + rectHeight - 1;
+                if (isRing)
+                {
+                    ring.Add((x, y));
+                }
+            }
+        }
+
+        return ring;
     }
 
     /// <summary>A small connected clump of still-floor cells grown from <paramref name="seedCell"/>.</summary>

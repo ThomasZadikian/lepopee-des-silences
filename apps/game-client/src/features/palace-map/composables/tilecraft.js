@@ -325,9 +325,9 @@ export const ROOMS = {
   'room.cavernedecrystal': {
     label: 'La montagne - La caverne de crystal', base: 'Threshold', chain: 'montagne', step: 5,
     surface: 'crystal', walls: ['shard', 'boulder', 'monolith'], props: ['spire', 'beam'],
-    top: '#7f97c4', topDeep: '#333f66', seam: '#20284a', riser: '#36406b', riserDeep: '#141930',
-    accent: '#8ce8ff', glow: '#dff8ff', particle: 'mote',
-    sky: ['#050813', '#141f45', '#3b64a8'], fog: '#101733',
+    top: '#aeecdc', topDeep: '#6cc8c0', seam: '#4a9c9c', riser: '#8ce0d8', riserDeep: '#5cb0a8',
+    accent: '#d0f7ec', glow: '#f0fffa', particle: 'mote',
+    sky: ['#123a44', '#1e5c60', '#3f9c94'], fog: '#1a4a4e',
   },
 };
 export const ROOM_KEYS = Object.keys(ROOMS);
@@ -1821,6 +1821,282 @@ function bakeProp(name, propKind, grain) {
     }
     return cv;
   }
+  if (propKind === 'threshold') {
+    // Seuil générique : l'ouverture dans l'enceinte (brief murs/décor). Deux jambages +
+    // linteau, l'espace entre les deux reste peint comme du vide — la case dessous reste
+    // franchissable, contrairement à wallStraight/wallCorner qui bloquent la case entière.
+    ctx.save();
+    ctx.shadowColor = rgba(th.accent, 0.3); ctx.shadowBlur = 12;
+    paintMass(ctx, [P(cx - 52, base), P(cx - 52, base - 70), P(cx - 30, base - 70), P(cx - 30, base)], th, R, { striation: 'masonry', rim: 0.24 });
+    paintMass(ctx, [P(cx + 30, base), P(cx + 30, base - 70), P(cx + 52, base - 70), P(cx + 52, base)], th, R, { striation: 'masonry', rim: 0.24 });
+    paintMass(ctx, [P(cx - 52, base - 68), P(cx - 52, base - 84), P(cx + 52, base - 84), P(cx + 52, base - 68)], th, R, { striation: 'masonry', rim: 0.24 });
+    ctx.restore();
+    // Lueur douce dans l'ouverture : signale un passage, pas un mur plein.
+    const og = ctx.createLinearGradient(0, base, 0, base - 70);
+    og.addColorStop(0, rgba(th.glow, 0.16));
+    og.addColorStop(1, rgba(th.glow, 0));
+    ctx.fillStyle = og; ctx.fillRect(cx - 30, base - 70, 60, 70);
+    return cv;
+  }
+  if (propKind === 'statue') {
+    // Effigie sur socle : la pièce maîtresse d'une salle d'apparat. Silhouette drapée,
+    // visage sans traits — c'est une statue, pas un personnage vivant.
+    const stone = mix(th.top, '#c9bda4', 0.45);
+    paintMass(ctx, [P(cx - 30, base), P(cx - 26, base - 16), P(cx + 26, base - 16), P(cx + 30, base)], th, R,
+      { striation: 'masonry', base: shade(stone, -0.2), rim: 0.2 });
+    paintMass(ctx, [P(cx - 22, base - 14), P(cx - 20, base - 26), P(cx + 20, base - 26), P(cx + 22, base - 14)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.24 });
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 10;
+    paintMass(ctx, [P(cx - 19, base - 24), P(cx - 13, base - 92), P(cx + 12, base - 92), P(cx + 19, base - 24)], th, R,
+      { striation: 'masonry', base: shade(stone, 0.1), rim: 0.26 });
+    ctx.restore();
+    for (let i = 0; i < 5; i++) {
+      const x0 = cx - 14 + i * 6.5;
+      ctx.beginPath();
+      ctx.moveTo(x0, base - 26);
+      ctx.quadraticCurveTo(x0 + R2(R, -3, 3), base - 58, x0 + R2(R, -2, 3), base - 88);
+      ctx.strokeStyle = rgba(R() > 0.5 ? '#000000' : th.glow, R() > 0.5 ? 0.22 : 0.1);
+      ctx.lineWidth = R2(R, 0.8, 1.8); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(cx, base - 102, 11, 12.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(shade(stone, 0.16), 1); ctx.fill();
+    ctx.strokeStyle = rgba(th.glow, 0.2); ctx.lineWidth = 1.2; ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'urn') {
+    // Amphore panse pleine, deux anses. Se lit comme du mobilier, pas comme un rocher.
+    const clay = mix(th.riser, '#8a6a4e', 0.5);
+    const body = new Path2D();
+    body.moveTo(cx - 12, base - 4);
+    body.quadraticCurveTo(cx - 27, base - 30, cx - 15, base - 56);
+    body.lineTo(cx + 14, base - 56);
+    body.quadraticCurveTo(cx + 26, base - 30, cx + 12, base - 4);
+    body.closePath();
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 9;
+    const g = ctx.createLinearGradient(cx - 26, 0, cx + 26, 0);
+    g.addColorStop(0, rgba(shade(clay, 0.18), 1));
+    g.addColorStop(0.6, rgba(clay, 1));
+    g.addColorStop(1, rgba(shade(clay, -0.4), 1));
+    ctx.fillStyle = g; ctx.fill(body);
+    ctx.restore();
+    ctx.strokeStyle = rgba(th.glow, 0.18); ctx.lineWidth = 1.3; ctx.stroke(body);
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 15, base - 52);
+      ctx.quadraticCurveTo(cx + s * 30, base - 44, cx + s * 17, base - 32);
+      ctx.strokeStyle = rgba(shade(clay, -0.2), 0.95); ctx.lineWidth = 3.4; ctx.stroke();
+    }
+    paintMass(ctx, [P(cx - 16, base - 54), P(cx - 14, base - 64), P(cx + 13, base - 64), P(cx + 15, base - 54)], th, R,
+      { striation: 'masonry', base: shade(clay, -0.1), rim: 0.2 });
+    ctx.beginPath(); ctx.ellipse(cx, base - 63, 14, 4.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba('#0a0706', 0.9); ctx.fill();
+    return cv;
+  }
+  if (propKind === 'banner') {
+    // Étendard suspendu : hampe + toile qui tombe, pointe en bas. Prend la couleur du
+    // tapis de la salle quand elle en a un — l'ornement appartient au lieu.
+    const cloth = th.rug ?? mix(th.accent, '#7a2f38', 0.6);
+    ctx.beginPath();
+    ctx.moveTo(cx - 26, base); ctx.lineTo(cx - 26, base - 150);
+    ctx.strokeStyle = rgba('#2e2822', 0.95); ctx.lineWidth = 4; ctx.stroke();
+    ctx.strokeStyle = rgba(th.glow, 0.16); ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 26, base - 148); ctx.lineTo(cx + 24, base - 142);
+    ctx.strokeStyle = rgba('#2e2822', 0.95); ctx.lineWidth = 3.4; ctx.stroke();
+    const flag = new Path2D();
+    flag.moveTo(cx - 24, base - 144);
+    flag.lineTo(cx + 22, base - 139);
+    flag.lineTo(cx + 20, base - 50);
+    flag.lineTo(cx - 2, base - 34);
+    flag.lineTo(cx - 23, base - 50);
+    flag.closePath();
+    const fg = ctx.createLinearGradient(cx - 24, 0, cx + 22, 0);
+    fg.addColorStop(0, rgba(shade(cloth, 0.16), 1));
+    fg.addColorStop(0.65, rgba(cloth, 1));
+    fg.addColorStop(1, rgba(shade(cloth, -0.42), 1));
+    ctx.fillStyle = fg; ctx.fill(flag);
+    ctx.save();
+    ctx.clip(flag);
+    for (let i = 0; i < 6; i++) {
+      const x0 = cx - 20 + i * 8;
+      ctx.beginPath();
+      ctx.moveTo(x0, base - 142);
+      ctx.quadraticCurveTo(x0 + R2(R, -3, 3), base - 92, x0 + R2(R, -2, 2), base - 40);
+      ctx.strokeStyle = rgba(R() > 0.5 ? '#000000' : th.glow, R() > 0.5 ? 0.22 : 0.09);
+      ctx.lineWidth = R2(R, 1, 2.4); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle = rgba(th.accent, 0.28); ctx.lineWidth = 1.2; ctx.stroke(flag);
+    return cv;
+  }
+  if (propKind === 'bench') {
+    // Banc long et bas : du mobilier qui se plaque contre un mur, pas un obstacle.
+    const wood = mix(th.riser, '#5b452e', 0.55);
+    paintMass(ctx, [P(cx - 40, base - 22), P(cx - 40, base - 30), P(cx + 40, base - 26), P(cx + 40, base - 18)], th, R,
+      { striation: 'fibre', base: shade(wood, 0.14), deep: shade(wood, -0.5), rim: 0.18 });
+    for (const dx0 of [-32, -2, 30]) {
+      paintMass(ctx, [P(cx + dx0 - 4, base), P(cx + dx0 - 3, base - 22), P(cx + dx0 + 4, base - 22), P(cx + dx0 + 5, base)], th, R,
+        { striation: 'fibre', base: shade(wood, -0.24), deep: '#120c07', rim: 0.1 });
+    }
+    paintMass(ctx, [P(cx - 38, base - 30), P(cx - 38, base - 46), P(cx + 38, base - 42), P(cx + 38, base - 26)], th, R,
+      { striation: 'fibre', base: wood, deep: shade(wood, -0.45), rim: 0.16 });
+    return cv;
+  }
+  if (propKind === 'candelabra') {
+    // Candélabre : fût élancé, trois bras, trois flammes. La seule chaleur de la pièce.
+    const metal = mix(th.riser, '#6d6553', 0.5);
+    paintMass(ctx, [P(cx - 14, base), P(cx - 9, base - 10), P(cx + 9, base - 10), P(cx + 14, base)], th, R,
+      { striation: 'masonry', base: shade(metal, -0.15), rim: 0.2 });
+    paintMass(ctx, [P(cx - 4, base - 8), P(cx - 3, base - 86), P(cx + 3, base - 86), P(cx + 4, base - 8)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.24 });
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 2, base - 74);
+      ctx.quadraticCurveTo(cx + s * 22, base - 78, cx + s * 22, base - 96);
+      ctx.strokeStyle = rgba(metal, 0.95); ctx.lineWidth = 3.2; ctx.stroke();
+      ctx.strokeStyle = rgba(th.glow, 0.16); ctx.lineWidth = 1; ctx.stroke();
+    }
+    for (const [fx, fy] of [[0, 96], [-22, 100], [22, 100]]) {
+      ctx.save();
+      ctx.shadowColor = rgba('#ffca7a', 0.9); ctx.shadowBlur = 14;
+      ctx.fillStyle = rgba('#ffe2ad', 0.92);
+      ctx.beginPath();
+      ctx.ellipse(cx + fx, base - fy - 6, 3.4, 6.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = rgba(shade(metal, 0.1), 1);
+      ctx.fillRect(cx + fx - 2.6, base - fy + 1, 5.2, 6);
+    }
+    return cv;
+  }
+  if (propKind === 'basin') {
+    // Vasque : coupe large sur un pied, eau immobile qui capte la lumière du lieu.
+    const stone = mix(th.top, '#b9ae95', 0.4);
+    paintMass(ctx, [P(cx - 20, base), P(cx - 15, base - 10), P(cx + 15, base - 10), P(cx + 20, base)], th, R,
+      { striation: 'masonry', base: shade(stone, -0.22), rim: 0.18 });
+    paintMass(ctx, [P(cx - 9, base - 8), P(cx - 8, base - 34), P(cx + 8, base - 34), P(cx + 9, base - 8)], th, R,
+      { striation: 'masonry', base: shade(stone, -0.05), rim: 0.2 });
+    const bowl = new Path2D();
+    bowl.moveTo(cx - 32, base - 44);
+    bowl.quadraticCurveTo(cx, base - 22, cx + 32, base - 44);
+    bowl.lineTo(cx + 30, base - 52);
+    bowl.quadraticCurveTo(cx, base - 44, cx - 30, base - 52);
+    bowl.closePath();
+    ctx.fillStyle = rgba(stone, 1); ctx.fill(bowl);
+    ctx.strokeStyle = rgba(th.glow, 0.22); ctx.lineWidth = 1.3; ctx.stroke(bowl);
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx, base - 50, 30, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(mix(th.glow, '#4d6f72', 0.55), 0.85); ctx.fill();
+    ctx.clip();
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(cx + R2(R, -12, 12), base - 50 + R2(R, -3, 3), R2(R, 5, 16), R2(R, 1.4, 3.6), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = rgba(th.glow, R2(R, 0.12, 0.32)); ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'chest') {
+    // Coffre bardé : caisse + couvercle bombé + ferrures. Réserve, cellier, cellule.
+    const wood = mix(th.riser, '#4f3a24', 0.6), iron = '#3b3d44';
+    paintMass(ctx, [P(cx - 28, base), P(cx - 28, base - 30), P(cx + 28, base - 30), P(cx + 28, base)], th, R,
+      { striation: 'fibre', base: wood, deep: '#150e07', rim: 0.16 });
+    const lid = new Path2D();
+    lid.moveTo(cx - 29, base - 30);
+    lid.quadraticCurveTo(cx, base - 54, cx + 29, base - 30);
+    lid.closePath();
+    ctx.fillStyle = rgba(shade(wood, 0.12), 1); ctx.fill(lid);
+    ctx.strokeStyle = rgba(th.glow, 0.16); ctx.lineWidth = 1.2; ctx.stroke(lid);
+    for (const dx0 of [-16, 16]) {
+      ctx.fillStyle = rgba(iron, 0.95);
+      ctx.fillRect(cx + dx0 - 3, base - 30, 6, 30);
+      ctx.beginPath();
+      ctx.moveTo(cx + dx0 - 3, base - 30);
+      ctx.quadraticCurveTo(cx + dx0 * 0.55, base - 46, cx + dx0 * 0.2, base - 41);
+      ctx.strokeStyle = rgba(iron, 0.95); ctx.lineWidth = 5; ctx.stroke();
+    }
+    ctx.fillStyle = rgba(mix(th.accent, '#8d7a4a', 0.5), 0.95);
+    ctx.fillRect(cx - 5, base - 26, 10, 9);
+    ctx.strokeStyle = rgba('#0d0a06', 0.7); ctx.lineWidth = 1; ctx.strokeRect(cx - 5, base - 26, 10, 9);
+    return cv;
+  }
+  if (propKind === 'rack') {
+    // Étagère/desserte : trois tablettes, quelques volumes et vaisseaux posés dessus.
+    const wood = mix(th.riser, '#57432c', 0.6);
+    for (const s of [-1, 1]) {
+      paintMass(ctx, [P(cx + s * 30 - 3, base), P(cx + s * 30 - 3, base - 94), P(cx + s * 30 + 3, base - 94), P(cx + s * 30 + 3, base)], th, R,
+        { striation: 'fibre', base: shade(wood, -0.2), deep: '#140d07', rim: 0.12 });
+    }
+    for (const sy of [26, 58, 90]) {
+      paintMass(ctx, [P(cx - 32, base - sy), P(cx - 32, base - sy - 6), P(cx + 32, base - sy - 6), P(cx + 32, base - sy)], th, R,
+        { striation: 'fibre', base: wood, deep: shade(wood, -0.45), rim: 0.16 });
+      for (let i = 0; i < 4; i++) {
+        const bx = cx - 24 + i * 13 + R2(R, -2, 2);
+        const bh = R2(R, 10, 20);
+        ctx.fillStyle = rgba(mix(th.top, R() > 0.5 ? '#7c5a45' : '#5a5f6b', R2(R, 0.2, 0.7)), 0.95);
+        ctx.fillRect(bx, base - sy - 6 - bh, R2(R, 4, 8), bh);
+        ctx.strokeStyle = rgba('#0b0806', 0.5); ctx.lineWidth = 0.8;
+        ctx.strokeRect(bx, base - sy - 6 - bh, 5, bh);
+      }
+    }
+    return cv;
+  }
+  if (propKind === 'debris') {
+    // Gravats et éclats au sol : le lieu a vécu. Bas, jamais un obstacle visuel.
+    for (let i = 0; i < 7; i++) {
+      const px = cx + R2(R, -34, 34), py = base - R2(R, 0, 8);
+      paintMass(ctx, [P(px - R2(R, 5, 11), py), P(px - R2(R, 3, 7), py - R2(R, 4, 12)),
+        P(px + R2(R, 3, 9), py - R2(R, 3, 10)), P(px + R2(R, 5, 12), py)], th, R,
+      { striation: 'splinter', base: shade(th.riser, R2(R, -0.15, 0.12)), rim: 0.12 });
+    }
+    return cv;
+  }
+  if (propKind === 'stairwell') {
+    // Descente vers l'étage inférieur : cage de pierre, quelques marches encore éclairées,
+    // puis le noir. C'est un point de sortie, pas un décor — il doit se voir de loin.
+    const stone = mix(th.top, '#b3a68d', 0.4);
+    const mouth = new Path2D();
+    mouth.moveTo(cx, base - 30);
+    mouth.lineTo(cx + 44, base - 8);
+    mouth.lineTo(cx, base + 14);
+    mouth.lineTo(cx - 44, base - 8);
+    mouth.closePath();
+    ctx.fillStyle = rgba('#050406', 0.97); ctx.fill(mouth);
+    ctx.save();
+    ctx.clip(mouth);
+    // Marches : de plus en plus sombres et resserrées à mesure qu'elles s'enfoncent.
+    for (let i = 0; i < 5; i++) {
+      const t0 = i / 5;
+      const w = 40 * (1 - t0 * 0.45), yy = base - 22 + i * 7;
+      const step = new Path2D();
+      step.moveTo(cx, yy - w * 0.5 * 0.5);
+      step.lineTo(cx + w, yy);
+      step.lineTo(cx, yy + w * 0.5 * 0.5);
+      step.lineTo(cx - w, yy);
+      step.closePath();
+      ctx.fillStyle = rgba(mix(stone, '#000000', 0.25 + t0 * 0.6), 1);
+      ctx.fill(step);
+      ctx.strokeStyle = rgba(th.glow, 0.22 * (1 - t0)); ctx.lineWidth = 1.2;
+      ctx.stroke(step);
+    }
+    const fade = ctx.createLinearGradient(0, base - 26, 0, base + 12);
+    fade.addColorStop(0, rgba('#000000', 0));
+    fade.addColorStop(0.55, rgba('#000000', 0.55));
+    fade.addColorStop(1, rgba('#040306', 0.98));
+    ctx.fillStyle = fade; ctx.fill(mouth);
+    ctx.restore();
+    // Margelle : le rebord taillé qui encadre la trémie et la détache du sol.
+    ctx.strokeStyle = rgba(shade(stone, 0.1), 0.9); ctx.lineWidth = 4; ctx.stroke(mouth);
+    ctx.strokeStyle = rgba(th.glow, 0.3); ctx.lineWidth = 1.4; ctx.stroke(mouth);
+    for (const s of [-1, 1]) {
+      paintMass(ctx, [P(cx + s * 46, base - 6), P(cx + s * 44, base - 30),
+        P(cx + s * 30, base - 40), P(cx + s * 30, base - 16)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.26 });
+    }
+    return cv;
+  }
   // cairn : petit empilement d'éclats de pierre, discret, sert de repère.
   ctx.save();
   ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 8;
@@ -2287,7 +2563,8 @@ export function obstacleVariantCount(name) {
 
 /** Tous les décors disponibles, dans l'ordre : décor de salle puis décor d'événement. */
 export const PROP_KINDS = [
-  'beam', 'arch', 'trunk', 'spire', 'obeliskProp', 'column', 'cairn',
+  'beam', 'arch', 'threshold', 'trunk', 'spire', 'obeliskProp', 'column', 'cairn',
+  'statue', 'urn', 'banner', 'bench', 'candelabra', 'basin', 'chest', 'rack', 'debris', 'stairwell',
   'npc', 'merchant', 'campfire', 'star', 'curse', 'monster', 'elite', 'boss',
 ];
 

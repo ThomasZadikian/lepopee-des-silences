@@ -90,7 +90,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                 var entryRoomType = MapThemeToScaffold(entryRoom.Theme);
                 var entryScaffold = await GenerateRoomShapeAsync(
                     seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken,
-                    PalaceRoomState.Neutral);
+                    PalaceRoomState.Neutral, entryRoom.Key);
                 AttachCatalogRoom(entryScaffold, entryRoom);
                 await AttachExitPlacementAsync(entryScaffold, seed, roomDepth: 0, cancellationToken);
                 return entryScaffold;
@@ -136,7 +136,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
         var nextRoomDepth = run.CurrentDepth + 1;
         var (roomType, themeKey, preResolvedDefinition) = await ResolveNextRoomAsync(run, nextRoomDepth, cancellationToken);
-        var room = await GenerateRoomShapeForDepthAsync(run, roomType, nextRoomDepth, cancellationToken);
+        var room = await GenerateRoomShapeForDepthAsync(
+            run, roomType, nextRoomDepth, cancellationToken, preResolvedDefinition?.Key);
 
         if (preResolvedDefinition is not null)
         {
@@ -181,7 +182,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             (roomType, legacyThemeKey, _) = await ResolveLegacyThemeRoomAsync(run, nextRoomDepth, cancellationToken);
         }
 
-        var room = await GenerateRoomShapeForDepthAsync(run, roomType, nextRoomDepth, cancellationToken);
+        var room = await GenerateRoomShapeForDepthAsync(
+            run, roomType, nextRoomDepth, cancellationToken, destination?.Key);
 
         if (destination is not null)
         {
@@ -204,7 +206,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     /// differs between the two callers (weighted roll vs. an already-chosen destination).
     /// </summary>
     private async Task<Room> GenerateRoomShapeForDepthAsync(
-        Run run, RoomType roomType, int nextRoomDepth, CancellationToken cancellationToken)
+        Run run, RoomType roomType, int nextRoomDepth, CancellationToken cancellationToken,
+        string? catalogRoomKey = null)
     {
         var matrixVersion = string.IsNullOrWhiteSpace(run.MarkovMatrixVersion)
             ? MarkovMatrixVersion
@@ -244,7 +247,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             roomType,
             random,
             cancellationToken,
-            palaceState);
+            palaceState,
+            catalogRoomKey);
     }
 
     /// <summary>
@@ -515,9 +519,11 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         RoomType roomType,
         Random random,
         CancellationToken cancellationToken,
-        PalaceRoomState palaceState)
+        PalaceRoomState palaceState,
+        string? catalogRoomKey = null)
     {
-        return _gridRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState);
+        return _gridRoomGenerator.GenerateAsync(
+            seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState, catalogRoomKey);
     }
 
     private async Task AttachCatalogRoomAsync(

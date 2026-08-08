@@ -80,6 +80,8 @@ public static class TacticalCombatPersistenceMapper
 
             TacticalWidth = field.Width,
             TacticalHeight = field.Height,
+            TacticalOriginX = field.OriginX,
+            TacticalOriginY = field.OriginY,
             TacticalElevationCsv = string.Join(',', elevation),
             TacticalWalkableCsv = string.Join(',', walkable),
             TacticalFloorCsv = string.Join(',', floor),
@@ -147,7 +149,8 @@ public static class TacticalCombatPersistenceMapper
             : ParseIntCsv(entity.TacticalFloorCsv, width * height).Select(v => v != 0).ToArray();
 
         var battlefield = TacticalBattlefield.Rehydrate(
-            width, height, elevation, walkable, floor);
+            width, height, elevation, walkable, floor,
+            entity.TacticalOriginX, entity.TacticalOriginY);
 
         var combatants = entity.Combatants.Select(CombatPersistenceMapper.ToDomain).ToList();
 

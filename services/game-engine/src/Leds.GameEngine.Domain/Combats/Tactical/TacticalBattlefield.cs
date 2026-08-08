@@ -28,10 +28,13 @@ public sealed class TacticalBattlefield
     private readonly bool[] _isFloor;
 
     private TacticalBattlefield(
-        int width, int height, int[] elevation, bool[] walkable, bool[] isFloor)
+        int width, int height, int originX, int originY,
+        int[] elevation, bool[] walkable, bool[] isFloor)
     {
         Width = width;
         Height = height;
+        OriginX = originX;
+        OriginY = originY;
         _elevation = elevation;
         _walkable = walkable;
         _isFloor = isFloor;
@@ -39,6 +42,16 @@ public sealed class TacticalBattlefield
 
     public int Width { get; }
     public int Height { get; }
+
+    /// <summary>
+    /// Coin haut-gauche de ce champ de bataille dans le référentiel de la salle d'exploration
+    /// dont il est issu. Reste à (0,0) pour un combat qui couvre la salle entière ;
+    /// <see cref="FromRoomGridRegion"/> le décale pour une arène locale.
+    /// </summary>
+    public int OriginX { get; }
+
+    /// <summary>Voir <see cref="OriginX"/>.</summary>
+    public int OriginY { get; }
 
     /// <summary>Nombre de cases praticables — la surface réellement disponible pour déployer.</summary>
     public int WalkableCellCount => _walkable.Count(w => w);
@@ -97,23 +110,51 @@ public sealed class TacticalBattlefield
     {
         ArgumentNullException.ThrowIfNull(grid);
 
-        var size = grid.Width * grid.Height;
+        return FromRoomGridRegion(grid, originX: 0, originY: 0, grid.Width, grid.Height);
+    }
+
+    /// <summary>
+    /// Fige une sous-région de la salle en champ de bataille — l'arène locale (SFD v2, §4) qui
+    /// évite qu'un combat déclenché n'importe où dans une grande salle ne s'étende à sa totalité.
+    /// La région demandée est recadrée aux limites de la salle, jamais rejetée : un ancrage près
+    /// d'un bord ou d'un coin donne une arène plus petite plutôt qu'une erreur.
+    /// </summary>
+    public static TacticalBattlefield FromRoomGridRegion(
+        RoomGrid grid, int originX, int originY, int width, int height)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+
+        if (width <= 0 || height <= 0)
+            throw new DomainException("A tactical battlefield region must have a positive width and height.");
+
+        // Recadrage aux limites de la salle : décale d'abord l'origine pour que la région entre
+        // dans la grille, puis tronque la taille si la salle elle-même est plus petite que
+        // l'arène demandée.
+        var clampedWidth = Math.Min(width, grid.Width);
+        var clampedHeight = Math.Min(height, grid.Height);
+        var clampedOriginX = Math.Clamp(originX, 0, grid.Width - clampedWidth);
+        var clampedOriginY = Math.Clamp(originY, 0, grid.Height - clampedHeight);
+
+        var size = clampedWidth * clampedHeight;
         var elevation = new int[size];
         var walkable = new bool[size];
         var isFloor = new bool[size];
 
-        for (var y = 0; y < grid.Height; y++)
+        for (var y = 0; y < clampedHeight; y++)
         {
-            for (var x = 0; x < grid.Width; x++)
+            for (var x = 0; x < clampedWidth; x++)
             {
-                var index = (y * grid.Width) + x;
-                elevation[index] = grid.ElevationAt(x, y);
-                walkable[index] = grid.IsWalkable(x, y);
-                isFloor[index] = grid.IsFloor(x, y);
+                var gridX = clampedOriginX + x;
+                var gridY = clampedOriginY + y;
+                var index = (y * clampedWidth) + x;
+                elevation[index] = grid.ElevationAt(gridX, gridY);
+                walkable[index] = grid.IsWalkable(gridX, gridY);
+                isFloor[index] = grid.IsFloor(gridX, gridY);
             }
         }
 
-        return new TacticalBattlefield(grid.Width, grid.Height, elevation, walkable, isFloor);
+        return new TacticalBattlefield(
+            clampedWidth, clampedHeight, clampedOriginX, clampedOriginY, elevation, walkable, isFloor);
     }
 
     /// <summary>Reconstruit un champ de bataille depuis sa forme persistée.</summary>
@@ -122,7 +163,9 @@ public sealed class TacticalBattlefield
         int height,
         IReadOnlyList<int> elevation,
         IReadOnlyList<bool> walkable,
-        IReadOnlyList<bool>? isFloor = null)
+        IReadOnlyList<bool>? isFloor = null,
+        int originX = 0,
+        int originY = 0)
     {
         if (width <= 0 || height <= 0)
             throw new DomainException("A tactical battlefield must have a positive width and height.");
@@ -139,7 +182,8 @@ public sealed class TacticalBattlefield
             ? walkable.ToArray()
             : isFloor.ToArray();
 
-        return new TacticalBattlefield(width, height, [.. elevation], [.. walkable], floor);
+        return new TacticalBattlefield(
+            width, height, originX, originY, [.. elevation], [.. walkable], floor);
     }
 
     /// <summary>

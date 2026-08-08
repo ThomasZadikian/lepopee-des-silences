@@ -31,4 +31,72 @@ public static class DefaultGridRoomLayoutTemplates
         maxNodeCount: 30,
         startX: 0,
         startY: 9);
+
+    // BALANCE KNOB — dedicated grids for the five typologies the Claude Design "salle" handoff
+    // profiled precisely (see HardcodedRoomStructuralProfileProvider). Dimensions match the
+    // handoff's own reference sizes verbatim (all comfortably under the 35x25 ceiling agreed for
+    // this integration) — movementBudget/node counts scaled proportionally from
+    // DefaultTacticalV1's 26x18 baseline (78 budget / 22-30 nodes). Keyed by catalog room Key,
+    // NOT RoomType, in GridRoomLayoutTemplateProvider — several catalog rooms can share the same
+    // coarse RoomType family while needing entirely different dimensions/budgets.
+
+    public static readonly GridRoomLayoutTemplate JardinV1 = new(
+        key: "room.jardin-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Forest,
+        width: 26,
+        height: 18,
+        movementBudget: 78,
+        minNodeCount: 22,
+        maxNodeCount: 30,
+        startX: 0,
+        startY: 9);
+
+    public static readonly GridRoomLayoutTemplate HopitalV1 = new(
+        key: "room.hopital-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Silence,
+        width: 26,
+        height: 16,
+        movementBudget: 70,
+        minNodeCount: 20,
+        maxNodeCount: 27,
+        startX: 0,
+        startY: 8);
+
+    public static readonly GridRoomLayoutTemplate Enfer3V1 = new(
+        key: "room.enfer3-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Rupture,
+        width: 24,
+        height: 18,
+        movementBudget: 72,
+        minNodeCount: 20,
+        maxNodeCount: 28,
+        startX: 0,
+        startY: 9);
+
+    public static readonly GridRoomLayoutTemplate CaverneDeCrystalV1 = new(
+        key: "room.cavernedecrystal-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Threshold,
+        width: 24,
+        height: 18,
+        movementBudget: 72,
+        minNodeCount: 20,
+        maxNodeCount: 28,
+        startX: 0,
+        startY: 9);
+
+    public static readonly GridRoomLayoutTemplate LabyrintheV1 = new(
+        key: "room.labyrinthe-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Rupture,
+        width: 26,
+        height: 18,
+        movementBudget: 78,
+        minNodeCount: 22,
+        maxNodeCount: 30,
+        startX: 0,
+        startY: 9);
 }

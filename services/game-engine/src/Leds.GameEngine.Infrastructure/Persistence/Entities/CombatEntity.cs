@@ -34,6 +34,13 @@ public sealed class CombatEntity
     public int? TacticalWidth { get; set; }
     public int? TacticalHeight { get; set; }
 
+    /// <summary>
+    /// Coin haut-gauche du champ de bataille dans le référentiel de la salle. 0/0 pour un combat
+    /// enregistré avant l'introduction de l'arène locale, ou pour un qui couvre la salle entière.
+    /// </summary>
+    public int TacticalOriginX { get; set; }
+    public int TacticalOriginY { get; set; }
+
     /// <summary>Élévations, row-major, séparées par des virgules.</summary>
     public string? TacticalElevationCsv { get; set; }
 

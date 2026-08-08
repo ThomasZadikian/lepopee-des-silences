@@ -43,6 +43,8 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
 
         builder.Property(c => c.TacticalWidth).HasColumnName("tactical_width");
         builder.Property(c => c.TacticalHeight).HasColumnName("tactical_height");
+        builder.Property(c => c.TacticalOriginX).HasColumnName("tactical_origin_x").HasDefaultValue(0);
+        builder.Property(c => c.TacticalOriginY).HasColumnName("tactical_origin_y").HasDefaultValue(0);
         builder.Property(c => c.TacticalElevationCsv).HasColumnName("tactical_elevation_csv");
         builder.Property(c => c.TacticalWalkableCsv).HasColumnName("tactical_walkable_csv");
         builder.Property(c => c.TacticalFloorCsv).HasColumnName("tactical_floor_csv");

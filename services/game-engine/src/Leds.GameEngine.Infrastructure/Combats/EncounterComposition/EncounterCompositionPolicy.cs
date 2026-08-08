@@ -9,8 +9,10 @@ namespace Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 {
     /// <summary>
-    /// Nombre maximum d'ennemis engagés simultanément (SFD v2, §5). Passé de 4 à 5 pour que le
-    /// palier Fatal puisse mettre une équipe de quatre en infériorité numérique.
+    /// Nombre maximum d'ennemis engagés simultanément (SFD v2, §5). Passé de 5 à 7 pour
+    /// diversifier la composition des combats : plus d'adversaires, chacun individuellement
+    /// moins puissant (voir <c>CombatEncounterDraftGenerator.GroupSizeStatMultiplier</c>), plutôt
+    /// qu'une poignée d'ennemis surdimensionnés.
     /// </summary>
     /// <remarks>
     /// Plafond commun aux deux systèmes de combat. La SFD envisageait de le rendre dépendant du
@@ -20,15 +22,18 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     /// génération de brouillon, pour une différence d'un ennemi au seul palier Fatal.
     /// // BALANCE KNOB
     /// </remarks>
-    private const int MaxEnemiesPerEncounter = 5;
+    private const int MaxEnemiesPerEncounter = 7;
 
+    // BALANCE KNOB — relevé pour donner du budget aux effectifs plus nombreux introduits par
+    // MaxEnemiesPerEncounter/GetMaxEnemiesForEarlyRun ci-dessous ; sans cette hausse, le plafond
+    // de compte n'aurait aucun effet réel puisque le budget resterait le facteur limitant.
     private static readonly IReadOnlyDictionary<int, int> BaseBudgetByRiskLevel = new Dictionary<int, int>
     {
         [1] = 2,
-        [2] = 3,
-        [3] = 4,
-        [4] = 5,
-        [5] = 7,
+        [2] = 4,
+        [3] = 6,
+        [4] = 8,
+        [5] = 11,
     };
 
     private static readonly IReadOnlyDictionary<PalaceRoomState, string[]> ArchetypePreferenceByState =
@@ -193,21 +198,27 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     /// Limits enemy count based purely on risk tier — depth no longer plays into this
     /// (risk tier is the sole difficulty axis; depth is now purely structural).
     /// </summary>
+    /// <remarks>
+    /// Paliers 3 et 4 relevés (3→4, 4→5) pour la diversification de composition : plus
+    /// d'ennemis peuvent apparaître dès le milieu de la fourchette de risque, chacun
+    /// individuellement affaibli par <c>CombatEncounterDraftGenerator.GroupSizeStatMultiplier</c>.
+    /// </remarks>
     private static int GetMaxEnemiesForEarlyRun(EncounterCompositionContext context)
     {
-        // Risque faible (Calme/Tendu) : 2 ennemis au plus
+        // Risque faible (Calme/Tendu) : 2 ennemis au plus, inchangé — un combat d'entrée de jeu
+        // ne doit pas se diversifier au prix de la lisibilité.
         if (context.RiskLevel <= 2)
             return 2;
 
-        // Risque moyen (Dangereux) : 3
+        // Risque moyen (Dangereux) : 4
         if (context.RiskLevel <= 3)
-            return 3;
-
-        // Risque élevé (Périlleux) : 4
-        if (context.RiskLevel <= 4)
             return 4;
 
-        // Fatal : le plafond plein. C'est le seul palier qui peut submerger une équipe de
+        // Risque élevé (Périlleux) : 5
+        if (context.RiskLevel <= 4)
+            return 5;
+
+        // Fatal : le plafond plein (7). C'est le seul palier qui peut submerger une équipe de
         // quatre en nombre — la contrepartie du pari que représente « provoquer le destin ».
         return MaxEnemiesPerEncounter;
     }

@@ -72,6 +72,53 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
+    public async Task GenerateInitialRoom_ShouldUseTheEntryRoomsOwnTemplate_WhenItIsCatalogProfiled()
+    {
+        // Regression guard for the catalog-before-geometry inversion (Chantier 1): the entry
+        // room's CatalogRoomDefinition is resolved before geometry generation even runs — this
+        // proves that SAME resolved definition (not just its metadata, attached afterward) is
+        // what actually drove the grid shape, by asserting on the room-specific template that
+        // only a threaded "room.jardin" key could have selected.
+        var catalogGateway = new StubCatalogContentGateway
+        {
+            WorldDefinitions = [new CatalogWorldDefinition("palais", "Palais", "room.jardin")],
+            RoomDefinitions =
+            [
+                new CatalogRoomDefinition(
+                    Key: "room.jardin",
+                    DisplayName: "Le jardin",
+                    Description: "Un jardin clos.",
+                    NarrativeText: "Des fourrés et une terrasse plantée.",
+                    RoomFamily: "Palais intérieur",
+                    RoomRarity: "Common",
+                    Theme: "Forest",
+                    MinDepth: 0,
+                    MaxDepth: 9,
+                    BaseWeight: 1,
+                    EnemyPoolKey: null,
+                    RewardPoolKey: null,
+                    LawPoolKey: null,
+                    CursePoolKey: null,
+                    BossDefinitionKey: null,
+                    IsUnique: false,
+                    WorldKey: "palais",
+                    IsWorldEntryRoom: true,
+                    TriggersStrictChain: false,
+                    ReachableRoomKeys: [])
+            ]
+        };
+
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var room = await generator.GenerateInitialRoomAsync("seed-jardin-entry");
+
+        room.CatalogBinding!.Key.Should().Be("room.jardin");
+        room.LayoutTemplateKey.Should().Be("room.jardin-v1");
+        room.Grid!.Width.Should().Be(26);
+        room.Grid.Height.Should().Be(18);
+    }
+
+    [Fact]
     public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_ForACatalogBoundEntryRoom()
     {
         // Regression: GenerateRoomShapeAsync used to forward the Classic generator version

@@ -291,19 +291,9 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldUseBudgetThree_ForRiskLevelTwoCombat()
+    public void Compose_ShouldUseBudgetFour_ForRiskLevelTwoCombat()
     {
         var context = CreateContext(riskLevel: 2);
-
-        var result = Policy.Compose(context);
-
-        result.DifficultyBudget.Should().Be(3);
-    }
-
-    [Fact]
-    public void Compose_ShouldUseBudgetFour_ForRiskLevelThreeCombat()
-    {
-        var context = CreateContext(riskLevel: 3);
 
         var result = Policy.Compose(context);
 
@@ -311,23 +301,33 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldUseBudgetFive_ForRiskLevelFourCombat()
+    public void Compose_ShouldUseBudgetSix_ForRiskLevelThreeCombat()
+    {
+        var context = CreateContext(riskLevel: 3);
+
+        var result = Policy.Compose(context);
+
+        result.DifficultyBudget.Should().Be(6);
+    }
+
+    [Fact]
+    public void Compose_ShouldUseBudgetEight_ForRiskLevelFourCombat()
     {
         var context = CreateContext(riskLevel: 4);
 
         var result = Policy.Compose(context);
 
-        result.DifficultyBudget.Should().Be(5);
+        result.DifficultyBudget.Should().Be(8);
     }
 
     [Fact]
-    public void Compose_ShouldUseBudgetSeven_ForRiskLevelFiveCombat()
+    public void Compose_ShouldUseBudgetEleven_ForRiskLevelFiveCombat()
     {
         var context = CreateContext(riskLevel: 5);
 
         var result = Policy.Compose(context);
 
-        result.DifficultyBudget.Should().Be(7);
+        result.DifficultyBudget.Should().Be(11);
     }
 
     [Fact]

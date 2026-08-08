@@ -17,6 +17,24 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
     private const double EliteStatMultiplier = 1.5;
     private const double RareStatMultiplier = 1.25;
 
+    // BALANCE KNOB — diversifier la composition des combats (plan d'intégration Claude Design,
+    // Chantier 6) : à effectif égal augmenté (voir EncounterCompositionPolicy), chaque ennemi
+    // individuel est affaibli en proportion, pour que « plus d'ennemis » ne se traduise pas en
+    // « combat plus dur » mais en « combat plus varié ». Solo (le cas le plus fréquent — la
+    // plupart des combats à faible risque, tout Elite/Rare/Boss) n'est jamais affecté : le
+    // multiplicateur ne s'active qu'à partir de deux ennemis engagés ensemble.
+    private static readonly IReadOnlyDictionary<int, double> GroupSizeStatMultiplierByCount =
+        new Dictionary<int, double>
+        {
+            [1] = 1.00,
+            [2] = 0.92,
+            [3] = 0.85,
+            [4] = 0.78,
+            [5] = 0.72,
+            [6] = 0.67,
+            [7] = 0.62,
+        };
+
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly IEncounterCompositionPolicy _compositionPolicy;
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
@@ -78,11 +96,14 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 $"Missing skill definitions for keys: {string.Join(", ", missingKeys)}");
         }
 
+        var groupSizeMultiplier = GroupSizeStatMultiplierByCount.GetValueOrDefault(
+            Math.Clamp(selected.Count, 1, 7), 0.62);
+
         var enemies = selected
             .Select(e =>
             {
                 // Only the Elite/Rare "preferred" pick gets a stat bonus — never its escort.
-                var statMultiplier = e.Key == compositionResult.PreferredEnemyKey
+                var preferredBonus = e.Key == compositionResult.PreferredEnemyKey
                     ? context.EncounterType switch
                     {
                         "Elite" => EliteStatMultiplier,
@@ -90,6 +111,8 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                         _ => 1.0,
                     }
                     : 1.0;
+
+                var statMultiplier = preferredBonus * groupSizeMultiplier;
 
                 return new CombatEncounterDraftEnemy(
                     EnemyKey: e.Key,

@@ -19,6 +19,20 @@ namespace Leds.GameEngine.Application.Combats.Tactical;
 /// </remarks>
 public sealed class TacticalCombatFactory : ITacticalCombatFactory
 {
+    /// <summary>
+    /// Demi-largeur de l'arène locale autour du groupe. // BALANCE KNOB
+    /// </summary>
+    /// <remarks>
+    /// 10 donne une arène 21×21 : assez pour couvrir la fourchette d'engagement actuelle
+    /// (<see cref="TacticalDeployment.MaxEngagementDistance"/> = 20, atteignable en diagonale
+    /// dans une fenêtre de rayon 10) tout en restant nettement plus petite qu'une grande salle —
+    /// c'est exactement le but recherché : un combat déclenché n'importe où dans la salle ne
+    /// s'étend plus à sa totalité. Sur les salles d'aujourd'hui (26×18 ou moins), l'arène couvre
+    /// déjà presque toute la hauteur et une bonne partie de la largeur, donc le comportement
+    /// existant change à peine.
+    /// </remarks>
+    private const int ArenaRadius = 10;
+
     public TacticalCombat CreateFromRoster(
         CombatId combatId,
         CombatRoster roster,
@@ -30,10 +44,19 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
         ArgumentNullException.ThrowIfNull(roster);
         ArgumentNullException.ThrowIfNull(room);
 
-        var battlefield = TacticalBattlefield.FromRoomGrid(room.Grid);
+        // Le groupe se dépiaute là où le joueur l'avait mené : l'ancre est sa case d'exploration,
+        // et c'est aussi le centre de l'arène locale — recadrée aux limites de la salle par
+        // FromRoomGridRegion près d'un bord ou d'un coin.
+        var arenaSize = (2 * ArenaRadius) + 1;
+        var battlefield = TacticalBattlefield.FromRoomGridRegion(
+            room.Grid,
+            room.Grid.PartyX - ArenaRadius,
+            room.Grid.PartyY - ArenaRadius,
+            arenaSize,
+            arenaSize);
 
-        // Le groupe se dépiaute là où le joueur l'avait mené : l'ancre est sa case d'exploration.
-        var anchor = new GridPosition(room.Grid.PartyX, room.Grid.PartyY);
+        var anchor = new GridPosition(
+            room.Grid.PartyX - battlefield.OriginX, room.Grid.PartyY - battlefield.OriginY);
 
         var allies = roster.Allies.ToArray();
         var enemies = roster.Enemies.ToArray();

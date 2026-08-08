@@ -22,7 +22,8 @@ public static class TestGeneratorFactory
             new GridRoomLayoutTemplateProvider(),
             new RoomThemeResolver(),
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
-            new HardcodedRoomTypeGenerationProfileProvider());
+            new HardcodedRoomTypeGenerationProfileProvider(),
+            new HardcodedRoomStructuralProfileProvider());
 
         var traceSink = new NullMarkovTransitionTraceSink();
         var calibration = new EmotionalCalibration();

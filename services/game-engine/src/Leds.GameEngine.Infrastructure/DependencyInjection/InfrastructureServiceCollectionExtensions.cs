@@ -86,6 +86,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRunGenerator, DeterministicRunGenerator>();
 
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
+        services.AddSingleton<IRoomStructuralProfileProvider, HardcodedRoomStructuralProfileProvider>();
         services.AddSingleton<IGridRoomLayoutTemplateProvider, GridRoomLayoutTemplateProvider>();
         services.AddSingleton<IGridRoomGenerator, GridRoomGenerator>();
 

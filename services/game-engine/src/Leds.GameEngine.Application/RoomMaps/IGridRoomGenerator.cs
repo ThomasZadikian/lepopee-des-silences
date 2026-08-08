@@ -9,6 +9,12 @@ namespace Leds.GameEngine.Application.RoomMaps;
 /// </summary>
 public interface IGridRoomGenerator
 {
+    /// <summary>
+    /// <paramref name="catalogRoomKey"/>, when the caller already knows the specific catalog
+    /// room this shape is being generated for (e.g. "room.jardin"), lets the generator pick a
+    /// room-specific layout template and structural profile (silhouette carving style, whether
+    /// sub-rooms are allowed) instead of falling back to the generic per-RoomType defaults.
+    /// </summary>
     Task<Room> GenerateAsync(
         string seed,
         string generatorVersion,
@@ -16,5 +22,6 @@ public interface IGridRoomGenerator
         RoomType roomType,
         Random random,
         CancellationToken cancellationToken = default,
-        PalaceRoomState palaceState = PalaceRoomState.Neutral);
+        PalaceRoomState palaceState = PalaceRoomState.Neutral,
+        string? catalogRoomKey = null);
 }

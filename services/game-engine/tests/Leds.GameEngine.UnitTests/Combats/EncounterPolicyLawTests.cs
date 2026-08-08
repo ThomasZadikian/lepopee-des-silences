@@ -167,6 +167,6 @@ public sealed class EncounterCompositionPolicyLawTests
         var result = sut.Compose(contextNoLaws);
 
         // Pas de régression : budget = valeur attendue sans lois
-        result.DifficultyBudget.Should().Be(4); // RiskLevel 3 = base 4
+        result.DifficultyBudget.Should().Be(6); // RiskLevel 3 = base 6
     }
 }
