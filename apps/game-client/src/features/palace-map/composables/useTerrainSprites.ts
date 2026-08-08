@@ -118,9 +118,13 @@ export type SpriteKey =
       theme?: RoomTheme;
       /** 0–4: picks one of five brush variations so a floor never tiles visibly. */
       surfaceSeed?: number;
-      /** Front-left / front-right neighbour is outside the room → paint a cliff face. */
+      /** Front-left / front-right neighbour is outside the room → paint a near wall face. */
       cliffLeft?: boolean;
       cliffRight?: boolean;
+      /** Back-left / back-right neighbour is outside the room → paint a far (shadowed) wall
+       * face, so a room shows all four of its edges rather than only the two nearest camera. */
+      cliffFarLeft?: boolean;
+      cliffFarRight?: boolean;
       hidden?: HiddenState;
       danger?: DangerTell;
     }
@@ -163,6 +167,8 @@ function toForgeKey(key: SpriteKey): ForgeKey {
         surfaceSeed: key.surfaceSeed ?? 0,
         cliffLeft: !!key.cliffLeft,
         cliffRight: !!key.cliffRight,
+        cliffFarLeft: !!key.cliffFarLeft,
+        cliffFarRight: !!key.cliffFarRight,
         hidden: key.hidden ?? 'none',
         danger: key.danger ?? 'none',
         resolved: !!key.resolved,

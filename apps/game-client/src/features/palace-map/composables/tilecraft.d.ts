@@ -65,7 +65,7 @@ export function visionRadius(cells: number, isoUnitX: number): number;
 export function anchorRatioAt(elev?: number): number;
 export function cliffSides(
   x: number, y: number, isFloor: (x: number, y: number) => boolean,
-): { cliffLeft: boolean; cliffRight: boolean };
+): { cliffLeft: boolean; cliffRight: boolean; cliffFarLeft: boolean; cliffFarRight: boolean };
 export function drawBackdrop(
   ctx: CanvasRenderingContext2D, w: number, h: number, theme: string, t?: number, seed?: string,
   options?: { scenery?: boolean },

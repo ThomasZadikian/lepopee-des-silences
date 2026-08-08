@@ -936,6 +936,47 @@ function paintFace(ctx, p0, p1, drop, th, R, lit, o = {}) {
   ctx.restore();
 }
 
+// ── Contremarches lointaines (faces latérales NW + NE) ────────────────────────────────
+// Le losange d'une case a quatre arêtes ; jusqu'ici seules les deux proches (SW/SE, "cliffLeft"/
+// "cliffRight") portaient un mur. Une salle vue de l'intérieur montre aussi son côté éloigné —
+// sans lui, deux murs de la pièce sur quatre restent invisibles. Contrainte par la place réelle
+// AU-DESSUS du losange dans le sprite (c.top.y, qui rétrécit avec l'élévation jusqu'à disparaître
+// au palier maximal) : pas question d'y reproduire la fracture rocheuse pleine hauteur des arêtes
+// proches, donc un lambeau plus court, plus sombre — un mur qui s'éloigne se lit dans l'ombre,
+// pas par son relief.
+function paintFarFace(ctx, p0, p1, rise, th, R, o = {}) {
+  if (rise <= 0.5) return;
+  const path = new Path2D();
+  path.moveTo(p0.x, p0.y);
+  path.lineTo(p1.x, p1.y);
+  path.lineTo(p1.x, p1.y - rise);
+  path.lineTo(p0.x, p0.y - rise);
+  path.closePath();
+
+  ctx.save();
+  ctx.clip(path);
+  const g = ctx.createLinearGradient(0, Math.max(p0.y, p1.y), 0, Math.max(p0.y, p1.y) - rise);
+  g.addColorStop(0, rgba(shade(th.riser, -0.1), 1));
+  g.addColorStop(1, rgba(th.riserDeep, 1));
+  ctx.fillStyle = g;
+  ctx.fill(path);
+
+  // Un seul filet de crête, pas l'appareillage complet des arêtes proches : à cette taille (au
+  // mieux une soixantaine de pixels), l'œil doit lire « mur » d'un trait, pas d'une texture.
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y - rise + 1);
+  ctx.lineTo(p1.x, p1.y - rise + 1);
+  ctx.strokeStyle = rgba(th.glow, 0.1);
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  speckle(
+    ctx, Math.min(p0.x, p1.x), Math.min(p0.y, p1.y) - rise, Math.abs(p1.x - p0.x) + 2, rise,
+    R, Math.round(rise * 1.6 * (o.grain ?? 1)), th.glow, '#000000',
+  );
+  ctx.restore();
+}
+
 function paintRisers(ctx, elev, th, R, o = {}) {
   const c = corners(elev);
   const drop = elev * TILE.STEP;
@@ -944,6 +985,13 @@ function paintRisers(ctx, elev, th, R, o = {}) {
     1, { jagged: !!o.cliffLeft, grain: o.grain });
   paintFace(ctx, c.bottom, c.right, cliffDrop(o.cliffRight), th, R,
     0.15, { jagged: !!o.cliffRight, grain: o.grain });
+
+  if (o.cliffFarLeft) {
+    paintFarFace(ctx, c.top, c.left, c.top.y, th, R, { grain: o.grain });
+  }
+  if (o.cliffFarRight) {
+    paintFarFace(ctx, c.top, c.right, c.top.y, th, R, { grain: o.grain });
+  }
 }
 
 // ── Masses (murs, obstacles, décors) ─────────────────────────────────────────────────
@@ -2237,14 +2285,15 @@ function bakeParty(elev) {
 // ── Sol ──────────────────────────────────────────────────────────────────────────────
 function bakeFloor(key, grain) {
   const th = theme(key.theme);
-  const seed = `floor:${key.theme}:${key.elevation}:${key.surfaceSeed ?? 0}:${key.hidden ?? ''}:${key.danger ?? ''}:${key.cliffLeft ? 'L' : ''}${key.cliffRight ? 'R' : ''}`;
+  const seed = `floor:${key.theme}:${key.elevation}:${key.surfaceSeed ?? 0}:${key.hidden ?? ''}:${key.danger ?? ''}:${key.cliffLeft ? 'L' : ''}${key.cliffRight ? 'R' : ''}${key.cliffFarLeft ? 'FL' : ''}${key.cliffFarRight ? 'FR' : ''}`;
   const R = makeRng(hashSeed(seed));
   const cv = makeCanvas(SPRITE_W, SPRITE_H);
   const ctx = cv.getContext('2d');
   if (!ctx) return cv;
 
   paintRisers(ctx, key.elevation, th, R, {
-    cliffLeft: key.cliffLeft, cliffRight: key.cliffRight, grain,
+    cliffLeft: key.cliffLeft, cliffRight: key.cliffRight,
+    cliffFarLeft: key.cliffFarLeft, cliffFarRight: key.cliffFarRight, grain,
   });
   paintTop(ctx, key.elevation, th, R, {
     grain, hidden: key.hidden, danger: key.danger,
@@ -2514,7 +2563,9 @@ export function spriteKeyToString(k) {
     case 'floor':
       return [
         'f', k.theme, k.elevation, k.surfaceSeed ?? 0, k.hidden ?? 'n', k.danger ?? 'n',
-        k.cliffLeft ? 'L' : '-', k.cliffRight ? 'R' : '-', k.resolved ? 'r' : '-', k.glow ? 'g' : '-',
+        k.cliffLeft ? 'L' : '-', k.cliffRight ? 'R' : '-',
+        k.cliffFarLeft ? 'FL' : '-', k.cliffFarRight ? 'FR' : '-',
+        k.resolved ? 'r' : '-', k.glow ? 'g' : '-',
       ].join(':');
     case 'obstacle': return `o:${k.theme}:${k.variant ?? 0}:${k.elevation ?? 0}`;
     case 'prop': return `p:${k.theme}:${k.prop}`;
@@ -2584,9 +2635,20 @@ export const NODE_PROP = {
   finalConfrontation: 'boss',
 };
 
-/** Faces latérales à peindre en falaise : la case devant-gauche est (x+1,y), devant-droite (x,y+1). */
+/**
+ * Faces à peindre en mur, sur les quatre arêtes du losange : proches (bas de l'écran — case
+ * devant-gauche (x+1,y), devant-droite (x,y+1)) ET lointaines (haut de l'écran — case
+ * arrière-gauche (x,y-1), arrière-droite (x-1,y)). Une salle vue de l'intérieur montre aussi son
+ * côté éloigné ; sans les deux arêtes lointaines, la moitié des murs d'une pièce restait
+ * invisible.
+ */
 export function cliffSides(x, y, isFloor) {
-  return { cliffLeft: !isFloor(x + 1, y), cliffRight: !isFloor(x, y + 1) };
+  return {
+    cliffLeft: !isFloor(x + 1, y),
+    cliffRight: !isFloor(x, y + 1),
+    cliffFarLeft: !isFloor(x, y - 1),
+    cliffFarRight: !isFloor(x - 1, y),
+  };
 }
 
 // ── Fond de salle ────────────────────────────────────────────────────────────────────
