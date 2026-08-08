@@ -11,11 +11,6 @@ import type {
   SwapGroundItemResponse,
 } from '../types/runTypes';
 
-import type {
-  EnterInterludeApiResponse,
-  GetInterludeApiResponse,
-} from '../../interlude/interludeTypes';
-
 export const runApi = {
   /** Lance une run avec le système de combat tactique. */
   startRun(playerId: string) {
@@ -47,21 +42,11 @@ export const runApi = {
     );
   },
 
-  enterInterlude(runId: string) {
-    return gameEngineApi.post<EnterInterludeApiResponse>(
-      `/api/v2/runs/${runId}/interlude/enter`,
-    );
-  },
-
-  getInterlude(runId: string) {
-    return gameEngineApi.get<GetInterludeApiResponse>(
-      `/api/v2/runs/${runId}/interlude`,
-    );
-  },
-
-  enterNextRoom(runId: string) {
+  /** "Valider la sortie" — walks the party through a confirmed room exit (see NodeDto's
+   * exitDestinationRoomKey/exitDestinationDisplayName). No boss dependency anymore. */
+  confirmRoomExit(runId: string, nodeId: string) {
     return gameEngineApi.post<RunResponse>(
-      `/api/v2/runs/${runId}/rooms/next`,
+      `/api/v2/runs/${runId}/nodes/${nodeId}/exit`,
     );
   },
 

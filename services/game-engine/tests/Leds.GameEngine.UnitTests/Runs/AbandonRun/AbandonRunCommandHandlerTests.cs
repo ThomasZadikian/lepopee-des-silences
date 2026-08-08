@@ -14,8 +14,9 @@ public sealed class AbandonRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldAbandonRun_AndPersistIt()
     {
-        // Arrange — run must be at a safe point (RoomResolved) for AbandonRun to be allowed
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        // Arrange — run must be at a safe point (nothing in progress) for AbandonRun to be allowed
+        var run = TestGameEngineFactory.CreateRun();
+        run.Status.Should().Be(RunStatus.Active);
 
         var now = new DateTimeOffset(
             2026,
@@ -101,9 +102,10 @@ public sealed class AbandonRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldThrowDomainException_WhenRunIsNotAtSafePoint()
     {
-        // Arrange — Active run: handler-level safe-point guard fires before domain method.
-        var run = TestGameEngineFactory.CreateRun();
-        run.Status.Should().Be(RunStatus.Active);
+        // Arrange — room mid node-selection: handler-level safe-point guard fires before
+        // the domain Abandon() call.
+        var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(
+            Leds.GameEngine.Domain.Nodes.NodeEventType.Item).Run;
 
         var repository = new Mock<IRunRepository>();
         repository

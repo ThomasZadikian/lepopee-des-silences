@@ -143,16 +143,6 @@ describe('GameTopBar', () => {
     expect(wrapper.text()).toContain('RÉCOMPENSE');
   });
 
-  it('maps Interlude phase to INTERLUDE', async () => {
-    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Interlude' });
-    expect(wrapper.text()).toContain('INTERLUDE');
-  });
-
-  it('maps RoomCleared phase to SALLE LIBÉRÉE', async () => {
-    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'RoomCleared' });
-    expect(wrapper.text()).toContain('SALLE LIBÉRÉE');
-  });
-
   it('maps Suspended phase to SUSPENDU', async () => {
     const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Suspended' });
     expect(wrapper.text()).toContain('SUSPENDU');

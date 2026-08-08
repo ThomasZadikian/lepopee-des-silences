@@ -39,10 +39,10 @@ public sealed class AbandonRunCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
-        if (run.Status is not (RunStatus.RoomResolved or RunStatus.Interlude))
+        if (!run.IsAtSafePoint)
         {
             throw new DomainException(
-                "AbandonRun is only allowed from a safe point (RoomResolved or Interlude).");
+                "AbandonRun is only allowed from a safe point (nothing in progress).");
         }
 
         run.Abandon(_clock.UtcNow);

@@ -27,6 +27,7 @@ public sealed class SaveAndExitRunCommandHandlerTests
     public async Task Handle_ShouldSuspendRun_AndPersistIt_WhenAtSafePoint()
     {
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.ProgressCurrentRoom();
 
         var now = new DateTimeOffset(2026, 5, 31, 12, 0, 0, TimeSpan.Zero);
 
@@ -59,31 +60,6 @@ public sealed class SaveAndExitRunCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldSuspendRun_WhenInInterlude()
-    {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-        run.EnterInterlude();
-        run.Status.Should().Be(RunStatus.Interlude);
-
-        var repository = new Mock<IRunRepository>();
-        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
-            .ReturnsAsync(run);
-
-        var clock = new Mock<IClock>();
-        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
-
-        var handler = new SaveAndExitRunCommandHandler(
-            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
-
-        var response = await handler.Handle(
-            new SaveAndExitRunCommand(run.Id.Value),
-            CancellationToken.None);
-
-        response.Run.Status.Should().Be(RunStatus.Suspended.ToString());
-        run.Status.Should().Be(RunStatus.Suspended);
-    }
-
-    [Fact]
     public async Task Handle_ShouldThrowNotFoundException_WhenRunDoesNotExist()
     {
         var unknownRunId = Guid.NewGuid();
@@ -111,8 +87,9 @@ public sealed class SaveAndExitRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldThrowDomainException_WhenRunIsNotAtSafePoint()
     {
-        var run = TestGameEngineFactory.CreateRun();
-        run.Status.Should().Be(RunStatus.Active);
+        // Mid node-selection: the room hasn't returned to free exploration yet.
+        var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(
+            Leds.GameEngine.Domain.Nodes.NodeEventType.Item).Run;
 
         var repository = new Mock<IRunRepository>();
         repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
@@ -130,7 +107,7 @@ public sealed class SaveAndExitRunCommandHandlerTests
 
         await act.Should()
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
-            .WithMessage("*safe point*");
+            .WithMessage("*event must be resolved*");
 
         repository.Verify(
             repo => repo.UpdateAsync(It.IsAny<Run>(), It.IsAny<CancellationToken>()),
@@ -140,7 +117,7 @@ public sealed class SaveAndExitRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldThrowDomainException_WhenRunIsAlreadyClosed()
     {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = TestGameEngineFactory.CreateRun();
         run.Abandon(DateTimeOffset.UtcNow);
 
         var repository = new Mock<IRunRepository>();
@@ -169,6 +146,7 @@ public sealed class SaveAndExitRunCommandHandlerTests
         // combat defeat), so any reputation gained before "Sauvegarder et quitter" used to be
         // silently orphaned if the player started a fresh run instead of resuming.
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.ProgressCurrentRoom();
         run.AdjustNpcRelationshipScore("npc.thomas", 5);
 
         var repository = new Mock<IRunRepository>();
@@ -201,6 +179,7 @@ public sealed class SaveAndExitRunCommandHandlerTests
     public async Task Handle_ShouldNotThrow_WhenReputationSyncFails()
     {
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.ProgressCurrentRoom();
         run.AdjustNpcRelationshipScore("npc.thomas", 5);
 
         var repository = new Mock<IRunRepository>();

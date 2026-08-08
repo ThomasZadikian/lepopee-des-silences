@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
@@ -91,6 +92,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                     seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken,
                     PalaceRoomState.Neutral);
                 AttachCatalogRoom(entryScaffold, entryRoom);
+                await AttachExitPlacementAsync(entryScaffold, seed, roomDepth: 0, cancellationToken);
                 return entryScaffold;
             }
         }
@@ -121,6 +123,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                 IsUnique: false));
         }
 
+        await AttachExitPlacementAsync(room, seed, roomDepth: 0, cancellationToken);
+
         return room;
     }
 
@@ -131,6 +135,77 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         ArgumentNullException.ThrowIfNull(run);
 
         var nextRoomDepth = run.CurrentDepth + 1;
+        var (roomType, themeKey, preResolvedDefinition) = await ResolveNextRoomAsync(run, nextRoomDepth, cancellationToken);
+        var room = await GenerateRoomShapeForDepthAsync(run, roomType, nextRoomDepth, cancellationToken);
+
+        if (preResolvedDefinition is not null)
+        {
+            AttachCatalogRoom(room, preResolvedDefinition);
+        }
+        else
+        {
+            await AttachCatalogRoomAsync(room, themeKey, run.Seed, nextRoomDepth, cancellationToken);
+        }
+
+        await AttachExitPlacementAsync(room, run.Seed, nextRoomDepth, cancellationToken);
+
+        return room;
+    }
+
+    /// <summary>
+    /// Generates the room for one specific, already-chosen catalog destination — the
+    /// confirmed room-exit path (see Run.ConfirmRoomExit). Never rolls a destination when one
+    /// is given: the exit the player confirmed already fixed it when the CURRENT room was
+    /// generated (see AttachExitPlacementAsync), so this only materializes the grid/nodes for
+    /// it. <paramref name="destination"/> is null for a legacy Exit (no reachability graph at
+    /// placement time, see MapNode.ExitDestinationRoomKey) — the only case that still rolls,
+    /// via the same per-theme weighted path <see cref="GenerateNextRoomAsync"/> always used.
+    /// </summary>
+    public async Task<Room> GenerateSpecificRoomAsync(
+        Run run,
+        CatalogRoomDefinition? destination,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+
+        var nextRoomDepth = run.CurrentDepth + 1;
+        RoomType roomType;
+        string? legacyThemeKey = null;
+
+        if (destination is not null)
+        {
+            roomType = MapThemeToScaffold(destination.Theme);
+        }
+        else
+        {
+            (roomType, legacyThemeKey, _) = await ResolveLegacyThemeRoomAsync(run, nextRoomDepth, cancellationToken);
+        }
+
+        var room = await GenerateRoomShapeForDepthAsync(run, roomType, nextRoomDepth, cancellationToken);
+
+        if (destination is not null)
+        {
+            AttachCatalogRoom(room, destination);
+        }
+        else
+        {
+            await AttachCatalogRoomAsync(room, legacyThemeKey!, run.Seed, nextRoomDepth, cancellationToken);
+        }
+
+        await AttachExitPlacementAsync(room, run.Seed, nextRoomDepth, cancellationToken);
+
+        return room;
+    }
+
+    /// <summary>
+    /// The shape-generation steps shared by <see cref="GenerateNextRoomAsync"/> and
+    /// <see cref="GenerateSpecificRoomAsync"/> — Palace-state resolution and grid/node
+    /// generation — factored out since only how <paramref name="roomType"/> gets resolved
+    /// differs between the two callers (weighted roll vs. an already-chosen destination).
+    /// </summary>
+    private async Task<Room> GenerateRoomShapeForDepthAsync(
+        Run run, RoomType roomType, int nextRoomDepth, CancellationToken cancellationToken)
+    {
         var matrixVersion = string.IsNullOrWhiteSpace(run.MarkovMatrixVersion)
             ? MarkovMatrixVersion
             : run.MarkovMatrixVersion;
@@ -138,8 +213,6 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         // Inconscient du Palais : distribution latente dérivée de l'historique de salles
         // (déterministe). Persiste (Advance), accumule (nudge) et biaise la génération.
         var psyche = _psycheEvolver.Evolve(run);
-
-        var (roomType, themeKey, preResolvedDefinition) = await ResolveNextRoomAsync(run, nextRoomDepth, cancellationToken);
 
         var palaceState = _palaceRoomStateResolver.ResolveNextState(
             new PalaceRoomStateResolutionContext(
@@ -164,7 +237,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             nextRoomDepth,
             GeneratorVersion);
 
-        var room = await GenerateRoomShapeAsync(
+        return await GenerateRoomShapeAsync(
             run.Seed,
             GeneratorVersion,
             nextRoomDepth,
@@ -172,17 +245,102 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             random,
             cancellationToken,
             palaceState);
+    }
 
-        if (preResolvedDefinition is not null)
+    /// <summary>
+    /// Fixes this room's exits the moment it's generated — one per catalog room it can reach
+    /// at the next depth (see MapNode.ExitDestinationRoomKey), so every real branch is visible
+    /// to the player instead of a silent weighted pick ("les enchaînements doivent être fixés
+    /// au chargement"). Only resolves cheap catalog identities here — the destination Rooms
+    /// themselves stay unmaterialized until the player actually confirms one (see
+    /// GenerateSpecificRoomAsync), never calls GridRoomGenerator again.
+    /// </summary>
+    private async Task AttachExitPlacementAsync(
+        Room room, string seed, int roomDepth, CancellationToken cancellationToken)
+    {
+        var nextRoomDepth = roomDepth + 1;
+        var currentBinding = room.CatalogBinding;
+        IReadOnlyCollection<CatalogRoomDefinition> eligible = [];
+
+        if (currentBinding is not null)
         {
-            AttachCatalogRoom(room, preResolvedDefinition);
+            var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+            var currentDefinition = definitions.FirstOrDefault(d =>
+                string.Equals(d.Key, currentBinding.Key, StringComparison.OrdinalIgnoreCase));
+
+            if (currentDefinition is not null && !string.IsNullOrWhiteSpace(currentDefinition.WorldKey))
+            {
+                var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
+                eligible = _roomReachabilitySelector.SelectEligibleRooms(
+                    currentDefinition, definitions, worlds, nextRoomDepth);
+            }
+        }
+
+        var exitNodes = new List<MapNode>();
+
+        if (eligible.Count == 0)
+        {
+            // No reachability graph for this room (legacy content with no WorldKey, or a
+            // broken catalog reference) — a single exit whose destination is resolved via
+            // the old per-theme weighted roll at confirmation time, same fallback
+            // ResolveNextRoomAsync already used before this room had visible exits.
+            var legacyCells = PickExitCells(room, seed, roomDepth, count: 1);
+
+            if (legacyCells.Count > 0)
+            {
+                exitNodes.Add(CreateExitNode(legacyCells[0], destinationKey: null, destinationDisplayName: "???"));
+            }
         }
         else
         {
-            await AttachCatalogRoomAsync(room, themeKey, run.Seed, nextRoomDepth, cancellationToken);
+            var cells = PickExitCells(room, seed, roomDepth, eligible.Count);
+            exitNodes.AddRange(eligible.Zip(cells, (definition, cell) =>
+                CreateExitNode(cell, definition.Key, definition.DisplayName)));
         }
 
-        return room;
+        if (exitNodes.Count > 0)
+        {
+            room.AttachExitNodes(exitNodes);
+        }
+    }
+
+    private static MapNode CreateExitNode(
+        (int X, int Y) cell, string? destinationKey, string? destinationDisplayName)
+    {
+        return MapNode.Create(
+            eventType: NodeEventType.Exit,
+            riskLevel: 0,
+            rewardProfile: "exit",
+            row: cell.Y,
+            lane: cell.X,
+            parentNodeIds: Array.Empty<NodeId>(),
+            exitDestinationRoomKey: destinationKey,
+            exitDestinationDisplayName: destinationDisplayName);
+    }
+
+    /// <summary>
+    /// Candidate cells for exit placement: the room's edge, walkable, not already taken by
+    /// another node. Shuffled by a dedicated RNG (its own generator-version discriminator) so
+    /// exit placement never perturbs the room shape's own floor/elevation/obstacle/node roll
+    /// sequence — deterministic given the same seed, independent of it.
+    /// </summary>
+    private IReadOnlyList<(int X, int Y)> PickExitCells(Room room, string seed, int roomDepth, int count)
+    {
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var grid = room.Grid;
+        var occupied = new HashSet<(int X, int Y)>(room.Nodes.Select(n => (n.Lane, n.Row)));
+
+        var candidates = GridRoomGenerator.ComputeEdgeCells(grid.Width, grid.Height, grid.StartX, grid.StartY)
+            .Where(cell => grid.IsWalkable(cell.X, cell.Y) && !occupied.Contains(cell))
+            .ToList();
+
+        var exitRandom = _randomFactory.CreateForRoom(seed, roomDepth, GeneratorVersion + ":exits");
+
+        return candidates.OrderBy(_ => exitRandom.Next()).Take(count).ToArray();
     }
 
     /// <summary>
@@ -306,10 +464,20 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             }
         }
 
-        // SAL-4: the room-type vocabulary + rotation come from the catalog. The resolver
-        // returns a theme key (e.g. "Fear"); we map it to a procedural scaffold enum only
-        // for the template/profile/boss machinery, and keep the key for room selection.
-        //
+        return await ResolveLegacyThemeRoomAsync(run, nextRoomDepth, cancellationToken);
+    }
+
+    /// <summary>
+    /// SAL-4: the room-type vocabulary + rotation come from the catalog. The resolver returns
+    /// a theme key (e.g. "Fear"); we map it to a procedural scaffold enum only for the
+    /// template/profile/boss machinery, and keep the key for room selection. Also the fallback
+    /// a null-key legacy Exit resolves to at confirmation time (see
+    /// GenerateSpecificRoomAsync) — content with no reachability graph never got a fixed
+    /// destination when its exit was placed, so this is where its destination is finally rolled.
+    /// </summary>
+    private async Task<(RoomType RoomType, string ThemeKey, CatalogRoomDefinition? PreResolvedDefinition)> ResolveLegacyThemeRoomAsync(
+        Run run, int nextRoomDepth, CancellationToken cancellationToken)
+    {
         // Mina's legendary "Protection de Him'Lit" tightens the boss-recurrence interval
         // (10 rooms -> ~7) for a ~+50% encounter frequency, owned — not equipped.
         var bossInterval = run.HimLitProtectionEnabled
@@ -323,6 +491,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             cancellationToken,
             bossInterval);
 
+        // No PreResolvedDefinition here on purpose — mirrors the original behavior exactly:
+        // the actual catalog definition is picked later, by AttachCatalogRoomAsync's own
+        // weighted roll (SelectRoomDefinition), not here.
         return (MapThemeToScaffold(nextRoomTypeKey), nextRoomTypeKey, null);
     }
 

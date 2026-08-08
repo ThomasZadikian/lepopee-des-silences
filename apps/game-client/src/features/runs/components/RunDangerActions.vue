@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog.vue';
 
 const props = defineProps<{
-  /** Whether the run is currently at a safe point (RoomResolved or Interlude). */
+  /** Whether the run is currently at a safe point (no active combat/reward, room not mid-resolution). */
   isSafePoint: boolean;
   isSavingAndExiting: boolean;
   isAbandoningRun: boolean;

@@ -7,30 +7,9 @@ namespace Leds.GameEngine.UnitTests.Runs.ResumeRun;
 
 public sealed class ResumeRunTests
 {
-    private static Run CreateRunInRoomResolved() =>
-        TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-
-    private static Run CreateRunInInterlude()
-    {
-        var run = CreateRunInRoomResolved();
-        run.EnterInterlude();
-        return run;
-    }
-
-    private static Run CreateRunSuspendedFromRoomResolved()
-    {
-        var run = CreateRunInRoomResolved();
-        run.SaveAndExit(DateTimeOffset.UtcNow);
-        return run;
-    }
-
-    private static Run CreateRunSuspendedFromInterlude()
-    {
-        var run = CreateRunInInterlude();
-        run.SaveAndExit(DateTimeOffset.UtcNow);
-        return run;
-    }
-
+    // SaveAndExit and ExitMidRoom both only ever suspend a run that is RunStatus.Active
+    // (see Run.IsAtSafePoint / Run.ExitMidRoom) — RoomResolved and Interlude are no longer
+    // produced, so Active is the only pre-suspend status left to cover.
     private static Run CreateRunSuspendedFromActive()
     {
         var run = TestGameEngineFactory.CreateRun();
@@ -53,26 +32,6 @@ public sealed class ResumeRunTests
         run.Resume();
 
         run.Status.Should().Be(RunStatus.Active);
-    }
-
-    [Fact]
-    public void Resume_ShouldRestoreRoomResolvedStatus_WhenPreSuspendWasRoomResolved()
-    {
-        var run = CreateRunSuspendedFromRoomResolved();
-
-        run.Resume();
-
-        run.Status.Should().Be(RunStatus.RoomResolved);
-    }
-
-    [Fact]
-    public void Resume_ShouldRestoreInterludeStatus_WhenPreSuspendWasInterlude()
-    {
-        var run = CreateRunSuspendedFromInterlude();
-
-        run.Resume();
-
-        run.Status.Should().Be(RunStatus.Interlude);
     }
 
     [Fact]
@@ -182,52 +141,5 @@ public sealed class ResumeRunTests
 
         run.ExitMidRoom(DateTimeOffset.UtcNow);
         run.Status.Should().Be(RunStatus.Suspended);
-    }
-
-    [Fact]
-    public void Resume_ShouldAllowEnterNextRoom_WhenRestoredToInterlude()
-    {
-        var run = CreateRunSuspendedFromInterlude();
-
-        run.Resume();
-
-        run.Status.Should().Be(RunStatus.Interlude);
-
-        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 1);
-        run.MoveToNextRoom(nextRoom);
-        run.Status.Should().Be(RunStatus.Active);
-    }
-
-    [Fact]
-    public void Resume_ShouldAllowEnterInterlude_WhenRestoredToRoomResolved()
-    {
-        var run = CreateRunSuspendedFromRoomResolved();
-
-        run.Resume();
-
-        run.Status.Should().Be(RunStatus.RoomResolved);
-
-        run.EnterInterlude();
-        run.Status.Should().Be(RunStatus.Interlude);
-    }
-
-    [Fact]
-    public void Resume_ShouldNotIncrementCurrentRoomIndex_WhenResumedFromAnyStatus()
-    {
-        var runActive = CreateRunSuspendedFromActive();
-        var runInterlude = CreateRunSuspendedFromInterlude();
-        var runResolved = CreateRunSuspendedFromRoomResolved();
-
-        var indexActiveBefore = runActive.CurrentRoomIndex;
-        var indexInterludeBefore = runInterlude.CurrentRoomIndex;
-        var indexResolvedBefore = runResolved.CurrentRoomIndex;
-
-        runActive.Resume();
-        runInterlude.Resume();
-        runResolved.Resume();
-
-        runActive.CurrentRoomIndex.Should().Be(indexActiveBefore);
-        runInterlude.CurrentRoomIndex.Should().Be(indexInterludeBefore);
-        runResolved.CurrentRoomIndex.Should().Be(indexResolvedBefore);
     }
 }

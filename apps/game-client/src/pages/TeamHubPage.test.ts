@@ -39,8 +39,8 @@ vi.mock('../features/party/api/itemsApi', () => ({
 vi.mock('../features/runs/api/runApi', () => ({
   runApi: {
     startRun: vi.fn(), getRun: vi.fn(), resolveCurrentEvent: vi.fn(),
-    progressRun: vi.fn(), generateNextNodes: vi.fn(), enterInterlude: vi.fn(), getInterlude: vi.fn(),
-    enterNextRoom: vi.fn(), saveAndExitRun: vi.fn(), resumeRun: vi.fn(), exitMidRoom: vi.fn(),
+    progressRun: vi.fn(), generateNextNodes: vi.fn(), confirmRoomExit: vi.fn(),
+    saveAndExitRun: vi.fn(), resumeRun: vi.fn(), exitMidRoom: vi.fn(),
     abandonRun: vi.fn(), getPermanentItemCandidates: vi.fn(), confirmPermanentItemSelection: vi.fn(),
     removePalaceLaw: vi.fn(), useCaliceInfini: vi.fn(), syncPartySkills: vi.fn(), syncPartyStats: vi.fn(),
   },

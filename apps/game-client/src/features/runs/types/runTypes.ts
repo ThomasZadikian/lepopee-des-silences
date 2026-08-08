@@ -25,6 +25,12 @@ export type NodeDto = {
   /** 'Revealed' once a cache has been searched out. An unfound cache is not sent as a node at
    * all — only its cell appears in `RoomGridDto.hintCells`. */
   hiddenState?: 'None' | 'Hint' | 'Revealed';
+  /** Exit nodes only (type === 'Exit') — the catalog room this exit leads to. Null means the
+   * destination is only decided when the exit is confirmed (legacy content, no reachability
+   * graph at placement time). */
+  exitDestinationRoomKey?: string | null;
+  /** Exit nodes only — cached display name for exitDestinationRoomKey, "???" when unresolved. */
+  exitDestinationDisplayName?: string | null;
 };
 
 /** Mirrors the backend ContactBehavior enum. */

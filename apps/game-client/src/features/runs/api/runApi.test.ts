@@ -44,22 +44,10 @@ describe('runApi', () => {
     expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/nodes/next');
   });
 
-  it('enterInterlude sends POST request', async () => {
+  it('confirmRoomExit sends POST request', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await runApi.enterInterlude('run-1');
-    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/interlude/enter');
-  });
-
-  it('getInterlude sends GET request', async () => {
-    vi.mocked(gameEngineApi.get).mockResolvedValueOnce({});
-    await runApi.getInterlude('run-1');
-    expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/runs/run-1/interlude');
-  });
-
-  it('enterNextRoom sends POST request', async () => {
-    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await runApi.enterNextRoom('run-1');
-    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/rooms/next');
+    await runApi.confirmRoomExit('run-1', 'node-1');
+    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/nodes/node-1/exit');
   });
 
   it('saveAndExitRun sends POST request', async () => {

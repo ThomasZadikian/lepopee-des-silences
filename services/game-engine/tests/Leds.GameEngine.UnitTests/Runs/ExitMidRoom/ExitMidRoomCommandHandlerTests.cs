@@ -127,18 +127,17 @@ public sealed class ExitMidRoomCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowDomainException_WhenRunIsRoomResolved()
+    public async Task Handle_ShouldSucceed_AfterBossNodeIsResolved()
     {
+        // The boss no longer locks the run out of Active — ExitMidRoom stays available.
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
         var (handler, _, _) = CreateHandler(run);
 
-        var act = () => handler.Handle(
+        var response = await handler.Handle(
             new ExitMidRoomCommand(run.Id.Value),
             CancellationToken.None);
 
-        await act.Should()
-            .ThrowAsync<DomainException>()
-            .WithMessage("*must be active*");
+        response.Run.Status.Should().Be(RunStatus.Suspended.ToString());
     }
 
     [Fact]

@@ -8,7 +8,6 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Npcs;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
-using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Rewards.Loot;
@@ -62,7 +61,6 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<PlayerSkillMerger>();
         services.AddScoped<PlayerStatMerger>();
         services.AddScoped<SkillArchetypeGate>();
-        services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddSingleton<Combats.Tactical.ITacticalCombatFactory, Combats.Tactical.TacticalCombatFactory>();
         services.AddScoped<Combats.Tactical.ITacticalEnemyTurnDriver, Combats.Tactical.TacticalEnemyTurnDriver>();

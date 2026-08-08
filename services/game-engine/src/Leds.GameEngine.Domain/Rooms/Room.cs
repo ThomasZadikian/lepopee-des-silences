@@ -69,6 +69,14 @@ public sealed class Room
 
     public int TotalNodeCount => _nodes.Count;
 
+    /// <summary>
+    /// Nodes excluding Exit — the count the "6 to 30" room-size invariant
+    /// (<see cref="Runs.Run.StartNew"/>) actually means: doorways are structural, appended
+    /// after content generation via <see cref="AttachExitNodes"/>, and shouldn't be able to
+    /// push an already-full room over the ceiling.
+    /// </summary>
+    public int ContentNodeCount => _nodes.Count(n => n.EventType != NodeEventType.Exit);
+
     public RoomState State { get; private set; }
 
     public IReadOnlyCollection<MapNode> Nodes => _nodes.AsReadOnly();
@@ -322,6 +330,64 @@ public sealed class Room
     }
 
     /// <summary>
+    /// Appends the room's exits — one per reachable catalog room, fixed once at generation
+    /// time (see DeterministicRunGenerator's post-processing step) so every real branch is
+    /// visible to the player instead of a silent weighted pick. Added after the room already
+    /// exists (the grid and its other nodes are needed to place them), so it mirrors
+    /// <see cref="Create"/>'s own node-placement invariants rather than <see cref="Create"/>
+    /// enforcing them itself.
+    /// </summary>
+    public void AttachExitNodes(IEnumerable<MapNode> exitNodes)
+    {
+        var nodeList = exitNodes?.ToList() ?? throw new DomainException("Exit nodes are required.");
+
+        if (nodeList.Count == 0)
+        {
+            return;
+        }
+
+        if (nodeList.Any(node => node.EventType != NodeEventType.Exit))
+        {
+            throw new DomainException("AttachExitNodes only accepts Exit nodes.");
+        }
+
+        if (nodeList.Select(node => (node.Lane, node.Row)).Distinct().Count() != nodeList.Count)
+        {
+            throw new DomainException("Two exit nodes cannot occupy the same cell.");
+        }
+
+        foreach (var node in nodeList)
+        {
+            if (node.Lane < 0 || node.Lane >= Grid.Width || node.Row < 0 || node.Row >= Grid.Height)
+            {
+                throw new DomainException("Every exit node must be within the grid bounds.");
+            }
+
+            if (node.Lane == Grid.StartX && node.Row == Grid.StartY)
+            {
+                throw new DomainException("No exit node can occupy the party's starting cell.");
+            }
+
+            if (!Grid.IsFloor(node.Lane, node.Row))
+            {
+                throw new DomainException("Every exit node must stand on one of the room's floor cells.");
+            }
+
+            if (_nodes.Any(existing => existing.Lane == node.Lane && existing.Row == node.Row))
+            {
+                throw new DomainException("An exit node cannot occupy a cell already taken by another node.");
+            }
+
+            if (Grid.FindPath(node.Lane, node.Row) is null)
+            {
+                throw new DomainException("Every exit node must be reachable from the party's starting position.");
+            }
+        }
+
+        _nodes.AddRange(nodeList);
+    }
+
+    /// <summary>
     /// Room-wide difficulty selector: sets every still-available combat-flavored node's
     /// tier to the chosen value at once — a node already resolved, or already committed to
     /// (Selected), keeps whatever tier it had. Silently a no-op if the room has no such node
@@ -502,9 +568,11 @@ public sealed class Room
 
         selectedNode.Resolve();
 
-        State = selectedNode.IsBoss
-            ? RoomState.Completed
-            : RoomState.NodeResolved;
+        // The boss no longer locks the room shut once defeated (see Run.ConfirmRoomExit) —
+        // resolving it is just another resolved node, same as any other. RoomState.Completed
+        // is never produced anymore (kept [Obsolete] on the enum for Rehydrate compatibility
+        // with any row still persisted at that value).
+        State = RoomState.NodeResolved;
     }
 
     /// <summary>There is no next layer to unlock in free exploration — this simply returns the

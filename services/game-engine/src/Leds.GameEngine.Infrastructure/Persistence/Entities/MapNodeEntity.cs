@@ -23,6 +23,13 @@ public sealed class MapNodeEntity
     /// <summary>Name of the ContactBehavior enum value (None/TriggerOnEnter/Blocking).</summary>
     public string ContactBehavior { get; set; } = "None";
 
+    /// <summary>Exit nodes only — the catalog room this exit leads to. Null is meaningful
+    /// (legacy content with no reachability graph); see MapNode.ExitDestinationRoomKey.</summary>
+    public string? ExitDestinationRoomKey { get; set; }
+
+    /// <summary>Exit nodes only — cached display name for <see cref="ExitDestinationRoomKey"/>.</summary>
+    public string? ExitDestinationDisplayName { get; set; }
+
     public RoomEntity? Room { get; set; }
     public List<MapNodeParentNodeEntity> ParentNodeLinks { get; set; } = [];
 }

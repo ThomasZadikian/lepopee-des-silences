@@ -35,13 +35,7 @@ public sealed class RoomReachabilitySelector : IRoomReachabilitySelector
         }
 
         var byKey = allRoomDefinitions.ToDictionary(d => d.Key, StringComparer.OrdinalIgnoreCase);
-
-        var eligible = currentRoom.ReachableRoomKeys
-            .Select(key => byKey.GetValueOrDefault(key))
-            .Where(room => room is not null)
-            .Select(room => room!)
-            .Where(room => nextRoomDepth >= room.MinDepth && nextRoomDepth <= room.MaxDepth)
-            .ToArray();
+        var eligible = ComputeEligible(currentRoom, byKey, nextRoomDepth);
 
         // Empty candidate list covers both the end of a strict chain (no children declared)
         // and a generation dead-end (children declared but none in the current depth range)
@@ -57,6 +51,48 @@ public sealed class RoomReachabilitySelector : IRoomReachabilitySelector
         }
 
         return SelectWeighted(currentRoom, eligible, themeAffinities, visitedRoomKeysThisRun, nextRoomDepth, seed);
+    }
+
+    public IReadOnlyCollection<CatalogRoomDefinition> SelectEligibleRooms(
+        CatalogRoomDefinition currentRoom,
+        IReadOnlyCollection<CatalogRoomDefinition> allRoomDefinitions,
+        IReadOnlyCollection<CatalogWorldDefinition> worlds,
+        int nextRoomDepth)
+    {
+        ArgumentNullException.ThrowIfNull(currentRoom);
+        ArgumentNullException.ThrowIfNull(allRoomDefinitions);
+        ArgumentNullException.ThrowIfNull(worlds);
+
+        if (string.IsNullOrWhiteSpace(currentRoom.WorldKey))
+        {
+            return [];
+        }
+
+        var byKey = allRoomDefinitions.ToDictionary(d => d.Key, StringComparer.OrdinalIgnoreCase);
+        var eligible = ComputeEligible(currentRoom, byKey, nextRoomDepth);
+
+        if (eligible.Length > 0)
+        {
+            return eligible;
+        }
+
+        // Same "never a true dead end" fallback as SelectNextRoom, wrapped as a single exit
+        // instead of a silent pick.
+        var entryRoom = ResolveWorldEntryRoom(currentRoom.WorldKey, worlds, byKey);
+        return entryRoom is null ? [] : [entryRoom];
+    }
+
+    private static CatalogRoomDefinition[] ComputeEligible(
+        CatalogRoomDefinition currentRoom,
+        IReadOnlyDictionary<string, CatalogRoomDefinition> byKey,
+        int nextRoomDepth)
+    {
+        return currentRoom.ReachableRoomKeys
+            .Select(key => byKey.GetValueOrDefault(key))
+            .Where(room => room is not null)
+            .Select(room => room!)
+            .Where(room => nextRoomDepth >= room.MinDepth && nextRoomDepth <= room.MaxDepth)
+            .ToArray();
     }
 
     private static CatalogRoomDefinition? ResolveWorldEntryRoom(

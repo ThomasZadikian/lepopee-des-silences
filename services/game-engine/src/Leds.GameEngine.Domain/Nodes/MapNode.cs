@@ -20,7 +20,9 @@ public sealed class MapNode
         NodeState state,
         HiddenState hiddenState,
         DangerTell dangerTell,
-        ContactBehavior contactBehavior)
+        ContactBehavior contactBehavior,
+        string? exitDestinationRoomKey,
+        string? exitDestinationDisplayName)
     {
         HiddenState = hiddenState;
         DangerTell = dangerTell;
@@ -35,6 +37,8 @@ public sealed class MapNode
         _parentNodeIds = parentNodeIds.ToList();
         IsBoss = isBoss;
         State = state;
+        ExitDestinationRoomKey = exitDestinationRoomKey;
+        ExitDestinationDisplayName = exitDestinationDisplayName;
     }
 
     public NodeId Id { get; }
@@ -78,6 +82,21 @@ public sealed class MapNode
 
     /// <summary>What walking onto this node's cell does. See <see cref="ContactBehavior"/>.</summary>
     public ContactBehavior ContactBehavior { get; }
+
+    /// <summary>
+    /// The catalog room this exit leads to (<see cref="NodeEventType.Exit"/> only, otherwise
+    /// always null). Null is itself a meaningful value on an Exit node: it marks a room with
+    /// no reachability graph (legacy catalog content with no WorldKey) — the destination is
+    /// resolved via the old per-theme weighted roll at confirmation time instead of a fixed key.
+    /// </summary>
+    public string? ExitDestinationRoomKey { get; }
+
+    /// <summary>
+    /// Cached display name for <see cref="ExitDestinationRoomKey"/>, set once at generation
+    /// time so the node popup never needs a second catalog round-trip. A placeholder ("???")
+    /// when the destination is not fixed (see <see cref="ExitDestinationRoomKey"/>).
+    /// </summary>
+    public string? ExitDestinationDisplayName { get; }
 
     /// <summary>
     /// A hidden node is not enterable and must not be advertised to the client until searched —
@@ -126,7 +145,9 @@ public sealed class MapNode
         RiskTier? combatRiskTier = null,
         HiddenState hiddenState = HiddenState.None,
         DangerTell dangerTell = DangerTell.None,
-        ContactBehavior contactBehavior = ContactBehavior.None)
+        ContactBehavior contactBehavior = ContactBehavior.None,
+        string? exitDestinationRoomKey = null,
+        string? exitDestinationDisplayName = null)
     {
         if (riskLevel is < 0 or > 100)
         {
@@ -173,9 +194,16 @@ public sealed class MapNode
 
         // The boss is the room's objective and the fallback the party can always fall back on
         // (see Room.ChallengeBossRemotely) — hiding it could strand a run with nothing to do.
-        if (isBoss && hiddenState != HiddenState.None)
+        // An exit is likewise always a discoverable landmark, never a search-only cache.
+        if ((isBoss || eventType == NodeEventType.Exit) && hiddenState != HiddenState.None)
         {
-            throw new DomainException("A boss MapNode cannot be hidden.");
+            throw new DomainException("A boss or exit MapNode cannot be hidden.");
+        }
+
+        if (eventType != NodeEventType.Exit
+            && (exitDestinationRoomKey is not null || exitDestinationDisplayName is not null))
+        {
+            throw new DomainException($"Non-exit node type '{eventType}' must not carry an exit destination.");
         }
 
         // A node starts either plainly visible or waiting to be found; 'Revealed' is a state you
@@ -205,7 +233,9 @@ public sealed class MapNode
             initialState,
             hiddenState,
             dangerTell,
-            contactBehavior);
+            contactBehavior,
+            exitDestinationRoomKey,
+            exitDestinationDisplayName);
     }
 
     public void AddParent(NodeId parentId)
@@ -390,11 +420,14 @@ public sealed class MapNode
         RiskTier? combatRiskTier = null,
         HiddenState hiddenState = HiddenState.None,
         DangerTell dangerTell = DangerTell.None,
-        ContactBehavior contactBehavior = ContactBehavior.None)
+        ContactBehavior contactBehavior = ContactBehavior.None,
+        string? exitDestinationRoomKey = null,
+        string? exitDestinationDisplayName = null)
     {
         var node = new MapNode(
             id, eventType, row, lane, riskLevel, combatRiskTier, rewardProfile, parentNodeIds,
-            isBoss, state, hiddenState, dangerTell, contactBehavior);
+            isBoss, state, hiddenState, dangerTell, contactBehavior,
+            exitDestinationRoomKey, exitDestinationDisplayName);
         node.ChosenEventOptionId = chosenEventOptionId;
         return node;
     }

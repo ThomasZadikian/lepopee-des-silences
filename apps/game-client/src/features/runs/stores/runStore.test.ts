@@ -13,9 +13,7 @@ vi.mock('../api/runApi', () => ({
     resolveCurrentEvent: vi.fn(),
     progressRun: vi.fn(),
     generateNextNodes: vi.fn(),
-    enterInterlude: vi.fn(),
-    getInterlude: vi.fn(),
-    enterNextRoom: vi.fn(),
+    confirmRoomExit: vi.fn(),
     saveAndExitRun: vi.fn(),
     resumeRun: vi.fn(),
     exitMidRoom: vi.fn(),
@@ -62,11 +60,6 @@ describe('useRunStore computed properties', () => {
   it('currentRoom returns null when no run', () => {
     const store = useRunStore();
     expect(store.currentRoom).toBeNull();
-  });
-
-  it('isRoomCleared is false when no run', () => {
-    const store = useRunStore();
-    expect(store.isRoomCleared).toBe(false);
   });
 
   it('shouldShowRunFailedPanel is false when no run', () => {
@@ -175,13 +168,6 @@ describe('useRunStore computed properties', () => {
     expect(store.gameplayPhase).toBe('Reward');
   });
 
-  it('gameplayPhase returns Interlude when interlude exists', () => {
-    const store = useRunStore();
-    store.currentRun = { id: 'run-1', status: 'Active' } as any;
-    store.currentInterlude = { id: 'interlude-1' } as any;
-    expect(store.gameplayPhase).toBe('Interlude');
-  });
-
   it('gameplayPhase returns NpcDialogue when dialogue exists', () => {
     const store = useRunStore();
     store.currentRun = { id: 'run-1', status: 'Active' } as any;
@@ -253,7 +239,6 @@ describe('useRunStore actions', () => {
     store.lastOutcome = { id: 'outcome-1' } as any;
     store.npcDialogue = { nodeKey: 'npc-1' } as any;
     store.lastChoiceResult = { id: 'result-1' } as any;
-    store.currentInterlude = { id: 'interlude-1' } as any;
     store.error = 'error';
 
     store.clearCurrentRun();
@@ -263,7 +248,6 @@ describe('useRunStore actions', () => {
     expect(store.lastOutcome).toBeNull();
     expect(store.npcDialogue).toBeNull();
     expect(store.lastChoiceResult).toBeNull();
-    expect(store.currentInterlude).toBeNull();
     expect(store.error).toBeNull();
   });
 

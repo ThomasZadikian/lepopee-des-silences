@@ -11,8 +11,6 @@ import MerchantPanel from '../features/events/components/MerchantPanel.vue';
 import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
 import ReputationEffectPopup from '../features/events/components/ReputationEffectPopup.vue';
 import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
-import InterludePanel from '../features/interlude/InterludePanel.vue';
-import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
 import JournalModal from '../features/runs/components/JournalModal.vue';
 import PermanentItemSelectionPanel from '../features/runs/components/PermanentItemSelectionPanel.vue';
@@ -84,9 +82,13 @@ async function handleTransitionContinue() {
   transitionAfterChoice.value = false;
 }
 
+// Safe point: nothing in progress — no boss dependency anymore (see runStore/backend
+// Run.IsAtSafePoint). Active run, no combat, no pending reward, room back in free exploration.
 const isSafePoint = computed(() =>
-  runStore.currentRun?.status === 'RoomResolved' ||
-  runStore.currentRun?.status === 'Interlude',
+  runStore.currentRun?.status === 'Active' &&
+  !runStore.currentRun?.activeCombatId &&
+  !runStore.currentRun?.pendingRewardOfferId &&
+  runStore.currentRoom?.state === 'Active',
 );
 
 const showConfirmAbandon = ref(false);
@@ -257,6 +259,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @move-request="runStore.movePartyTo"
               @enter-node="runStore.enterGridNode"
               @wager-node="runStore.wagerNode"
+              @confirm-exit="runStore.confirmRoomExit"
               @set-room-risk-tier="runStore.setRoomRiskTier"
               @challenge-boss="runStore.challengeBossRemotely"
               @search="runStore.searchParty"
@@ -473,30 +476,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <h3 class="es-h2">Le champ de bataille se met en place.</h3>
           <p class="es-lede es-dim">Préparation de l'ordre d'initiative…</p>
         </section>
-      </template>
-
-      <!-- ── Interlude phase ── -->
-      <template v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude">
-        <InterludePanel
-          :interlude="runStore.currentInterlude"
-          :is-loading="runStore.isEnteringNextRoom"
-          :is-saving-and-exiting="runStore.isSavingAndExiting"
-          :is-abandoning-run="runStore.isAbandoningRun"
-          :run-action-error="runStore.runActionError"
-          @enter-next-room="runStore.enterNextRoom"
-          @save-and-exit="handleSaveAndExit"
-          @abandon="requestAbandon"
-        />
-      </template>
-
-      <!-- ── Room cleared transition ── -->
-      <template v-else-if="runStore.gameplayPhase === 'RoomCleared'">
-        <RoomClearedPanel
-          :room="runStore.currentRun.currentRoom"
-          :current-room-index="runStore.currentRun.currentRoomIndex"
-          :is-loading="runStore.isEnteringInterlude"
-          @enter-interlude="runStore.enterInterlude"
-        />
       </template>
 
       <!-- ── Suspended ── -->

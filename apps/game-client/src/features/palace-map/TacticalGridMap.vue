@@ -53,6 +53,7 @@ const emit = defineEmits<{
   moveRequest: [x: number, y: number, plannedSteps: number];
   enterNode: [nodeId: string];
   wagerNode: [nodeId: string];
+  confirmExit: [nodeId: string];
   setRoomRiskTier: [tier: string];
   challengeBoss: [];
   search: [];
@@ -961,7 +962,12 @@ function toggleInfoCollapsed() {
               <span class="es-kicker">{{ nodeTypeLabel(standingNode) }}</span>
             </div>
 
-            <p class="tgrid__node-popup-desc">{{ nodeTypeDescription(standingNode) }}</p>
+            <p class="tgrid__node-popup-desc">
+              <template v-if="standingNode.type === 'Exit'">
+                Sortie vers : {{ standingNode.exitDestinationDisplayName ?? '???' }}
+              </template>
+              <template v-else>{{ nodeTypeDescription(standingNode) }}</template>
+            </p>
 
             <div v-if="standingNodeRiskDisplay" class="tgrid__node-popup-risk">
               <span class="es-label">Danger</span>
@@ -979,7 +985,15 @@ function toggleInfoCollapsed() {
               >
                 Provoquer le destin
               </button>
-              <button type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
+              <button
+                v-if="standingNode.type === 'Exit'"
+                type="button"
+                class="es-btn"
+                @click="emit('confirmExit', standingNode.id)"
+              >
+                Franchir →
+              </button>
+              <button v-else type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
                 Entrer →
               </button>
             </div>

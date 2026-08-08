@@ -15,7 +15,7 @@ using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
-using Leds.GameEngine.Application.Runs.MoveToNextRoom;
+using Leds.GameEngine.Application.Runs.ConfirmRoomExit;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.RaiseNodeRisk;
@@ -107,15 +107,16 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("{runId:guid}/rooms/next")]
-    [ProducesResponseType(typeof(MoveToNextRoomResponse), StatusCodes.Status200OK)]
+    [HttpPost("{runId:guid}/nodes/{nodeId:guid}/exit")]
+    [ProducesResponseType(typeof(ConfirmRoomExitResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MoveToNextRoomResponse>> MoveToNextRoom(
-    Guid runId,
-    CancellationToken cancellationToken)
+    public async Task<ActionResult<ConfirmRoomExitResponse>> ConfirmRoomExit(
+        Guid runId,
+        Guid nodeId,
+        CancellationToken cancellationToken)
     {
-        var command = new MoveToNextRoomCommand(runId);
+        var command = new ConfirmRoomExitCommand(runId, nodeId);
 
         var response = await _sender.Send(command, cancellationToken);
 

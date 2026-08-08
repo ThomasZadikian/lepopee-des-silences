@@ -24,6 +24,7 @@ export const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
   Merchant: 'marchand',
   Law: 'loi',
   Curse: 'malediction',
+  Exit: 'seuil',
 };
 
 /**
@@ -46,6 +47,7 @@ export const PROP_KIND_BY_NODE_TYPE: Record<string, PropKind> = {
   Rare: 'elite',
   RoomBoss: 'boss',
   FinalBoss: 'boss',
+  Exit: 'arch',
 };
 
 /**
@@ -86,6 +88,7 @@ export const NODE_TYPE_LABEL: Record<string, string> = {
   Merchant: 'Marchand',
   Law: 'Décret du Palais',
   Curse: 'Malédiction',
+  Exit: 'Sortie',
 };
 
 // Fuller flavor text for the side panel's description.
@@ -93,7 +96,7 @@ export const NODE_TYPE_DESCRIPTION: Record<string, string> = {
   Combat: 'Un affrontement direct vous attend dans les profondeurs du Palais.',
   Elite: "Un adversaire d'élite barre le passage. La victoire sera coûteuse.",
   Rare: "Une présence rare s'est manifestée — imprévisible et potentiellement précieuse.",
-  RoomBoss: 'Le Gardien de cette salle attend. Aucun passage sans combat.',
+  RoomBoss: "Le Gardien de cette salle. L'affronter n'est plus la seule voie.",
   FinalBoss: 'La présence finale du Palais. Tout converge ici.',
   Rest: 'Un refuge temporaire. Reprendre souffle avant de continuer.',
   Item: 'Un objet a été laissé ici. Son origine reste obscure.',
@@ -102,6 +105,7 @@ export const NODE_TYPE_DESCRIPTION: Record<string, string> = {
   Law: 'Une règle du Palais inscrite dans ses murs. La lire vous changera.',
   Curse: 'Une malédiction latente. Y toucher a un coût.',
   Memory: "Un écho du passé. Ce souvenir n'est pas le vôtre.",
+  Exit: 'Une sortie vers une autre salle du Palais.',
 };
 
 export const RISK_TIER_DISPLAY: Record<string, { text: string; cls: string }> = {

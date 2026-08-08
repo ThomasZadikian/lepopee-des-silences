@@ -209,23 +209,14 @@ public sealed class RunPromulgationTests
 
     private static void AdvanceToNextRoom(Run run)
     {
-        if (run.Status == RunStatus.Active)
-        {
-            var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
-
-            TestGameEngineFactory.EnterNode(run, bossNode);
-            run.ResolveCurrentEvent();
-        }
-
-        run.EnterInterlude();
-        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        TestGameEngineFactory.ConfirmExitToNextRoom(run);
     }
 
     // ---------------------------------------------------------------------------
     // "Loi de l'Oubli Partiel" — the forgotten skill is drawn once at promulgation
     // time (Run.PickForgottenSkill), then cleared with a +8 stat-point payout signal
     // when the floor-scoped modifier is consumed (Run.ConsumeFloorEndModifiers /
-    // Run.MoveToNextRoom's FloorEndModifierConsumptionResult return).
+    // Run.ConfirmRoomExit's FloorEndModifierConsumptionResult return).
     // ---------------------------------------------------------------------------
 
     private static PalaceLaw CreateOubliPartielLaw(string key = "law.oubli-partiel") => PalaceLaw.Create(
@@ -300,13 +291,7 @@ public sealed class RunPromulgationTests
         var run = CreateRunWithMultipleSkills();
         run.PromulgateLaw(CreateOubliPartielLaw());
 
-        // A room can only be left once its boss is cleared — EnterInterlude enforces
-        // RunStatus.RoomResolved.
-        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
-        run.ResolveCurrentEvent();
-
-        run.EnterInterlude();
-        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        var result = TestGameEngineFactory.ConfirmExitToNextRoom(run);
 
         result.OubliPartielPayoutDue.Should().BeFalse();
         run.ForgottenSkillKey.Should().NotBeNull();
@@ -318,16 +303,7 @@ public sealed class RunPromulgationTests
 
         for (var i = 0; i < 10; i++)
         {
-            if (run.Status == RunStatus.Active)
-            {
-                var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
-
-                TestGameEngineFactory.EnterNode(run, bossNode);
-                run.ResolveCurrentEvent();
-            }
-
-            run.EnterInterlude();
-            result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+            result = TestGameEngineFactory.ConfirmExitToNextRoom(run);
         }
 
         return result;
@@ -335,7 +311,7 @@ public sealed class RunPromulgationTests
 
     // ---------------------------------------------------------------------------
     // "Loi de l'Impôt du Seuil" — the toll charge itself happens in
-    // MoveToNextRoomCommandHandler (application layer, needs the currency gateway).
+    // ConfirmRoomExitCommandHandler (application layer, needs the currency gateway).
     // Here we only verify the domain-level insolvency debuff Run.
     // ApplyRoomTollInsolvencyDebuff applies.
     // ---------------------------------------------------------------------------
@@ -359,7 +335,7 @@ public sealed class RunPromulgationTests
     // ---------------------------------------------------------------------------
     // "Loi du Prêteur" — the CurrencyGainBonusPercent modifier doubles as this law's
     // "active" marker; its floor-end consumption signals the clawback (the actual
-    // gateway read/spend happens in MoveToNextRoomCommandHandler).
+    // gateway read/spend happens in ConfirmRoomExitCommandHandler).
     // ---------------------------------------------------------------------------
 
     private static PalaceLaw CreatePreteurLaw(string key = "law.preteur") => PalaceLaw.Create(
@@ -388,13 +364,7 @@ public sealed class RunPromulgationTests
         var run = TestGameEngineFactory.CreateRun();
         run.PromulgateLaw(CreatePreteurLaw());
 
-        // A room can only be left once its boss is cleared — EnterInterlude enforces
-        // RunStatus.RoomResolved.
-        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
-        run.ResolveCurrentEvent();
-
-        run.EnterInterlude();
-        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        var result = TestGameEngineFactory.ConfirmExitToNextRoom(run);
 
         result.PreteurClawbackDue.Should().BeFalse();
     }
@@ -510,13 +480,7 @@ public sealed class RunPromulgationTests
         var severeModifier = run.RunModifiers.Single(m => m.SourceKey == "law-severe-test");
         severeModifier.IsConsumed.Should().BeTrue();
 
-        // A room can only be left once its boss is cleared — EnterInterlude enforces
-        // RunStatus.RoomResolved.
-        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
-        run.ResolveCurrentEvent();
-
-        run.EnterInterlude();
-        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        TestGameEngineFactory.ConfirmExitToNextRoom(run);
 
         severeModifier.IsConsumed.Should().BeFalse();
         run.SuspendedSevereLawModifierIds.Should().BeEmpty();

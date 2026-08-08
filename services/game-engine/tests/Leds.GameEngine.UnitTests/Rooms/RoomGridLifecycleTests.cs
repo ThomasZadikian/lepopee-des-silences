@@ -168,8 +168,10 @@ public sealed class RoomGridLifecycleTests
     }
 
     [Fact]
-    public void ResolveSelectedGridNodeEvent_ShouldCompleteTheRoom_WhenBossIsResolved()
+    public void ResolveSelectedGridNodeEvent_ShouldResolveTheRoom_WhenBossIsResolved()
     {
+        // The boss no longer locks the room shut once defeated (see Run.ConfirmRoomExit) —
+        // resolving it is just another resolved node, same as any other.
         var room = CreateGridRoom();
         var boss = room.Nodes.Single(n => n.IsBoss);
         room.MoveParty(boss.Lane, boss.Row);
@@ -177,7 +179,7 @@ public sealed class RoomGridLifecycleTests
 
         room.ResolveSelectedNodeEvent();
 
-        room.State.Should().Be(RoomState.Completed);
+        room.State.Should().Be(RoomState.NodeResolved);
     }
 
     [Fact]

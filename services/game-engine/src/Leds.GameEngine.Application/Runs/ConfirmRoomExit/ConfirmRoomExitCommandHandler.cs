@@ -1,4 +1,6 @@
-﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Players.Ports;
@@ -9,30 +11,39 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
-namespace Leds.GameEngine.Application.Runs.MoveToNextRoom;
+namespace Leds.GameEngine.Application.Runs.ConfirmRoomExit;
 
-public sealed class MoveToNextRoomCommandHandler
-    : IRequestHandler<MoveToNextRoomCommand, MoveToNextRoomResponse>
+/// <summary>
+/// "Valider la sortie" — replaces the old EnterInterlude + MoveToNextRoom pair. Walking onto
+/// an Exit node (see NodeEventType.Exit) and confirming it generates the destination room —
+/// lazily, only now, never at the moment the current room's exits were fixed — and performs
+/// the transition. No longer requires the room's boss to be defeated.
+/// </summary>
+public sealed class ConfirmRoomExitCommandHandler
+    : IRequestHandler<ConfirmRoomExitCommand, ConfirmRoomExitResponse>
 {
     private readonly IRunRepository _runRepository;
     private readonly IRunGenerator _runGenerator;
+    private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly IAmbientPalaceLawPromulgator _palaceLawPromulgator;
     private readonly IPlayerProfileGateway _playerProfileGateway;
 
-    public MoveToNextRoomCommandHandler(
+    public ConfirmRoomExitCommandHandler(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
+        ICatalogContentGateway catalogContentGateway,
         IAmbientPalaceLawPromulgator palaceLawPromulgator,
         IPlayerProfileGateway playerProfileGateway)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
+        _catalogContentGateway = catalogContentGateway;
         _palaceLawPromulgator = palaceLawPromulgator;
         _playerProfileGateway = playerProfileGateway;
     }
 
-    public async Task<MoveToNextRoomResponse> Handle(
-        MoveToNextRoomCommand request,
+    public async Task<ConfirmRoomExitResponse> Handle(
+        ConfirmRoomExitCommand request,
         CancellationToken cancellationToken)
     {
         var runId = new RunId(request.RunId);
@@ -44,16 +55,21 @@ public sealed class MoveToNextRoomCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
-        if (run.Status != RunStatus.Interlude)
+        var leftRoom = run.CurrentRoom;
+        var exitNode = leftRoom.GetNode(new NodeId(request.NodeId));
+
+        if (exitNode.EventType != NodeEventType.Exit)
         {
-            throw new DomainException(
-                "Cannot enter the next room: run must be in Interlude state.");
+            throw new DomainException("This node is not an exit.");
         }
 
-        var leftRoom = run.CurrentRoom;
-        var nextRoom = await _runGenerator.GenerateNextRoomAsync(run, cancellationToken);
+        // Re-resolve fresh rather than trusting a possibly-stale cached definition — the
+        // catalog can change between when this exit was placed and when it's confirmed.
+        var destination = await ResolveDestinationAsync(exitNode, cancellationToken);
 
-        var floorEndResult = run.MoveToNextRoom(nextRoom);
+        var nextRoom = await _runGenerator.GenerateSpecificRoomAsync(run, destination, cancellationToken);
+
+        var floorEndResult = run.ConfirmRoomExit(exitNode.Id, nextRoom);
 
         // "Loi de l'Oubli Partiel" (law.oubli-partiel): the floor just ended while the
         // forgotten-skill modifier was still active — pay out the compensation now that
@@ -110,7 +126,26 @@ public sealed class MoveToNextRoomCommandHandler
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new MoveToNextRoomResponse(RunDto.FromDomain(run));
+        return new ConfirmRoomExitResponse(RunDto.FromDomain(run));
+    }
+
+    private async Task<CatalogRoomDefinition?> ResolveDestinationAsync(
+        MapNode exitNode, CancellationToken cancellationToken)
+    {
+        if (exitNode.ExitDestinationRoomKey is null)
+        {
+            // Legacy exit (no reachability graph at placement time) — GenerateSpecificRoomAsync
+            // resolves this itself via the old per-theme weighted roll.
+            return null;
+        }
+
+        var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+        var destination = definitions.FirstOrDefault(d =>
+            string.Equals(d.Key, exitNode.ExitDestinationRoomKey, StringComparison.OrdinalIgnoreCase));
+
+        return destination
+            ?? throw new DomainException(
+                "This exit no longer leads anywhere — the catalog room it pointed to is gone.");
     }
 
     private static bool HasResolvedCombatNode(Room room)

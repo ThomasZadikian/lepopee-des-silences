@@ -211,7 +211,7 @@ public sealed class RunTests
     }
 
     [Fact]
-    public void ResolveCurrentEvent_ShouldCompleteRoom_AndSetRunRoomResolved_WhenRoomBossIsResolved()
+    public void ResolveCurrentEvent_ShouldResolveRoomBossNode_WithoutCompletingRoomOrRunStatus()
     {
         var run = TestGameEngineFactory.CreateRun();
 
@@ -221,18 +221,20 @@ public sealed class RunTests
         run.ResolveCurrentEvent();
 
         bossNode.State.Should().Be(NodeState.Resolved);
-        run.CurrentRoom.State.Should().Be(RoomState.Completed);
-        run.Status.Should().Be(RunStatus.RoomResolved);
+        run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
+        run.Status.Should().Be(RunStatus.Active,
+            because: "the boss no longer locks the room shut or advances Run status — see ConfirmRoomExit.");
     }
 
     [Fact]
-    public void MoveToNextRoom_ShouldThrow_WhenRunIsCompleted()
+    public void ConfirmRoomExit_ShouldThrow_WhenRunIsCompleted()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         run.CompleteRun(DateTimeOffset.UtcNow);
 
-        var act = () => run.MoveToNextRoom(
+        var act = () => run.ConfirmRoomExit(
+            new NodeId(Guid.NewGuid()),
             TestGameEngineFactory.CreateThresholdRoom(depth: 1));
 
         act.Should()
@@ -241,13 +243,14 @@ public sealed class RunTests
     }
 
     [Fact]
-    public void MoveToNextRoom_ShouldThrow_WhenRunIsFailed()
+    public void ConfirmRoomExit_ShouldThrow_WhenRunIsFailed()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         run.FailRun(DateTimeOffset.UtcNow);
 
-        var act = () => run.MoveToNextRoom(
+        var act = () => run.ConfirmRoomExit(
+            new NodeId(Guid.NewGuid()),
             TestGameEngineFactory.CreateThresholdRoom(depth: 1));
 
         act.Should()

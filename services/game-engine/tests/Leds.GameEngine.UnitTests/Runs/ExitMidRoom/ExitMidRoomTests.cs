@@ -246,29 +246,17 @@ public sealed class ExitMidRoomTests
     }
 
     [Fact]
-    public void ExitMidRoom_ShouldFail_WhenRunIsRoomResolved()
+    public void ExitMidRoom_ShouldSucceed_AfterBossNodeIsResolved()
     {
+        // The boss no longer locks the run out of Active — resolving it (with or without a
+        // reward selected) still leaves ExitMidRoom available, same as any other node.
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-        run.Status.Should().Be(RunStatus.RoomResolved);
+        run.Status.Should().Be(RunStatus.Active);
 
         var act = () => run.ExitMidRoom(DateTimeOffset.UtcNow);
 
-        act.Should()
-            .Throw<DomainException>()
-            .WithMessage("*must be active*");
-    }
-
-    [Fact]
-    public void ExitMidRoom_ShouldFail_WhenRunIsInterlude()
-    {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-        run.EnterInterlude();
-
-        var act = () => run.ExitMidRoom(DateTimeOffset.UtcNow);
-
-        act.Should()
-            .Throw<DomainException>()
-            .WithMessage("*must be active*");
+        act.Should().NotThrow();
+        run.Status.Should().Be(RunStatus.Suspended);
     }
 
     [Fact]

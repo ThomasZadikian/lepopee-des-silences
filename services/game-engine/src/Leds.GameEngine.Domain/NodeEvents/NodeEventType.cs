@@ -13,5 +13,12 @@ public enum NodeEventType
     Merchant = 8,
     Law = 9,
     Curse = 10,
-    Rare = 11
+    Rare = 11,
+
+    /// <summary>
+    /// A room's physical exit toward one specific reachable catalog room (see
+    /// MapNode.ExitDestinationRoomKey). Contact behavior is always None — the party must
+    /// deliberately stand on it and confirm, never auto-triggered.
+    /// </summary>
+    Exit = 12
 }

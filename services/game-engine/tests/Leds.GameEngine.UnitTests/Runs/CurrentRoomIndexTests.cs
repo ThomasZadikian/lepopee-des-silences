@@ -142,16 +142,15 @@ public sealed class CurrentRoomIndexTests
     }
 
     [Fact]
-    public void CompleteRoomBoss_ShouldNotIncrementCurrentRoomIndex_InThisPr()
+    public void CompleteRoomBoss_ShouldNotIncrementCurrentRoomIndex()
     {
-        // Resolve all nodes in the room until the boss is resolved.
+        // Resolve the boss node.
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
         run.CurrentRoomIndex.Should().Be(0,
-            because: "In PR 0.1.10, boss resolution sets RoomResolved status but does not " +
-                     "increment CurrentRoomIndex — that is the responsibility of MoveToNextRoom " +
-                     "(implemented in a future PR).");
-        run.Status.Should().Be(RunStatus.RoomResolved,
-            because: "Completing the boss marks the room as resolved.");
+            because: "boss resolution does not increment CurrentRoomIndex — that is the " +
+                     "responsibility of Run.ConfirmRoomExit.");
+        run.Status.Should().Be(RunStatus.Active,
+            because: "the boss no longer locks the run's status — see Run.ConfirmRoomExit.");
     }
 }

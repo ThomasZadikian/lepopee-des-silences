@@ -18,21 +18,6 @@ public sealed class ResumeRunCommandHandlerTests
         return run;
     }
 
-    private static Run CreateSuspendedFromRoomResolved()
-    {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-        run.SaveAndExit(DateTimeOffset.UtcNow);
-        return run;
-    }
-
-    private static Run CreateSuspendedFromInterlude()
-    {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
-        run.EnterInterlude();
-        run.SaveAndExit(DateTimeOffset.UtcNow);
-        return run;
-    }
-
     private static (ResumeRunCommandHandler handler, Mock<IRunRepository> repo)
         CreateHandler(Run run)
     {
@@ -62,50 +47,6 @@ public sealed class ResumeRunCommandHandlerTests
                 It.Is<Run>(candidate =>
                     candidate.Id == run.Id &&
                     candidate.Status == RunStatus.Active),
-                CancellationToken.None),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldResumeRun_AndPersistRun_WhenPreSuspendWasRoomResolved()
-    {
-        var run = CreateSuspendedFromRoomResolved();
-        var (handler, repo) = CreateHandler(run);
-
-        var response = await handler.Handle(
-            new ResumeRunCommand(run.Id.Value),
-            CancellationToken.None);
-
-        response.Run.Status.Should().Be(RunStatus.RoomResolved.ToString());
-        response.Run.CanResume.Should().BeFalse();
-
-        repo.Verify(
-            r => r.UpdateAsync(
-                It.Is<Run>(candidate =>
-                    candidate.Id == run.Id &&
-                    candidate.Status == RunStatus.RoomResolved),
-                CancellationToken.None),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldResumeRun_AndPersistRun_WhenPreSuspendWasInterlude()
-    {
-        var run = CreateSuspendedFromInterlude();
-        var (handler, repo) = CreateHandler(run);
-
-        var response = await handler.Handle(
-            new ResumeRunCommand(run.Id.Value),
-            CancellationToken.None);
-
-        response.Run.Status.Should().Be(RunStatus.Interlude.ToString());
-        response.Run.CanResume.Should().BeFalse();
-
-        repo.Verify(
-            r => r.UpdateAsync(
-                It.Is<Run>(candidate =>
-                    candidate.Id == run.Id &&
-                    candidate.Status == RunStatus.Interlude),
                 CancellationToken.None),
             Times.Once);
     }

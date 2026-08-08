@@ -29,11 +29,6 @@ import {
   type CurrentEventChoiceResultDto,
 } from '../../events/types/eventTypes';
 
-import {
-  unwrapInterludeResponse,
-  type InterludeDto,
-} from '../../interlude/interludeTypes';
-
 export const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 
 // ---------------------------------------------------------------------------
@@ -72,9 +67,7 @@ export const useRunStore = defineStore('run', () => {
   const npcDialogueEnded = ref(false);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
-  const currentInterlude = ref<InterludeDto | null>(null);
-  const isEnteringInterlude = ref(false);
-  const isEnteringNextRoom = ref(false);
+  const isConfirmingRoomExit = ref(false);
 
   type ReputationEffect = { id: number; amount: number; npcName: string };
   const reputationEffects = ref<ReputationEffect[]>([]);
@@ -104,17 +97,6 @@ export const useRunStore = defineStore('run', () => {
 
   /** Free-roam grid overlay of the current room. */
   const currentGrid = computed(() => currentRoom.value?.grid ?? null);
-
-  /**
-   * True when the current room is fully cleared (boss defeated, reward selected)
-   * and the run is waiting to enter the Interlude.
-   * run.status === 'RoomResolved' is the backend's cleared state.
-   */
-  const isRoomCleared = computed(() =>
-    currentRun.value?.status === 'RoomResolved' &&
-    !pendingRewardOffer.value &&
-    !currentRun.value?.pendingRewardOfferId,
-  );
 
   const shouldShowRunFailedPanel = computed(() =>
     currentRun.value?.status === 'Failed',
@@ -155,14 +137,6 @@ export const useRunStore = defineStore('run', () => {
 
     if (shouldShowRewardPanel.value) {
       return 'Reward';
-    }
-
-    if (currentInterlude.value || currentRun.value.status === 'Interlude') {
-      return 'Interlude';
-    }
-
-    if (isRoomCleared.value) {
-      return 'RoomCleared';
     }
 
     if (npcDialogue.value || npcDialogueEnded.value) return 'NpcDialogue';
@@ -481,12 +455,8 @@ export const useRunStore = defineStore('run', () => {
   }
 
   // Avance la room si l'état le permet (non-boss reward selected → continue).
-  // RoomResolved is handled explicitly by the RoomClearedPanel, not here.
   async function progressRunInlineIfReady() {
     if (!currentRun.value) return;
-
-    // RoomResolved = salle terminée → RoomClearedPanel prend le relai.
-    if (currentRun.value.status === 'RoomResolved') return;
 
     if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) return;
 
@@ -513,7 +483,6 @@ export const useRunStore = defineStore('run', () => {
       lastOutcome.value = null;
       resetNpcDialogue();
       useTacticalCombatStore().clearCombat();
-      currentInterlude.value = null;
       permanentItemCandidates.value = [];
       isPermanentItemSelectionResolved.value = false;
 
@@ -536,7 +505,6 @@ export const useRunStore = defineStore('run', () => {
 
       lastChoiceResult.value = null;
       currentRun.value = run;
-      currentInterlude.value = null;
       resetNpcDialogue();
 
       const tactical = useTacticalCombatStore();
@@ -547,11 +515,6 @@ export const useRunStore = defineStore('run', () => {
       }
 
       await refreshPendingRewardIfNeeded();
-
-      if (run.status === 'Interlude') {
-        const interludeResponse = await runApi.getInterlude(run.id);
-        currentInterlude.value = unwrapInterludeResponse(interludeResponse);
-      }
     });
   }
 
@@ -678,69 +641,35 @@ export const useRunStore = defineStore('run', () => {
       await refreshPendingRewardIfNeeded();
 
       // Pour les rewards non-boss, progresser normalement.
-      // RoomResolved (boss) → RoomClearedPanel prend le relai.
       await progressRunInlineIfReady();
     });
   }
 
   // -------------------------------------------------------------------------
-  // Interlude
+  // Room exit
   // -------------------------------------------------------------------------
 
-  async function enterInterlude() {
+  /** "Valider la sortie" — walks the party through a confirmed room exit. No boss dependency. */
+  async function confirmRoomExit(nodeId: string) {
     if (!currentRun.value) return;
 
-    isEnteringInterlude.value = true;
+    isConfirmingRoomExit.value = true;
     error.value = null;
 
     try {
-      const response = await runApi.enterInterlude(currentRun.value.id);
-      const interlude = unwrapInterludeResponse(response);
-
-      currentInterlude.value = interlude;
-
-      // Mettre à jour le run avec le nouveau status Interlude
-      const runResponse = await runApi.getRun(currentRun.value.id);
-      currentRun.value = unwrapRunResponse(runResponse);
-    } catch (caught) {
-      error.value = caught instanceof Error
-        ? caught.message
-        : 'Impossible d\'entrer dans le Repli du Palais.';
-    } finally {
-      isEnteringInterlude.value = false;
-    }
-  }
-
-  async function loadInterlude() {
-    if (!currentRun.value) return;
-
-    await execute(async () => {
-      const response = await runApi.getInterlude(currentRun.value!.id);
-      currentInterlude.value = unwrapInterludeResponse(response);
-    });
-  }
-
-  async function enterNextRoom() {
-    if (!currentRun.value) return;
-
-    isEnteringNextRoom.value = true;
-    error.value = null;
-
-    try {
-      const response = await runApi.enterNextRoom(currentRun.value.id);
+      const response = await runApi.confirmRoomExit(currentRun.value.id, nodeId);
       const run = unwrapRunResponse(response);
 
       currentRun.value = run;
-      currentInterlude.value = null;
       lastOutcome.value = null;
       resetNpcDialogue();
       lastChoiceResult.value = null;
     } catch (caught) {
       error.value = caught instanceof Error
         ? caught.message
-        : 'Impossible d\'entrer dans la prochaine salle.';
+        : 'Impossible de franchir cette sortie.';
     } finally {
-      isEnteringNextRoom.value = false;
+      isConfirmingRoomExit.value = false;
     }
   }
 
@@ -877,7 +806,6 @@ export const useRunStore = defineStore('run', () => {
     resetNpcDialogue();
     useTacticalCombatStore().clearCombat();
     lastChoiceResult.value = null;
-    currentInterlude.value = null;
     error.value = null;
     permanentItemCandidates.value = [];
     isPermanentItemSelectionResolved.value = false;
@@ -1006,10 +934,7 @@ export const useRunStore = defineStore('run', () => {
     npcDialogueEchoes,
     npcDialogueEnded,
     pendingRewardOffer,
-    currentInterlude,
-    isEnteringInterlude,
-    isEnteringNextRoom,
-    isRoomCleared,
+    isConfirmingRoomExit,
     shouldShowCombatScene,
     shouldShowRewardPanel,
     shouldShowRunMap,
@@ -1038,9 +963,7 @@ export const useRunStore = defineStore('run', () => {
     selectCurrentEventChoice,
     selectNpcDialogueChoice,
     continueAfterNpcDialogue,
-    enterInterlude,
-    loadInterlude,
-    enterNextRoom,
+    confirmRoomExit,
     confirmPermanentItemSelection,
     grantPermanentItem,
     removePalaceLaw,

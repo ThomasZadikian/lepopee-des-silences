@@ -13,7 +13,7 @@ namespace Leds.GameEngine.UnitTests.Runs;
 
 /// <summary>
 /// <see cref="AmbientPalaceLawPromulgator"/> — the ambient promulgation trigger wired into
-/// room transitions (<see cref="Application.Runs.MoveToNextRoom.MoveToNextRoomCommandHandler"/>),
+/// room transitions (<see cref="Application.Runs.ConfirmRoomExit.ConfirmRoomExitCommandHandler"/>),
 /// replacing the retired player-chosen "Loi" map node.
 /// </summary>
 public sealed class AmbientPalaceLawPromulgatorTests
@@ -214,15 +214,6 @@ public sealed class AmbientPalaceLawPromulgatorTests
 
     private static void AdvanceToNextRoom(Run run)
     {
-        if (run.Status == RunStatus.Active)
-        {
-            var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
-
-            TestGameEngineFactory.EnterNode(run, bossNode);
-            run.ResolveCurrentEvent();
-        }
-
-        run.EnterInterlude();
-        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        TestGameEngineFactory.ConfirmExitToNextRoom(run);
     }
 }

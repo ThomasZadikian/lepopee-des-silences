@@ -21,30 +21,26 @@ using Moq;
 namespace Leds.GameEngine.UnitTests.Runs;
 
 /// <summary>
-/// PR 0.1.11 — RoomCleared transition state.
-///
-/// After a boss reward is selected:
-/// - Run remains in <see cref="RunStatus.RoomResolved"/> (the "room cleared" state).
-/// - No new room is generated.
-/// - <see cref="Run.CurrentRoomIndex"/> is unchanged.
-/// - <see cref="Run.HasPendingRewardOffer"/> is false.
-/// - <see cref="ProgressRunCommandHandler"/> refuses to advance.
-///
-/// Non-boss reward selection leaves the run in <see cref="RunStatus.Active"/>.
+/// The room boss no longer gates room progression (see <see cref="Run.ConfirmRoomExit"/>) —
+/// resolving it, and selecting its reward, behaves exactly like any other node/reward:
+/// the run stays <see cref="RunStatus.Active"/> throughout, and <see cref="ProgressRunCommandHandler"/>
+/// returns the room to free exploration once the pending reward is cleared. There is no more
+/// "room cleared, awaiting Interlude/MoveToNextRoom" transitional status.
 /// </summary>
-public sealed class RoomClearedTests
+public sealed class BossRewardTests
 {
     // -----------------------------------------------------------------------
     // Setup helpers
     // -----------------------------------------------------------------------
 
-    /// <summary>
-    /// Creates a run in <see cref="RunStatus.RoomResolved"/> (boss defeated) with a
-    /// <see cref="RewardSource.RoomBoss"/> reward offer pending.
-    /// </summary>
+    /// <summary>Boss node resolved, with its <see cref="RewardSource.RoomBoss"/> reward
+    /// offer pending selection.</summary>
     private static (Run run, RewardOffer offer) CreateRunWithBossRewardPending()
     {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = TestGameEngineFactory.CreateRun();
+        var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
+        TestGameEngineFactory.EnterNode(run, bossNode);
+        run.ResolveCurrentEvent();
 
         var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
@@ -62,7 +58,7 @@ public sealed class RoomClearedTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task SelectBossReward_ShouldSetRoomToRoomCleared()
+    public async Task SelectBossReward_ShouldKeepRunActive()
     {
         var (run, offer) = CreateRunWithBossRewardPending();
 
@@ -83,8 +79,8 @@ public sealed class RoomClearedTests
             new SelectRewardCommand(run.Id.Value, choiceId.Value),
             CancellationToken.None);
 
-        run.Status.Should().Be(RunStatus.RoomResolved,
-            because: "After boss reward selection the run must remain in RoomResolved — the cleared state awaiting the Interlude/MoveToNextRoom transition.");
+        run.Status.Should().Be(RunStatus.Active,
+            because: "the boss no longer gates the run's status — see Run.ConfirmRoomExit.");
     }
 
     [Fact]
@@ -137,7 +133,7 @@ public sealed class RoomClearedTests
             CancellationToken.None);
 
         run.Rooms.Count.Should().Be(roomCountBefore,
-            because: "SelectReward must not generate a new room — MoveToNextRoom is a future operation.");
+            because: "SelectReward must not generate a new room — ConfirmRoomExit is a separate operation.");
     }
 
     [Fact]
@@ -163,11 +159,11 @@ public sealed class RoomClearedTests
             CancellationToken.None);
 
         response.Run.CurrentRoomIndex.Should().Be(0,
-            because: "CurrentRoomIndex must not change until MoveToNextRoom is called.");
+            because: "CurrentRoomIndex must not change until ConfirmRoomExit is called.");
     }
 
     [Fact]
-    public async Task SelectBossReward_ShouldLeaveRunWaitingForTransition()
+    public async Task SelectBossReward_ShouldLeaveRoomNodeResolved_UntilProgressed()
     {
         var (run, offer) = CreateRunWithBossRewardPending();
 
@@ -188,50 +184,56 @@ public sealed class RoomClearedTests
             new SelectRewardCommand(run.Id.Value, choiceId.Value),
             CancellationToken.None);
 
-        run.Status.Should().Be(RunStatus.RoomResolved,
-            because: "After boss reward the run must remain in RoomResolved, awaiting Interlude or MoveToNextRoom.");
         run.HasPendingRewardOffer.Should().BeFalse();
-        run.CurrentRoom.State.Should().Be(RoomState.Completed,
-            because: "Room must stay Completed — boss was already defeated before reward selection.");
+        run.CurrentRoom.State.Should().Be(RoomState.NodeResolved,
+            because: "the boss node was resolved but ProgressRun hasn't returned the room to exploration yet.");
     }
 
     // -----------------------------------------------------------------------
-    // ProgressRun guard
+    // ProgressRun — now succeeds once the boss reward is cleared, same as any other node
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task ProgressRun_ShouldFail_WhenRoomIsCleared()
+    public async Task ProgressRun_ShouldSucceed_AfterBossRewardIsCleared()
     {
-        // RoomResolved + no pending reward = cleared room awaiting transition
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var (run, offer) = CreateRunWithBossRewardPending();
 
         var runRepository = new Mock<IRunRepository>();
         runRepository
             .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var choiceResolver = new Mock<ICurrentEventChoiceRequirementResolver>();
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
+            .ReturnsAsync(offer);
 
-        var handler = new ProgressRunCommandHandler(runRepository.Object, choiceResolver.Object);
-
-        var act = () => handler.Handle(
-            new ProgressRunCommand(run.Id.Value),
+        var selectHandler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
+        await selectHandler.Handle(
+            new SelectRewardCommand(run.Id.Value, offer.Choices.First().Id.Value),
             CancellationToken.None);
 
-        await act.Should()
-            .ThrowAsync<DomainException>()
-            .WithMessage("*room is cleared*");
+        var choiceResolver = new Mock<ICurrentEventChoiceRequirementResolver>();
+        var progressHandler = new ProgressRunCommandHandler(runRepository.Object, choiceResolver.Object);
+
+        await progressHandler.Handle(new ProgressRunCommand(run.Id.Value), CancellationToken.None);
+
+        run.CurrentRoom.State.Should().Be(RoomState.Active,
+            because: "ProgressRun returns the room to free exploration — the boss no longer blocks this.");
     }
 
     // -----------------------------------------------------------------------
-    // CompleteRoomBoss — domain-level: boss defeat + reward pending
+    // Boss node resolution — domain-level: boss defeat + reward pending
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void CompleteRoomBoss_ShouldCreateBossRewardAndKeepRoomAwaitingReward()
+    public void ResolvingBossNode_ShouldNotForceRunOrRoomIntoATerminalState()
     {
         // Simulate the post-boss-combat state that SubmitCombatActionCommandHandler produces
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = TestGameEngineFactory.CreateRun();
+        var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
+        TestGameEngineFactory.EnterNode(run, bossNode);
+        run.ResolveCurrentEvent();
 
         var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
@@ -241,12 +243,12 @@ public sealed class RoomClearedTests
 
         run.SetPendingRewardOffer(offer.Id);
 
-        run.Status.Should().Be(RunStatus.RoomResolved,
-            because: "Boss defeat sets run to RoomResolved.");
+        run.Status.Should().Be(RunStatus.Active,
+            because: "Boss defeat no longer sets a special run status.");
         run.HasPendingRewardOffer.Should().BeTrue(
             because: "Boss reward must be registered as pending before the player selects it.");
-        run.CurrentRoom.State.Should().Be(RoomState.Completed,
-            because: "Room must be fully Completed after the boss node is resolved.");
+        run.CurrentRoom.State.Should().Be(RoomState.NodeResolved,
+            because: "the boss node resolves like any other — no RoomState.Completed anymore.");
     }
 
     // -----------------------------------------------------------------------
@@ -285,39 +287,5 @@ public sealed class RoomClearedTests
 
         response.Run.Status.Should().Be(RunStatus.Active.ToString(),
             because: "Selecting a non-boss reward must leave the run Active for continued map progression.");
-    }
-
-    [Fact]
-    public async Task SelectNonBossReward_ShouldNotSetRoomCleared()
-    {
-        var run = TestGameEngineFactory.CreateRun();
-
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
-        var offer = factory.CreateCombatRewardOffer(
-            RewardSource.Combat,
-            NodeEventType.Combat,
-            riskLevel: (int)RiskTier.Tendu);
-
-        run.SetPendingRewardOffer(offer.Id);
-
-        var runRepository = new Mock<IRunRepository>();
-        runRepository
-            .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
-            .ReturnsAsync(run);
-
-        var rewardRepository = new Mock<IRewardOfferRepository>();
-        rewardRepository
-            .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
-            .ReturnsAsync(offer);
-
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
-        var choiceId = offer.Choices.First().Id;
-
-        await handler.Handle(
-            new SelectRewardCommand(run.Id.Value, choiceId.Value),
-            CancellationToken.None);
-
-        run.Status.Should().NotBe(RunStatus.RoomResolved,
-            because: "Non-boss reward must not transition the run to RoomResolved.");
     }
 }

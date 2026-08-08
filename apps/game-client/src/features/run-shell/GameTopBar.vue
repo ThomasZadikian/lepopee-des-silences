@@ -41,7 +41,6 @@ const phase      = computed(() => {
   const map: Record<string, string> = {
     Map: 'EXPLORATION', Combat: 'COMBAT', Reward: 'RÉCOMPENSE',
     EventOutcome: 'ÉVÉNEMENT', EventChoiceResult: 'RÉSOLUTION',
-    Interlude: 'INTERLUDE', RoomCleared: 'SALLE LIBÉRÉE',
     Suspended: 'SUSPENDU', Completed: 'TERMINÉ', Loading: 'CHARGEMENT',
   };
   return map[p] ?? p.toUpperCase();

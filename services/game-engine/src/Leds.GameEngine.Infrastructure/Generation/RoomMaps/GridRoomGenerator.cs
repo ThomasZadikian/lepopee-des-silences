@@ -152,11 +152,14 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     /// Each bite is a small blob grown inward from an edge cell; a bite that would strand part
     /// of the floor is reverted, so the remaining floor is always one connected region.
     /// </summary>
-    private static bool[] GenerateFloorMask(int width, int height, int startX, int startY, Random random)
+    /// <summary>
+    /// Cells on the bounding rectangle's border, excluding the party's starting cell. Pure
+    /// function of the room's size/start — no RNG consumed. Exposed publicly as the natural
+    /// candidate pool for exit placement (see DeterministicRunGenerator's post-generation
+    /// exit-attachment step): a room's exits are meant to sit at its edge, not in the middle.
+    /// </summary>
+    public static IReadOnlyList<(int X, int Y)> ComputeEdgeCells(int width, int height, int startX, int startY)
     {
-        var floor = Enumerable.Repeat(true, width * height).ToArray();
-        var target = (int)(width * height * FloorCarveDensity);
-
         var edgeCells = new List<(int X, int Y)>();
         for (var y = 0; y < height; y++)
         {
@@ -169,6 +172,15 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 }
             }
         }
+
+        return edgeCells;
+    }
+
+    private static bool[] GenerateFloorMask(int width, int height, int startX, int startY, Random random)
+    {
+        var floor = Enumerable.Repeat(true, width * height).ToArray();
+        var target = (int)(width * height * FloorCarveDensity);
+        var edgeCells = ComputeEdgeCells(width, height, startX, startY);
 
         var carved = 0;
 

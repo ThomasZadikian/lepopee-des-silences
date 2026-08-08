@@ -262,9 +262,12 @@ public static class TestGameEngineFactory
     }
 
     /// <summary>
-    /// A run whose current room is fully resolved (boss defeated, <see cref="RunStatus.RoomResolved"/>) —
+    /// A run whose room boss has been resolved (<see cref="RoomState.NodeResolved"/>) —
     /// walks the party straight to the boss cell and resolves it, without bothering to visit the
-    /// filler nodes along the way (irrelevant to what every caller of this fixture actually asserts).
+    /// filler nodes along the way (irrelevant to what every caller of this fixture actually
+    /// asserts). The boss no longer locks the room or the run status (see
+    /// <see cref="Run.ConfirmRoomExit"/>) — callers that need a genuine safe point should also
+    /// call <see cref="Run.ProgressCurrentRoom"/>.
     /// </summary>
     public static Run CreateRunWithCompletedCurrentRoom()
     {
@@ -276,6 +279,35 @@ public static class TestGameEngineFactory
         run.ResolveCurrentEvent();
 
         return run;
+    }
+
+    /// <summary>
+    /// Confirms a room exit and advances to a freshly generated next room — stands in for the
+    /// whole exit-node dance (attach → walk → confirm) that
+    /// <c>ConfirmRoomExitCommandHandler</c> performs in production. Rooms built via
+    /// <see cref="CreateThresholdRoom"/> don't carry generator-attached Exit nodes, so this
+    /// attaches a throwaway one at a free edge cell first.
+    /// </summary>
+    public static Run.FloorEndModifierConsumptionResult ConfirmExitToNextRoom(Run run)
+    {
+        var exitNode = MapNode.Create(
+            NodeEventType.Exit,
+            riskLevel: 0,
+            rewardProfile: "exit",
+            row: 0,
+            lane: 4,
+            parentNodeIds: Array.Empty<NodeId>(),
+            initialState: NodeState.Available);
+
+        run.CurrentRoom.AttachExitNodes(new[] { exitNode });
+
+        if (run.CurrentRoom.Grid.PartyX != exitNode.Lane || run.CurrentRoom.Grid.PartyY != exitNode.Row)
+        {
+            run.MoveParty(exitNode.Lane, exitNode.Row);
+        }
+
+        var nextRoom = CreateThresholdRoom(depth: run.CurrentDepth + 1);
+        return run.ConfirmRoomExit(exitNode.Id, nextRoom);
     }
 
     /// <summary>Alias retained for readability at call sites that build a grid room explicitly.</summary>

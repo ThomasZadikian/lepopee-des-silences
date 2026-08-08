@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Rooms;
+﻿using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Abstractions;
@@ -16,6 +17,20 @@ public interface IRunGenerator
         CancellationToken cancellationToken = default);
 
     Task<Room> GenerateNextRoomAsync(Run run, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates the room for one specific, already-chosen catalog destination — the
+    /// confirmed room-exit path (see Run.ConfirmRoomExit). Unlike
+    /// <see cref="GenerateNextRoomAsync"/>, this never rolls a destination when one is given:
+    /// the exit the player confirmed already fixed it when the CURRENT room was generated
+    /// (see MapNode.ExitDestinationRoomKey), so this only materializes the grid/nodes for it.
+    /// Null <paramref name="destination"/> means a legacy Exit (no reachability graph at
+    /// placement time) — the one case that still rolls, via the old per-theme weighted path.
+    /// </summary>
+    Task<Room> GenerateSpecificRoomAsync(
+        Run run,
+        CatalogRoomDefinition? destination,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// "Édit des Portes Ouvertes" (law.portes-ouvertes): previews the catalog identity

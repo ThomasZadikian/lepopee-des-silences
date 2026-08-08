@@ -322,6 +322,20 @@ public sealed class Run
     public bool HasPendingRewardOffer => PendingRewardOfferId.HasValue;
 
     /// <summary>
+    /// Nothing in progress: the run is <see cref="RunStatus.Active"/>, no active combat, no
+    /// pending reward offer, and the current room is back in free exploration (not mid
+    /// node-selection/resolution). No dependency on the room's boss anymore — it stopped
+    /// gating anything (see <see cref="ConfirmRoomExit"/>) — so this is the single rule both
+    /// <see cref="SaveAndExit"/> and abandoning the run use to decide "can I leave cleanly
+    /// right now."
+    /// </summary>
+    public bool IsAtSafePoint =>
+        Status == RunStatus.Active
+        && !HasActiveCombat
+        && !HasPendingRewardOffer
+        && CurrentRoom.State == RoomState.Active;
+
+    /// <summary>
     /// The active curse applied to the run, if any.
     /// </summary>
     public ActiveCurse? ActiveCurse => _activeCurse;
@@ -828,7 +842,7 @@ public sealed class Run
             throw new DomainException("Initial room node depth must be 0.");
         }
 
-        if (initialRoom.TotalNodeCount is < 6 or > 30)
+        if (initialRoom.ContentNodeCount is < 6 or > 30)
         {
             throw new DomainException("A new run must start with a room containing between 6 and 30 nodes.");
         }
@@ -1042,12 +1056,9 @@ public sealed class Run
     {
         EnsureActive();
 
+        // The room's boss no longer locks anything shut once defeated — Run stays Active
+        // whichever node was just resolved (see Room.ResolveSelectedNodeEvent, Run.ConfirmRoomExit).
         CurrentRoom.ResolveSelectedNodeEvent();
-
-        if (CurrentRoom.State == RoomState.Completed)
-        {
-            Status = RunStatus.RoomResolved;
-        }
     }
 
     public void ProgressCurrentRoom()
@@ -1058,62 +1069,38 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Transitions the run from <see cref="RunStatus.RoomResolved"/> (boss reward collected)
-    /// to <see cref="RunStatus.Interlude"/>, where the player navigates the interlude
-    /// hub before entering the next room.
+    /// Walks the party through a confirmed room exit (see NodeEventType.Exit) — "valider la
+    /// sortie". No longer requires the room's boss to be defeated: it just needs the party to
+    /// actually be standing on the exit node's cell, with nothing else pending. Increments
+    /// <see cref="CurrentRoomIndex"/> and stays <see cref="RunStatus.Active"/> (or advances to
+    /// <see cref="RunStatus.BossReached"/> for the Final room). Signals which floor-end payouts
+    /// are due when this transition just crossed a floor boundary (see
+    /// <see cref="ConsumeFloorEndModifiers"/>).
     /// </summary>
-    public void EnterInterlude()
+    public FloorEndModifierConsumptionResult ConfirmRoomExit(NodeId exitNodeId, Room nextRoom)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
-        {
-            throw new DomainException("Run is closed.");
-        }
-
-        if (Status != RunStatus.RoomResolved)
-        {
-            throw new DomainException(
-                "Cannot enter Interlude: run must be in RoomResolved (room cleared) state.");
-        }
+        EnsureActive();
 
         if (HasActiveCombat)
         {
-            throw new DomainException("Cannot enter Interlude: run has an active combat.");
+            throw new DomainException("Cannot confirm this exit: run has an active combat.");
         }
 
         if (HasPendingRewardOffer)
         {
             throw new DomainException(
-                "Cannot enter Interlude: run has a pending reward offer that must be selected first.");
-        }
-
-        Status = RunStatus.Interlude;
-    }
-
-    /// <summary>
-    /// Moves the run from <see cref="RunStatus.Interlude"/> to the next room.
-    /// Increments <see cref="CurrentRoomIndex"/> and sets the run back to
-    /// <see cref="RunStatus.Active"/>. Signals which floor-end payouts are due when this
-    /// transition just crossed a floor boundary (see <see cref="ConsumeFloorEndModifiers"/>).
-    /// </summary>
-    public FloorEndModifierConsumptionResult MoveToNextRoom(Room nextRoom)
-    {
-        _roomSnapshot = CreateSnapshot();
-
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
-        {
-            throw new DomainException("Run is closed.");
-        }
-
-        if (Status != RunStatus.Interlude)
-        {
-            throw new DomainException(
-                "Cannot move to the next room: run must be in Interlude state.");
+                "Cannot confirm this exit: run has a pending reward offer that must be selected first.");
         }
 
         if (nextRoom.Depth != CurrentDepth + 1)
         {
             throw new DomainException("Next room depth must be current depth + 1.");
         }
+
+        _roomSnapshot = CreateSnapshot();
+
+        CurrentRoom.EnterNodeAtPartyPosition(exitNodeId);
+        CurrentRoom.ResolveSelectedNodeEvent();
 
         var previousFloorIndex = FloorIndex;
         _runItems.RemoveAll(item =>
@@ -1174,24 +1161,23 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Suspends the run at a safe point (RoomResolved or Interlude) and returns the player
-    /// to the main menu. The run can be resumed later.
+    /// Suspends the run at a safe point and returns the player to the main menu. The run can
+    /// be resumed later.
     /// </summary>
     /// <remarks>
-    /// Safe points: <see cref="RunStatus.RoomResolved"/> and <see cref="RunStatus.Interlude"/>.
-    /// The run must have no active combat and no pending reward offer.
+    /// Safe point: nothing in progress — no boss dependency anymore (the boss no longer gates
+    /// anything, see Run.ConfirmRoomExit). The run must be <see cref="RunStatus.Active"/>, with
+    /// no active combat, no pending reward offer, and the current room back in free exploration
+    /// (not mid node-selection/resolution).
     /// </remarks>
     public void SaveAndExit(DateTimeOffset savedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
-        {
-            throw new DomainException("Run is closed or already suspended.");
-        }
+        EnsureActive();
 
-        if (Status is not (RunStatus.RoomResolved or RunStatus.Interlude))
+        if (CurrentRoom.State != RoomState.Active)
         {
             throw new DomainException(
-                "Cannot save and exit: run must be at a safe point (RoomResolved or Interlude).");
+                "Cannot save and exit: the current room's event must be resolved first.");
         }
 
         if (HasActiveCombat)
@@ -1212,7 +1198,6 @@ public sealed class Run
 
     /// <summary>
     /// Resumes the run from a suspended state, restoring the pre-suspend status
-    /// (<see cref="RunStatus.RoomResolved"/> or <see cref="RunStatus.Interlude"/>)
     /// so the player can continue from where they left off.
     /// </summary>
     public void Resume()
@@ -1382,9 +1367,9 @@ public sealed class Run
             throw new DomainException("Reward offer id is required.");
         }
 
-        if (Status != RunStatus.Active && Status != RunStatus.RoomResolved)
+        if (Status != RunStatus.Active)
         {
-            throw new DomainException("Run must be active or room resolved to set a pending reward offer.");
+            throw new DomainException("Run must be active to set a pending reward offer.");
         }
 
         if (HasPendingRewardOffer)
@@ -2654,20 +2639,6 @@ public sealed class Run
         }
 
         CaliceInfiniLastUsedRoomIndex = CurrentRoomIndex;
-    }
-
-    public void DebugPrepareForNextRoom()
-    {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
-            throw new DomainException("Run is closed.");
-
-        if (Status == RunStatus.Interlude)
-            return;
-
-        ActiveCombatId = null;
-        _activeTacticalCombat = null;
-        PendingRewardOfferId = null;
-        Status = RunStatus.Interlude;
     }
 
     public void DebugClearActivePalaceLaws()

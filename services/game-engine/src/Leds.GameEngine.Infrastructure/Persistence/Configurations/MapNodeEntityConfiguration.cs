@@ -26,6 +26,8 @@ public sealed class MapNodeEntityConfiguration : IEntityTypeConfiguration<MapNod
         builder.Property(node => node.HiddenState).HasColumnName("hidden_state").HasMaxLength(32);
         builder.Property(node => node.DangerTell).HasColumnName("danger_tell").HasMaxLength(32);
         builder.Property(node => node.ContactBehavior).HasColumnName("contact_behavior").HasMaxLength(32);
+        builder.Property(node => node.ExitDestinationRoomKey).HasColumnName("exit_destination_room_key").HasMaxLength(160);
+        builder.Property(node => node.ExitDestinationDisplayName).HasColumnName("exit_destination_display_name").HasMaxLength(160);
 
         builder.HasOne(node => node.Room)
             .WithMany(room => room.Nodes)

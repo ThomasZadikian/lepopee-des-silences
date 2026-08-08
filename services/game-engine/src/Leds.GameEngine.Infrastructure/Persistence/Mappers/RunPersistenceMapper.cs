@@ -266,6 +266,8 @@ public static class RunPersistenceMapper
             HiddenState = node.HiddenState.ToString(),
             DangerTell = node.DangerTell.ToString(),
             ContactBehavior = node.ContactBehavior.ToString(),
+            ExitDestinationRoomKey = node.ExitDestinationRoomKey,
+            ExitDestinationDisplayName = node.ExitDestinationDisplayName,
             ParentNodeLinks = node.ParentNodeIds
                 .Select(parentId => new MapNodeParentNodeEntity
                 {
@@ -691,7 +693,9 @@ public static class RunPersistenceMapper
             string.IsNullOrEmpty(entity.CombatRiskTier) ? null : Enum.Parse<RiskTier>(entity.CombatRiskTier),
             ParseEnumOrDefault<HiddenState>(entity.HiddenState),
             ParseEnumOrDefault<DangerTell>(entity.DangerTell),
-            ParseEnumOrDefault<ContactBehavior>(entity.ContactBehavior));
+            ParseEnumOrDefault<ContactBehavior>(entity.ContactBehavior),
+            entity.ExitDestinationRoomKey,
+            entity.ExitDestinationDisplayName);
     }
 
     public static ActivePalaceLaw ToDomain(RunActivePalaceLawEntity entity)

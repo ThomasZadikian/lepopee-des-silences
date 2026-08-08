@@ -19,7 +19,10 @@ public sealed record MapNodeDto(
     // off beforehand. A hidden node never reaches the client at all (see RoomDto.FromDomain),
     // so there is no HiddenState here — its absence from the payload IS the hiding.
     string ContactBehavior,
-    string DangerTell)
+    string DangerTell,
+    // Exit nodes only (see MapNode.ExitDestinationRoomKey) — null on every other node type.
+    string? ExitDestinationRoomKey,
+    string? ExitDestinationDisplayName)
 {
     public static MapNodeDto FromDomain(MapNode node)
     {
@@ -39,6 +42,8 @@ public sealed record MapNodeDto(
             node.IsInitial,
             node.HasChosenEventOption,
             node.ContactBehavior.ToString(),
-            node.DangerTell.ToString());
+            node.DangerTell.ToString(),
+            node.ExitDestinationRoomKey,
+            node.ExitDestinationDisplayName);
     }
 }

@@ -24,4 +24,19 @@ public interface IRoomReachabilitySelector
         int nextRoomDepth,
         IReadOnlyCollection<string> visitedRoomKeysThisRun,
         string seed);
+
+    /// <summary>
+    /// Returns every room the current one can lead to at <paramref name="nextRoomDepth"/> —
+    /// one exit per candidate, unweighted (the player chooses, so there is nothing left to
+    /// roll for). Falls back to a single-element result (the World's entry room) when there
+    /// are no eligible candidates, same "never a true dead end" guarantee as
+    /// <see cref="SelectNextRoom"/>. Empty only when the current room isn't part of a
+    /// reachability graph at all (no World assigned) — callers should fall back to the
+    /// legacy theme-based selection in that case, same as <see cref="SelectNextRoom"/>.
+    /// </summary>
+    IReadOnlyCollection<CatalogRoomDefinition> SelectEligibleRooms(
+        CatalogRoomDefinition currentRoom,
+        IReadOnlyCollection<CatalogRoomDefinition> allRoomDefinitions,
+        IReadOnlyCollection<CatalogWorldDefinition> worlds,
+        int nextRoomDepth);
 }

@@ -13,6 +13,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -76,9 +77,21 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             if (IsClosed(run) || run.CurrentDepth >= 10)
                 break;
 
-            run.DebugPrepareForNextRoom();
-            var nextRoom = await _runGenerator.GenerateNextRoomAsync(run, cancellationToken);
-            run.MoveToNextRoom(nextRoom);
+            // No more Interlude to force through — walk the first exit the current room
+            // actually offers, same path a real player would confirm.
+            var exitNode = run.CurrentRoom.Nodes.FirstOrDefault(n => n.EventType == NodeEventType.Exit);
+            if (exitNode is null)
+                break;
+
+            var grid = run.CurrentRoom.Grid;
+            if (grid.PartyX != exitNode.Lane || grid.PartyY != exitNode.Row)
+            {
+                run.MoveParty(exitNode.Lane, exitNode.Row);
+            }
+
+            var destination = await ResolveExitDestinationAsync(exitNode, cancellationToken);
+            var nextRoom = await _runGenerator.GenerateSpecificRoomAsync(run, destination, cancellationToken);
+            run.ConfirmRoomExit(exitNode.Id, nextRoom);
             advanced++;
         }
 
@@ -502,6 +515,22 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private static bool IsClosed(Run run)
     {
         return run.Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended;
+    }
+
+    /// <summary>Same resolution as ConfirmRoomExitCommandHandler's — re-read fresh, never trust
+    /// a possibly-stale cached definition; null key means the old per-theme roll decides.</summary>
+    private async Task<CatalogRoomDefinition?> ResolveExitDestinationAsync(
+        MapNode exitNode, CancellationToken cancellationToken)
+    {
+        if (exitNode.ExitDestinationRoomKey is null)
+        {
+            return null;
+        }
+
+        var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+        return definitions.FirstOrDefault(d =>
+            string.Equals(d.Key, exitNode.ExitDestinationRoomKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new DomainException("This exit no longer leads anywhere.");
     }
 
     private static void ClearCurrentRoomClimate(Run run)
