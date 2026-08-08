@@ -127,6 +127,11 @@ public sealed record RoomGridDto(
     // in the bounding rectangle, which is what gives a room a shape (alcoves, an L, ragged
     // edges) and tells the renderer where to draw cliff faces.
     IReadOnlyList<bool> FloorCells,
+    // [x,y] pairs, same shape convention as RevealedCells — the threshold of a sub-room
+    // (PartitionSubRooms). Never a wall, never gated by fog of war (same rationale as
+    // Elevation/FloorCells above). Belongs to no enceinte: the client's region flood-fill
+    // (Chantier 5) treats a door cell as a boundary rather than assigning it to either side.
+    IReadOnlyCollection<int[]> DoorCells,
     // Whether searching from where the party stands would turn something up.
     bool CanSearch,
     // [x,y] of every cell holding an unfound cache. POSITION ONLY — no id, type or reward: the
@@ -155,6 +160,7 @@ public sealed record RoomGridDto(
             grid.Elevation.ToArray(),
             grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             grid.FloorMask.ToArray(),
+            grid.Doors.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             canSearch,
             hintCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             groundItems.Select(GroundItemDto.FromDomain).ToArray());

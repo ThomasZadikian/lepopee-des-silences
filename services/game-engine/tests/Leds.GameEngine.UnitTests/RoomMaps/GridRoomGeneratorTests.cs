@@ -526,6 +526,30 @@ public sealed class GridRoomGeneratorTests
     [InlineData(1)]
     [InlineData(7)]
     [InlineData(42)]
+    [InlineData(99)]
+    public async Task GenerateRoom_ShouldExposeEachSubRoomsDoorOnTheGrid(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Silence, random,
+            catalogRoomKey: "room.hopital");
+        var grid = room.Grid!;
+
+        // Chaque porte doit être du sol praticable, jamais un obstacle — c'est la case que la
+        // partition a délibérément laissée ouverte dans l'anneau de vide de la sous-pièce.
+        grid.Doors.Should().AllSatisfy(door =>
+        {
+            grid.IsFloor(door.X, door.Y).Should().BeTrue();
+            grid.IsObstacle(door.X, door.Y).Should().BeFalse();
+        });
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
     public async Task GenerateRoom_ShouldKeepStartAndBossOutsideAnySubRoomRing(int seed)
     {
         var sut = CreateSut();

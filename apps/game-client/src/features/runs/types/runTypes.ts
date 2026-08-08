@@ -98,6 +98,10 @@ export type RoomGridDto = {
   /** Flat, row-major like elevation: which cells are part of the room at all. False = a hole in
    * the bounding rectangle — what gives a room its shape and where cliff faces get painted. */
   floorCells: boolean[];
+  /** Threshold of a sub-room, each as [x, y]. Never a wall, never gated by fog of war — same
+   * rationale as elevation/floorCells. Belongs to no enceinte: useRoomRegions treats a door cell
+   * as a boundary rather than assigning it to either side. Empty for a room without sub-rooms. */
+  doorCells: [number, number][];
   /** Whether searching from where the party stands would turn something up. Deliberately not
    * the cache's position: the player is told a search is worth trying, never what or where. */
   canSearch: boolean;

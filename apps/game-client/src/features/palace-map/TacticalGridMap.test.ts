@@ -31,6 +31,7 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
     partyX: 0,
     partyY: 0,
     canChallengeBossRemotely: false,
+    doorCells: [],
     revealedCells: [[0, 0], [1, 0]],
     elevation: new Array(9).fill(0),
     obstacleCells: [],

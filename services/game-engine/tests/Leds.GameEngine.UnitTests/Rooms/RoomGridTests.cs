@@ -438,4 +438,85 @@ public sealed class RoomGridTests
         grid.FindPath(2, 0, blockers).Should().NotBeNull("a lock is a place you can walk up to");
         grid.FindPath(4, 0, blockers).Should().BeNull("but a corridor it bars has no way past it");
     }
+
+    // ── Doors (Chantier 5 — région d'enceinte) ─────────────────────────────────────────
+
+    [Fact]
+    public void CreateInitial_ShouldDefaultToNoDoors_WhenNoneAreGiven()
+    {
+        var grid = RoomGrid.CreateInitial(5, 5, movementBudget: 20, startX: 0, startY: 0, nodes: []);
+
+        grid.Doors.Should().BeEmpty();
+        grid.IsDoor(2, 2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateInitial_ShouldExposeTheGivenDoorCells()
+    {
+        var grid = RoomGrid.CreateInitial(
+            5, 5, movementBudget: 20, startX: 0, startY: 0, nodes: [],
+            doorCells: [(3, 3)]);
+
+        grid.Doors.Should().ContainSingle().Which.Should().Be((3, 3));
+        grid.IsDoor(3, 3).Should().BeTrue();
+        grid.IsDoor(2, 2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateInitial_ShouldThrow_WhenADoorFallsOutsideTheGrid()
+    {
+        var act = () => RoomGrid.CreateInitial(
+            5, 5, movementBudget: 20, startX: 0, startY: 0, nodes: [],
+            doorCells: [(9, 9)]);
+
+        act.Should().Throw<DomainException>().WithMessage("*Door cells must be within*");
+    }
+
+    [Fact]
+    public void CreateInitial_ShouldThrow_WhenADoorSitsOutsideTheFloor()
+    {
+        var floor = Enumerable.Repeat(true, 25).ToArray();
+        floor[(3 * 5) + 3] = false;
+
+        var act = () => RoomGrid.CreateInitial(
+            5, 5, movementBudget: 20, startX: 0, startY: 0, nodes: [],
+            floorCells: floor, doorCells: [(3, 3)]);
+
+        act.Should().Throw<DomainException>().WithMessage("*door cannot sit outside*");
+    }
+
+    [Fact]
+    public void CreateInitial_ShouldThrow_WhenADoorIsAlsoAnObstacle()
+    {
+        var act = () => RoomGrid.CreateInitial(
+            5, 5, movementBudget: 20, startX: 0, startY: 0, nodes: [],
+            obstacles: [(3, 3)], doorCells: [(3, 3)]);
+
+        act.Should().Throw<DomainException>().WithMessage("*door cannot also be an obstacle*");
+    }
+
+    [Fact]
+    public void Rehydrate_ShouldDefaultToNoDoors_WhenNoneArePersisted()
+    {
+        var grid = RoomGrid.Rehydrate(
+            5, 5, movementBudget: 20, movementBudgetRemaining: 20,
+            startX: 0, startY: 0, partyX: 0, partyY: 0,
+            revealedNodeIds: [], revealedCells: [],
+            elevation: FlatElevation(5, 5), obstacles: []);
+
+        grid.Doors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Rehydrate_ShouldRestoreTheGivenDoorCells()
+    {
+        var grid = RoomGrid.Rehydrate(
+            5, 5, movementBudget: 20, movementBudgetRemaining: 20,
+            startX: 0, startY: 0, partyX: 0, partyY: 0,
+            revealedNodeIds: [], revealedCells: [],
+            elevation: FlatElevation(5, 5), obstacles: [],
+            doorCells: [(1, 1)]);
+
+        grid.IsDoor(1, 1).Should().BeTrue();
+    }
 }

@@ -31,6 +31,7 @@ public sealed class RoomGrid
     private readonly HashSet<(int X, int Y)> _obstacles;
     private readonly HashSet<NodeId> _revealedNodeIds;
     private readonly HashSet<(int X, int Y)> _revealedCells;
+    private readonly HashSet<(int X, int Y)> _doors;
 
     private RoomGrid(
         int width,
@@ -45,7 +46,8 @@ public sealed class RoomGrid
         HashSet<(int X, int Y)> revealedCells,
         int[] elevation,
         HashSet<(int X, int Y)> obstacles,
-        bool[] isFloor)
+        bool[] isFloor,
+        HashSet<(int X, int Y)> doors)
     {
         _isFloor = isFloor;
         Width = width;
@@ -60,6 +62,7 @@ public sealed class RoomGrid
         _revealedCells = revealedCells;
         _elevation = elevation;
         _obstacles = obstacles;
+        _doors = doors;
     }
 
     public int Width { get; }
@@ -97,9 +100,19 @@ public sealed class RoomGrid
     /// </summary>
     public IReadOnlyList<bool> FloorMask => _isFloor;
 
+    /// <summary>
+    /// Cases de porte : le seuil d'une sous-pièce, posé par <c>PartitionSubRooms</c>. N'appartient
+    /// à aucune enceinte de lumière (§1 du handoff « salle ») — c'est le repère qui sépare une
+    /// chambre bâtie du couloir qui y mène. Vide pour toute salle sans sous-pièces. Immutable pour
+    /// la durée de vie de la salle.
+    /// </summary>
+    public IReadOnlyCollection<(int X, int Y)> Doors => _doors;
+
     public int ElevationAt(int x, int y) => _elevation[(y * Width) + x];
 
     public bool IsObstacle(int x, int y) => _obstacles.Contains((x, y));
+
+    public bool IsDoor(int x, int y) => _doors.Contains((x, y));
 
     /// <summary>
     /// Whether (x, y) is a cell of this room. Returns false out of bounds too, so callers can
@@ -127,7 +140,8 @@ public sealed class RoomGrid
         IReadOnlyCollection<MapNode> nodes,
         IReadOnlyList<int>? elevation = null,
         IReadOnlyCollection<(int X, int Y)>? obstacles = null,
-        IReadOnlyList<bool>? floorCells = null)
+        IReadOnlyList<bool>? floorCells = null,
+        IReadOnlyCollection<(int X, int Y)>? doorCells = null)
     {
         if (width <= 0)
         {
@@ -212,11 +226,35 @@ public sealed class RoomGrid
             }
         }
 
+        var resolvedDoors = doorCells is null
+            ? new HashSet<(int X, int Y)>()
+            : new HashSet<(int X, int Y)>(doorCells);
+
+        // Une porte marque un passage praticable, jamais un mur : elle ne peut donc sortir de la
+        // salle ni tomber sur un obstacle, sous peine de contredire sa propre définition.
+        foreach (var (doorX, doorY) in resolvedDoors)
+        {
+            if (doorX < 0 || doorX >= width || doorY < 0 || doorY >= height)
+            {
+                throw new DomainException("Door cells must be within the grid bounds.");
+            }
+
+            if (!resolvedFloor[(doorY * width) + doorX])
+            {
+                throw new DomainException("A door cannot sit outside the room's floor.");
+            }
+
+            if (resolvedObstacles.Contains((doorX, doorY)))
+            {
+                throw new DomainException("A door cannot also be an obstacle.");
+            }
+        }
+
         var grid = new RoomGrid(
             width, height, movementBudget, movementBudget,
             startX, startY, startX, startY,
             new HashSet<NodeId>(), new HashSet<(int X, int Y)>(),
-            resolvedElevation, resolvedObstacles, resolvedFloor);
+            resolvedElevation, resolvedObstacles, resolvedFloor, resolvedDoors);
 
         grid.RevealAround(startX, startY, nodes);
 
@@ -577,7 +615,8 @@ public sealed class RoomGrid
         IEnumerable<(int X, int Y)> revealedCells,
         IReadOnlyList<int> elevation,
         IReadOnlyCollection<(int X, int Y)> obstacles,
-        IReadOnlyList<bool>? floorCells = null)
+        IReadOnlyList<bool>? floorCells = null,
+        IReadOnlyCollection<(int X, int Y)>? doorCells = null)
     {
         // Null = every cell is floor, matching rooms persisted before rooms had a shape (their
         // stored mask is empty and the mapper hands back null).
@@ -585,10 +624,15 @@ public sealed class RoomGrid
             ? Enumerable.Repeat(true, width * height).ToArray()
             : floorCells.ToArray();
 
+        // Null = room persisted before doors existed as a concept — no sub-room, no door.
+        var resolvedDoors = doorCells is null
+            ? new HashSet<(int X, int Y)>()
+            : new HashSet<(int X, int Y)>(doorCells);
+
         return new RoomGrid(
             width, height, movementBudget, movementBudgetRemaining,
             startX, startY, partyX, partyY,
             new HashSet<NodeId>(revealedNodeIds), new HashSet<(int X, int Y)>(revealedCells),
-            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles), resolvedFloor);
+            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles), resolvedFloor, resolvedDoors);
     }
 }

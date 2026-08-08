@@ -50,6 +50,9 @@ public sealed class RoomEntity
     /// had a shape, which is exactly how rows persisted before this column should be read.
     /// </summary>
     public string GridFloorCellsCsv { get; set; } = string.Empty;
+    /// <summary>Semicolon-separated "x,y" pairs, same format as GridRevealedCellsCsv. Empty for
+    /// most rooms — only a sub-room's threshold is a door.</summary>
+    public string GridDoorCellsCsv { get; set; } = string.Empty;
     /// <summary>The node currently in the Select/Resolve interaction slot — see Room._currentGridNodeId.</summary>
     public Guid? CurrentGridNodeId { get; set; }
 

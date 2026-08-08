@@ -243,6 +243,7 @@ public static class RunPersistenceMapper
             GridElevationCsv = string.Join(",", room.Grid.Elevation),
             GridObstacleCellsCsv = string.Join(";", room.Grid.Obstacles.Select(cell => $"{cell.X},{cell.Y}")),
             GridFloorCellsCsv = string.Join(",", room.Grid.FloorMask.Select(cell => cell ? "1" : "0")),
+            GridDoorCellsCsv = string.Join(";", room.Grid.Doors.Select(cell => $"{cell.X},{cell.Y}")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
@@ -573,7 +574,8 @@ public static class RunPersistenceMapper
             ParseGridRevealedCells(entity.GridRevealedCellsCsv),
             ParseGridElevation(entity.GridElevationCsv, entity.GridWidth, entity.GridHeight),
             ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray(),
-            ParseGridFloorCells(entity.GridFloorCellsCsv, entity.GridWidth, entity.GridHeight));
+            ParseGridFloorCells(entity.GridFloorCellsCsv, entity.GridWidth, entity.GridHeight),
+            ParseGridRevealedCells(entity.GridDoorCellsCsv).ToArray());
 
         var room = Room.Rehydrate(
             new RoomId(entity.Id),

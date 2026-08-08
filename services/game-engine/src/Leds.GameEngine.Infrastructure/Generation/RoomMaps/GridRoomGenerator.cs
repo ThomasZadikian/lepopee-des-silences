@@ -92,9 +92,10 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         var floor = GenerateFloorMask(width, height, startX, startY, structuralProfile.CarvingStyle, random);
         var (bossX, bossY) = FindFarthestFloorCell(startX, startY, width, height, floor);
 
+        IReadOnlyList<(int X, int Y)> doors = [];
         if (structuralProfile.SubRoomsAllowed)
         {
-            floor = PartitionSubRooms(
+            (floor, doors) = PartitionSubRooms(
                 width, height, startX, startY, (bossX, bossY), floor, structuralProfile.SubRoomsAllowed, random);
         }
 
@@ -129,7 +130,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             template.Version,
             elevation,
             obstacles,
-            floor);
+            floor,
+            doors);
     }
 
     /// <summary>
@@ -364,7 +366,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     /// that calls this without checking the profile fails loudly instead of silently
     /// partitioning a room that was never supposed to have interior chambers.
     /// </summary>
-    private static bool[] PartitionSubRooms(
+    private static (bool[] Floor, IReadOnlyList<(int X, int Y)> Doors) PartitionSubRooms(
         int width,
         int height,
         int startX,
@@ -381,6 +383,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         }
 
         var placed = 0;
+        var doors = new List<(int X, int Y)>();
 
         for (var attempt = 0; attempt < MaxSubRoomAttempts && placed < MaxSubRoomCount; attempt++)
         {
@@ -425,6 +428,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             if (AllFloorConnected(width, height, startX, startY, floor))
             {
                 placed++;
+                doors.Add(doorCell);
             }
             else
             {
@@ -435,7 +439,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             }
         }
 
-        return floor;
+        return (floor, doors);
     }
 
     private static bool IsRectangleFullyFloor(bool[] floor, int width, int rectX, int rectY, int rectWidth, int rectHeight)

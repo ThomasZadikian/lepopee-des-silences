@@ -8,6 +8,7 @@ import { usePartyTokenPath } from './composables/usePartyTokenPath';
 import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 import { useGridCells, type Cell } from './composables/useGridCells';
+import { useRoomRegions } from './composables/useRoomRegions';
 import {
   useTerrainSprites,
   drawAmbient,
@@ -70,6 +71,10 @@ const grid = computed(() => props.room.grid ?? null);
 
 const { isRevealed, nodeAt, isParty, cells, obstacleCells, isFloor, nodesByCell } =
   useGridCells(room, grid);
+
+// Éclairage par enceinte (Claude Design "salle" handoff, §1): compose with fog of war, never
+// replace it — fog alone still decides known vs unknown, regions only nuance the already-known.
+const { isInOccupiedRegion } = useRoomRegions(grid);
 
 const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, grid);
 
@@ -137,6 +142,12 @@ const OCCLUDER_ALPHA = 0.42;
 // the painted backdrop behind it is wasted. See paintFogOfWar for why this is applied here
 // rather than inside the tile engine.
 const FOG_VEIL_ALPHA = 0.76;
+
+// BALANCE KNOB — darkening applied to a revealed cell OUTSIDE the party's current enceinte
+// (Claude Design "salle" handoff §1: "mémoire sombre, l'architecture reste lisible (0,42)").
+// Deliberately much lower than FOG_VEIL_ALPHA — a room you have already cleared should still
+// read clearly as memory, not verge back into fog. See paintRegionMemory.
+const REGION_MEMORY_ALPHA = 0.42;
 
 /**
  * The route the party would walk, drawn over its tiles.
@@ -616,6 +627,7 @@ function paintCanvas(timestamp: number) {
 
   paintGroundItems(ctx, destW, destH, timestamp);
   paintFogOfWar(ctx, canvas.width, canvas.height, timestamp);
+  paintRegionMemory(ctx, canvas.width, canvas.height, timestamp);
   drawAmbient(ctx, canvas.width, canvas.height, paintedTheme.value, timestamp * AMBIENT_TIME_SCALE);
 }
 
@@ -661,6 +673,53 @@ function paintFogOfWar(ctx: CanvasRenderingContext2D, width: number, height: num
   // the veil buffer, so scaling its alpha leaves explored ground exactly as bright as before.
   const previousAlpha = ctx.globalAlpha;
   ctx.globalAlpha = previousAlpha * FOG_VEIL_ALPHA;
+  drawFogOfWar(ctx, width, height, centers, 0, paintedTheme.value, timestamp);
+  ctx.globalAlpha = previousAlpha;
+}
+
+/**
+ * Éclairage par enceinte (Claude Design "salle" handoff §1), layered on top of fog of war rather
+ * than replacing it: fog alone still decides known/unknown; this pass only darkens what fog
+ * already left revealed but that sits outside the party's CURRENT enceinte — a room already
+ * cleared but no longer occupied reads as memory, not as full daylight. Reuses the same punched-
+ * veil technique as paintFogOfWar, with the holes restricted to the occupied enceinte instead of
+ * every revealed cell.
+ */
+function paintRegionMemory(ctx: CanvasRenderingContext2D, width: number, height: number, timestamp: number) {
+  const g = grid.value;
+  if (!g) return;
+
+  const { isoUnitX } = cameraTileUnit(camera.value);
+  if (isoUnitX === 0) return;
+
+  const bounds = visibleBounds.value;
+  const cameraParams = {
+    canvasWidth: canvasSize.value.width,
+    canvasHeight: canvasSize.value.height,
+    ...camera.value,
+  };
+
+  const revealedInView = g.revealedCells.filter(
+    ([x, y]) => x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY,
+  );
+
+  // Nothing to darken until at least one revealed cell sits outside the occupied enceinte — the
+  // common case (a room with a single enceinte, or the party's first steps into a fresh one).
+  if (!revealedInView.some(([x, y]) => !isInOccupiedRegion(x, y))) return;
+
+  const centers = revealedInView
+    .filter(([x, y]) => isInOccupiedRegion(x, y))
+    .map(([x, y]) => {
+      const { screenX, screenY } = projectToScreenCamera(x, y, cameraParams);
+      return {
+        x: screenX,
+        y: screenY - elevationLiftPx(terrainHeight(x, y)),
+        radius: visionRadius(1, isoUnitX),
+      };
+    });
+
+  const previousAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = previousAlpha * REGION_MEMORY_ALPHA;
   drawFogOfWar(ctx, width, height, centers, 0, paintedTheme.value, timestamp);
   ctx.globalAlpha = previousAlpha;
 }
