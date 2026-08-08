@@ -64,7 +64,28 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     forgotten_skill_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     active_combatant_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    updated_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    tactical_width = table.Column<int>(type: "integer", nullable: true),
+                    tactical_height = table.Column<int>(type: "integer", nullable: true),
+                    tactical_origin_x = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    tactical_origin_y = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    tactical_elevation_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_walkable_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_floor_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_round_number = table.Column<int>(type: "integer", nullable: true),
+                    tactical_active_index = table.Column<int>(type: "integer", nullable: true),
+                    tactical_initiative_order_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_positions_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_turn_states_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_used_once_skill_keys_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_skill_cooldowns_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_escape_x = table.Column<int>(type: "integer", nullable: true),
+                    tactical_escape_y = table.Column<int>(type: "integer", nullable: true),
+                    tactical_risk_tier = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                    tactical_equipped_items_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_activation_counts_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_last_magic_csv = table.Column<string>(type: "text", nullable: true),
+                    tactical_cannot_revive_csv = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -110,21 +131,24 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     combat_id = table.Column<Guid>(type: "uuid", nullable: false),
                     source_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    source_definition_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    character_instance_id = table.Column<Guid>(type: "uuid", nullable: true),
                     display_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     side = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     archetype = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    natural_emotional_register = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     max_vitality = table.Column<int>(type: "integer", nullable: false),
                     current_vitality = table.Column<int>(type: "integer", nullable: false),
                     guard = table.Column<int>(type: "integer", nullable: false),
                     base_guard = table.Column<int>(type: "integer", nullable: false),
                     mana = table.Column<int>(type: "integer", nullable: false),
                     max_mana = table.Column<int>(type: "integer", nullable: false, defaultValue: 2147483647),
-                    charge = table.Column<int>(type: "integer", nullable: false),
+                    charge = table.Column<decimal>(type: "numeric(4,1)", precision: 4, scale: 1, nullable: false),
                     status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
-                    row = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Front"),
                     has_acted_this_combat = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     attack_type_override = table.Column<int>(type: "integer", nullable: true),
                     typed_damage_reductions_json = table.Column<string>(type: "text", nullable: true),
+                    emotional_affinity_modifiers_json = table.Column<string>(type: "text", nullable: true),
                     hit_chance_bonus_percent = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     dot_duration_reduction_percent = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     dot_damage_reduction_percent = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -156,6 +180,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     seed = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     generator_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     markov_matrix_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    emotional_affinity_matrix_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    emotional_affinity_matrix_json = table.Column<string>(type: "text", nullable: false),
                     current_room_id = table.Column<Guid>(type: "uuid", nullable: false),
                     current_room_index = table.Column<int>(type: "integer", nullable: false),
                     active_combat_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -189,7 +215,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     healing_bonus_percent = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     CaliceInfiniEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     CaliceInfiniLastUsedRoomIndex = table.Column<int>(type: "integer", nullable: true),
-                    ExplorationMode = table.Column<string>(type: "text", nullable: false),
                     started_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     ended_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     saved_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -230,13 +255,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     starting_guard = table.Column<int>(type: "integer", nullable: false),
                     speed = table.Column<int>(type: "integer", nullable: false),
                     initiative = table.Column<int>(type: "integer", nullable: false),
-                    recovery = table.Column<int>(type: "integer", nullable: false),
                     focus = table.Column<int>(type: "integer", nullable: false),
                     mana = table.Column<int>(type: "integer", nullable: false),
                     charge = table.Column<int>(type: "integer", nullable: false),
                     magic_attack = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     magic_defense = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    atb_ready_threshold = table.Column<int>(type: "integer", nullable: true),
+                    movement = table.Column<int>(type: "integer", nullable: false, defaultValue: 4),
                     created_at_utc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -261,13 +285,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     current_focus = table.Column<int>(type: "integer", nullable: false),
                     current_mana = table.Column<int>(type: "integer", nullable: false),
                     max_mana = table.Column<int>(type: "integer", nullable: false, defaultValue: 2147483647),
-                    current_charge = table.Column<int>(type: "integer", nullable: false),
-                    atb_gauge_value = table.Column<int>(type: "integer", nullable: true),
-                    action_recovery_until_tick = table.Column<int>(type: "integer", nullable: true),
-                    atb_fill_per_tick = table.Column<int>(type: "integer", nullable: true),
-                    atb_tempo_room_factor_per_mille = table.Column<int>(type: "integer", nullable: true),
-                    atb_tempo_combatant_factor_per_mille = table.Column<int>(type: "integer", nullable: true),
-                    tempo_momentum_per_mille = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    current_charge = table.Column<decimal>(type: "numeric(4,1)", precision: 4, scale: 1, nullable: false),
                     threat_value = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.0),
                     last_attacker_id = table.Column<Guid>(type: "uuid", nullable: true),
                     took_powerful_hit_since_last_action = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
@@ -301,7 +319,13 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     tags = table.Column<string>(type: "text", nullable: false),
                     category = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Physical"),
                     base_power_is_percent_of_max_vitality = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    status_effects_json = table.Column<string>(type: "text", nullable: true)
+                    status_effects_json = table.Column<string>(type: "text", nullable: true),
+                    tactical_range = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    tactical_area_shape = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Single"),
+                    requires_line_of_sight = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    cooldown = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_ultimate = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    emotional_register = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -430,7 +454,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     lifecycle = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     effect_type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     effect_amount = table.Column<int>(type: "integer", nullable: false),
-                    effect_set_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true),
                     effect_summary = table.Column<string>(type: "text", nullable: true),
                     is_usable_in_combat = table.Column<bool>(type: "boolean", nullable: true),
                     is_usable_outside_combat = table.Column<bool>(type: "boolean", nullable: true),
@@ -439,7 +462,13 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     is_container = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     container_capacity = table.Column<int>(type: "integer", nullable: true),
                     is_liquid = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    contained_liquid_definition_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true)
+                    contained_liquid_definition_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    tactical_range = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    tactical_area_shape = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Single"),
+                    requires_line_of_sight = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    ground_room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    ground_x = table.Column<int>(type: "integer", nullable: true),
+                    ground_y = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -648,16 +677,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     law_pool_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true),
                     curse_pool_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true),
                     catalog_is_unique = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    grid_width = table.Column<int>(type: "integer", nullable: true),
-                    grid_height = table.Column<int>(type: "integer", nullable: true),
-                    grid_movement_budget = table.Column<int>(type: "integer", nullable: true),
-                    grid_movement_budget_remaining = table.Column<int>(type: "integer", nullable: true),
-                    grid_start_x = table.Column<int>(type: "integer", nullable: true),
-                    grid_start_y = table.Column<int>(type: "integer", nullable: true),
-                    grid_party_x = table.Column<int>(type: "integer", nullable: true),
-                    grid_party_y = table.Column<int>(type: "integer", nullable: true),
-                    grid_revealed_node_ids_csv = table.Column<string>(type: "text", nullable: true),
-                    grid_revealed_cells_csv = table.Column<string>(type: "text", nullable: true),
+                    grid_width = table.Column<int>(type: "integer", nullable: false),
+                    grid_height = table.Column<int>(type: "integer", nullable: false),
+                    grid_movement_budget = table.Column<int>(type: "integer", nullable: false),
+                    grid_movement_budget_remaining = table.Column<int>(type: "integer", nullable: false),
+                    grid_start_x = table.Column<int>(type: "integer", nullable: false),
+                    grid_start_y = table.Column<int>(type: "integer", nullable: false),
+                    grid_party_x = table.Column<int>(type: "integer", nullable: false),
+                    grid_party_y = table.Column<int>(type: "integer", nullable: false),
+                    grid_revealed_node_ids_csv = table.Column<string>(type: "text", nullable: false),
+                    grid_revealed_cells_csv = table.Column<string>(type: "text", nullable: false),
+                    grid_elevation_csv = table.Column<string>(type: "text", nullable: false),
+                    grid_obstacle_cells_csv = table.Column<string>(type: "text", nullable: false),
+                    grid_floor_cells_csv = table.Column<string>(type: "text", nullable: false),
+                    grid_door_cells_csv = table.Column<string>(type: "text", nullable: false),
                     current_grid_node_id = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
@@ -707,7 +740,9 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     character_id = table.Column<Guid>(type: "uuid", nullable: false),
                     definition_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
                     display_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    snapshot_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
+                    emotional_register_code = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    snapshot_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    equipped_item_keys_csv = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -734,7 +769,13 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     charge_cost = table.Column<int>(type: "integer", nullable: false),
                     base_power = table.Column<int>(type: "integer", nullable: false),
                     category = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Physical"),
-                    base_power_is_percent_of_max_vitality = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false)
+                    base_power_is_percent_of_max_vitality = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    tactical_range = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    tactical_area_shape = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Single"),
+                    requires_line_of_sight = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    cooldown = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_ultimate = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    emotional_register = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -764,6 +805,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     effect_set_version = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
                     base_amount = table.Column<int>(type: "integer", nullable: true),
                     scaled_amount = table.Column<int>(type: "integer", nullable: true),
+                    palace_shard_cost = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    him_lit_shard_cost = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     is_selected = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     selection_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
                 },
@@ -792,7 +835,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     reward_profile = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     is_boss = table.Column<bool>(type: "boolean", nullable: false),
                     state = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                    chosen_event_option_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true)
+                    chosen_event_option_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    hidden_state = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    danger_tell = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    contact_behavior = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    exit_destination_room_key = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true),
+                    exit_destination_display_name = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -818,7 +866,16 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     effect_type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     mana_cost = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     charge_cost = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    base_power = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
+                    base_power = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    category = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Physical"),
+                    base_power_is_percent_of_max_vitality = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    tactical_range = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    tactical_area_shape = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Single"),
+                    requires_line_of_sight = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    cooldown = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_ultimate = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    emotional_register = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    temporary_slot = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false, defaultValue: "Permanent")
                 },
                 constraints: table =>
                 {
@@ -843,12 +900,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     starting_guard = table.Column<int>(type: "integer", nullable: false),
                     speed = table.Column<int>(type: "integer", nullable: false),
                     initiative = table.Column<int>(type: "integer", nullable: false),
-                    recovery = table.Column<int>(type: "integer", nullable: false),
                     focus = table.Column<int>(type: "integer", nullable: false),
                     mana = table.Column<int>(type: "integer", nullable: false),
                     charge = table.Column<int>(type: "integer", nullable: false),
                     magic_attack = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    magic_defense = table.Column<int>(type: "integer", nullable: false, defaultValue: 0)
+                    magic_defense = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    movement = table.Column<int>(type: "integer", nullable: false, defaultValue: 4)
                 },
                 constraints: table =>
                 {
@@ -1026,6 +1083,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                 name: "IX_run_items_definition_key",
                 table: "run_items",
                 column: "definition_key");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_run_items_ground_room_id_ground_x_ground_y",
+                table: "run_items",
+                columns: new[] { "ground_room_id", "ground_x", "ground_y" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_run_items_run_id",

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    [Migration("20260727061950_AddRunCombatMode")]
-    partial class AddRunCombatMode
+    [Migration("20260808215022_InitialSchema")]
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -434,6 +434,95 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("status");
 
+                    b.Property<string>("TacticalActivationCountsCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_activation_counts_csv");
+
+                    b.Property<int?>("TacticalActiveIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_active_index");
+
+                    b.Property<string>("TacticalCannotReviveCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_cannot_revive_csv");
+
+                    b.Property<string>("TacticalElevationCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_elevation_csv");
+
+                    b.Property<string>("TacticalEquippedItemsCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_equipped_items_csv");
+
+                    b.Property<int?>("TacticalEscapeX")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_escape_x");
+
+                    b.Property<int?>("TacticalEscapeY")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_escape_y");
+
+                    b.Property<string>("TacticalFloorCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_floor_csv");
+
+                    b.Property<int?>("TacticalHeight")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_height");
+
+                    b.Property<string>("TacticalInitiativeOrderCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_initiative_order_csv");
+
+                    b.Property<string>("TacticalLastMagicCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_last_magic_csv");
+
+                    b.Property<int>("TacticalOriginX")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tactical_origin_x");
+
+                    b.Property<int>("TacticalOriginY")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tactical_origin_y");
+
+                    b.Property<string>("TacticalPositionsCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_positions_csv");
+
+                    b.Property<string>("TacticalRiskTier")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("tactical_risk_tier");
+
+                    b.Property<int?>("TacticalRoundNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_round_number");
+
+                    b.Property<string>("TacticalSkillCooldownsCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_skill_cooldowns_csv");
+
+                    b.Property<string>("TacticalTurnStatesCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_turn_states_csv");
+
+                    b.Property<string>("TacticalUsedOnceSkillKeysCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_used_once_skill_keys_csv");
+
+                    b.Property<string>("TacticalWalkableCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_walkable_csv");
+
+                    b.Property<int?>("TacticalWidth")
+                        .HasColumnType("integer")
+                        .HasColumnName("tactical_width");
+
                     b.Property<bool>("TapisPropreEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -469,10 +558,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
-
-                    b.Property<int?>("AtbReadyThreshold")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_ready_threshold");
 
                     b.Property<int>("AttackPower")
                         .HasColumnType("integer")
@@ -522,9 +607,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
 
-                    b.Property<int>("Recovery")
+                    b.Property<int>("Movement")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("recovery");
+                        .HasDefaultValue(4)
+                        .HasColumnName("movement");
 
                     b.Property<int>("Speed")
                         .HasColumnType("integer")
@@ -563,8 +650,13 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("base_guard");
 
-                    b.Property<int>("Charge")
-                        .HasColumnType("integer")
+                    b.Property<Guid?>("CharacterInstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("character_instance_id");
+
+                    b.Property<decimal>("Charge")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("charge");
 
                     b.Property<Guid>("CombatId")
@@ -604,6 +696,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("dot_duration_reduction_percent");
+
+                    b.Property<string>("EmotionalAffinityModifiersJson")
+                        .HasColumnType("text")
+                        .HasColumnName("emotional_affinity_modifiers_json");
 
                     b.Property<int>("Guard")
                         .HasColumnType("integer")
@@ -653,19 +749,23 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
 
-                    b.Property<string>("Row")
+                    b.Property<string>("NaturalEmotionalRegister")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("Front")
-                        .HasColumnName("row");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("natural_emotional_register");
 
                     b.Property<string>("Side")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("side");
+
+                    b.Property<string>("SourceDefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_definition_key");
 
                     b.Property<string>("SourceKey")
                         .IsRequired()
@@ -705,32 +805,13 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<int?>("ActionRecoveryUntilTick")
-                        .HasColumnType("integer")
-                        .HasColumnName("action_recovery_until_tick");
-
-                    b.Property<int?>("AtbFillPerTick")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_fill_per_tick");
-
-                    b.Property<int?>("AtbGaugeValue")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_gauge_value");
-
-                    b.Property<int?>("AtbTempoCombatantFactorPerMille")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_tempo_combatant_factor_per_mille");
-
-                    b.Property<int?>("AtbTempoRoomFactorPerMille")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_tempo_room_factor_per_mille");
-
                     b.Property<Guid>("CombatantId")
                         .HasColumnType("uuid")
                         .HasColumnName("combatant_id");
 
-                    b.Property<int>("CurrentCharge")
-                        .HasColumnType("integer")
+                    b.Property<decimal>("CurrentCharge")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("current_charge");
 
                     b.Property<int>("CurrentFocus")
@@ -758,12 +839,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(2147483647)
                         .HasColumnName("max_mana");
-
-                    b.Property<int>("TempoMomentumPerMille")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("tempo_momentum_per_mille");
 
                     b.Property<double>("ThreatValue")
                         .ValueGeneratedOnAdd()
@@ -822,6 +897,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("combatant_id");
 
+                    b.Property<int>("Cooldown")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cooldown");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -834,6 +915,18 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("effect_type");
 
+                    b.Property<string>("EmotionalRegister")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("emotional_register");
+
+                    b.Property<bool>("IsUltimate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_ultimate");
+
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -844,6 +937,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("mana_cost");
 
+                    b.Property<bool>("RequiresLineOfSight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_line_of_sight");
+
                     b.Property<string>("SkillType")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -853,6 +952,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<string>("StatusEffectsJson")
                         .HasColumnType("text")
                         .HasColumnName("status_effects_json");
+
+                    b.Property<string>("TacticalAreaShape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Single")
+                        .HasColumnName("tactical_area_shape");
+
+                    b.Property<int>("TacticalRange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("tactical_range");
 
                     b.Property<string>("Tags")
                         .IsRequired()
@@ -908,6 +1021,16 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("event_type");
+
+                    b.Property<string>("ExitDestinationDisplayName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("exit_destination_display_name");
+
+                    b.Property<string>("ExitDestinationRoomKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("exit_destination_room_key");
 
                     b.Property<string>("HiddenState")
                         .IsRequired()
@@ -1134,6 +1257,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("charge_cost");
 
+                    b.Property<int>("Cooldown")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cooldown");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1146,15 +1275,47 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("effect_type");
 
+                    b.Property<string>("EmotionalRegister")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("emotional_register");
+
+                    b.Property<bool>("IsUltimate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_ultimate");
+
                     b.Property<int>("ManaCost")
                         .HasColumnType("integer")
                         .HasColumnName("mana_cost");
+
+                    b.Property<bool>("RequiresLineOfSight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_line_of_sight");
 
                     b.Property<string>("SkillType")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("skill_type");
+
+                    b.Property<string>("TacticalAreaShape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Single")
+                        .HasColumnName("tactical_area_shape");
+
+                    b.Property<int>("TacticalRange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("tactical_range");
 
                     b.Property<string>("TargetingType")
                         .IsRequired()
@@ -1297,6 +1458,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("effect_set_version");
 
+                    b.Property<int>("HimLitShardCost")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("him_lit_shard_cost");
+
                     b.Property<bool>("IsSelected")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1308,6 +1475,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("label");
+
+                    b.Property<int>("PalaceShardCost")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("palace_shard_cost");
 
                     b.Property<string>("PayloadKey")
                         .HasMaxLength(256)
@@ -1434,6 +1607,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)")
                         .HasColumnName("enemy_pool_key");
+
+                    b.Property<string>("GridDoorCellsCsv")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("grid_door_cells_csv");
 
                     b.Property<string>("GridElevationCsv")
                         .IsRequired()
@@ -1680,6 +1858,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("base_power");
 
+                    b.Property<bool>("BasePowerIsPercentOfMaxVitality")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("base_power_is_percent_of_max_vitality");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Physical")
+                        .HasColumnName("category");
+
                     b.Property<Guid>("CharacterSnapshotId")
                         .HasColumnType("uuid")
                         .HasColumnName("character_snapshot_id");
@@ -1689,6 +1881,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("charge_cost");
+
+                    b.Property<int>("Cooldown")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cooldown");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -1702,11 +1900,29 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("effect_type");
 
+                    b.Property<string>("EmotionalRegister")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("emotional_register");
+
+                    b.Property<bool>("IsUltimate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_ultimate");
+
                     b.Property<int>("ManaCost")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("mana_cost");
+
+                    b.Property<bool>("RequiresLineOfSight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_line_of_sight");
 
                     b.Property<string>("SkillDefinitionKey")
                         .IsRequired()
@@ -1720,11 +1936,33 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("skill_type");
 
+                    b.Property<string>("TacticalAreaShape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Single")
+                        .HasColumnName("tactical_area_shape");
+
+                    b.Property<int>("TacticalRange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("tactical_range");
+
                     b.Property<string>("TargetingMode")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("targeting_mode");
+
+                    b.Property<string>("TemporarySlot")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Permanent")
+                        .HasColumnName("temporary_slot");
 
                     b.HasKey("Id");
 
@@ -1757,6 +1995,16 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("display_name");
+
+                    b.Property<string>("EmotionalRegisterCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("emotional_register_code");
+
+                    b.Property<string>("EquippedItemKeysCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("equipped_item_keys_csv");
 
                     b.Property<Guid>("PlayerSnapshotId")
                         .HasColumnType("uuid")
@@ -1826,9 +2074,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
 
-                    b.Property<int>("Recovery")
+                    b.Property<int>("Movement")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("recovery");
+                        .HasDefaultValue(4)
+                        .HasColumnName("movement");
 
                     b.Property<int>("Speed")
                         .HasColumnType("integer")
@@ -1871,12 +2121,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<int?>("CaliceInfiniLastUsedRoomIndex")
                         .HasColumnType("integer");
-
-                    b.Property<string>("CombatMode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("combat_mode");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -1921,6 +2165,17 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("dot_duration_reduction_percent");
+
+                    b.Property<string>("EmotionalAffinityMatrixJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("emotional_affinity_matrix_json");
+
+                    b.Property<string>("EmotionalAffinityMatrixVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("emotional_affinity_matrix_version");
 
                     b.Property<DateTime?>("EndedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -2172,11 +2427,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("effect_amount");
 
-                    b.Property<string>("EffectSetKey")
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("effect_set_key");
-
                     b.Property<string>("EffectSummary")
                         .HasColumnType("text")
                         .HasColumnName("effect_summary");
@@ -2186,6 +2436,18 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("effect_type");
+
+                    b.Property<Guid?>("GroundRoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ground_room_id");
+
+                    b.Property<int?>("GroundX")
+                        .HasColumnType("integer")
+                        .HasColumnName("ground_x");
+
+                    b.Property<int?>("GroundY")
+                        .HasColumnType("integer")
+                        .HasColumnName("ground_y");
 
                     b.Property<bool>("IsContainer")
                         .ValueGeneratedOnAdd()
@@ -2230,6 +2492,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("rarity");
 
+                    b.Property<bool>("RequiresLineOfSight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_line_of_sight");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("uuid")
                         .HasColumnName("run_id");
@@ -2237,6 +2505,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<Guid?>("SourceRewardOptionId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_reward_option_id");
+
+                    b.Property<string>("TacticalAreaShape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Single")
+                        .HasColumnName("tactical_area_shape");
+
+                    b.Property<int>("TacticalRange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("tactical_range");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -2256,6 +2538,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.HasIndex("RunId");
 
                     b.HasIndex("SourceRewardOptionId");
+
+                    b.HasIndex("GroundRoomId", "GroundX", "GroundY");
 
                     b.ToTable("run_items", (string)null);
                 });
