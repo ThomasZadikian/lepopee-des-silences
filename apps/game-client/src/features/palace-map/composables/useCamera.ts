@@ -2,7 +2,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 
 import { DEFAULT_ZOOM, type CameraParams } from './useTerrainDrawPlan';
 
-const EXPLORATION_ZOOM = 0.55; 
+const EXPLORATION_ZOOM = 0.45; 
 
 /**
  * The exploration map's camera: centered on the party's own animated grid position
