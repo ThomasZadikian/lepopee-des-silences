@@ -197,12 +197,16 @@ describe('buildDrawPlan', () => {
     expect(taller.sortKey).toBeGreaterThan(shorter.sortKey);
   });
 
-  it('produces exactly one entry per grid cell, plus one for the party when present', () => {
+  it('produces one entry per grid cell, plus ambient decor, plus one for the party when present', () => {
+    // 25 floor cells + party: null (no exclusion) + Threshold's own themeProps pool (non-empty,
+    // see SURFACE_EXTRA_PROP in tilecraft.js) → DECOR_MIN_COUNT (2) ambient decor props, since
+    // 25 eligible cells / DECOR_CELL_SPAN (14) rounds down to 1, below the floor.
     const plan = buildDrawPlan(baseInput);
-    expect(plan).toHaveLength(25);
+    expect(plan).toHaveLength(25 + 2);
+    expect(plan.filter((e) => e.cellKey.startsWith('decor:'))).toHaveLength(2);
 
     const withParty = buildDrawPlan({ ...baseInput, party: { x: 0, y: 0 } });
-    expect(withParty).toHaveLength(26);
+    expect(withParty).toHaveLength(26 + 2);
   });
 
   describe('painted-tile fields', () => {
@@ -407,6 +411,60 @@ describe('buildDrawPlan', () => {
 
       expect(prop.sortKey).toBeGreaterThan(tile.sortKey);
       expect(party.sortKey).toBeGreaterThan(prop.sortKey);
+    });
+  });
+
+  describe('doors and ambient decor', () => {
+    it('stands a threshold prop on every door cell', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        doorCells: new Set(['2,2']),
+      });
+
+      expect(plan.find((e) => e.cellKey === 'door:2,2')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'threshold' });
+    });
+
+    it('never places ambient decor on a node, obstacle, door or the party cell', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['1,1', makeNode({ lane: 1, row: 1, type: 'Rest' })]]),
+        obstacleCells: new Set(['2,2']),
+        doorCells: new Set(['3,3']),
+        party: { x: 0, y: 0 },
+      });
+
+      const decorCells = plan
+        .filter((e) => e.cellKey.startsWith('decor:'))
+        .map((e) => `${e.x},${e.y}`);
+
+      expect(decorCells).not.toContain('1,1');
+      expect(decorCells).not.toContain('2,2');
+      expect(decorCells).not.toContain('3,3');
+      expect(decorCells).not.toContain('0,0');
+    });
+
+    it('produces the same decor for the same grid across repaints', () => {
+      const first = buildDrawPlan(baseInput).filter((e) => e.cellKey.startsWith('decor:'));
+      const second = buildDrawPlan(baseInput).filter((e) => e.cellKey.startsWith('decor:'));
+
+      expect(first.map((e) => e.cellKey)).toEqual(second.map((e) => e.cellKey));
+      expect(first.map((e) => e.spriteKey)).toEqual(second.map((e) => e.spriteKey));
+    });
+
+    it('never exceeds DECOR_MAX_COUNT even on a very large room', () => {
+      const size = 35;
+      const plan = buildDrawPlan({
+        ...baseInput,
+        cells: cellsFor(size, size),
+        gridWidth: size,
+        gridHeight: size,
+        elevation: new Array(size * size).fill(0),
+      });
+
+      const decorCount = plan.filter((e) => e.cellKey.startsWith('decor:')).length;
+      expect(decorCount).toBeGreaterThan(0);
+      expect(decorCount).toBeLessThanOrEqual(12);
     });
   });
 

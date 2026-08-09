@@ -49,6 +49,18 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     return obstacleCells.value.has(`${x},${y}`);
   }
 
+  const doorCells = computed(() => {
+    const set = new Set<string>();
+    for (const [x, y] of grid.value?.doorCells ?? []) {
+      set.add(`${x},${y}`);
+    }
+    return set;
+  });
+
+  function isDoor(x: number, y: number): boolean {
+    return doorCells.value.has(`${x},${y}`);
+  }
+
   /**
    * Whether a cell is part of the room at all. Returns false out of bounds too, so callers can
    * use it as a single "is this a real cell" test. A room persisted before rooms had a shape
@@ -86,6 +98,8 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     isParty,
     obstacleCells,
     isObstacle,
+    doorCells,
+    isDoor,
     isFloor,
     cells,
   };

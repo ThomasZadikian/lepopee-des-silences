@@ -6,10 +6,19 @@ import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
   obstacleVariantCount,
+  themeProps,
   type FloorTint,
+  type PropKind,
   type RoomTheme,
   type SpriteKey,
 } from './useTerrainSprites';
+
+// BALANCE KNOB — ambient room decor (furniture/scenery unrelated to any node, see themeProps):
+// roughly one prop per DECOR_CELL_SPAN eligible floor cells, bounded so a small room still gets
+// a little texture and a large one never turns into visual noise.
+const DECOR_CELL_SPAN = 14;
+const DECOR_MIN_COUNT = 2;
+const DECOR_MAX_COUNT = 12;
 
 /** How many hand-painted brush variations a floor cycles through, so a large flat area never
  * reads as one tile stamped repeatedly. Formula from the tile-engine handoff. */
@@ -386,6 +395,9 @@ export type BuildDrawPlanInput = {
   /** Flat, row-major, one 0..3 value per cell. */
   elevation: number[];
   obstacleCells: Set<string>;
+  /** Keyed "x,y" — a sub-room's threshold (RoomGridDto.doorCells). Painted with its own prop (a
+   * literal doorway) and kept out of the ambient decor pool so nothing else stands there. */
+  doorCells?: Set<string>;
   /** Whether a cell is part of the room at all. Cliff faces are painted on tiles whose
    * front-left/front-right neighbour is NOT floor, which is what makes a non-rectangular room
    * read as having real edges. Defaults to "everything inside the grid is floor" — the grid is
@@ -550,6 +562,82 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       elevation: elevationLevel,
       sortKey: ((cell.x + cell.y) * 4) + elevationLevel + 0.45,
     });
+  }
+
+  // A sub-room's threshold (PartitionSubRooms) — the one cell of its ring left open. Painted as
+  // a literal doorway so the partition actually reads as "a chamber behind a door" rather than
+  // as an arbitrary gap in the wall.
+  if (input.doorCells) {
+    for (const doorKey of input.doorCells) {
+      const [doorX, doorY] = doorKey.split(',').map(Number);
+      if (!isFloor(doorX, doorY)) continue;
+      if (!inBounds(doorX, doorY)) continue;
+
+      const elevationLevel = input.elevation[(doorY * input.gridWidth) + doorX] ?? 0;
+      const { screenX, screenY } = project(doorX, doorY);
+
+      entries.push({
+        cellKey: `door:${doorKey}`,
+        x: doorX,
+        y: doorY,
+        spriteKey: { kind: 'prop', theme: input.theme, prop: 'threshold' },
+        screenX,
+        screenY,
+        elevation: elevationLevel,
+        sortKey: ((doorX + doorY) * 4) + elevationLevel + 0.45,
+      });
+    }
+  }
+
+  // Room-level ambient decor: furniture/scenery scattered across a handful of interior floor
+  // cells, independent of any node — what actually gives a room a lived-in texture beyond its
+  // walls (see themeProps). Deterministic per cell (ranked by hash, not by RNG draw order) so a
+  // room's own furniture never reshuffles between repaints of the same grid.
+  {
+    // themeProps comes back untyped (string[]) — it's shared with tilecraft.js's raw canvas
+    // layer, which has no PropKind of its own. Every value in a room's/theme's `props` array is
+    // one of the "décor de salle" PropKind literals by construction (see SURFACE_EXTRA_PROP).
+    const decorPool = themeProps(input.theme) as PropKind[];
+    if (decorPool.length > 0) {
+      const eligible: { x: number; y: number; cellKey: string }[] = [];
+      for (const cell of input.cells) {
+        if (!isFloor(cell.x, cell.y)) continue;
+        if (!inBounds(cell.x, cell.y)) continue;
+        const cellKey = `${cell.x},${cell.y}`;
+        if (input.nodesByCell.has(cellKey)) continue;
+        if (input.obstacleCells.has(cellKey)) continue;
+        if (input.doorCells?.has(cellKey)) continue;
+        if (input.party && input.party.x === cell.x && input.party.y === cell.y) continue;
+        eligible.push({ x: cell.x, y: cell.y, cellKey });
+      }
+
+      const decorCount = eligible.length === 0 ? 0 : Math.min(
+        DECOR_MAX_COUNT,
+        Math.max(DECOR_MIN_COUNT, Math.floor(eligible.length / DECOR_CELL_SPAN)),
+      );
+
+      const chosen = eligible
+        .map((cell) => ({ cell, rank: hashSeed(`decor:${cell.cellKey}`) }))
+        .sort((a, b) => a.rank - b.rank)
+        .slice(0, decorCount);
+
+      for (const { cell } of chosen) {
+        const prop = decorPool[hashSeed(`decor-kind:${cell.cellKey}`) % decorPool.length];
+        const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
+        const { screenX, screenY } = project(cell.x, cell.y);
+
+        entries.push({
+          cellKey: `decor:${cell.cellKey}`,
+          x: cell.x,
+          y: cell.y,
+          spriteKey: { kind: 'prop', theme: input.theme, prop },
+          screenX,
+          screenY,
+          elevation: elevationLevel,
+          sortKey: ((cell.x + cell.y) * 4) + elevationLevel + 0.45,
+        });
+      }
+    }
   }
 
   if (input.reachableCells) {

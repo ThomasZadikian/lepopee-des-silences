@@ -98,14 +98,18 @@ export type HighlightVariant =
   | 'move' | 'attack' | 'cursor' | 'path'
   | 'aoe' | 'threat' | 'blocked' | 'height' | 'occupied';
 /**
- * Décor vertical. Les sept premiers sont les décors de salle ; les suivants sont les décors
- * d'événement, un par type de nœud (voir `NODE_PROP`).
+ * Décor vertical. Les dix-huit premiers sont les décors de salle (voir `themeProps`/
+ * `SURFACE_EXTRA_PROP` dans tilecraft.js — `threshold` est réservé aux cases de porte,
+ * `stairwell` au nœud Sortie, les seize autres sont piochés au hasard par salle) ; les suivants
+ * sont les décors d'événement, un par type de nœud (voir `PROP_KIND_BY_NODE_TYPE`).
  * `monster` est la menace génerique posée sur un nœud ennemi, `elite` la même bête cornue
  * (élite / rare), `boss` l'objectif de la salle — silhouette deux fois plus haute, sceau au
  * sol, visible de l'autre bout du plateau.
  */
 export type PropKind =
-  | 'beam' | 'arch' | 'column' | 'trunk' | 'spire' | 'obeliskProp' | 'cairn'
+  | 'beam' | 'arch' | 'threshold' | 'trunk' | 'spire' | 'obeliskProp' | 'column' | 'cairn'
+  | 'statue' | 'urn' | 'banner' | 'bench' | 'candelabra' | 'basin' | 'chest' | 'rack'
+  | 'debris' | 'stairwell'
   | 'npc' | 'merchant' | 'star' | 'campfire' | 'curse' | 'monster' | 'elite' | 'boss';
 
 export type SpriteKey =

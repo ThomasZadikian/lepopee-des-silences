@@ -47,7 +47,9 @@ export const PROP_KIND_BY_NODE_TYPE: Record<string, PropKind> = {
   Rare: 'elite',
   RoomBoss: 'boss',
   FinalBoss: 'boss',
-  Exit: 'arch',
+  // A staircase descent, not an archway — it reads as an actual passage to the next room
+  // (Chantier "sorties de salle multiples"), which 'arch' left ambiguous with plain decor.
+  Exit: 'stairwell',
 };
 
 /**

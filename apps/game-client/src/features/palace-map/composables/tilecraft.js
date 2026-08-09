@@ -332,6 +332,27 @@ export const ROOMS = {
 };
 export const ROOM_KEYS = Object.keys(ROOMS);
 
+// Chaque salle du catalogue (et chaque thème générique de repli) ne déclarait que deux décors,
+// tous deux tirés du même petit lot de sept — les onze nouveaux (statue, urn, banner, bench,
+// candelabra, basin, chest, rack, debris) n'apparaissaient dans AUCUN tableau `props`, donc
+// jamais choisis par `themeProps()`. Plutôt que de retoucher les 34 entrées à la main, un
+// troisième décor est ajouté ici, par vocabulaire de surface plutôt que par salle — le mobilier
+// suit le matériau du lieu, une seule fois, en un point d'entrée qui couvre aussi toute salle
+// future. `threshold` (posé sur les cases de porte, voir buildDrawPlan) et `stairwell` (le prop
+// du nœud Sortie) sont volontairement absents : ce sont des décors DE RÔLE, pas de l'ambiance —
+// les mêler au tirage aléatoire les ferait lire comme une porte ou une sortie qui n'existent pas.
+const SURFACE_EXTRA_PROP = {
+  plank: 'chest', parchment: 'rack', moss: 'bench', fracture: 'debris', ripple: 'basin',
+  marble: 'statue', pulse: 'candelabra', carpet: 'banner', flagstone: 'urn',
+  clinic: 'chest', crystal: 'basin',
+};
+for (const room of [...Object.values(THEMES), ...Object.values(ROOMS)]) {
+  const extra = SURFACE_EXTRA_PROP[room.surface];
+  if (extra && Array.isArray(room.props) && !room.props.includes(extra)) {
+    room.props = [...room.props, extra];
+  }
+}
+
 const ROOM_CACHE = new Map();
 /** Compose une salle : thème de base + surcharges. Mémoïsé — appelé à chaque sprite. */
 function composeRoom(key) {
