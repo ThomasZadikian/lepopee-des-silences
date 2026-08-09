@@ -98,18 +98,35 @@ export type HighlightVariant =
   | 'move' | 'attack' | 'cursor' | 'path'
   | 'aoe' | 'threat' | 'blocked' | 'height' | 'occupied';
 /**
- * Décor vertical. Les dix-huit premiers sont les décors de salle (voir `themeProps`/
- * `SURFACE_EXTRA_PROP` dans tilecraft.js — `threshold` est réservé aux cases de porte,
- * `stairwell` au nœud Sortie, les seize autres sont piochés au hasard par salle) ; les suivants
- * sont les décors d'événement, un par type de nœud (voir `PROP_KIND_BY_NODE_TYPE`).
- * `monster` est la menace génerique posée sur un nœud ennemi, `elite` la même bête cornue
- * (élite / rare), `boss` l'objectif de la salle — silhouette deux fois plus haute, sceau au
- * sol, visible de l'autre bout du plateau.
+ * Décor vertical. Les soixante-cinq premiers sont les décors de salle : `threshold` est
+ * réservé aux cases de porte et `stairwell` au nœud Sortie (voir buildDrawPlan) ; les 60
+ * autres se répartissent en 8 familles de salles à 10 décors chacune (voir ROOM_FAMILY /
+ * FAMILY_DECOR dans tilecraft.js, livraison Claude Design du 09/08). Les suivants sont les
+ * décors d'événement, un par type de nœud (voir `PROP_KIND_BY_NODE_TYPE`). `monster` est la
+ * menace génerique posée sur un nœud ennemi, `elite` la même bête cornue (élite / rare),
+ * `boss` l'objectif de la salle — silhouette deux fois plus haute, sceau au sol, visible de
+ * l'autre bout du plateau.
  */
 export type PropKind =
   | 'beam' | 'arch' | 'threshold' | 'trunk' | 'spire' | 'obeliskProp' | 'column' | 'cairn'
   | 'statue' | 'urn' | 'banner' | 'bench' | 'candelabra' | 'basin' | 'chest' | 'rack'
   | 'debris' | 'stairwell'
+  // Famille Seuils & Corridors
+  | 'rugRunner' | 'coatrack' | 'noticeboard' | 'archwayLamp' | 'doorstop'
+  // Famille Chambres intimes
+  | 'bedstead' | 'mirror' | 'cushionPile' | 'nightstandCandle' | 'windowDrape' | 'lettersScattered'
+  // Famille Salles sombres & confinement
+  | 'shackles' | 'crackedFloor' | 'clawMarks' | 'huddleOfBones' | 'voidLantern' | 'rustedBars'
+  // Famille Palais & apparat
+  | 'throne' | 'brazierStand' | 'tapestryWall' | 'goldenIngot' | 'fallenColumnDrum' | 'royalRug'
+  // Famille Enfers — forge et désolation
+  | 'anvil' | 'chainHook' | 'ashPile' | 'brandingIron' | 'moltenPool' | 'scorchedTrunk'
+  // Famille Montagne
+  | 'iceShard' | 'burialUrn' | 'ropeAndPiton' | 'glowMoss' | 'rockfallPile' | 'frozenBanner'
+  // Famille Hôpital
+  | 'cot' | 'medicineCabinet' | 'bandageRoll' | 'surgicalTray' | 'IVStand' | 'driedFlowers'
+  // Famille Jardin & Soleil
+  | 'hedgeRow' | 'sundial' | 'floweringVine' | 'wellhead' | 'sunburstLantern' | 'birdbath'
   | 'npc' | 'merchant' | 'star' | 'campfire' | 'curse' | 'monster' | 'elite' | 'boss';
 
 export type SpriteKey =

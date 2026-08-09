@@ -332,26 +332,58 @@ export const ROOMS = {
 };
 export const ROOM_KEYS = Object.keys(ROOMS);
 
-// Chaque salle du catalogue (et chaque thème générique de repli) ne déclarait que deux décors,
-// tous deux tirés du même petit lot de sept — les onze nouveaux (statue, urn, banner, bench,
-// candelabra, basin, chest, rack, debris) n'apparaissaient dans AUCUN tableau `props`, donc
-// jamais choisis par `themeProps()`. Plutôt que de retoucher les 34 entrées à la main, un
-// troisième décor est ajouté ici, par vocabulaire de surface plutôt que par salle — le mobilier
-// suit le matériau du lieu, une seule fois, en un point d'entrée qui couvre aussi toute salle
-// future. `threshold` (posé sur les cases de porte, voir buildDrawPlan) et `stairwell` (le prop
-// du nœud Sortie) sont volontairement absents : ce sont des décors DE RÔLE, pas de l'ambiance —
-// les mêler au tirage aléatoire les ferait lire comme une porte ou une sortie qui n'existent pas.
+// A generic RenderTheme (Threshold, Memory…) is the repli used when a room has no
+// catalogRoomKey at all — it only ever declared two decors, both from the same small lot of
+// seven. This gives it a third, picked by surface vocabulary rather than by name (a generic
+// theme has no name to speak of). The 27 canon rooms no longer read this at all — see
+// ROOM_FAMILY/FAMILY_DECOR below, which supersedes it for every real room.
 const SURFACE_EXTRA_PROP = {
   plank: 'chest', parchment: 'rack', moss: 'bench', fracture: 'debris', ripple: 'basin',
   marble: 'statue', pulse: 'candelabra', carpet: 'banner', flagstone: 'urn',
   clinic: 'chest', crystal: 'basin',
 };
-for (const room of [...Object.values(THEMES), ...Object.values(ROOMS)]) {
+for (const room of Object.values(THEMES)) {
   const extra = SURFACE_EXTRA_PROP[room.surface];
   if (extra && Array.isArray(room.props) && !room.props.includes(extra)) {
     room.props = [...room.props, extra];
   }
 }
+
+// ── Décor par famille de salles (livraison Claude Design du 09/08) ───────────────────────
+// Les 27 salles canon se regroupent en 8 familles qui partagent un même vocabulaire de décor
+// — pas forcément la même `chain` narrative : room.chateau et room.enfer4 sont explicitement
+// le même bâtiment réutilisé (voir le commentaire sur ROOMS['room.chateau']), donc la même
+// famille malgré des chaînes différentes ; room.cellule suit sa fonction (une cellule de
+// prison) plutôt que la chaîne "soleil" à laquelle elle appartient narrativement. Dix décors
+// assignés par salle ; ~60 décors uniques au total en comptant les réemplois d'une famille à
+// l'autre (une vasque de salle et un candélabre n'ont pas à être réinventés pour chaque lieu).
+// `threshold` (posé sur les cases de porte, voir buildDrawPlan) et `stairwell` (le prop du
+// nœud Sortie) restent hors de tout pool : ce sont des décors DE RÔLE, pas de l'ambiance — les
+// mêler au tirage aléatoire les ferait lire comme une porte ou une sortie qui n'existent pas.
+const ROOM_FAMILY = {
+  'room.halldentree': 'seuils', 'room.palier': 'seuils', 'room.couloirs': 'seuils',
+  'room.feelings': 'chambres', 'room.room08': 'chambres', 'room.chambredelise': 'chambres',
+  'room.meditation': 'chambres',
+  'room.turtle': 'sombres', 'room.enfermement': 'sombres', 'room.labyrinthe': 'sombres',
+  'room.faille': 'sombres', 'room.cellule': 'sombres',
+  'room.chateau': 'apparat', 'room.templempontagne': 'apparat', 'room.enfer4': 'apparat',
+  'room.falaise': 'enfers', 'room.enfer1': 'enfers', 'room.enfer2': 'enfers', 'room.enfer3': 'enfers',
+  'room.montagne': 'montagne', 'room.chambrefunéraire': 'montagne',
+  'room.sousterrainmontagne': 'montagne', 'room.cavernedecrystal': 'montagne',
+  'room.hopital': 'hopital', 'room.cellulehopital': 'hopital',
+  'room.jardin': 'jardin', 'room.soleil': 'jardin',
+};
+
+const FAMILY_DECOR = {
+  seuils: ['banner', 'candelabra', 'urn', 'bench', 'rugRunner', 'coatrack', 'noticeboard', 'archwayLamp', 'doorstop', 'cairn'],
+  chambres: ['candelabra', 'chest', 'urn', 'rack', 'bedstead', 'mirror', 'cushionPile', 'nightstandCandle', 'windowDrape', 'lettersScattered'],
+  sombres: ['debris', 'obeliskProp', 'spire', 'cairn', 'shackles', 'crackedFloor', 'clawMarks', 'huddleOfBones', 'voidLantern', 'rustedBars'],
+  apparat: ['statue', 'banner', 'candelabra', 'urn', 'throne', 'brazierStand', 'tapestryWall', 'goldenIngot', 'fallenColumnDrum', 'royalRug'],
+  enfers: ['debris', 'spire', 'cairn', 'obeliskProp', 'anvil', 'chainHook', 'ashPile', 'brandingIron', 'moltenPool', 'scorchedTrunk'],
+  montagne: ['cairn', 'obeliskProp', 'basin', 'spire', 'iceShard', 'burialUrn', 'ropeAndPiton', 'glowMoss', 'rockfallPile', 'frozenBanner'],
+  hopital: ['rack', 'chest', 'basin', 'candelabra', 'cot', 'medicineCabinet', 'bandageRoll', 'surgicalTray', 'IVStand', 'driedFlowers'],
+  jardin: ['trunk', 'cairn', 'debris', 'basin', 'hedgeRow', 'sundial', 'floweringVine', 'wellhead', 'sunburstLantern', 'birdbath'],
+};
 
 const ROOM_CACHE = new Map();
 /** Compose une salle : thème de base + surcharges. Mémoïsé — appelé à chaque sprite. */
@@ -374,7 +406,11 @@ function theme(name) {
 }
 
 /** Décors de salle disponibles pour un thème ou une salle. */
-export function themeProps(name) { return theme(name).props ?? []; }
+export function themeProps(name) {
+  const family = name ? ROOM_FAMILY[name] : undefined;
+  if (family) return FAMILY_DECOR[family];
+  return theme(name).props ?? [];
+}
 /** Libellé lisible d'un thème ou d'une salle. */
 export function themeLabel(name) { return theme(name).label; }
 /** Couleur du voile de brouillard de guerre, déclinée par salle. */
@@ -2166,6 +2202,730 @@ function bakeProp(name, propKind, grain) {
     }
     return cv;
   }
+  // ── Famille Seuils & Corridors (halldentree, palier, couloirs) ──────────────────────
+  if (propKind === 'rugRunner') {
+    // Tapis de couloir : bande basse posée au sol, franges aux extrémités — guide l'œil
+    // dans le sens du passage plutôt que de s'y opposer.
+    const cloth = th.rug ?? mix(th.accent, '#7a2f38', 0.6);
+    paintMass(ctx, [P(cx - 44, base + 2), P(cx - 34, base - 6), P(cx + 34, base - 6), P(cx + 44, base + 2)], th, R,
+      { striation: 'fibre', base: cloth, deep: shade(cloth, -0.4), rim: 0.14 });
+    for (const [ex, ey] of [[cx - 39, base - 2], [cx + 39, base - 2]]) {
+      for (let i = 0; i < 4; i++) {
+        const fx = ex + R2(R, -4, 4);
+        ctx.beginPath();
+        ctx.moveTo(fx, ey);
+        ctx.lineTo(fx + R2(R, -1.5, 1.5), ey + R2(R, 5, 9));
+        ctx.strokeStyle = rgba(shade(cloth, -0.5), 0.85); ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    return cv;
+  }
+  if (propKind === 'coatrack') {
+    // Portemanteau : montant + patères, une cape suspendue — quelqu'un vient de passer.
+    const wood = mix(th.riser, '#4a3722', 0.55);
+    paintMass(ctx, [P(cx - 3, base), P(cx - 2, base - 96), P(cx + 2, base - 96), P(cx + 3, base)], th, R,
+      { striation: 'fibre', base: wood, deep: '#140d07', rim: 0.16 });
+    for (const dy of [86, 70]) {
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx, base - dy);
+        ctx.lineTo(cx + s * 18, base - dy + 4);
+        ctx.strokeStyle = rgba(wood, 0.95); ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+    }
+    const cloak = mix(th.accent, '#4a2f38', 0.55);
+    const c = new Path2D();
+    c.moveTo(cx - 4, base - 68);
+    c.quadraticCurveTo(cx - 22, base - 40, cx - 14, base - 10);
+    c.lineTo(cx + 10, base - 10);
+    c.quadraticCurveTo(cx + 16, base - 40, cx + 4, base - 68);
+    c.closePath();
+    ctx.fillStyle = rgba(cloak, 0.92); ctx.fill(c);
+    ctx.strokeStyle = rgba(th.glow, 0.14); ctx.lineWidth = 1; ctx.stroke(c);
+    return cv;
+  }
+  if (propKind === 'noticeboard') {
+    // Panneau d'annonces : avis scellés de cire, la bureaucratie du Palais rendue visible.
+    const wood = mix(th.riser, '#5b4128', 0.5);
+    paintMass(ctx, [P(cx - 4, base), P(cx - 3, base - 74), P(cx + 3, base - 74), P(cx + 4, base)], th, R,
+      { striation: 'fibre', base: wood, deep: '#150e08', rim: 0.14 });
+    paintMass(ctx, [P(cx - 26, base - 46), P(cx - 26, base - 92), P(cx + 26, base - 92), P(cx + 26, base - 46)], th, R,
+      { striation: 'fibre', base: shade(wood, 0.1), deep: '#1a1109', rim: 0.18 });
+    for (let i = 0; i < 4; i++) {
+      const nx = cx - 18 + R2(R, 0, 36), ny = base - 52 - R2(R, 0, 32);
+      ctx.fillStyle = rgba(mix('#e8dfc4', th.accent, 0.2), 0.92);
+      ctx.fillRect(nx, ny, R2(R, 7, 11), R2(R, 9, 13));
+      ctx.fillStyle = rgba('#8a2f2f', 0.9);
+      ctx.beginPath(); ctx.arc(nx + 4, ny + 9, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    return cv;
+  }
+  if (propKind === 'archwayLamp') {
+    // Lampe de couloir sur pied : plus modeste que le candélabre, elle jalonne un passage
+    // plutôt qu'elle n'éclaire toute une pièce.
+    const metal = mix(th.riser, '#6d6553', 0.5);
+    paintMass(ctx, [P(cx - 8, base), P(cx - 5, base - 6), P(cx + 5, base - 6), P(cx + 8, base)], th, R,
+      { striation: 'masonry', base: shade(metal, -0.1), rim: 0.18 });
+    paintMass(ctx, [P(cx - 2, base - 4), P(cx - 1.5, base - 52), P(cx + 1.5, base - 52), P(cx + 2, base - 4)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.22 });
+    ctx.save();
+    ctx.shadowColor = rgba('#ffca7a', 0.85); ctx.shadowBlur = 12;
+    ctx.fillStyle = rgba('#ffe2ad', 0.92);
+    ctx.beginPath(); ctx.ellipse(cx, base - 60, 5.5, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = rgba(metal, 0.9); ctx.lineWidth = 1.3;
+    ctx.strokeRect(cx - 6, base - 68, 12, 14);
+    return cv;
+  }
+  if (propKind === 'doorstop') {
+    // Cale de porte usée : minuscule, presque un détail — la trace qu'une porte reste ouverte.
+    const stone = mix(th.top, '#9c8f74', 0.4);
+    paintMass(ctx, [P(cx - 8, base), P(cx - 7, base - 4), P(cx + 6, base - 9), P(cx + 8, base)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.16 });
+    return cv;
+  }
+
+  // ── Famille Chambres intimes (feelings, room08, chambredelise, meditation) ──────────
+  if (propKind === 'bedstead') {
+    // Lit simple, cadre nu : une chambre qu'on devine habitée sans jamais y montrer personne.
+    const wood = mix(th.riser, '#5b452e', 0.5);
+    paintMass(ctx, [P(cx - 36, base - 14), P(cx - 36, base - 22), P(cx + 36, base - 18), P(cx + 36, base - 10)], th, R,
+      { striation: 'fibre', base: wood, deep: '#150e08', rim: 0.16 });
+    for (const dx0 of [-32, 30]) {
+      paintMass(ctx, [P(cx + dx0 - 3, base), P(cx + dx0 - 2, base - 22), P(cx + dx0 + 2, base - 22), P(cx + dx0 + 3, base)], th, R,
+        { striation: 'fibre', base: shade(wood, -0.2), deep: '#120c07', rim: 0.1 });
+    }
+    paintMass(ctx, [P(cx - 38, base - 22), P(cx - 34, base - 40), P(cx + 34, base - 36), P(cx + 38, base - 18)], th, R,
+      { striation: 'fibre', base: shade(wood, 0.14), deep: shade(wood, -0.4), rim: 0.18 });
+    const linen = mix(th.accent, '#e8e0cc', 0.5);
+    paintMass(ctx, [P(cx - 30, base - 14), P(cx - 30, base - 20), P(cx + 30, base - 17), P(cx + 30, base - 11)], th, R,
+      { striation: 'fibre', base: linen, deep: shade(linen, -0.3), rim: 0.1 });
+    return cv;
+  }
+  if (propKind === 'mirror') {
+    // Miroir sur pied, fêlé : la pièce maîtresse silencieuse d'une chambre intime.
+    const wood = mix(th.riser, '#4a3722', 0.55);
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 14, base);
+      ctx.lineTo(cx + s * 4, base - 76);
+      ctx.strokeStyle = rgba(wood, 0.95); ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    const frame = new Path2D();
+    frame.ellipse(cx, base - 84, 20, 30, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(shade(wood, 0.16), 1); ctx.fill(frame);
+    ctx.strokeStyle = rgba(th.glow, 0.16); ctx.lineWidth = 1.4; ctx.stroke(frame);
+    const glass = new Path2D();
+    glass.ellipse(cx, base - 84, 15, 25, 0, 0, Math.PI * 2);
+    const g = ctx.createLinearGradient(cx - 15, 0, cx + 15, 0);
+    g.addColorStop(0, rgba(mix(th.glow, '#9fb8cc', 0.4), 0.5));
+    g.addColorStop(0.5, rgba(mix(th.glow, '#5a6b78', 0.5), 0.3));
+    g.addColorStop(1, rgba(mix(th.glow, '#9fb8cc', 0.4), 0.5));
+    ctx.fillStyle = g; ctx.fill(glass);
+    ctx.save(); ctx.clip(glass);
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, base - 108); ctx.lineTo(cx + 3, base - 84); ctx.lineTo(cx - 4, base - 62);
+    ctx.strokeStyle = rgba('#000000', 0.5); ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'cushionPile') {
+    // Coussins au sol, en tas : la place où quelqu'un s'est assis, pas un meuble.
+    const cloth = th.rug ?? mix(th.accent, '#7a5a3a', 0.5);
+    for (let i = 0; i < 3; i++) {
+      const ox = cx + R2(R, -16, 16), oy = base - R2(R, 0, 8);
+      const c = mix(cloth, i % 2 ? '#000000' : '#ffffff', R2(R, 0.05, 0.18));
+      paintMass(ctx, [P(ox - 13, oy), P(ox - 9, oy - 9), P(ox + 9, oy - 9), P(ox + 13, oy)], th, R,
+        { striation: 'fibre', base: c, deep: shade(c, -0.3), rim: 0.16 });
+    }
+    return cv;
+  }
+  if (propKind === 'nightstandCandle') {
+    // Table de chevet, bougie unique qui faiblit : la plus petite des lumières de la pièce.
+    const wood = mix(th.riser, '#5b452e', 0.55);
+    paintMass(ctx, [P(cx - 16, base), P(cx - 16, base - 26), P(cx + 16, base - 26), P(cx + 16, base)], th, R,
+      { striation: 'fibre', base: wood, deep: '#150e08', rim: 0.16 });
+    paintMass(ctx, [P(cx - 18, base - 26), P(cx - 18, base - 32), P(cx + 18, base - 32), P(cx + 18, base - 26)], th, R,
+      { striation: 'fibre', base: shade(wood, 0.1), deep: shade(wood, -0.4), rim: 0.16 });
+    ctx.fillStyle = rgba('#e8dfc4', 0.9);
+    ctx.fillRect(cx - 2, base - 46, 4, 14);
+    ctx.save();
+    ctx.shadowColor = rgba('#ffca7a', 0.8); ctx.shadowBlur = 9;
+    ctx.fillStyle = rgba('#ffe2ad', 0.9);
+    ctx.beginPath(); ctx.ellipse(cx, base - 50, 2.4, 4.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'windowDrape') {
+    // Rideaux tirés, cadre implicite d'une fenêtre qu'on ne peint pas — seul son habillage
+    // compte.
+    const cloth = mix(th.accent, '#4a2f38', 0.5);
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, base - 108); ctx.lineTo(cx + 30, base - 108);
+    ctx.strokeStyle = rgba('#2e2822', 0.95); ctx.lineWidth = 3; ctx.stroke();
+    for (const s of [-1, 1]) {
+      const d = new Path2D();
+      d.moveTo(cx + s * 26, base - 106);
+      d.quadraticCurveTo(cx + s * 34, base - 60, cx + s * 22, base - 4);
+      d.lineTo(cx + s * 10, base - 4);
+      d.quadraticCurveTo(cx + s * 16, base - 60, cx + s * 8, base - 106);
+      d.closePath();
+      const g = ctx.createLinearGradient(cx + s * 8, 0, cx + s * 34, 0);
+      g.addColorStop(0, rgba(shade(cloth, -0.3), 1));
+      g.addColorStop(0.5, rgba(cloth, 1));
+      g.addColorStop(1, rgba(shade(cloth, 0.16), 1));
+      ctx.fillStyle = g; ctx.fill(d);
+      ctx.strokeStyle = rgba(th.glow, 0.14); ctx.lineWidth = 1; ctx.stroke(d);
+    }
+    return cv;
+  }
+  if (propKind === 'lettersScattered') {
+    // Lettres éparses, pages retournées : une correspondance qu'on a laissée en plan.
+    for (let i = 0; i < 5; i++) {
+      const px = cx + R2(R, -22, 22), py = base - R2(R, 0, 6);
+      const rot = R2(R, -0.5, 0.5);
+      ctx.save();
+      ctx.translate(px, py); ctx.rotate(rot);
+      ctx.fillStyle = rgba(mix('#e8dfc4', th.top, 0.15), 0.94);
+      ctx.fillRect(-7, -5, 14, 10);
+      ctx.strokeStyle = rgba('#00000066', 0.6); ctx.lineWidth = 0.6;
+      for (let l = -2; l <= 2; l += 2) { ctx.beginPath(); ctx.moveTo(-5, l); ctx.lineTo(5, l); ctx.stroke(); }
+      ctx.restore();
+    }
+    return cv;
+  }
+
+  // ── Famille Salles sombres & confinement (turtle, enfermement, labyrinthe, faille, cellule) ──
+  if (propKind === 'shackles') {
+    // Fers au sol, chaîne courte scellée dans la pierre : l'enfermement rendu littéral.
+    const iron = '#3b3d44';
+    paintMass(ctx, [P(cx - 6, base), P(cx - 7, base - 3), P(cx + 7, base - 3), P(cx + 6, base)], th, R,
+      { striation: 'masonry', base: shade(iron, -0.2), rim: 0.14 });
+    ctx.strokeStyle = rgba(iron, 0.95); ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    let px = cx, py = base - 3;
+    for (let i = 0; i < 4; i++) {
+      ctx.moveTo(px, py);
+      px += R2(R, -6, 6); py -= R2(R, 6, 10);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(px, py - 6, 6, 8, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = rgba(iron, 0.9); ctx.lineWidth = 2.6; ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'crackedFloor') {
+    // Dalle fracturée, lumière qui suinte par la fissure : la faille vue de près, comme un
+    // objet.
+    const stone = mix(th.top, '#332244', 0.3);
+    paintMass(ctx, [P(cx - 26, base), P(cx - 20, base - 6), P(cx + 20, base - 6), P(cx + 26, base)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.16 });
+    ctx.save();
+    ctx.shadowColor = rgba(th.accent, 0.8); ctx.shadowBlur = 10;
+    ctx.strokeStyle = rgba(th.accent, 0.85); ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, base - 3);
+    ctx.lineTo(cx - 4, base - 6); ctx.lineTo(cx + 6, base - 2); ctx.lineTo(cx + 20, base - 5);
+    ctx.stroke();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'clawMarks') {
+    // Griffures profondes, quatre traits parallèles : quelque chose de violent est passé ici.
+    const stone = mix(th.top, '#332426', 0.3);
+    paintMass(ctx, [P(cx - 24, base), P(cx - 18, base - 5), P(cx + 18, base - 5), P(cx + 24, base)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.1 });
+    for (let i = 0; i < 4; i++) {
+      const ox = cx - 14 + i * 8;
+      ctx.beginPath();
+      ctx.moveTo(ox - 6, base - 8); ctx.lineTo(ox + 6, base - 2);
+      ctx.strokeStyle = rgba('#000000', 0.5); ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ox - 6, base - 9); ctx.lineTo(ox + 6, base - 3);
+      ctx.strokeStyle = rgba(th.glow, 0.1); ctx.lineWidth = 0.6; ctx.stroke();
+    }
+    return cv;
+  }
+  if (propKind === 'huddleOfBones') {
+    // Petit tas d'ossements, discret — inquiétant sans être graphique.
+    const bone = '#cfc4a8';
+    for (let i = 0; i < 5; i++) {
+      const ox = cx + R2(R, -14, 14), oy = base - R2(R, 0, 6), rot = R2(R, 0, Math.PI);
+      ctx.save(); ctx.translate(ox, oy); ctx.rotate(rot);
+      ctx.fillStyle = rgba(mix(bone, '#000000', R2(R, 0, 0.2)), 0.92);
+      ctx.beginPath(); ctx.ellipse(0, 0, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-6, 0, 2.4, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(6, 0, 2.4, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    return cv;
+  }
+  if (propKind === 'voidLantern') {
+    // Lanterne à la flamme d'une teinte impossible : la rupture qui s'infiltre dans un objet
+    // ordinaire.
+    const metal = '#2a2632';
+    paintMass(ctx, [P(cx - 2, base), P(cx - 1.5, base - 40), P(cx + 1.5, base - 40), P(cx + 2, base)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.16 });
+    ctx.strokeStyle = rgba(metal, 0.9); ctx.lineWidth = 1.4;
+    ctx.strokeRect(cx - 7, base - 58, 14, 18);
+    ctx.save();
+    ctx.shadowColor = rgba('#9a5cff', 0.9); ctx.shadowBlur = 14;
+    ctx.fillStyle = rgba('#c79aff', 0.85);
+    ctx.beginPath(); ctx.ellipse(cx, base - 49, 3.6, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'rustedBars') {
+    // Barreaux rompus, appuyés contre rien : le fragment d'une cage qui ne retient plus
+    // personne.
+    const iron = mix('#3b3d44', '#7a4a2a', 0.3);
+    for (let i = 0; i < 4; i++) {
+      const ox = cx - 18 + i * 12;
+      ctx.beginPath();
+      ctx.moveTo(ox, base); ctx.lineTo(ox + 6, base - 62);
+      ctx.strokeStyle = rgba(iron, 0.95); ctx.lineWidth = 3.2; ctx.stroke();
+      ctx.strokeStyle = rgba('#5a3018', 0.4); ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, base - 44); ctx.lineTo(cx + 18, base - 50);
+    ctx.strokeStyle = rgba(iron, 0.9); ctx.lineWidth = 2.6; ctx.stroke();
+    return cv;
+  }
+
+  // ── Famille Palais & apparat (chateau, templempontagne, enfer4 — même bâtiment que ──
+  // ── chateau, voir ROOMS.chateau) ─────────────────────────────────────────────────────
+  if (propKind === 'throne') {
+    // Siège taillé sur une estrade basse : le siège du pouvoir, visiblement vide.
+    const stone = mix(th.top, '#c9bda4', 0.4);
+    paintMass(ctx, [P(cx - 34, base), P(cx - 34, base - 8), P(cx + 34, base - 8), P(cx + 34, base)], th, R,
+      { striation: 'masonry', base: shade(stone, -0.2), rim: 0.16 });
+    paintMass(ctx, [P(cx - 22, base - 8), P(cx - 22, base - 30), P(cx + 22, base - 30), P(cx + 22, base - 8)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.2 });
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 10;
+    paintMass(ctx, [P(cx - 20, base - 28), P(cx - 24, base - 96), P(cx + 24, base - 96), P(cx + 20, base - 28)], th, R,
+      { striation: 'masonry', base: shade(stone, 0.1), rim: 0.24 });
+    ctx.restore();
+    ctx.strokeStyle = rgba(th.accent, 0.3); ctx.lineWidth = 1.6;
+    ctx.strokeRect(cx - 18, base - 40, 36, 50);
+    return cv;
+  }
+  if (propKind === 'brazierStand') {
+    // Brasier sur pied, échelle de grande salle : plus haut et plus large que le candélabre.
+    const metal = mix(th.riser, '#6d6553', 0.5);
+    for (const s of [-1, 0, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx, base - 20); ctx.lineTo(cx + s * 14, base);
+      ctx.strokeStyle = rgba(metal, 0.95); ctx.lineWidth = 3; ctx.stroke();
+    }
+    paintMass(ctx, [P(cx - 16, base - 26), P(cx - 20, base - 20), P(cx + 20, base - 20), P(cx + 16, base - 26)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.24 });
+    ctx.save();
+    ctx.shadowColor = rgba('#ffb050', 0.95); ctx.shadowBlur = 22;
+    ctx.fillStyle = rgba('#ffdca0', 0.92);
+    ctx.beginPath(); ctx.ellipse(cx, base - 44, 12, 20, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'tapestryWall') {
+    // Tapisserie sur cadre autoportant : large et plate, tissée plutôt que pointue comme
+    // l'étendard — montée sur pieds plutôt qu'accrochée, comme tout décor de cette salle
+    // (aucun mur n'est garanti derrière une case d'ambiance tirée au hasard).
+    const wood = mix(th.riser, '#4a3722', 0.55);
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 30, base);
+      ctx.lineTo(cx + s * 32, base - 96);
+      ctx.strokeStyle = rgba(wood, 0.95); ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    const cloth = th.rug ?? mix(th.accent, '#7a2f38', 0.6);
+    const rect = [P(cx - 34, base - 6), P(cx - 34, base - 96), P(cx + 34, base - 96), P(cx + 34, base - 6)];
+    paintMass(ctx, rect, th, R, { striation: 'fibre', base: cloth, deep: shade(cloth, -0.42), rim: 0.2 });
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(rect[0].x, rect[0].y); ctx.lineTo(rect[1].x, rect[1].y);
+    ctx.lineTo(rect[2].x, rect[2].y); ctx.lineTo(rect[3].x, rect[3].y);
+    ctx.closePath(); ctx.clip();
+    ctx.strokeStyle = rgba(th.accent, 0.3); ctx.lineWidth = 1.4;
+    ctx.strokeRect(cx - 26, base - 88, 52, 74);
+    ctx.beginPath(); ctx.arc(cx, base - 62, 14, 0, Math.PI * 2);
+    ctx.strokeStyle = rgba(th.glow, 0.22); ctx.stroke();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'goldenIngot') {
+    // Lingot doré, quelques pièces éparses : un trésor tombé, pas une réserve entière.
+    const gold = mix(th.accent, '#d4a63a', 0.5);
+    paintMass(ctx, [P(cx - 12, base), P(cx - 9, base - 7), P(cx + 9, base - 7), P(cx + 12, base)], th, R,
+      { striation: 'masonry', base: gold, deep: shade(gold, -0.3), rim: 0.3 });
+    for (let i = 0; i < 5; i++) {
+      const ox = cx + R2(R, -16, 16), oy = base - R2(R, 0, 3);
+      ctx.fillStyle = rgba(shade(gold, R2(R, -0.1, 0.2)), 0.95);
+      ctx.beginPath(); ctx.ellipse(ox, oy, 3, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    return cv;
+  }
+  if (propKind === 'fallenColumnDrum') {
+    // Tambour de colonne renversé, couché en travers du sol : la grandeur du lieu, en ruine.
+    const stone = mix(th.top, '#c9bda4', 0.4);
+    paintMass(ctx, [P(cx - 34, base - 2), P(cx - 30, base - 16), P(cx + 30, base - 12), P(cx + 34, base + 2)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.2 });
+    ctx.strokeStyle = rgba(shade(stone, -0.3), 0.6); ctx.lineWidth = 1.4;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i * 12 - 30, base - 6 + i * 1.5);
+      ctx.lineTo(cx + i * 12 + 30, base - 3 + i * 1.5);
+      ctx.stroke();
+    }
+    return cv;
+  }
+  if (propKind === 'royalRug') {
+    // Tapis d'apparat : motif tissé net, franges soignées — le rugRunner des couloirs, en
+    // version cérémonielle.
+    const cloth = th.rug ?? mix(th.accent, '#7a2f38', 0.6);
+    paintMass(ctx, [P(cx - 32, base + 4), P(cx - 24, base - 8), P(cx + 24, base - 8), P(cx + 32, base + 4)], th, R,
+      { striation: 'fibre', base: cloth, deep: shade(cloth, -0.4), rim: 0.2 });
+    ctx.strokeStyle = rgba(th.accent, 0.35); ctx.lineWidth = 1.2;
+    ctx.strokeRect(cx - 20, base - 4, 40, 4);
+    return cv;
+  }
+
+  // ── Famille Enfers — forge et désolation (falaise, enfer1, enfer2, enfer3) ──────────
+  if (propKind === 'anvil') {
+    // Enclume trapue, la forge à l'état d'objet.
+    const iron = '#2e2b28';
+    paintMass(ctx, [P(cx - 10, base), P(cx - 8, base - 14), P(cx + 8, base - 14), P(cx + 10, base)], th, R,
+      { striation: 'masonry', base: shade(iron, -0.1), rim: 0.14 });
+    paintMass(ctx, [P(cx - 22, base - 18), P(cx - 22, base - 26), P(cx + 16, base - 26), P(cx + 22, base - 18)], th, R,
+      { striation: 'masonry', base: iron, deep: '#100e0c', rim: 0.3 });
+    ctx.strokeStyle = rgba('#ff8a3c', 0.3); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx - 18, base - 22); ctx.lineTo(cx + 12, base - 22); ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'chainHook') {
+    // Crochet suspendu à une courte chaîne : le gréement industriel de la forge.
+    const iron = '#3b3d44';
+    ctx.strokeStyle = rgba(iron, 0.9); ctx.lineWidth = 2;
+    ctx.beginPath();
+    let px = cx, py = base - 92;
+    for (let i = 0; i < 5; i++) {
+      ctx.moveTo(px, py);
+      py += 12;
+      ctx.lineTo(px, py);
+      px += (i % 2 === 0) ? 2 : -2;
+    }
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + 10, py + 10, px, py + 18);
+    ctx.strokeStyle = rgba(iron, 0.95); ctx.lineWidth = 2.6; ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'ashPile') {
+    // Cendre encore chaude : la forge éteinte n'est jamais tout à fait froide.
+    paintMass(ctx, [P(cx - 20, base), P(cx - 14, base - 8), P(cx + 14, base - 8), P(cx + 20, base)], th, R,
+      { striation: 'splinter', base: '#5a544e', deep: '#232019', rim: 0.06 });
+    speckle(ctx, cx - 20, base - 12, 40, 14, R, 10, '#ffb050', '#000000');
+    return cv;
+  }
+  if (propKind === 'brandingIron') {
+    // Tiges de fer et pinces, appuyées comme au sortir du travail — la forge interrompue.
+    const iron = '#3b3d44';
+    for (let i = 0; i < 3; i++) {
+      const a = R2(R, -0.3, 0.3) + (i - 1) * 0.18;
+      ctx.save();
+      ctx.translate(cx + (i - 1) * 6, base);
+      ctx.rotate(a);
+      ctx.strokeStyle = rgba(iron, 0.92); ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -58); ctx.stroke();
+      ctx.strokeStyle = rgba('#ff8a3c', 0.5); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(0, -64); ctx.stroke();
+      ctx.restore();
+    }
+    return cv;
+  }
+  if (propKind === 'moltenPool') {
+    // Flaque de métal en fusion, encastrée dans le sol : une source de lumière qui ne bouge pas.
+    ctx.save();
+    ctx.shadowColor = rgba('#ff8a3c', 0.9); ctx.shadowBlur = 18;
+    const g = ctx.createRadialGradient(cx, base - 2, 2, cx, base - 2, 20);
+    g.addColorStop(0, rgba('#ffe2a0', 0.95));
+    g.addColorStop(0.5, rgba('#ff8a3c', 0.85));
+    g.addColorStop(1, rgba('#5a1f0a', 0.2));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, base - 2, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'scorchedTrunk') {
+    // Souche calcinée, seule trace de la forêt qu'était cette salle avant la déchéance.
+    paintMass(ctx, [P(cx - 10, base), P(cx - 8, base - 30), P(cx + 8, base - 30), P(cx + 10, base)], th, R,
+      { striation: 'fibre', base: '#1c1712', deep: '#0a0806', rim: 0.06 });
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 6, base - 28);
+      ctx.lineTo(cx + s * 16, base - 40);
+      ctx.strokeStyle = rgba('#120e0a', 0.9); ctx.lineWidth = 2.4; ctx.stroke();
+    }
+    ctx.strokeStyle = rgba('#ff8a3c', 0.14); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 6, base - 4); ctx.lineTo(cx + 4, base - 26); ctx.stroke();
+    return cv;
+  }
+
+  // ── Famille Montagne (montagne, chambrefunéraire, sousterrainmontagne, cavernedecrystal) ──
+  if (propKind === 'iceShard') {
+    // Éclats de glace/givre, facettes pâles — distincts du cristal par leur froideur, pas
+    // leur éclat.
+    const ice = '#cfe8f0';
+    for (let i = 0; i < 3; i++) {
+      const ox = cx + (i - 1) * 12, h = R2(R, 26, 44);
+      paintMass(ctx, [P(ox - 5, base), P(ox - 2, base - h), P(ox + 2, base - h), P(ox + 5, base)], th, R,
+        { striation: 'masonry', base: mix(ice, '#ffffff', 0.2), deep: mix(ice, '#4a7a8c', 0.5), rim: 0.3 });
+    }
+    return cv;
+  }
+  if (propKind === 'burialUrn') {
+    // Urne funéraire scellée : un couvercle de pierre, jamais rouvert.
+    const stone = mix(th.top, '#8a7d68', 0.4);
+    paintMass(ctx, [P(cx - 14, base), P(cx - 16, base - 22), P(cx + 16, base - 22), P(cx + 14, base)], th, R,
+      { striation: 'masonry', base: stone, deep: shade(stone, -0.35), rim: 0.2 });
+    paintMass(ctx, [P(cx - 17, base - 20), P(cx - 17, base - 28), P(cx + 17, base - 28), P(cx + 17, base - 20)], th, R,
+      { striation: 'masonry', base: shade(stone, 0.1), rim: 0.24 });
+    ctx.strokeStyle = rgba(th.glow, 0.12); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 12, base - 10); ctx.lineTo(cx + 12, base - 10); ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'ropeAndPiton') {
+    // Corde lovée, piton planté dans la roche : quelqu'un est déjà passé par là.
+    const iron = '#5a5248';
+    ctx.beginPath(); ctx.moveTo(cx + 10, base - 4); ctx.lineTo(cx + 10, base - 16);
+    ctx.strokeStyle = rgba(iron, 0.9); ctx.lineWidth = 2.4; ctx.stroke();
+    const rope = '#8a6a42';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(cx - 4, base - 3 - i * 3.2, 12 - i * 1.5, 5 - i * 0.5, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = rgba(shade(rope, R2(R, -0.15, 0.1)), 0.9); ctx.lineWidth = 2.6;
+      ctx.stroke();
+    }
+    return cv;
+  }
+  if (propKind === 'glowMoss') {
+    // Mousse faiblement luminescente : une lumière que le lieu produit lui-même, sous terre.
+    const moss = '#4a7a5a';
+    paintMass(ctx, [P(cx - 18, base), P(cx - 12, base - 5), P(cx + 12, base - 5), P(cx + 18, base)], th, R,
+      { striation: 'splinter', base: moss, deep: shade(moss, -0.4), rim: 0.08 });
+    ctx.save();
+    ctx.shadowColor = rgba('#8cffb0', 0.85); ctx.shadowBlur = 12;
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = rgba('#c8ffdc', R2(R, 0.4, 0.8));
+      ctx.beginPath();
+      ctx.ellipse(cx + R2(R, -14, 14), base - R2(R, 1, 5), 1.6, 1.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'rockfallPile') {
+    // Éboulis, tas de pierraille : un passage récemment obstrué, ou presque dégagé.
+    for (let i = 0; i < 6; i++) {
+      const ox = cx + R2(R, -18, 18), oy = base - R2(R, 0, 7), s = R2(R, 4, 9);
+      paintMass(ctx, [
+        P(ox - s, oy), P(ox - s * 0.4, oy - s), P(ox + s * 0.5, oy - s * 0.8), P(ox + s, oy),
+      ], th, R, { striation: 'masonry', base: shade(th.top, R2(R, -0.3, -0.05)), rim: 0.14 });
+    }
+    return cv;
+  }
+  if (propKind === 'frozenBanner') {
+    // Étendard d'expédition, raidi par le givre et déchiré : l'écho gelé de la bannière de
+    // couloir.
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, base); ctx.lineTo(cx - 20, base - 96);
+    ctx.strokeStyle = rgba('#8a9098', 0.9); ctx.lineWidth = 3; ctx.stroke();
+    const flag = new Path2D();
+    flag.moveTo(cx - 20, base - 92);
+    flag.lineTo(cx + 18, base - 84);
+    flag.lineTo(cx + 8, base - 60);
+    flag.lineTo(cx + 20, base - 40);
+    flag.lineTo(cx - 4, base - 48);
+    flag.lineTo(cx - 20, base - 40);
+    flag.closePath();
+    ctx.fillStyle = rgba('#c8dbe0', 0.85); ctx.fill(flag);
+    ctx.strokeStyle = rgba('#4a6a78', 0.4); ctx.lineWidth = 1; ctx.stroke(flag);
+    return cv;
+  }
+
+  // ── Famille Hôpital (hopital, cellulehopital) ────────────────────────────────────────
+  if (propKind === 'cot') {
+    // Lit de camp étroit, couverture pliée : spare et clinique, jamais un vrai lit.
+    const metal = '#8a8f92';
+    paintMass(ctx, [P(cx - 32, base - 10), P(cx - 32, base - 16), P(cx + 32, base - 14), P(cx + 32, base - 8)], th, R,
+      { striation: 'fibre', base: '#d8dcda', deep: '#9aa0a0', rim: 0.14 });
+    for (const dx0 of [-28, 26]) {
+      ctx.beginPath(); ctx.moveTo(cx + dx0, base); ctx.lineTo(cx + dx0, base - 12);
+      ctx.strokeStyle = rgba(metal, 0.9); ctx.lineWidth = 2.4; ctx.stroke();
+    }
+    ctx.fillStyle = rgba(mix(th.accent, '#dfe6e2', 0.7), 0.9);
+    ctx.fillRect(cx - 26, base - 15, 16, 6);
+    return cv;
+  }
+  if (propKind === 'medicineCabinet') {
+    // Armoire vitrée, fioles alignées : la pharmacie de la salle.
+    const wood = mix(th.riser, '#8a8f92', 0.5);
+    paintMass(ctx, [P(cx - 18, base), P(cx - 18, base - 50), P(cx + 18, base - 50), P(cx + 18, base)], th, R,
+      { striation: 'masonry', base: wood, deep: shade(wood, -0.4), rim: 0.18 });
+    ctx.fillStyle = rgba('#cfe0e0', 0.25);
+    ctx.fillRect(cx - 14, base - 44, 28, 34);
+    for (let i = 0; i < 5; i++) {
+      const vx = cx - 11 + i * 5.5;
+      ctx.fillStyle = rgba(mix('#8ce0d0', th.accent, R2(R, 0.1, 0.5)), 0.85);
+      ctx.fillRect(vx, base - 20 - R2(R, 0, 12), 3, 10);
+    }
+    return cv;
+  }
+  if (propKind === 'bandageRoll') {
+    // Bandages roulés, épars : les soins ont eu lieu ici, mais personne n'a rangé.
+    for (let i = 0; i < 4; i++) {
+      const ox = cx + R2(R, -16, 16), oy = base - R2(R, 0, 5);
+      ctx.fillStyle = rgba('#e8e2d0', 0.9);
+      ctx.beginPath(); ctx.ellipse(ox, oy, 5, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rgba('#00000050', 0.5); ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.ellipse(ox, oy, 2.4, 1.2, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    return cv;
+  }
+  if (propKind === 'surgicalTray') {
+    // Plateau d'instruments couvert, sur pied : ce qu'il cache compte plus que ce qu'on en voit.
+    const metal = '#9aa0a0';
+    paintMass(ctx, [P(cx - 2, base), P(cx - 1.5, base - 30), P(cx + 1.5, base - 30), P(cx + 2, base)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.2 });
+    paintMass(ctx, [P(cx - 20, base - 30), P(cx - 20, base - 34), P(cx + 20, base - 34), P(cx + 20, base - 30)], th, R,
+      { striation: 'masonry', base: mix(metal, '#ffffff', 0.2), rim: 0.3 });
+    ctx.fillStyle = rgba('#dfe6e2', 0.4);
+    ctx.fillRect(cx - 16, base - 40, 32, 6);
+    return cv;
+  }
+  if (propKind === 'IVStand') {
+    // Potence à perfusion, silhouette maigre et haute : le plus vertical des décors de
+    // l'hôpital.
+    const metal = '#9aa0a0';
+    paintMass(ctx, [P(cx - 10, base), P(cx - 3, base - 4), P(cx + 3, base - 4), P(cx + 10, base)], th, R,
+      { striation: 'masonry', base: shade(metal, -0.1), rim: 0.16 });
+    paintMass(ctx, [P(cx - 1.5, base - 2), P(cx - 1, base - 88), P(cx + 1, base - 88), P(cx + 1.5, base - 2)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.2 });
+    ctx.fillStyle = rgba('#cfe0e0', 0.5);
+    ctx.beginPath(); ctx.ellipse(cx, base - 94, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(metal, 0.7); ctx.lineWidth = 1; ctx.stroke();
+    return cv;
+  }
+  if (propKind === 'driedFlowers') {
+    // Bouquet fané dans un petit vase : on a pris soin de quelqu'un, ici, autrefois.
+    const clay = mix(th.riser, '#8a6a4e', 0.5);
+    paintMass(ctx, [P(cx - 6, base), P(cx - 7, base - 12), P(cx + 7, base - 12), P(cx + 6, base)], th, R,
+      { striation: 'masonry', base: clay, rim: 0.2 });
+    for (let i = 0; i < 4; i++) {
+      const a = R2(R, -0.5, 0.5) + (i - 1.5) * 0.25;
+      ctx.save(); ctx.translate(cx, base - 12); ctx.rotate(a);
+      ctx.strokeStyle = rgba('#8a7a5a', 0.85); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.stroke();
+      ctx.fillStyle = rgba('#b89870', 0.85);
+      ctx.beginPath(); ctx.ellipse(0, -22, 3, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    return cv;
+  }
+
+  // ── Famille Jardin & Soleil (jardin, soleil) ─────────────────────────────────────────
+  if (propKind === 'hedgeRow') {
+    // Haie taillée, bloc de verdure architecturale : le jardin qui se discipline.
+    const leaf = mix('#5d7f62', th.accent, 0.15);
+    paintMass(ctx, [P(cx - 34, base), P(cx - 30, base - 26), P(cx + 30, base - 26), P(cx + 34, base)], th, R,
+      { striation: 'splinter', base: leaf, deep: shade(leaf, -0.4), rim: 0.1 });
+    speckle(ctx, cx - 34, base - 30, 68, 26, R, 14, '#93dcb4', '#16241b');
+    return cv;
+  }
+  if (propKind === 'sundial') {
+    // Cadran solaire sur socle : la mesure du temps, littéralement « le soleil » comme objet.
+    const stone = mix(th.top, '#b9ae95', 0.4);
+    paintMass(ctx, [P(cx - 12, base), P(cx - 10, base - 16), P(cx + 10, base - 16), P(cx + 12, base)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.2 });
+    ctx.fillStyle = rgba(shade(stone, 0.1), 1);
+    ctx.beginPath(); ctx.ellipse(cx, base - 18, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(th.accent, 0.4); ctx.lineWidth = 1; ctx.stroke();
+    ctx.save();
+    ctx.shadowColor = rgba('#ffd166', 0.7); ctx.shadowBlur = 8;
+    ctx.strokeStyle = rgba('#ffd166', 0.85); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, base - 18); ctx.lineTo(cx + 10, base - 30); ctx.stroke();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'floweringVine') {
+    // Treille chargée de fleurs : moins architecturé que la haie, plus exubérant.
+    ctx.strokeStyle = rgba('#3d5636', 0.9); ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 2, base);
+    ctx.bezierCurveTo(cx - 12, base - 30, cx + 10, base - 50, cx - 4, base - 84);
+    ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const t0 = i / 7;
+      const px = cx - 2 + Math.sin(t0 * 4) * 8, py = base - t0 * 82;
+      ctx.fillStyle = rgba(mix('#c9f08f', '#ff9ec7', R2(R, 0.3, 0.8)), 0.9);
+      ctx.beginPath(); ctx.ellipse(px, py, 3, 3, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    return cv;
+  }
+  if (propKind === 'wellhead') {
+    // Puits à toit pointu : le centre de gravité d'un jardin.
+    const stone = mix(th.top, '#b9ae95', 0.4);
+    paintMass(ctx, [P(cx - 16, base), P(cx - 16, base - 20), P(cx + 16, base - 20), P(cx + 16, base)], th, R,
+      { striation: 'masonry', base: stone, deep: shade(stone, -0.3), rim: 0.18 });
+    ctx.fillStyle = rgba('#0a0a08', 0.85);
+    ctx.beginPath(); ctx.ellipse(cx, base - 20, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
+    const roofWood = mix(th.riser, '#5b452e', 0.5);
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(cx + s * 14, base - 20); ctx.lineTo(cx + s * 10, base - 50);
+      ctx.strokeStyle = rgba(roofWood, 0.9); ctx.lineWidth = 2.4; ctx.stroke();
+    }
+    const roof = new Path2D();
+    roof.moveTo(cx, base - 62); roof.lineTo(cx + 20, base - 44); roof.lineTo(cx - 20, base - 44); roof.closePath();
+    ctx.fillStyle = rgba(roofWood, 0.95); ctx.fill(roof);
+    return cv;
+  }
+  if (propKind === 'sunburstLantern') {
+    // Lanterne à cadre rayonnant : la lumière du couloir, mais dorée et solaire.
+    const metal = mix('#ffd166', th.riser, 0.4);
+    paintMass(ctx, [P(cx - 2, base), P(cx - 1.5, base - 44), P(cx + 1.5, base - 44), P(cx + 2, base)], th, R,
+      { striation: 'masonry', base: metal, rim: 0.24 });
+    ctx.save();
+    ctx.shadowColor = rgba('#ffd166', 0.95); ctx.shadowBlur = 18;
+    ctx.fillStyle = rgba('#fff2c4', 0.92);
+    ctx.beginPath(); ctx.ellipse(cx, base - 56, 7, 9, 0, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.strokeStyle = rgba('#ffd166', 0.4); ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 8, base - 56 + Math.sin(a) * 8);
+      ctx.lineTo(cx + Math.cos(a) * 14, base - 56 + Math.sin(a) * 14);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'birdbath') {
+    // Vasque sur pied élancé : plus mince et plus haute que la vasque de salle, échelle de
+    // jardin.
+    const stone = mix(th.top, '#b9ae95', 0.4);
+    paintMass(ctx, [P(cx - 4, base), P(cx - 3, base - 34), P(cx + 3, base - 34), P(cx + 4, base)], th, R,
+      { striation: 'masonry', base: stone, rim: 0.2 });
+    ctx.fillStyle = rgba(stone, 1);
+    ctx.beginPath(); ctx.ellipse(cx, base - 36, 15, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(th.accent, 0.3); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = rgba(mix(th.glow, '#4d6f72', 0.5), 0.7);
+    ctx.beginPath(); ctx.ellipse(cx, base - 37, 10, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    return cv;
+  }
+
   // cairn : petit empilement d'éclats de pierre, discret, sert de repère.
   ctx.save();
   ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 8;
@@ -2637,6 +3397,16 @@ export function obstacleVariantCount(name) {
 export const PROP_KINDS = [
   'beam', 'arch', 'threshold', 'trunk', 'spire', 'obeliskProp', 'column', 'cairn',
   'statue', 'urn', 'banner', 'bench', 'candelabra', 'basin', 'chest', 'rack', 'debris', 'stairwell',
+  // Livraison Claude Design du 09/08 : décor par famille de salles — voir ROOM_FAMILY /
+  // FAMILY_DECOR.
+  'rugRunner', 'coatrack', 'noticeboard', 'archwayLamp', 'doorstop',
+  'bedstead', 'mirror', 'cushionPile', 'nightstandCandle', 'windowDrape', 'lettersScattered',
+  'shackles', 'crackedFloor', 'clawMarks', 'huddleOfBones', 'voidLantern', 'rustedBars',
+  'throne', 'brazierStand', 'tapestryWall', 'goldenIngot', 'fallenColumnDrum', 'royalRug',
+  'anvil', 'chainHook', 'ashPile', 'brandingIron', 'moltenPool', 'scorchedTrunk',
+  'iceShard', 'burialUrn', 'ropeAndPiton', 'glowMoss', 'rockfallPile', 'frozenBanner',
+  'cot', 'medicineCabinet', 'bandageRoll', 'surgicalTray', 'IVStand', 'driedFlowers',
+  'hedgeRow', 'sundial', 'floweringVine', 'wellhead', 'sunburstLantern', 'birdbath',
   'npc', 'merchant', 'campfire', 'star', 'curse', 'monster', 'elite', 'boss',
 ];
 
