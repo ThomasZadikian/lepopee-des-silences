@@ -2,6 +2,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
+using Leds.GameEngine.Domain.Protocol;
 
 namespace Leds.GameEngine.Domain.Rooms;
 
@@ -9,6 +10,7 @@ public sealed class Room
 {
     private readonly List<MapNode> _nodes;
     private readonly List<RoomNpc> _roomNpcs;
+    private readonly List<LocalRuleState> _localRuleStates;
 
     /// <summary>
     /// The node currently in the Select/Resolve interaction slot (set by
@@ -31,7 +33,8 @@ public sealed class Room
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
         RoomGrid grid,
-        IEnumerable<RoomNpc>? roomNpcs = null)
+        IEnumerable<RoomNpc>? roomNpcs = null,
+        IEnumerable<LocalRuleState>? localRuleStates = null)
     {
         Id = id;
         Depth = depth;
@@ -47,6 +50,7 @@ public sealed class Room
         LayoutTemplateVersion = layoutTemplateVersion;
         Grid = grid;
         _roomNpcs = roomNpcs?.ToList() ?? new List<RoomNpc>();
+        _localRuleStates = localRuleStates?.ToList() ?? new List<LocalRuleState>();
     }
 
 
@@ -91,6 +95,16 @@ public sealed class Room
     /// generator actually populates one (see <see cref="AddRoomNpc"/>) — no room does yet.
     /// </summary>
     public IReadOnlyCollection<RoomNpc> RoomNpcs => _roomNpcs.AsReadOnly();
+
+    /// <summary>
+    /// This room instance's run-scoped progress against whichever <see cref="LocalRule"/>s a
+    /// generator attached (see <see cref="AddLocalRuleState"/>) — empty for every room until a
+    /// generator actually populates one (no room does yet). Deliberately holds only the state,
+    /// never the authored <see cref="LocalRule"/> itself: the rule's condition/consequences are
+    /// Catalog content, resolved by the Application layer when it evaluates a trigger, exactly
+    /// like <see cref="Npcs.NpcRelationship"/> vs its Catalog dialogue graph.
+    /// </summary>
+    public IReadOnlyCollection<LocalRuleState> LocalRuleStates => _localRuleStates.AsReadOnly();
 
     public string? LayoutTemplateKey { get; }
 
@@ -430,6 +444,28 @@ public sealed class Room
     }
 
     /// <summary>
+    /// Registers a <see cref="LocalRule"/>'s run-scoped tracking for this room instance — mirrors
+    /// <see cref="AddRoomNpc"/>'s shape but keyed rather than position-validated, since a rule's
+    /// condition cells/target are validated when the rule itself is authored, not here.
+    /// </summary>
+    public void AddLocalRuleState(LocalRuleState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (_localRuleStates.Any(s => s.LocalRuleKey == state.LocalRuleKey))
+        {
+            throw new DomainException($"Local rule '{state.LocalRuleKey}' is already tracked in this room.");
+        }
+
+        _localRuleStates.Add(state);
+    }
+
+    /// <summary>Lookup by key for the Application layer to fetch-then-evaluate against the
+    /// matching Catalog <see cref="LocalRule"/> — null if this room never tracked that rule.</summary>
+    public LocalRuleState? GetLocalRuleState(string localRuleKey) =>
+        _localRuleStates.FirstOrDefault(s => s.LocalRuleKey == localRuleKey);
+
+    /// <summary>
     /// Room-wide difficulty selector: sets every still-available combat-flavored node's
     /// tier to the chosen value at once — a node already resolved, or already committed to
     /// (Selected), keeps whatever tier it had. Silently a no-op if the room has no such node
@@ -705,9 +741,10 @@ public sealed class Room
         string? layoutTemplateVersion,
         RoomGrid grid,
         NodeId? currentGridNodeId,
-        IEnumerable<RoomNpc>? roomNpcs = null)
+        IEnumerable<RoomNpc>? roomNpcs = null,
+        IEnumerable<LocalRuleState>? localRuleStates = null)
     {
-        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid, roomNpcs);
+        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid, roomNpcs, localRuleStates);
         room.CurrentNodeDepth = currentNodeDepth;
         room._currentGridNodeId = currentGridNodeId;
         return room;
@@ -731,7 +768,8 @@ public sealed class Room
         string? layoutTemplateVersion,
         RoomGrid grid,
         NodeId? currentGridNodeId,
-        IEnumerable<RoomNpc>? roomNpcs = null)
+        IEnumerable<RoomNpc>? roomNpcs = null,
+        IEnumerable<LocalRuleState>? localRuleStates = null)
     {
         return Rehydrate(
             id,
@@ -747,6 +785,7 @@ public sealed class Room
             layoutTemplateVersion,
             grid,
             currentGridNodeId,
-            roomNpcs);
+            roomNpcs,
+            localRuleStates);
     }
 }

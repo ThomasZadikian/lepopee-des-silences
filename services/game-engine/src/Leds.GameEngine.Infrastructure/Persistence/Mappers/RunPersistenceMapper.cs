@@ -8,6 +8,7 @@ using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.GameEngine.Domain.Npcs;
+using Leds.GameEngine.Domain.Protocol;
 using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
@@ -246,7 +247,21 @@ public static class RunPersistenceMapper
             GridDoorCellsCsv = string.Join(";", room.Grid.Doors.Select(cell => $"{cell.X},{cell.Y}")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList(),
-            RoomNpcs = room.RoomNpcs.Select(npc => ToEntity(npc, room.Id.Value)).ToList()
+            RoomNpcs = room.RoomNpcs.Select(npc => ToEntity(npc, room.Id.Value)).ToList(),
+            LocalRuleStates = room.LocalRuleStates.Select(rs => ToEntity(rs, room.Id.Value)).ToList()
+        };
+    }
+
+    public static LocalRuleStateEntity ToEntity(LocalRuleState state, Guid roomId)
+    {
+        return new LocalRuleStateEntity
+        {
+            Id = Guid.NewGuid(),
+            RoomId = roomId,
+            LocalRuleKey = state.LocalRuleKey,
+            CumulativeSeverity = state.CumulativeSeverity,
+            HasBeenInformed = state.HasBeenInformed,
+            TriggeredThresholdsCsv = string.Join(",", state.TriggeredThresholds)
         };
     }
 
@@ -575,6 +590,7 @@ public static class RunPersistenceMapper
     {
         var nodes = entity.Nodes.Select(ToDomain).ToList();
         var roomNpcs = entity.RoomNpcs.Select(ToDomain).ToList();
+        var localRuleStates = entity.LocalRuleStates.Select(ToDomain).ToList();
 
         var bossProfile = RoomBossProfile.Create(
             entity.BossId,
@@ -615,7 +631,8 @@ public static class RunPersistenceMapper
             entity.LayoutTemplateVersion,
             grid,
             entity.CurrentGridNodeId is { } currentGridNodeId ? new NodeId(currentGridNodeId) : null,
-            roomNpcs);
+            roomNpcs,
+            localRuleStates);
 
         if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
         {
@@ -713,6 +730,16 @@ public static class RunPersistenceMapper
             ParseGridRevealedCells(entity.WaypointsCsv).ToArray(),
             entity.WaypointIndex,
             entity.StepCount);
+    }
+
+    public static LocalRuleState ToDomain(LocalRuleStateEntity entity)
+    {
+        var triggeredThresholds = string.IsNullOrEmpty(entity.TriggeredThresholdsCsv)
+            ? []
+            : entity.TriggeredThresholdsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray();
+
+        return LocalRuleState.Rehydrate(
+            entity.LocalRuleKey, entity.CumulativeSeverity, entity.HasBeenInformed, triggeredThresholds);
     }
 
     public static MapNode ToDomain(MapNodeEntity entity)

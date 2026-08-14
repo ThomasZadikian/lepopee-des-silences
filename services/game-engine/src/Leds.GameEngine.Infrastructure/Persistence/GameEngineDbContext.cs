@@ -15,6 +15,7 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<MapNodeEntity> MapNodes => Set<MapNodeEntity>();
     public DbSet<MapNodeParentNodeEntity> MapNodeParentNodes => Set<MapNodeParentNodeEntity>();
     public DbSet<RoomNpcEntity> RoomNpcs => Set<RoomNpcEntity>();
+    public DbSet<LocalRuleStateEntity> LocalRuleStates => Set<LocalRuleStateEntity>();
     public DbSet<RunMemoryFragmentEntity> RunMemoryFragments => Set<RunMemoryFragmentEntity>();
     public DbSet<RunJournalEntryEntity> RunJournalEntries => Set<RunJournalEntryEntity>();
     public DbSet<RunActivePalaceLawEntity> RunActivePalaceLaws => Set<RunActivePalaceLawEntity>();

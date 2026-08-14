@@ -59,4 +59,5 @@ public sealed class RoomEntity
     public RunEntity? Run { get; set; }
     public List<MapNodeEntity> Nodes { get; set; } = [];
     public List<RoomNpcEntity> RoomNpcs { get; set; } = [];
+    public List<LocalRuleStateEntity> LocalRuleStates { get; set; } = [];
 }
