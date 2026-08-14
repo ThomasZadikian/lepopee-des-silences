@@ -1046,7 +1046,8 @@ public sealed class Run
     /// </summary>
     public sealed record GroundPickupResult(
         IReadOnlyCollection<RunItemId> CollectedItemIds,
-        IReadOnlyCollection<RunItemId> BlockedItemIds);
+        IReadOnlyCollection<RunItemId> BlockedItemIds,
+        IReadOnlyList<(int X, int Y)> TraversedCells);
 
     public GroundPickupResult MoveParty(int targetX, int targetY)
     {
@@ -1072,7 +1073,7 @@ public sealed class Run
             }
         }
 
-        return new GroundPickupResult(collected, blocked);
+        return new GroundPickupResult(collected, blocked, move.TraversedCells);
     }
 
     /// <summary>

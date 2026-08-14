@@ -16,6 +16,7 @@ using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Protocol;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Application.Selection.Ports;
@@ -88,6 +89,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IRoomStructuralProfileProvider, HardcodedRoomStructuralProfileProvider>();
         services.AddSingleton<IGridRoomLayoutTemplateProvider, GridRoomLayoutTemplateProvider>();
+        services.AddSingleton<ILocalRuleProvider, HardcodedLocalRuleProvider>();
+        services.AddSingleton<LocalRuleProtocolEvaluator>();
         services.AddSingleton<IGridRoomGenerator, GridRoomGenerator>();
 
         services.Configure<CatalogGatewayOptions>(

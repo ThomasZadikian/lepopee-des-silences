@@ -24,7 +24,8 @@ public sealed class HallEntreeGenerationTests
             new RoomThemeResolver(),
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider(),
-            new HardcodedRoomStructuralProfileProvider());
+            new HardcodedRoomStructuralProfileProvider(),
+            new HardcodedLocalRuleProvider());
     }
 
     private static Task<Room> GenerateHallAsync(int seed = 42) =>

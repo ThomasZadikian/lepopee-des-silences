@@ -21,7 +21,8 @@ public sealed class GridRoomGeneratorTests
             new RoomThemeResolver(),
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider(),
-            new HardcodedRoomStructuralProfileProvider());
+            new HardcodedRoomStructuralProfileProvider(),
+            new HardcodedLocalRuleProvider());
     }
 
     [Fact]

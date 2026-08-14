@@ -1,7 +1,9 @@
+using Leds.GameEngine.Application.Protocol;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
+using Leds.GameEngine.Domain.Protocol;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
@@ -51,19 +53,39 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     private readonly IRoomBossProfileResolver _bossProfileResolver;
     private readonly IRoomTypeGenerationProfileProvider _generationProfileProvider;
     private readonly IRoomStructuralProfileProvider _structuralProfileProvider;
+    private readonly ILocalRuleProvider _localRuleProvider;
 
     public GridRoomGenerator(
         IGridRoomLayoutTemplateProvider templateProvider,
         IRoomThemeResolver themeResolver,
         IRoomBossProfileResolver bossProfileResolver,
         IRoomTypeGenerationProfileProvider generationProfileProvider,
-        IRoomStructuralProfileProvider structuralProfileProvider)
+        IRoomStructuralProfileProvider structuralProfileProvider,
+        ILocalRuleProvider localRuleProvider)
     {
         _templateProvider = templateProvider;
         _themeResolver = themeResolver;
         _bossProfileResolver = bossProfileResolver;
         _generationProfileProvider = generationProfileProvider;
         _structuralProfileProvider = structuralProfileProvider;
+        _localRuleProvider = localRuleProvider;
+    }
+
+    /// <summary>Attaches run-scoped <see cref="LocalRuleState"/> tracking for every authored
+    /// <see cref="LocalRule"/> this room's catalog key carries — generic across any room, not a
+    /// Hall-only step (SFD Hall d'entrée §IX: the protocol engine "ne crée pas un moteur
+    /// spécifique au Hall").</summary>
+    private void AttachLocalRuleStates(Room room, string? catalogRoomKey)
+    {
+        if (catalogRoomKey is null)
+        {
+            return;
+        }
+
+        foreach (var rule in _localRuleProvider.GetRulesForRoom(catalogRoomKey))
+        {
+            room.AddLocalRuleState(LocalRuleState.Create(rule.Key));
+        }
     }
 
     public async Task<Room> GenerateAsync(
@@ -121,7 +143,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
 
-        return Room.Create(
+        var room = Room.Create(
             roomDepth,
             roomType,
             palaceState,
@@ -139,6 +161,10 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             obstacles,
             floor,
             doors);
+
+        AttachLocalRuleStates(room, catalogRoomKey);
+
+        return room;
     }
 
     /// <summary>
@@ -227,6 +253,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             room.AddRoomNpc(RoomNpc.Create(
                 entry.CatalogNpcKey, entry.X, entry.Y, entry.Behavior, entry.AwarenessRadius));
         }
+
+        AttachLocalRuleStates(room, "room.halldentree");
 
         return room;
     }

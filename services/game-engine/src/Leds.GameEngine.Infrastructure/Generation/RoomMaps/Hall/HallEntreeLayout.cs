@@ -52,6 +52,14 @@ public static class HallEntreeLayout
         (6, 4), (7, 8), (20, 4), (23, 8), (6, 15),
     ];
 
+    /// <summary>The east threshold cell toward the Pièce des émotions (SFD §III: "Est: Accès
+    /// vers la Pièce des émotions") — the same cell <see cref="Build"/> already punches as a door.
+    /// Named here, rather than re-deriving the literal, so the protocole chantier's "ne pas
+    /// s'approcher de la Pièce des émotions" rule (SFD §V) has one source of truth for where
+    /// "approaching" starts.</summary>
+    public const int EmotionsThresholdX = 24;
+    public const int EmotionsThresholdY = 10;
+
     /// <summary>The tapis (carpet) axis — a rendering/rule zone, not a structural feature: it
     /// doesn't affect floor/obstacles/elevation. Recorded here so Ensemble 4's later protocol
     /// chantier (the "essuyez vos pieds" LocalRule, SFD §V) has an authored cell set to point at
@@ -110,7 +118,7 @@ public static class HallEntreeLayout
         // entrance — region boundaries for the client's enceinte lighting, same convention as
         // every other sub-room door (RoomGrid.Doors's own remarks).
         doors.Add((1, 10));
-        doors.Add((24, 10));
+        doors.Add((EmotionsThresholdX, EmotionsThresholdY));
         doors.Add((12, 16));
 
         var elevation = new int[Width * Height];

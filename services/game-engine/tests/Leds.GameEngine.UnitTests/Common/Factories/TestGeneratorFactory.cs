@@ -23,7 +23,8 @@ public static class TestGeneratorFactory
             new RoomThemeResolver(),
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider(),
-            new HardcodedRoomStructuralProfileProvider());
+            new HardcodedRoomStructuralProfileProvider(),
+            new HardcodedLocalRuleProvider());
 
         var traceSink = new NullMarkovTransitionTraceSink();
         var calibration = new EmotionalCalibration();
