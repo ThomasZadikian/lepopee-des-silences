@@ -245,7 +245,28 @@ public static class RunPersistenceMapper
             GridFloorCellsCsv = string.Join(",", room.Grid.FloorMask.Select(cell => cell ? "1" : "0")),
             GridDoorCellsCsv = string.Join(";", room.Grid.Doors.Select(cell => $"{cell.X},{cell.Y}")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
-            Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
+            Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList(),
+            RoomNpcs = room.RoomNpcs.Select(npc => ToEntity(npc, room.Id.Value)).ToList()
+        };
+    }
+
+    public static RoomNpcEntity ToEntity(RoomNpc npc, Guid roomId)
+    {
+        return new RoomNpcEntity
+        {
+            Id = npc.Id.Value,
+            RoomId = roomId,
+            CatalogNpcKey = npc.CatalogNpcKey,
+            OriginX = npc.OriginX,
+            OriginY = npc.OriginY,
+            X = npc.X,
+            Y = npc.Y,
+            Behavior = npc.Behavior.ToString(),
+            Awareness = npc.Awareness.ToString(),
+            AwarenessRadius = npc.AwarenessRadius,
+            WaypointsCsv = string.Join(";", npc.Waypoints.Select(cell => $"{cell.X},{cell.Y}")),
+            WaypointIndex = npc.WaypointIndex,
+            StepCount = npc.StepCount
         };
     }
 
@@ -553,6 +574,7 @@ public static class RunPersistenceMapper
     public static Room ToDomain(RoomEntity entity)
     {
         var nodes = entity.Nodes.Select(ToDomain).ToList();
+        var roomNpcs = entity.RoomNpcs.Select(ToDomain).ToList();
 
         var bossProfile = RoomBossProfile.Create(
             entity.BossId,
@@ -592,7 +614,8 @@ public static class RunPersistenceMapper
             entity.LayoutTemplateKey,
             entity.LayoutTemplateVersion,
             grid,
-            entity.CurrentGridNodeId is { } currentGridNodeId ? new NodeId(currentGridNodeId) : null);
+            entity.CurrentGridNodeId is { } currentGridNodeId ? new NodeId(currentGridNodeId) : null,
+            roomNpcs);
 
         if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
         {
@@ -673,6 +696,23 @@ public static class RunPersistenceMapper
         return csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
             .Select(int.Parse)
             .ToArray();
+    }
+
+    public static RoomNpc ToDomain(RoomNpcEntity entity)
+    {
+        return RoomNpc.Rehydrate(
+            new RoomNpcId(entity.Id),
+            entity.CatalogNpcKey,
+            entity.OriginX,
+            entity.OriginY,
+            entity.X,
+            entity.Y,
+            Enum.Parse<NpcBehaviorArchetype>(entity.Behavior),
+            Enum.Parse<NpcAwarenessState>(entity.Awareness),
+            entity.AwarenessRadius,
+            ParseGridRevealedCells(entity.WaypointsCsv).ToArray(),
+            entity.WaypointIndex,
+            entity.StepCount);
     }
 
     public static MapNode ToDomain(MapNodeEntity entity)

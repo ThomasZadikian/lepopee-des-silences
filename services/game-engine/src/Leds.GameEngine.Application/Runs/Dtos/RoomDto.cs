@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
@@ -20,6 +21,7 @@ public sealed record RoomDto(
     RoomBossProfileDto BossPreview,
     IReadOnlyCollection<MapNodeDto> Nodes,
     IReadOnlyCollection<MapNodeDto> AvailableNodes,
+    IReadOnlyCollection<RoomNpcDto> RoomNpcs,
     string? LayoutTemplateKey,
     string? LayoutTemplateVersion,
     string? ActiveClimate = null,
@@ -49,6 +51,13 @@ public sealed record RoomDto(
             .Distinct()
             .ToArray();
 
+        // Same fog-of-war rationale as nodesForDto above: a PNJ standing in an unexplored cell
+        // must not leak its position through the DTO before the party has actually seen it.
+        var revealedCells = new HashSet<(int X, int Y)>(room.Grid.RevealedCells);
+        var roomNpcsForDto = room.RoomNpcs
+            .Where(npc => revealedCells.Contains((npc.X, npc.Y)))
+            .ToArray();
+
         return new RoomDto(
             room.Id.Value,
             room.Depth,
@@ -61,6 +70,7 @@ public sealed record RoomDto(
             RoomBossProfileDto.FromDomain(room.BossProfile),
             nodesForDto.Select(MapNodeDto.FromDomain).ToArray(),
             room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray(),
+            roomNpcsForDto.Select(RoomNpcDto.FromDomain).ToArray(),
             room.LayoutTemplateKey,
             room.LayoutTemplateVersion,
             activeClimate,
@@ -184,6 +194,23 @@ public sealed record GroundItemDto(
         item.Quantity,
         item.GroundX!.Value,
         item.GroundY!.Value);
+}
+
+public sealed record RoomNpcDto(
+    Guid Id,
+    string CatalogNpcKey,
+    int X,
+    int Y,
+    string Behavior,
+    string Awareness)
+{
+    public static RoomNpcDto FromDomain(RoomNpc npc) => new(
+        npc.Id.Value,
+        npc.CatalogNpcKey,
+        npc.X,
+        npc.Y,
+        npc.Behavior.ToString(),
+        npc.Awareness.ToString());
 }
 
 public sealed record PalaceRoomStateDto(

@@ -1,12 +1,14 @@
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Npcs;
 
 namespace Leds.GameEngine.Domain.Rooms;
 
 public sealed class Room
 {
     private readonly List<MapNode> _nodes;
+    private readonly List<RoomNpc> _roomNpcs;
 
     /// <summary>
     /// The node currently in the Select/Resolve interaction slot (set by
@@ -28,7 +30,8 @@ public sealed class Room
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
-        RoomGrid grid)
+        RoomGrid grid,
+        IEnumerable<RoomNpc>? roomNpcs = null)
     {
         Id = id;
         Depth = depth;
@@ -43,6 +46,7 @@ public sealed class Room
         LayoutTemplateKey = layoutTemplateKey;
         LayoutTemplateVersion = layoutTemplateVersion;
         Grid = grid;
+        _roomNpcs = roomNpcs?.ToList() ?? new List<RoomNpc>();
     }
 
 
@@ -80,6 +84,13 @@ public sealed class Room
     public RoomState State { get; private set; }
 
     public IReadOnlyCollection<MapNode> Nodes => _nodes.AsReadOnly();
+
+    /// <summary>
+    /// Physically present, positioned NPCs — see <see cref="RoomNpc"/>'s own remarks for why
+    /// this is a separate collection from <see cref="Nodes"/>. Empty for every room until a
+    /// generator actually populates one (see <see cref="AddRoomNpc"/>) — no room does yet.
+    /// </summary>
+    public IReadOnlyCollection<RoomNpc> RoomNpcs => _roomNpcs.AsReadOnly();
 
     public string? LayoutTemplateKey { get; }
 
@@ -389,6 +400,36 @@ public sealed class Room
     }
 
     /// <summary>
+    /// Places a physically present NPC in the room — mirrors <see cref="AttachExitNodes"/>'s
+    /// own shape (added once the grid already exists, so its placement can be validated against
+    /// it) but for <see cref="RoomNpc"/> rather than <see cref="MapNode"/>.
+    /// </summary>
+    public void AddRoomNpc(RoomNpc npc)
+    {
+        ArgumentNullException.ThrowIfNull(npc);
+
+        if (npc.X < 0 || npc.X >= Grid.Width || npc.Y < 0 || npc.Y >= Grid.Height)
+        {
+            throw new DomainException("Every room NPC must be within the grid bounds.");
+        }
+
+        if (!Grid.IsFloor(npc.X, npc.Y))
+        {
+            throw new DomainException("Every room NPC must stand on one of the room's floor cells.");
+        }
+
+        _roomNpcs.Add(npc);
+    }
+
+    /// <summary>Registers a direct interaction with a room NPC — see <see cref="RoomNpc.NoticeParty"/>.</summary>
+    public void NoticeRoomNpc(RoomNpcId id)
+    {
+        var npc = _roomNpcs.FirstOrDefault(n => n.Id == id)
+            ?? throw new DomainException("Room NPC does not belong to this room.");
+        npc.NoticeParty();
+    }
+
+    /// <summary>
     /// Room-wide difficulty selector: sets every still-available combat-flavored node's
     /// tier to the chosen value at once — a node already resolved, or already committed to
     /// (Selected), keeps whatever tier it had. Silently a no-op if the room has no such node
@@ -469,6 +510,20 @@ public sealed class Room
             triggered.Select();
             _currentGridNodeId = triggered.Id;
             State = RoomState.NodeSelected;
+        }
+
+        // One RoomNpc step per cell ACTUALLY entered (Contrat canonique §13: "chaque case
+        // réellement parcourue constitue un pas déterministe"), not one step per MoveParty call —
+        // a route spanning several cells gives a Hunter that many chances to react, not one.
+        // `traversed` already excludes the party's pre-move cell (route.Path never includes the
+        // start), so every element here is a newly entered cell — nothing to skip.
+        foreach (var (stepX, stepY) in traversed)
+        {
+            foreach (var npc in _roomNpcs)
+            {
+                npc.Step(Grid, stepX, stepY);
+                npc.RefreshAwareness(Grid, stepX, stepY);
+            }
         }
 
         return new PartyMoveResult(
@@ -649,9 +704,10 @@ public sealed class Room
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
         RoomGrid grid,
-        NodeId? currentGridNodeId)
+        NodeId? currentGridNodeId,
+        IEnumerable<RoomNpc>? roomNpcs = null)
     {
-        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid);
+        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid, roomNpcs);
         room.CurrentNodeDepth = currentNodeDepth;
         room._currentGridNodeId = currentGridNodeId;
         return room;
@@ -674,7 +730,8 @@ public sealed class Room
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
         RoomGrid grid,
-        NodeId? currentGridNodeId)
+        NodeId? currentGridNodeId,
+        IEnumerable<RoomNpc>? roomNpcs = null)
     {
         return Rehydrate(
             id,
@@ -689,6 +746,7 @@ public sealed class Room
             layoutTemplateKey,
             layoutTemplateVersion,
             grid,
-            currentGridNodeId);
+            currentGridNodeId,
+            roomNpcs);
     }
 }

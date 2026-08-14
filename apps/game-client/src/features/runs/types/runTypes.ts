@@ -123,6 +123,20 @@ export type GroundItemDto = {
   y: number;
 };
 
+/** A physically present, positioned NPC in the room's exploration grid — distinct from a
+ * dialogue/event NPC. Only sent once its cell has been revealed by fog of war (see
+ * RoomDto.FromDomain server-side). */
+export type RoomNpcDto = {
+  id: string;
+  catalogNpcKey: string;
+  x: number;
+  y: number;
+  /** Fixed | Guardian | Patrol | Hunter | Passive */
+  behavior: string;
+  /** Unaware | Aware | Alert */
+  awareness: string;
+};
+
 export type RoomDto = {
   id: string;
   depth: number;
@@ -135,6 +149,9 @@ export type RoomDto = {
   bossPreview: BossPreviewDto;
   nodes: NodeDto[];
   availableNodes: NodeDto[];
+  /** Positioned NPCs currently visible in this room — empty until a room generator actually
+   * populates one (none does yet; see RoomNpc's backend remarks). */
+  roomNpcs: RoomNpcDto[];
   layoutTemplateKey: string | null;
   layoutTemplateVersion: string | null;
   activeClimate?: RoomClimateStateDto | null;

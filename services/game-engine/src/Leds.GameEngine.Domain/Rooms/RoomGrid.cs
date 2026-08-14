@@ -520,7 +520,7 @@ public sealed class RoomGrid
     /// one intermediate cell on its line, so this stays a cheap per-cell check rather than a
     /// general shadowcasting algorithm.
     /// </summary>
-    private bool HasLineOfSight(int viewerX, int viewerY, int targetX, int targetY)
+    public bool HasLineOfSight(int viewerX, int viewerY, int targetX, int targetY)
     {
         var line = BresenhamLine(viewerX, viewerY, targetX, targetY);
 
