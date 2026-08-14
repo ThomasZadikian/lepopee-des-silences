@@ -526,7 +526,10 @@ function paintTop(ctx, elev, th, R, o = {}) {
 
 // ── Vocabulaires de surface ──────────────────────────────────────────────────────────
 function paintSurface(ctx, th, R, c, top, deep, o) {
-  switch (th.surface) {
+  // Per-cell derogation (RoomGridDto.surfaceOverrides) replaces the room's own default surface
+  // for this tile only — what makes the Hall's tapis band possible without repainting the whole
+  // room as carpet (see the reference handoff's own surf[y][x] grid).
+  switch (o.surface ?? th.surface) {
     case 'flagstone': return flagstones(ctx, th, R, c, top, deep, 3);
     case 'plank': return planks(ctx, th, R, c, top, deep);
     case 'marble': return marble(ctx, th, R, c, top, deep);
@@ -3066,7 +3069,7 @@ function bakeParty(elev) {
 // ── Sol ──────────────────────────────────────────────────────────────────────────────
 function bakeFloor(key, grain) {
   const th = theme(key.theme);
-  const seed = `floor:${key.theme}:${key.elevation}:${key.surfaceSeed ?? 0}:${key.hidden ?? ''}:${key.danger ?? ''}:${key.cliffLeft ? 'L' : ''}${key.cliffRight ? 'R' : ''}${key.cliffFarLeft ? 'FL' : ''}${key.cliffFarRight ? 'FR' : ''}`;
+  const seed = `floor:${key.theme}:${key.elevation}:${key.surfaceSeed ?? 0}:${key.surface ?? ''}:${key.hidden ?? ''}:${key.danger ?? ''}:${key.cliffLeft ? 'L' : ''}${key.cliffRight ? 'R' : ''}${key.cliffFarLeft ? 'FL' : ''}${key.cliffFarRight ? 'FR' : ''}`;
   const R = makeRng(hashSeed(seed));
   const cv = makeCanvas(SPRITE_W, SPRITE_H);
   const ctx = cv.getContext('2d');
@@ -3077,7 +3080,7 @@ function bakeFloor(key, grain) {
     cliffFarLeft: key.cliffFarLeft, cliffFarRight: key.cliffFarRight, grain,
   });
   paintTop(ctx, key.elevation, th, R, {
-    grain, hidden: key.hidden, danger: key.danger,
+    grain, hidden: key.hidden, danger: key.danger, surface: key.surface,
   });
 
   if (key.glow) {
@@ -3343,7 +3346,7 @@ export function spriteKeyToString(k) {
   switch (k.kind) {
     case 'floor':
       return [
-        'f', k.theme, k.elevation, k.surfaceSeed ?? 0, k.hidden ?? 'n', k.danger ?? 'n',
+        'f', k.theme, k.elevation, k.surfaceSeed ?? 0, k.surface ?? '-', k.hidden ?? 'n', k.danger ?? 'n',
         k.cliffLeft ? 'L' : '-', k.cliffRight ? 'R' : '-',
         k.cliffFarLeft ? 'FL' : '-', k.cliffFarRight ? 'FR' : '-',
         k.resolved ? 'r' : '-', k.glow ? 'g' : '-',

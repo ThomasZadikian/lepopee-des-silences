@@ -127,6 +127,10 @@ export type PropKind =
   | 'cot' | 'medicineCabinet' | 'bandageRoll' | 'surgicalTray' | 'IVStand' | 'driedFlowers'
   // Famille Jardin & Soleil
   | 'hedgeRow' | 'sundial' | 'floweringVine' | 'wellhead' | 'sunburstLantern' | 'birdbath'
+  // Décors de salon partagés — livraison Hall d'entrée (design_handoff_hall_entree).
+  | 'chandelier' | 'salonTable' | 'armchair' | 'silverware' | 'glassware' | 'teaService'
+  // Décors uniques du Hall d'entrée — jamais recyclés dans une autre salle.
+  | 'hallPortemanteau' | 'hallRegistre' | 'hallLustre' | 'hallTapisRoule' | 'hallMalles' | 'hallHorloge'
   | 'npc' | 'merchant' | 'star' | 'campfire' | 'curse' | 'monster' | 'elite' | 'boss';
 
 export type SpriteKey =
@@ -139,6 +143,9 @@ export type SpriteKey =
       theme?: RoomTheme;
       /** 0–4: picks one of five brush variations so a floor never tiles visibly. */
       surfaceSeed?: number;
+      /** Per-cell floor-material override (e.g. the Hall's tapis band) — replaces the room's own
+       * default surface for THIS tile only. See RoomGridDto.surfaceOverrides. */
+      surface?: string;
       /** Front-left / front-right neighbour is outside the room → paint a near wall face. */
       cliffLeft?: boolean;
       cliffRight?: boolean;
@@ -186,6 +193,7 @@ function toForgeKey(key: SpriteKey): ForgeKey {
         theme: key.theme ?? TINT_THEME[key.tint],
         elevation: Math.max(0, Math.min(TILE.MAX, key.elevation)),
         surfaceSeed: key.surfaceSeed ?? 0,
+        surface: key.surface,
         cliffLeft: !!key.cliffLeft,
         cliffRight: !!key.cliffRight,
         cliffFarLeft: !!key.cliffFarLeft,

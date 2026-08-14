@@ -69,8 +69,10 @@ const roomName = computed(() =>
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
-const { isRevealed, nodeAt, isParty, cells, obstacleCells, doorCells, isFloor, nodesByCell } =
-  useGridCells(room, grid);
+const {
+  isRevealed, nodeAt, isParty, cells, obstacleCells, doorCells, isFloor, nodesByCell,
+  surfaceOverrides, decorPlacements,
+} = useGridCells(room, grid);
 
 // Éclairage par enceinte (Claude Design "salle" handoff, §1): compose with fog of war, never
 // replace it — fog alone still decides known vs unknown, regions only nuance the already-known.
@@ -460,6 +462,8 @@ const drawPlan = computed(() => {
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
     doorCells: doorCells.value,
+    surfaceOverrides: surfaceOverrides.value,
+    decorPlacements: decorPlacements.value,
     isFloor,
     hintCells: hintCells.value,
     nodesByCell: nodesByCell.value,

@@ -61,6 +61,22 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     return doorCells.value.has(`${x},${y}`);
   }
 
+  const surfaceOverrides = computed(() => {
+    const map = new Map<string, string>();
+    for (const cell of grid.value?.surfaceOverrides ?? []) {
+      map.set(`${cell.x},${cell.y}`, cell.key);
+    }
+    return map;
+  });
+
+  const decorPlacements = computed(() => {
+    const map = new Map<string, string>();
+    for (const cell of grid.value?.decorPlacements ?? []) {
+      map.set(`${cell.x},${cell.y}`, cell.key);
+    }
+    return map;
+  });
+
   /**
    * Whether a cell is part of the room at all. Returns false out of bounds too, so callers can
    * use it as a single "is this a real cell" test. A room persisted before rooms had a shape
@@ -102,5 +118,7 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     isDoor,
     isFloor,
     cells,
+    surfaceOverrides,
+    decorPlacements,
   };
 }

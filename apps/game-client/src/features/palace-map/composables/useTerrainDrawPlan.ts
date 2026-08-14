@@ -398,6 +398,13 @@ export type BuildDrawPlanInput = {
   /** Keyed "x,y" — a sub-room's threshold (RoomGridDto.doorCells). Painted with its own prop (a
    * literal doorway) and kept out of the ambient decor pool so nothing else stands there. */
   doorCells?: Set<string>;
+  /** Keyed "x,y" → floor-material key (RoomGridDto.surfaceOverrides) — replaces the room's own
+   * default surface for that one tile (the Hall's tapis band). */
+  surfaceOverrides?: Map<string, string>;
+  /** Keyed "x,y" → PropKind (RoomGridDto.decorPlacements) — an authored decor placement (the
+   * Hall's pillars, its unique furniture), painted independently of the random ambient pool and
+   * excluded from it so nothing else is scattered on top. */
+  decorPlacements?: Map<string, string>;
   /** Whether a cell is part of the room at all. Cliff faces are painted on tiles whose
    * front-left/front-right neighbour is NOT floor, which is what makes a non-rectangular room
    * read as having real edges. Defaults to "everything inside the grid is floor" — the grid is
@@ -513,6 +520,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         theme: input.theme,
         elevation: cellElevation,
         surfaceSeed: surfaceSeedFor(cell.x, cell.y),
+        surface: input.surfaceOverrides?.get(cellKey),
         ...cliffSides(cell.x, cell.y, isFloor),
         // A slab that rings hollow, or the open alcove it becomes once searched.
         hidden: hiddenFor(cellKey, input.hintCells, node),
@@ -589,6 +597,31 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     }
   }
 
+  // Authored decor placements (RoomGridDto.decorPlacements) — a specific PropKind at a specific
+  // cell, e.g. the Hall's four marble pillars. Painted independently of the random ambient pool
+  // below, same shape as the doorCells block above.
+  if (input.decorPlacements) {
+    for (const [cellKey, prop] of input.decorPlacements) {
+      const [decorX, decorY] = cellKey.split(',').map(Number);
+      if (!isFloor(decorX, decorY)) continue;
+      if (!inBounds(decorX, decorY)) continue;
+
+      const elevationLevel = input.elevation[(decorY * input.gridWidth) + decorX] ?? 0;
+      const { screenX, screenY } = project(decorX, decorY);
+
+      entries.push({
+        cellKey: `authored-decor:${cellKey}`,
+        x: decorX,
+        y: decorY,
+        spriteKey: { kind: 'prop', theme: input.theme, prop: prop as PropKind },
+        screenX,
+        screenY,
+        elevation: elevationLevel,
+        sortKey: ((decorX + decorY) * 4) + elevationLevel + 0.45,
+      });
+    }
+  }
+
   // Room-level ambient decor: furniture/scenery scattered across a handful of interior floor
   // cells, independent of any node — what actually gives a room a lived-in texture beyond its
   // walls (see themeProps). Deterministic per cell (ranked by hash, not by RNG draw order) so a
@@ -607,6 +640,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         if (input.nodesByCell.has(cellKey)) continue;
         if (input.obstacleCells.has(cellKey)) continue;
         if (input.doorCells?.has(cellKey)) continue;
+        if (input.decorPlacements?.has(cellKey)) continue;
         if (input.party && input.party.x === cell.x && input.party.y === cell.y) continue;
         eligible.push({ x: cell.x, y: cell.y, cellKey });
       }

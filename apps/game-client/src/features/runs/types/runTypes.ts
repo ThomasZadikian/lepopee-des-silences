@@ -111,6 +111,19 @@ export type RoomGridDto = {
   hintCells: [number, number][];
   /** Objects physically present in the room. They are collected by crossing their cell. */
   groundItems: GroundItemDto[];
+  /** Authored per-cell floor-material overrides (e.g. the Hall's tapis band) — never gated by
+   * fog of war, same rationale as elevation/floorCells. Empty for a procedurally-generated room. */
+  surfaceOverrides: CellDecorDto[];
+  /** Authored per-cell decor placements (e.g. the Hall's four marble pillars) — independent from
+   * obstacleCells; decor and collision are separate concepts. */
+  decorPlacements: CellDecorDto[];
+};
+
+/** One authored surface/decor placement — see RoomGridDto.surfaceOverrides/decorPlacements. */
+export type CellDecorDto = {
+  x: number;
+  y: number;
+  key: string;
 };
 
 export type GroundItemDto = {

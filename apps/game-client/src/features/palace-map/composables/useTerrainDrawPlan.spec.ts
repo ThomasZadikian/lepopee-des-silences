@@ -468,6 +468,43 @@ describe('buildDrawPlan', () => {
     });
   });
 
+  describe('authored surface/decor placement (RoomGridDto.surfaceOverrides/decorPlacements)', () => {
+    it('overrides a floor tile surface only on the cell it names', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        surfaceOverrides: new Map([['2,2', 'carpet']]),
+      });
+
+      const overridden = plan.find((e) => e.x === 2 && e.y === 2)!;
+      const plain = plan.find((e) => e.x === 0 && e.y === 0)!;
+      expect(overridden.spriteKey).toMatchObject({ kind: 'floor', surface: 'carpet' });
+      expect(plain.spriteKey).toMatchObject({ kind: 'floor', surface: undefined });
+    });
+
+    it('paints an authored decor placement as its own prop, independent of ambient decor', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        decorPlacements: new Map([['2,2', 'column']]),
+      });
+
+      expect(plan.find((e) => e.cellKey === 'authored-decor:2,2')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'column' });
+    });
+
+    it('never scatters ambient decor onto an authored decor cell', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        decorPlacements: new Map([['1,1', 'column']]),
+      });
+
+      const decorCells = plan
+        .filter((e) => e.cellKey.startsWith('decor:'))
+        .map((e) => `${e.x},${e.y}`);
+
+      expect(decorCells).not.toContain('1,1');
+    });
+  });
+
   describe('hidden caches', () => {
     it('paints a hollow-sounding slab on a cell holding an unfound cache', () => {
       // The position is all the client ever gets — no node, no type, no reward. Without this
