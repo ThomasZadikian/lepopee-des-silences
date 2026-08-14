@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
@@ -80,6 +81,12 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         ArgumentNullException.ThrowIfNull(random);
 
         var template = _templateProvider.GetTemplate(roomType, generatorVersion, catalogRoomKey);
+
+        if (string.Equals(catalogRoomKey, "room.halldentree", StringComparison.OrdinalIgnoreCase))
+        {
+            return await GenerateHallEntreeAsync(roomDepth, roomType, palaceState, template, cancellationToken);
+        }
+
         var profile = _generationProfileProvider.GetProfile(roomType);
         var structuralProfile = _structuralProfileProvider.GetProfile(roomType, catalogRoomKey);
 
@@ -132,6 +139,96 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             obstacles,
             floor,
             doors);
+    }
+
+    /// <summary>
+    /// The Hall d'entrée's dedicated path — SFD Hall d'entrée §III/§VIII/§IX: "squelette authored
+    /// fixe", not the random carve every other room gets. Reuses everything downstream of shape
+    /// (movement budget resolution, boss profile lookup, <see cref="Room.Create"/> and its
+    /// invariants) unchanged; only floor/elevation/obstacles/doors/nodes are authored instead of
+    /// rolled. Population (see <see cref="Hall.HallEntreeCasting"/>) is added once the room
+    /// exists, mirroring how <see cref="DeterministicRunGenerator"/> attaches exits afterward
+    /// rather than threading them through <see cref="Room.Create"/> itself.
+    /// </summary>
+    private async Task<Room> GenerateHallEntreeAsync(
+        int roomDepth,
+        RoomType roomType,
+        PalaceRoomState palaceState,
+        GridRoomLayoutTemplate template,
+        CancellationToken cancellationToken)
+    {
+        var layout = Hall.HallEntreeLayout.Build();
+
+        var bossNode = MapNode.Create(
+            eventType: NodeEventType.RoomBoss,
+            riskLevel: 85,
+            rewardProfile: "room-boss",
+            row: Hall.HallEntreeLayout.BossY,
+            lane: Hall.HallEntreeLayout.BossX,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: true,
+            initialState: NodeState.Available,
+            combatRiskTier: NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85));
+
+        var nodes = new List<MapNode> { bossNode };
+
+        // Run.StartNew requires a run's opening room to hold 6-30 content nodes — the Hall must
+        // clear that floor to ever actually open a run, not just to pass this test in isolation.
+        // See Hall.HallEntreeLayout.CurioCells's own remarks for why these are placeholders.
+        foreach (var (x, y) in Hall.HallEntreeLayout.CurioCells)
+        {
+            nodes.Add(MapNode.Create(
+                eventType: NodeEventType.Item,
+                riskLevel: 0,
+                rewardProfile: "standard",
+                row: y,
+                lane: x,
+                parentNodeIds: Array.Empty<NodeId>(),
+                isBoss: false,
+                initialState: NodeState.Available));
+        }
+
+        var movementBudget = ResolveMovementBudget(
+            template,
+            Hall.HallEntreeLayout.Width,
+            Hall.HallEntreeLayout.Height,
+            Hall.HallEntreeLayout.StartX,
+            Hall.HallEntreeLayout.StartY,
+            nodes,
+            layout.Elevation,
+            layout.Obstacles,
+            layout.Floor,
+            Hall.HallEntreeLayout.BossX,
+            Hall.HallEntreeLayout.BossY);
+
+        var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
+
+        var room = Room.Create(
+            roomDepth,
+            roomType,
+            palaceState,
+            _themeResolver.Resolve(roomType),
+            bossProfile,
+            nodes,
+            Hall.HallEntreeLayout.Width,
+            Hall.HallEntreeLayout.Height,
+            movementBudget,
+            Hall.HallEntreeLayout.StartX,
+            Hall.HallEntreeLayout.StartY,
+            template.Key,
+            template.Version,
+            layout.Elevation,
+            layout.Obstacles,
+            layout.Floor,
+            layout.Doors);
+
+        foreach (var entry in Hall.HallEntreeCasting.Roster)
+        {
+            room.AddRoomNpc(RoomNpc.Create(
+                entry.CatalogNpcKey, entry.X, entry.Y, entry.Behavior, entry.AwarenessRadius));
+        }
+
+        return room;
     }
 
     /// <summary>

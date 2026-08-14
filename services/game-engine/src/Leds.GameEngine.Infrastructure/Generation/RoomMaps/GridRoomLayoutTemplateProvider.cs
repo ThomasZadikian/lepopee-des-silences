@@ -26,6 +26,7 @@ public sealed class GridRoomLayoutTemplateProvider : IGridRoomLayoutTemplateProv
             ["room.enfer3"] = DefaultGridRoomLayoutTemplates.Enfer3V1,
             ["room.cavernedecrystal"] = DefaultGridRoomLayoutTemplates.CaverneDeCrystalV1,
             ["room.labyrinthe"] = DefaultGridRoomLayoutTemplates.LabyrintheV1,
+            ["room.halldentree"] = DefaultGridRoomLayoutTemplates.HallDentreeV1,
         };
     }
 

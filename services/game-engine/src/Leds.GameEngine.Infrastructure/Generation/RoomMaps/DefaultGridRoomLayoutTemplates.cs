@@ -1,5 +1,6 @@
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Generation.RoomMaps.Hall;
 
 namespace Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 
@@ -99,4 +100,23 @@ public static class DefaultGridRoomLayoutTemplates
         maxNodeCount: 30,
         startX: 0,
         startY: 9);
+
+    // Hall d'entrée: a fully authored geometry (Hall/HallEntreeLayout), not a random carve — this
+    // template only supplies the fixed dimensions/start/key that GridRoomGenerator's Hall branch
+    // still reads before it substitutes the authored floor/obstacles/elevation/doors/nodes
+    // directly (bypassing the generic weighted-node placement this range would otherwise drive).
+    // minNodeCount/maxNodeCount are exactly the boss node plus HallEntreeLayout.CurioCells's
+    // count — the Hall's node count is fixed, not a range, but Run.StartNew still needs it
+    // within [6, 30] to ever accept the Hall as a run's opening room.
+    public static readonly GridRoomLayoutTemplate HallDentreeV1 = new(
+        key: "room.halldentree-v1",
+        version: GeneratorVersion,
+        roomType: RoomType.Memory,
+        width: HallEntreeLayout.Width,
+        height: HallEntreeLayout.Height,
+        movementBudget: 60,
+        minNodeCount: 6,
+        maxNodeCount: 6,
+        startX: HallEntreeLayout.StartX,
+        startY: HallEntreeLayout.StartY);
 }
