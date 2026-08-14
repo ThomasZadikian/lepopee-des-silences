@@ -249,6 +249,8 @@ public static class RunPersistenceMapper
             GridObstacleCellsCsv = string.Join(";", room.Grid.Obstacles.Select(cell => $"{cell.X},{cell.Y}")),
             GridFloorCellsCsv = string.Join(",", room.Grid.FloorMask.Select(cell => cell ? "1" : "0")),
             GridDoorCellsCsv = string.Join(";", room.Grid.Doors.Select(cell => $"{cell.X},{cell.Y}")),
+            GridSurfaceOverridesCsv = string.Join(";", room.Grid.SurfaceOverrides.Select(kv => $"{kv.Key.X},{kv.Key.Y},{kv.Value}")),
+            GridDecorPlacementsCsv = string.Join(";", room.Grid.DecorPlacements.Select(kv => $"{kv.Key.X},{kv.Key.Y},{kv.Value}")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList(),
             RoomNpcs = room.RoomNpcs.Select(npc => ToEntity(npc, room.Id.Value)).ToList(),
@@ -619,7 +621,9 @@ public static class RunPersistenceMapper
             ParseGridElevation(entity.GridElevationCsv, entity.GridWidth, entity.GridHeight),
             ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray(),
             ParseGridFloorCells(entity.GridFloorCellsCsv, entity.GridWidth, entity.GridHeight),
-            ParseGridRevealedCells(entity.GridDoorCellsCsv).ToArray());
+            ParseGridRevealedCells(entity.GridDoorCellsCsv).ToArray(),
+            ParseGridCellStringMap(entity.GridSurfaceOverridesCsv),
+            ParseGridCellStringMap(entity.GridDecorPlacementsCsv));
 
         var room = Room.Rehydrate(
             new RoomId(entity.Id),
@@ -680,6 +684,20 @@ public static class RunPersistenceMapper
                 var parts = pair.Split(',');
                 return (X: int.Parse(parts[0]), Y: int.Parse(parts[1]));
             });
+    }
+
+    /// <summary>Same "x,y" cell format as <see cref="ParseGridRevealedCells"/>, with a third
+    /// comma-separated component carrying the authored surface/decor key for that cell.</summary>
+    private static IReadOnlyDictionary<(int X, int Y), string> ParseGridCellStringMap(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return new Dictionary<(int X, int Y), string>();
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(triple => triple.Split(',', 3))
+            .ToDictionary(parts => (X: int.Parse(parts[0]), Y: int.Parse(parts[1])), parts => parts[2]);
     }
 
     /// <summary>Falls back to a flat (all-zero) map for rooms persisted before this field

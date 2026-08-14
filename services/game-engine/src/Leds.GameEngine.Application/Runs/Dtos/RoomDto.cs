@@ -149,7 +149,15 @@ public sealed record RoomGridDto(
     // finding out what is under it. Withholding the position entirely (as this DTO first did)
     // left nothing to notice, so nothing could motivate a search.
     IReadOnlyCollection<int[]> HintCells,
-    IReadOnlyCollection<GroundItemDto> GroundItems)
+    IReadOnlyCollection<GroundItemDto> GroundItems,
+    // Authored per-cell floor-material overrides (e.g. the Hall's tapis band) — never gated by
+    // fog of war, same rationale as Elevation/FloorCells above. Empty for a procedurally-
+    // generated room, which paints its whole floor from one per-room surface instead.
+    IReadOnlyCollection<CellDecorDto> SurfaceOverrides,
+    // Authored per-cell decor placements (e.g. the Hall's four marble pillars) — purely a
+    // rendering hint, independent from ObstacleCells (see RoomGrid.DecorPlacements's own remarks
+    // on why decor and collision are separate).
+    IReadOnlyCollection<CellDecorDto> DecorPlacements)
 {
     public static RoomGridDto FromDomain(
         RoomGrid grid,
@@ -173,9 +181,13 @@ public sealed record RoomGridDto(
             grid.Doors.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             canSearch,
             hintCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
-            groundItems.Select(GroundItemDto.FromDomain).ToArray());
+            groundItems.Select(GroundItemDto.FromDomain).ToArray(),
+            grid.SurfaceOverrides.Select(kv => new CellDecorDto(kv.Key.X, kv.Key.Y, kv.Value)).ToArray(),
+            grid.DecorPlacements.Select(kv => new CellDecorDto(kv.Key.X, kv.Key.Y, kv.Value)).ToArray());
     }
 }
+
+public sealed record CellDecorDto(int X, int Y, string Key);
 
 public sealed record GroundItemDto(
     Guid Id,

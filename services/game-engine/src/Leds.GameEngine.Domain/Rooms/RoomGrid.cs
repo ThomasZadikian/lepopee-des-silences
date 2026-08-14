@@ -32,6 +32,8 @@ public sealed class RoomGrid
     private readonly HashSet<NodeId> _revealedNodeIds;
     private readonly HashSet<(int X, int Y)> _revealedCells;
     private readonly HashSet<(int X, int Y)> _doors;
+    private readonly Dictionary<(int X, int Y), string> _surfaceOverrides;
+    private readonly Dictionary<(int X, int Y), string> _decorPlacements;
 
     private RoomGrid(
         int width,
@@ -47,7 +49,9 @@ public sealed class RoomGrid
         int[] elevation,
         HashSet<(int X, int Y)> obstacles,
         bool[] isFloor,
-        HashSet<(int X, int Y)> doors)
+        HashSet<(int X, int Y)> doors,
+        Dictionary<(int X, int Y), string> surfaceOverrides,
+        Dictionary<(int X, int Y), string> decorPlacements)
     {
         _isFloor = isFloor;
         Width = width;
@@ -63,6 +67,8 @@ public sealed class RoomGrid
         _elevation = elevation;
         _obstacles = obstacles;
         _doors = doors;
+        _surfaceOverrides = surfaceOverrides;
+        _decorPlacements = decorPlacements;
     }
 
     public int Width { get; }
@@ -108,11 +114,35 @@ public sealed class RoomGrid
     /// </summary>
     public IReadOnlyCollection<(int X, int Y)> Doors => _doors;
 
+    /// <summary>
+    /// Authored per-cell floor-material overrides — e.g. a carpet band running over an otherwise
+    /// plank floor. Purely a rendering hint: walkability, pathing cost and every other mechanic
+    /// ignore it entirely. Generic across any room, not a Hall-only concept — the Hall's tapis
+    /// (SFD Hall d'entrée §III/§VIII) is its first consumer, populated from
+    /// <c>HallEntreeLayout.TapisCells</c>. Empty for a procedurally-generated room, which paints
+    /// its whole floor from a single per-room surface instead. Immutable for the room's lifetime.
+    /// </summary>
+    public IReadOnlyDictionary<(int X, int Y), string> SurfaceOverrides => _surfaceOverrides;
+
+    /// <summary>
+    /// Authored per-cell decor placements — e.g. the Hall's four marble pillars, or a unique prop
+    /// like a stopped clock. Purely a rendering hint, same as <see cref="SurfaceOverrides"/>: no
+    /// mechanic reads this. A cell here is deliberately NOT an <see cref="Obstacles"/> entry
+    /// unless the generator also adds it there — decor and collision are independent (see
+    /// <c>HallEntreeLayout.Pillars</c>'s own remarks on why the pillars aren't obstacles).
+    /// Immutable for the room's lifetime.
+    /// </summary>
+    public IReadOnlyDictionary<(int X, int Y), string> DecorPlacements => _decorPlacements;
+
     public int ElevationAt(int x, int y) => _elevation[(y * Width) + x];
 
     public bool IsObstacle(int x, int y) => _obstacles.Contains((x, y));
 
     public bool IsDoor(int x, int y) => _doors.Contains((x, y));
+
+    public string? SurfaceAt(int x, int y) => _surfaceOverrides.GetValueOrDefault((x, y));
+
+    public string? DecorAt(int x, int y) => _decorPlacements.GetValueOrDefault((x, y));
 
     /// <summary>
     /// Whether (x, y) is a cell of this room. Returns false out of bounds too, so callers can
@@ -141,7 +171,9 @@ public sealed class RoomGrid
         IReadOnlyList<int>? elevation = null,
         IReadOnlyCollection<(int X, int Y)>? obstacles = null,
         IReadOnlyList<bool>? floorCells = null,
-        IReadOnlyCollection<(int X, int Y)>? doorCells = null)
+        IReadOnlyCollection<(int X, int Y)>? doorCells = null,
+        IReadOnlyDictionary<(int X, int Y), string>? surfaceOverrides = null,
+        IReadOnlyDictionary<(int X, int Y), string>? decorPlacements = null)
     {
         if (width <= 0)
         {
@@ -250,11 +282,36 @@ public sealed class RoomGrid
             }
         }
 
+        var resolvedSurfaceOverrides = surfaceOverrides is null
+            ? new Dictionary<(int X, int Y), string>()
+            : new Dictionary<(int X, int Y), string>(surfaceOverrides);
+
+        var resolvedDecorPlacements = decorPlacements is null
+            ? new Dictionary<(int X, int Y), string>()
+            : new Dictionary<(int X, int Y), string>(decorPlacements);
+
+        // Purely cosmetic, but still tied to a real cell — a surface/decor entry outside the
+        // room's floor would mean the generator disagrees with itself about where the room is,
+        // same reasoning as the obstacle/door bounds checks above.
+        foreach (var cell in resolvedSurfaceOverrides.Keys.Concat(resolvedDecorPlacements.Keys))
+        {
+            if (cell.X < 0 || cell.X >= width || cell.Y < 0 || cell.Y >= height)
+            {
+                throw new DomainException("Surface/decor cells must be within the grid bounds.");
+            }
+
+            if (!resolvedFloor[(cell.Y * width) + cell.X])
+            {
+                throw new DomainException("A surface/decor cell cannot sit outside the room's floor.");
+            }
+        }
+
         var grid = new RoomGrid(
             width, height, movementBudget, movementBudget,
             startX, startY, startX, startY,
             new HashSet<NodeId>(), new HashSet<(int X, int Y)>(),
-            resolvedElevation, resolvedObstacles, resolvedFloor, resolvedDoors);
+            resolvedElevation, resolvedObstacles, resolvedFloor, resolvedDoors,
+            resolvedSurfaceOverrides, resolvedDecorPlacements);
 
         grid.RevealAround(startX, startY, nodes);
 
@@ -616,7 +673,9 @@ public sealed class RoomGrid
         IReadOnlyList<int> elevation,
         IReadOnlyCollection<(int X, int Y)> obstacles,
         IReadOnlyList<bool>? floorCells = null,
-        IReadOnlyCollection<(int X, int Y)>? doorCells = null)
+        IReadOnlyCollection<(int X, int Y)>? doorCells = null,
+        IReadOnlyDictionary<(int X, int Y), string>? surfaceOverrides = null,
+        IReadOnlyDictionary<(int X, int Y), string>? decorPlacements = null)
     {
         // Null = every cell is floor, matching rooms persisted before rooms had a shape (their
         // stored mask is empty and the mapper hands back null).
@@ -629,10 +688,21 @@ public sealed class RoomGrid
             ? new HashSet<(int X, int Y)>()
             : new HashSet<(int X, int Y)>(doorCells);
 
+        // Null = room persisted before authored surface/decor placement existed — nothing to
+        // override, same convention as doors above.
+        var resolvedSurfaceOverrides = surfaceOverrides is null
+            ? new Dictionary<(int X, int Y), string>()
+            : new Dictionary<(int X, int Y), string>(surfaceOverrides);
+
+        var resolvedDecorPlacements = decorPlacements is null
+            ? new Dictionary<(int X, int Y), string>()
+            : new Dictionary<(int X, int Y), string>(decorPlacements);
+
         return new RoomGrid(
             width, height, movementBudget, movementBudgetRemaining,
             startX, startY, partyX, partyY,
             new HashSet<NodeId>(revealedNodeIds), new HashSet<(int X, int Y)>(revealedCells),
-            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles), resolvedFloor, resolvedDoors);
+            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles), resolvedFloor, resolvedDoors,
+            resolvedSurfaceOverrides, resolvedDecorPlacements);
     }
 }

@@ -53,6 +53,12 @@ public sealed class RoomEntity
     /// <summary>Semicolon-separated "x,y" pairs, same format as GridRevealedCellsCsv. Empty for
     /// most rooms — only a sub-room's threshold is a door.</summary>
     public string GridDoorCellsCsv { get; set; } = string.Empty;
+    /// <summary>Semicolon-separated "x,y,key" triples, e.g. "10,4,carpet;11,4,carpet". Empty for
+    /// every procedurally-generated room — only an authored room (the Hall) has one today.</summary>
+    public string GridSurfaceOverridesCsv { get; set; } = string.Empty;
+    /// <summary>Same "x,y,key" format as GridSurfaceOverridesCsv, for authored decor placement
+    /// (e.g. the Hall's four marble pillars).</summary>
+    public string GridDecorPlacementsCsv { get; set; } = string.Empty;
     /// <summary>The node currently in the Select/Resolve interaction slot — see Room._currentGridNodeId.</summary>
     public Guid? CurrentGridNodeId { get; set; }
 

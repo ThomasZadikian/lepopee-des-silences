@@ -246,7 +246,9 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             layout.Elevation,
             layout.Obstacles,
             layout.Floor,
-            layout.Doors);
+            layout.Doors,
+            layout.SurfaceOverrides,
+            layout.DecorPlacements);
 
         foreach (var entry in Hall.HallEntreeCasting.Roster)
         {

@@ -62,6 +62,51 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
+    public async Task GenerateHall_ShouldPaintTheTapisAsACarpetSurfaceOverride()
+    {
+        var room = await GenerateHallAsync();
+
+        room.Grid.SurfaceOverrides.Should().HaveCount(HallEntreeLayout.TapisCells.Count);
+        room.Grid.SurfaceAt(12, 10).Should().Be(HallEntreeLayout.TapisSurfaceKey);
+        // Off the tapis band entirely — must carry no override at all.
+        room.Grid.SurfaceAt(2, 10).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GenerateHall_ShouldPlaceDecorForPillarsAndAuthoredSectorProps()
+    {
+        var room = await GenerateHallAsync();
+
+        foreach (var (x, y) in HallEntreeLayout.Pillars)
+        {
+            room.Grid.DecorAt(x, y).Should().Be(HallEntreeLayout.PillarDecorKey);
+        }
+
+        foreach (var (x, y, key) in HallEntreeLayout.SectorDecor)
+        {
+            room.Grid.DecorAt(x, y).Should().Be(key);
+        }
+
+        room.Grid.DecorPlacements.Should().HaveCount(
+            HallEntreeLayout.Pillars.Count + HallEntreeLayout.SectorDecor.Count);
+    }
+
+    [Fact]
+    public async Task GenerateHall_DecorPlacementsShouldNeverCollideWithNodesOrRoomNpcs()
+    {
+        var room = await GenerateHallAsync();
+
+        var occupied = room.Nodes.Select(n => (X: n.Lane, Y: n.Row))
+            .Concat(room.RoomNpcs.Select(npc => (npc.X, npc.Y)))
+            .ToHashSet();
+
+        foreach (var cell in room.Grid.DecorPlacements.Keys)
+        {
+            occupied.Should().NotContain(cell, $"decor at {cell} must not sit under a node or an NPC");
+        }
+    }
+
+    [Fact]
     public async Task GenerateHall_ShouldCarveTheStaircaseElevation()
     {
         var room = await GenerateHallAsync();
@@ -186,5 +231,8 @@ public sealed class HallEntreeGenerationTests
         room.Grid.Obstacles.Should().BeEmpty();
         room.RoomNpcs.Select(n => (n.CatalogNpcKey, n.X, n.Y))
             .Should().BeEquivalentTo(HallEntreeCasting.Roster.Select(e => (e.CatalogNpcKey, e.X, e.Y)));
+        room.Grid.SurfaceOverrides.Should().HaveCount(HallEntreeLayout.TapisCells.Count);
+        room.Grid.DecorPlacements.Should().HaveCount(
+            HallEntreeLayout.Pillars.Count + HallEntreeLayout.SectorDecor.Count);
     }
 }

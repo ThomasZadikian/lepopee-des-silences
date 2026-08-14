@@ -51,6 +51,8 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.GridObstacleCellsCsv).HasColumnName("grid_obstacle_cells_csv");
         builder.Property(room => room.GridFloorCellsCsv).HasColumnName("grid_floor_cells_csv");
         builder.Property(room => room.GridDoorCellsCsv).HasColumnName("grid_door_cells_csv");
+        builder.Property(room => room.GridSurfaceOverridesCsv).HasColumnName("grid_surface_overrides_csv");
+        builder.Property(room => room.GridDecorPlacementsCsv).HasColumnName("grid_decor_placements_csv");
         builder.Property(room => room.CurrentGridNodeId).HasColumnName("current_grid_node_id");
 
         builder.HasOne(room => room.Run)

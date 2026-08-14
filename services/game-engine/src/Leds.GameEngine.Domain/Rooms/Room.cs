@@ -195,7 +195,9 @@ public sealed class Room
         IReadOnlyList<int>? elevation = null,
         IReadOnlyCollection<(int X, int Y)>? obstacles = null,
         IReadOnlyList<bool>? floorCells = null,
-        IReadOnlyCollection<(int X, int Y)>? doorCells = null)
+        IReadOnlyCollection<(int X, int Y)>? doorCells = null,
+        IReadOnlyDictionary<(int X, int Y), string>? surfaceOverrides = null,
+        IReadOnlyDictionary<(int X, int Y), string>? decorPlacements = null)
     {
         if (depth is < 0 or > 10)
         {
@@ -266,7 +268,7 @@ public sealed class Room
 
         var grid = RoomGrid.CreateInitial(
             gridWidth, gridHeight, movementBudget, startX, startY, nodeList,
-            elevation, obstacles, floorCells, doorCells);
+            elevation, obstacles, floorCells, doorCells, surfaceOverrides, decorPlacements);
 
         // A node standing on a hole in the room's shape would be unreachable and unpaintable.
         // Checked after the grid exists because the floor mask is validated/defaulted there.

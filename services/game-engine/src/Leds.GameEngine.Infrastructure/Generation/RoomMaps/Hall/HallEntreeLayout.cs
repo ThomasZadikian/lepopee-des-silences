@@ -81,11 +81,52 @@ public static class HallEntreeLayout
         return cells;
     }
 
+    /// <summary>Surface material key for the tapis band — the one value <see cref="TapisCells"/>
+    /// is painted with in <see cref="RoomGrid.SurfaceOverrides"/>.</summary>
+    public const string TapisSurfaceKey = "carpet";
+
+    /// <summary>Decor key for a pillar placement — one of the mutualized decor kinds (not
+    /// Hall-unique), matching <see cref="Pillars"/>'s own cells.</summary>
+    public const string PillarDecorKey = "column";
+
+    /// <summary>
+    /// Authored decor beyond the four pillars — the reference handoff's "Secteurs" table (README
+    /// §2), positioned to avoid every node/PNJ/pillar/door cell already placed elsewhere in this
+    /// class. Mixes the Hall's six unique props (<c>hall*</c> keys, never recycled outside this
+    /// room — SFD Hall d'entrée's "un décor unique ne se recycle jamais") with shared salon props
+    /// (<c>armchair</c>, <c>salonTable</c>, <c>silverware</c>, <c>glassware</c>, <c>teaService</c>)
+    /// that exist in multiple rooms. Every position here was cross-checked against
+    /// <see cref="CurioCells"/> and <see cref="HallEntreeCasting.Roster"/> at authoring time —
+    /// there is no runtime collision check, same as <see cref="Pillars"/>, since decor placement
+    /// is purely cosmetic and never validated against occupancy the way nodes/NPCs are.
+    /// </summary>
+    public static readonly IReadOnlyList<(int X, int Y, string Key)> SectorDecor =
+    [
+        // Salon ouest — salon d'attente (interior x∈[1,7], y∈[4,8]; door at (8,6)).
+        (2, 4, "armchair"), (2, 7, "armchair"), (6, 5, "armchair"),
+        (3, 5, "salonTable"), (3, 6, "teaService"), (4, 8, "hallLustre"),
+
+        // Salon est — table dressée (interior x∈[18,24], y∈[4,8]; door at (17,6)).
+        (19, 5, "silverware"), (19, 7, "glassware"), (21, 5, "salonTable"),
+        (18, 4, "armchair"), (24, 7, "armchair"),
+
+        // Nef / axe du tapis — two suspended hallLustre plus the stopped clock.
+        (12, 7, "hallLustre"), (12, 12, "hallLustre"), (15, 9, "hallHorloge"),
+
+        // Vestibule (y∈[15,16], x∈[9,15]) — accueil.
+        (10, 16, "hallRegistre"), (14, 16, "hallPortemanteau"), (9, 16, "hallMalles"),
+
+        // Alcôves sud-ouest/sud-est — rolled carpet stashed in each.
+        (2, 14, "hallTapisRoule"), (21, 14, "hallTapisRoule"),
+    ];
+
     public sealed record Result(
         bool[] Floor,
         int[] Elevation,
         HashSet<(int X, int Y)> Obstacles,
-        IReadOnlyList<(int X, int Y)> Doors);
+        IReadOnlyList<(int X, int Y)> Doors,
+        IReadOnlyDictionary<(int X, int Y), string> SurfaceOverrides,
+        IReadOnlyDictionary<(int X, int Y), string> DecorPlacements);
 
     /// <summary>
     /// Builds the Hall's fixed floor/elevation/obstacles/doors. Every coordinate below is
@@ -137,7 +178,15 @@ public static class HallEntreeLayout
         // Pillars's own remarks for where the position data lives instead.
         var obstacles = new HashSet<(int X, int Y)>();
 
-        return new Result(floor, elevation, obstacles, doors);
+        var surfaceOverrides = TapisCells.ToDictionary(cell => cell, _ => TapisSurfaceKey);
+
+        var decorPlacements = Pillars.ToDictionary(cell => cell, _ => PillarDecorKey);
+        foreach (var (x, y, key) in SectorDecor)
+        {
+            decorPlacements[(x, y)] = key;
+        }
+
+        return new Result(floor, elevation, obstacles, doors, surfaceOverrides, decorPlacements);
     }
 
     /// <summary>
