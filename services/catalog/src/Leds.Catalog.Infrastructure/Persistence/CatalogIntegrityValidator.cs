@@ -150,6 +150,24 @@ public sealed class CatalogIntegrityValidator
                 foreach (var missingSkill in kit.SkillKeys.Where(key => !skillKeys.Contains(key)))
                     errors.Add($"NPC '{npc.Key}': companion skill '{missingSkill}' does not exist or is not active.");
             }
+
+            if (!string.IsNullOrWhiteSpace(npc.DialogueGraphJson))
+            {
+                NpcDialogueGraph? graph = null;
+                try
+                {
+                    graph = JsonSerializer.Deserialize<NpcDialogueGraph>(npc.DialogueGraphJson, JsonOptions);
+                }
+                catch (JsonException exception)
+                {
+                    errors.Add($"NPC '{npc.Key}' DialogueGraphJson: invalid JSON ({exception.Message}).");
+                }
+
+                if (graph is not null)
+                {
+                    ValidateDialogueGraph(errors, npc.Key, graph);
+                }
+            }
         }
 
         var items = await _context.ItemDefinitions
@@ -182,6 +200,83 @@ public sealed class CatalogIntegrityValidator
             throw new InvalidOperationException(
                 "Catalog integrity validation failed:" + Environment.NewLine
                 + string.Join(Environment.NewLine, errors.Select(error => $"- {error}")));
+        }
+    }
+
+    /// <summary>
+    /// Structural checks on an already-parsed dialogue graph — SFD Système global de dialogues
+    /// §9.4: duplicate choice id, a choice pointing at a node that doesn't exist, an entry node
+    /// that doesn't exist. Strict-fail, same doctrine as the rest of this gate: a broken graph
+    /// blocks publication rather than silently degrading at encounter time.
+    /// </summary>
+    private static void ValidateDialogueGraph(ICollection<string> errors, string npcKey, NpcDialogueGraph graph)
+    {
+        if (!graph.Nodes.ContainsKey(graph.EntryNodeKey))
+        {
+            errors.Add($"NPC '{npcKey}' dialogue graph: entry node '{graph.EntryNodeKey}' does not exist.");
+        }
+
+        foreach (var (nodeKey, node) in graph.Nodes)
+        {
+            if (!string.Equals(node.Key, nodeKey, StringComparison.Ordinal))
+            {
+                errors.Add($"NPC '{npcKey}' dialogue graph: node keyed '{nodeKey}' declares a mismatched Key '{node.Key}'.");
+            }
+
+            var choiceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var choice in node.Choices)
+            {
+                if (!choiceKeys.Add(choice.Key))
+                {
+                    errors.Add($"NPC '{npcKey}' dialogue graph: node '{nodeKey}' has a duplicate choice key '{choice.Key}'.");
+                }
+
+                if (choice.NextNodeKey is not null && !graph.Nodes.ContainsKey(choice.NextNodeKey))
+                {
+                    errors.Add(
+                        $"NPC '{npcKey}' dialogue graph: choice '{choice.Key}' in node '{nodeKey}' " +
+                        $"references missing node '{choice.NextNodeKey}'.");
+                }
+
+                foreach (var requirement in choice.Requirements)
+                {
+                    if (requirement.Kind == DialogueRequirementKind.WoundStateAtLeast
+                        && (string.IsNullOrWhiteSpace(requirement.WoundKey) || requirement.RequiredWoundState is null))
+                    {
+                        errors.Add(
+                            $"NPC '{npcKey}' dialogue graph: choice '{choice.Key}' in node '{nodeKey}' has a " +
+                            "WoundStateAtLeast requirement missing its wound key or required state.");
+                    }
+
+                    if (requirement.Kind == DialogueRequirementKind.RelationshipScoreAtLeast
+                        && requirement.RequiredRelationshipScore is null)
+                    {
+                        errors.Add(
+                            $"NPC '{npcKey}' dialogue graph: choice '{choice.Key}' in node '{nodeKey}' has a " +
+                            "RelationshipScoreAtLeast requirement missing its threshold.");
+                    }
+                }
+
+                foreach (var consequence in choice.Consequences)
+                {
+                    if (consequence.Kind == ConsequenceKind.ArmWound || consequence.Kind == ConsequenceKind.SootheWound)
+                    {
+                        if (string.IsNullOrWhiteSpace(consequence.WoundKey))
+                        {
+                            errors.Add(
+                                $"NPC '{npcKey}' dialogue graph: choice '{choice.Key}' in node '{nodeKey}' has a " +
+                                $"{consequence.Kind} consequence missing its wound key.");
+                        }
+                    }
+
+                    if (consequence.Kind == ConsequenceKind.GrantOffering && string.IsNullOrWhiteSpace(consequence.OfferingKey))
+                    {
+                        errors.Add(
+                            $"NPC '{npcKey}' dialogue graph: choice '{choice.Key}' in node '{nodeKey}' has a " +
+                            "GrantOffering consequence missing its offering key.");
+                    }
+                }
+            }
         }
     }
 

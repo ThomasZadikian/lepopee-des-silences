@@ -26,6 +26,105 @@ public sealed class CatalogIntegrityValidatorTests
     }
 
     [Fact]
+    public async Task Validate_should_fail_when_a_dialogue_choice_references_a_missing_node()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+
+        var npc = await context.NpcDefinitions.FirstAsync();
+        npc.DialogueGraphJson = """
+            {
+              "key": "npc.broken.dialogue",
+              "version": "1.0",
+              "entryNodeKey": "start",
+              "nodes": {
+                "start": {
+                  "key": "start",
+                  "speaker": "Test",
+                  "lines": ["..."],
+                  "choices": [
+                    { "key": "go", "label": "...", "requirements": [], "consequences": [], "nextNodeKey": "does-not-exist" }
+                  ]
+                }
+              }
+            }
+            """;
+        await context.SaveChangesAsync();
+
+        var validator = new CatalogIntegrityValidator(context);
+
+        var act = () => validator.ValidateAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*references missing node 'does-not-exist'*");
+    }
+
+    [Fact]
+    public async Task Validate_should_fail_when_a_dialogue_node_has_duplicate_choice_keys()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+
+        var npc = await context.NpcDefinitions.FirstAsync();
+        npc.DialogueGraphJson = """
+            {
+              "key": "npc.broken.dialogue",
+              "version": "1.0",
+              "entryNodeKey": "start",
+              "nodes": {
+                "start": {
+                  "key": "start",
+                  "speaker": "Test",
+                  "lines": ["..."],
+                  "choices": [
+                    { "key": "go", "label": "A", "requirements": [], "consequences": [] },
+                    { "key": "go", "label": "B", "requirements": [], "consequences": [] }
+                  ]
+                }
+              }
+            }
+            """;
+        await context.SaveChangesAsync();
+
+        var validator = new CatalogIntegrityValidator(context);
+
+        var act = () => validator.ValidateAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*duplicate choice key 'go'*");
+    }
+
+    [Fact]
+    public async Task Validate_should_fail_when_the_entry_node_does_not_exist()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+
+        var npc = await context.NpcDefinitions.FirstAsync();
+        npc.DialogueGraphJson = """
+            {
+              "key": "npc.broken.dialogue",
+              "version": "1.0",
+              "entryNodeKey": "does-not-exist",
+              "nodes": {
+                "start": { "key": "start", "speaker": "Test", "lines": ["..."], "choices": [] }
+              }
+            }
+            """;
+        await context.SaveChangesAsync();
+
+        var validator = new CatalogIntegrityValidator(context);
+
+        var act = () => validator.ValidateAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*entry node 'does-not-exist' does not exist*");
+    }
+
+    [Fact]
     public async Task Canonical_reseed_should_repair_existing_enemy_menace_levels()
     {
         var (context, connectionString) = _fixture.CreateContext();
