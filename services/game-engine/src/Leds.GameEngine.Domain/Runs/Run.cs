@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Dialogue;
 using Leds.GameEngine.Domain.Knowledge;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
@@ -58,6 +59,7 @@ public sealed class Run
     private readonly Dictionary<string, NpcRelationship> _npcRelationships = new(StringComparer.OrdinalIgnoreCase);
     private string? _activeNpcKey;
     private readonly Dictionary<string, KnowledgeEntry> _knowledgeEntries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AmbientConversationState> _ambientConversationStates = new(StringComparer.OrdinalIgnoreCase);
 
     private sealed record RunSnapshot(
         int CurrentHp,
@@ -506,6 +508,27 @@ public sealed class Run
     public void RehydrateKnowledgeEntry(KnowledgeEntry entry)
     {
         _knowledgeEntries[entry.Key] = entry;
+    }
+
+    /// <summary>Every ambient conversation this run has tracked cooldown/rotation for — see
+    /// <see cref="AmbientConversationState"/>.</summary>
+    public IReadOnlyCollection<AmbientConversationState> AmbientConversationStates => _ambientConversationStates.Values.ToArray();
+
+    public AmbientConversationState GetOrCreateAmbientConversationState(string ambientConversationKey)
+    {
+        if (_ambientConversationStates.TryGetValue(ambientConversationKey, out var existing))
+        {
+            return existing;
+        }
+
+        var state = AmbientConversationState.Create(ambientConversationKey);
+        _ambientConversationStates[ambientConversationKey] = state;
+        return state;
+    }
+
+    public void RehydrateAmbientConversationState(AmbientConversationState state)
+    {
+        _ambientConversationStates[state.AmbientConversationKey] = state;
     }
 
     /// <summary>Rehydration hook for persistence (Wave 5).</summary>

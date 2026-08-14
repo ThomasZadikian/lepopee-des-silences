@@ -59,6 +59,7 @@ public sealed class RunEntity
     public string? ActiveNpcKey { get; set; }
     public string? NpcRelationshipsJson { get; set; }
     public string? KnowledgeEntriesJson { get; set; }
+    public string? AmbientConversationStatesJson { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

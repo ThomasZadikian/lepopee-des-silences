@@ -7,6 +7,7 @@ using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Leds.GameEngine.Domain.Dialogue;
 using Leds.GameEngine.Domain.Knowledge;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Protocol;
@@ -76,6 +77,7 @@ public static class RunPersistenceMapper
             ActiveNpcKey = run.ActiveNpcKey,
             NpcRelationshipsJson = SerializeNpcRelationships(run.NpcRelationships),
             KnowledgeEntriesJson = SerializeKnowledgeEntries(run.KnowledgeEntries),
+            AmbientConversationStatesJson = SerializeAmbientConversationStates(run.AmbientConversationStates),
             CreatedAtUtc = run.StartedAt.UtcDateTime,
             UpdatedAtUtc = DateTime.UtcNow,
             Rooms = run.Rooms.Select(room => ToEntity(room, run.Id.Value)).ToList(),
@@ -574,6 +576,7 @@ public static class RunPersistenceMapper
 
         RehydrateNpcEncounters(run, entity);
         RehydrateKnowledgeEntries(run, entity);
+        RehydrateAmbientConversationStates(run, entity);
         return run;
     }
 
@@ -1134,6 +1137,34 @@ public static class RunPersistenceMapper
         {
             var versions = snapshot.Versions.Select(v => KnowledgeVersion.Create(v.Value, v.Provenance));
             run.RehydrateKnowledgeEntry(KnowledgeEntry.Rehydrate(snapshot.Key, snapshot.Category, versions));
+        }
+    }
+
+    private sealed record AmbientConversationStateSnapshot(
+        string AmbientConversationKey, int? LastTriggeredStep, int TimesTriggered);
+
+    private static string SerializeAmbientConversationStates(IReadOnlyCollection<AmbientConversationState> states)
+    {
+        var snapshots = states.Select(s => new AmbientConversationStateSnapshot(
+            s.AmbientConversationKey, s.LastTriggeredStep, s.TimesTriggered)).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateAmbientConversationStates(Run run, RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.AmbientConversationStatesJson))
+        {
+            return;
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<AmbientConversationStateSnapshot>>(
+            entity.AmbientConversationStatesJson, NpcJsonOptions) ?? [];
+
+        foreach (var snapshot in snapshots)
+        {
+            run.RehydrateAmbientConversationState(AmbientConversationState.Rehydrate(
+                snapshot.AmbientConversationKey, snapshot.LastTriggeredStep, snapshot.TimesTriggered));
         }
     }
 
