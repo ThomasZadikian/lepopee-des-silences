@@ -11,6 +11,8 @@ public sealed class NpcRelationship
 {
     private readonly Dictionary<string, WoundState> _woundStates;
     private readonly HashSet<string> _flags;
+    private readonly Dictionary<RelationshipAxis, int> _axisScores;
+    private readonly List<NpcMemoryEntry> _memories;
 
     private NpcRelationship(
         string npcKey,
@@ -18,7 +20,9 @@ public sealed class NpcRelationship
         Dictionary<string, WoundState> woundStates,
         HashSet<string> flags,
         int timesMet,
-        string? currentDialogueNodeKey)
+        string? currentDialogueNodeKey,
+        Dictionary<RelationshipAxis, int> axisScores,
+        List<NpcMemoryEntry> memories)
     {
         NpcKey = npcKey;
         RelationshipScore = relationshipScore;
@@ -26,6 +30,8 @@ public sealed class NpcRelationship
         _flags = flags;
         TimesMet = timesMet;
         CurrentDialogueNodeKey = currentDialogueNodeKey;
+        _axisScores = axisScores;
+        _memories = memories;
     }
 
     public string NpcKey { get; }
@@ -40,6 +46,13 @@ public sealed class NpcRelationship
 
     public string? CurrentDialogueNodeKey { get; private set; }
 
+    /// <summary>Every axis this relationship has a non-zero score on. Axes never explicitly
+    /// adjusted read as 0 via <see cref="GetAxisScore"/> without needing an entry here.</summary>
+    public IReadOnlyDictionary<RelationshipAxis, int> AxisScores => _axisScores;
+
+    /// <summary>What this specific NPC remembers — see <see cref="NpcMemoryEntry"/>.</summary>
+    public IReadOnlyCollection<NpcMemoryEntry> Memories => _memories;
+
     /// <summary>Aggregated NPC state = the most severe wound (decision §7).</summary>
     public WoundState AggregateState =>
         _woundStates.Count == 0 ? WoundState.Latent : _woundStates.Values.Max();
@@ -52,7 +65,9 @@ public sealed class NpcRelationship
             new Dictionary<string, WoundState>(StringComparer.OrdinalIgnoreCase),
             new HashSet<string>(StringComparer.OrdinalIgnoreCase),
             timesMet: 1,
-            entryNodeKey);
+            entryNodeKey,
+            new Dictionary<RelationshipAxis, int>(),
+            new List<NpcMemoryEntry>());
     }
 
     public static NpcRelationship Rehydrate(
@@ -61,7 +76,9 @@ public sealed class NpcRelationship
         IReadOnlyDictionary<string, WoundState> woundStates,
         IEnumerable<string> flags,
         int timesMet,
-        string? currentDialogueNodeKey)
+        string? currentDialogueNodeKey,
+        IReadOnlyDictionary<RelationshipAxis, int>? axisScores = null,
+        IEnumerable<NpcMemoryEntry>? memories = null)
     {
         return new NpcRelationship(
             npcKey,
@@ -69,23 +86,54 @@ public sealed class NpcRelationship
             new Dictionary<string, WoundState>(woundStates, StringComparer.OrdinalIgnoreCase),
             new HashSet<string>(flags, StringComparer.OrdinalIgnoreCase),
             timesMet,
-            currentDialogueNodeKey);
+            currentDialogueNodeKey,
+            axisScores is null ? new Dictionary<RelationshipAxis, int>() : new Dictionary<RelationshipAxis, int>(axisScores),
+            memories?.ToList() ?? new List<NpcMemoryEntry>());
     }
 
     // Elise's reputation can never decrease — she is "totalement apathique" and has no
     // wound/trigger of her own; any negative delta reaching her (e.g. a future authored
-    // choice) is simply ignored rather than lowering her score.
+    // choice) is simply ignored rather than lowering her score. Applies to the secondary axes
+    // too: her disposition doesn't move on any dimension.
     private const string NeverDecreasingNpcKey = "npc.elise";
+
+    private bool IsExemptFromDecrease(int delta) =>
+        delta < 0 && string.Equals(NpcKey, NeverDecreasingNpcKey, StringComparison.OrdinalIgnoreCase);
 
     public void AdjustScore(int delta)
     {
-        if (delta < 0 && string.Equals(NpcKey, NeverDecreasingNpcKey, StringComparison.OrdinalIgnoreCase))
+        if (IsExemptFromDecrease(delta))
         {
             return;
         }
 
         RelationshipScore += delta;
     }
+
+    public int GetAxisScore(RelationshipAxis axis) => _axisScores.TryGetValue(axis, out var score) ? score : 0;
+
+    public void AdjustAxisScore(RelationshipAxis axis, int delta)
+    {
+        if (IsExemptFromDecrease(delta))
+        {
+            return;
+        }
+
+        _axisScores[axis] = GetAxisScore(axis) + delta;
+    }
+
+    /// <summary>Records something this NPC now remembers. Multiple entries for the same
+    /// knowledge key are allowed — e.g. the NPC first observed one thing and was later told a
+    /// contradicting version — content-authoring decides whether that's meaningful.</summary>
+    public void Remember(NpcMemoryEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        _memories.Add(entry);
+    }
+
+    /// <summary>Prunes every memory of the given scope — call at the matching lifecycle boundary
+    /// (conversation end, room exit, run end; see <see cref="MemoryScope"/>'s own remarks).</summary>
+    public void ForgetScope(MemoryScope scope) => _memories.RemoveAll(m => m.Scope == scope);
 
     public void SetFlag(string flag)
     {

@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Knowledge;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.PalaceLaws;
@@ -56,6 +57,7 @@ public sealed class Run
     private RunStatus? _preSuspendStatus;
     private readonly Dictionary<string, NpcRelationship> _npcRelationships = new(StringComparer.OrdinalIgnoreCase);
     private string? _activeNpcKey;
+    private readonly Dictionary<string, KnowledgeEntry> _knowledgeEntries = new(StringComparer.OrdinalIgnoreCase);
 
     private sealed record RunSnapshot(
         int CurrentHp,
@@ -472,6 +474,38 @@ public sealed class Run
     public void RehydrateNpcRelationship(NpcRelationship relationship)
     {
         _npcRelationships[relationship.NpcKey] = relationship;
+    }
+
+    /// <summary>Every fact/person/place/event this run has learned — see <see cref="KnowledgeEntry"/>.</summary>
+    public IReadOnlyCollection<KnowledgeEntry> KnowledgeEntries => _knowledgeEntries.Values.ToArray();
+
+    public KnowledgeEntry? GetKnowledgeEntry(string key) =>
+        _knowledgeEntries.TryGetValue(key, out var entry) ? entry : null;
+
+    /// <summary>Returns the tracked entry for <paramref name="key"/>, creating it on first
+    /// reference. A second call with a different <paramref name="category"/> than the one it was
+    /// first created with is a content-authoring bug, not a runtime possibility to paper over.</summary>
+    public KnowledgeEntry GetOrCreateKnowledgeEntry(string key, KnowledgeCategory category)
+    {
+        if (_knowledgeEntries.TryGetValue(key, out var existing))
+        {
+            if (existing.Category != category)
+            {
+                throw new DomainException(
+                    $"Knowledge entry '{key}' was first created as {existing.Category}, cannot be referenced as {category}.");
+            }
+
+            return existing;
+        }
+
+        var entry = KnowledgeEntry.Create(key, category);
+        _knowledgeEntries[key] = entry;
+        return entry;
+    }
+
+    public void RehydrateKnowledgeEntry(KnowledgeEntry entry)
+    {
+        _knowledgeEntries[entry.Key] = entry;
     }
 
     /// <summary>Rehydration hook for persistence (Wave 5).</summary>

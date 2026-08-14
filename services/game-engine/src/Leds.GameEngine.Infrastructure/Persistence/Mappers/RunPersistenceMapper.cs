@@ -7,6 +7,7 @@ using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Leds.GameEngine.Domain.Knowledge;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Protocol;
 using Leds.GameEngine.Domain.Combats.Typing;
@@ -74,6 +75,7 @@ public static class RunPersistenceMapper
             PreSuspendStatus = run.PreSuspendStatus?.ToString(),
             ActiveNpcKey = run.ActiveNpcKey,
             NpcRelationshipsJson = SerializeNpcRelationships(run.NpcRelationships),
+            KnowledgeEntriesJson = SerializeKnowledgeEntries(run.KnowledgeEntries),
             CreatedAtUtc = run.StartedAt.UtcDateTime,
             UpdatedAtUtc = DateTime.UtcNow,
             Rooms = run.Rooms.Select(room => ToEntity(room, run.Id.Value)).ToList(),
@@ -571,6 +573,7 @@ public static class RunPersistenceMapper
             magicDefense: entity.MagicDefense);
 
         RehydrateNpcEncounters(run, entity);
+        RehydrateKnowledgeEntries(run, entity);
         return run;
     }
 
@@ -1052,13 +1055,17 @@ public static class RunPersistenceMapper
         Converters = { new JsonStringEnumConverter() }
     };
 
+    private sealed record NpcMemoryEntrySnapshot(string KnowledgeKey, MemoryScope Scope, MemoryProvenance Provenance);
+
     private sealed record NpcRelationshipSnapshot(
         string NpcKey,
         int RelationshipScore,
         Dictionary<string, WoundState> WoundStates,
         List<string> Flags,
         int TimesMet,
-        string? CurrentDialogueNodeKey);
+        string? CurrentDialogueNodeKey,
+        Dictionary<RelationshipAxis, int> AxisScores,
+        List<NpcMemoryEntrySnapshot> Memories);
 
     private static string SerializeNpcRelationships(IReadOnlyCollection<NpcRelationship> relationships)
     {
@@ -1068,7 +1075,9 @@ public static class RunPersistenceMapper
             r.WoundStates.ToDictionary(kv => kv.Key, kv => kv.Value),
             r.Flags.ToList(),
             r.TimesMet,
-            r.CurrentDialogueNodeKey)).ToList();
+            r.CurrentDialogueNodeKey,
+            r.AxisScores.ToDictionary(kv => kv.Key, kv => kv.Value),
+            r.Memories.Select(m => new NpcMemoryEntrySnapshot(m.KnowledgeKey, m.Scope, m.Provenance)).ToList())).ToList();
 
         return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
     }
@@ -1088,11 +1097,44 @@ public static class RunPersistenceMapper
                     snapshot.WoundStates,
                     snapshot.Flags,
                     snapshot.TimesMet,
-                    snapshot.CurrentDialogueNodeKey));
+                    snapshot.CurrentDialogueNodeKey,
+                    snapshot.AxisScores ?? [],
+                    (snapshot.Memories ?? []).Select(m => NpcMemoryEntry.Create(m.KnowledgeKey, m.Scope, m.Provenance))));
             }
         }
 
         run.RehydrateActiveNpcKey(entity.ActiveNpcKey);
+    }
+
+    private sealed record KnowledgeVersionSnapshot(string Value, MemoryProvenance Provenance);
+
+    private sealed record KnowledgeEntrySnapshot(string Key, KnowledgeCategory Category, List<KnowledgeVersionSnapshot> Versions);
+
+    private static string SerializeKnowledgeEntries(IReadOnlyCollection<KnowledgeEntry> entries)
+    {
+        var snapshots = entries.Select(e => new KnowledgeEntrySnapshot(
+            e.Key,
+            e.Category,
+            e.Versions.Select(v => new KnowledgeVersionSnapshot(v.Value, v.Provenance)).ToList())).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateKnowledgeEntries(Run run, RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.KnowledgeEntriesJson))
+        {
+            return;
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<KnowledgeEntrySnapshot>>(
+            entity.KnowledgeEntriesJson, NpcJsonOptions) ?? [];
+
+        foreach (var snapshot in snapshots)
+        {
+            var versions = snapshot.Versions.Select(v => KnowledgeVersion.Create(v.Value, v.Provenance));
+            run.RehydrateKnowledgeEntry(KnowledgeEntry.Rehydrate(snapshot.Key, snapshot.Category, versions));
+        }
     }
 
     private sealed record SnapshotLawDto(
