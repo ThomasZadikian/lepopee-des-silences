@@ -3673,6 +3673,7 @@ export function spriteKeyToString(k) {
     case 'prop': return `p:${k.theme}:${k.prop}`;
     case 'highlight': return `h:${k.variant}:${k.elevation}`;
     case 'party': return `y:${k.elevation}`;
+    case 'actor': return `a:${k.figureId}:${k.variant ?? 0}`;
     case 'unit': return `u:${k.theme}:${k.role}`;
     default: return 'unknown';
   }

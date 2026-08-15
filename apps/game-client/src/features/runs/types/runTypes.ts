@@ -163,7 +163,7 @@ export type RoomDto = {
   nodes: NodeDto[];
   availableNodes: NodeDto[];
   /** Positioned NPCs currently visible in this room — empty until a room generator actually
-   * populates one (none does yet; see RoomNpc's backend remarks). */
+   * populates one (the Hall d'entrée is the first: see HallEntreeCasting.cs). */
   roomNpcs: RoomNpcDto[];
   layoutTemplateKey: string | null;
   layoutTemplateVersion: string | null;

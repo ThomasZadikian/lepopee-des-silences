@@ -2,6 +2,7 @@ import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
 import { hashSeed } from './usePalaceTerrain';
 import { propKindFor } from './useNodePresentation';
+import { roomNpcActorFor } from './useRoomNpcActors';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
@@ -417,6 +418,11 @@ export type BuildDrawPlanInput = {
   /** The party's current (possibly mid-step-animation) cell — always integer grid
    * coordinates, see usePartyTokenPath. Null before a grid exists. */
   party: { x: number; y: number } | null;
+  /** Positioned, physically-present NPCs (RoomDto.roomNpcs) — painted as bestiaire figures via
+   * roomNpcActorFor, same depth layer as the party since they are creatures standing on their
+   * own tile rather than scenery. A catalog key not yet covered by the bestiaire falls back to
+   * the generic waiting-figure prop so an unauthored NPC is still visible rather than absent. */
+  roomNpcs?: { id: string; x: number; y: number; catalogNpcKey: string }[];
   /** Cells holding an unfound cache — painted as a slab that rings hollow, which is the whole
    * tell that makes searching worth a player's budget. Position only; what is under it stays
    * unknown until searched. */
@@ -730,6 +736,32 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       elevation: elevationLevel,
       // Above the tile it marks, below the party token standing on it (+0.5).
       sortKey: ((x + y) * 4) + elevationLevel + 0.25,
+    });
+  }
+
+  // Positioned RoomNpcs — painted as actors (see roomNpcActorFor), the same depth layer as the
+  // party itself: creatures standing on their own tile, not scenery.
+  for (const npc of input.roomNpcs ?? []) {
+    if (!isFloor(npc.x, npc.y)) continue;
+    if (!inBounds(npc.x, npc.y)) continue;
+
+    const elevationLevel = input.elevation[(npc.y * input.gridWidth) + npc.x] ?? 0;
+    const { screenX, screenY } = project(npc.x, npc.y);
+    const actor = roomNpcActorFor(npc.catalogNpcKey);
+
+    entries.push({
+      cellKey: `npc:${npc.id}`,
+      x: npc.x,
+      y: npc.y,
+      spriteKey: actor
+        ? { kind: 'actor', figureId: actor.figureId, variant: actor.variant, elevation: elevationLevel }
+        : { kind: 'prop', theme: input.theme, prop: 'npc' },
+      screenX,
+      screenY,
+      elevation: elevationLevel,
+      // Same +0.5 bump as the party: paints on top of its own floor tile, still occluded by any
+      // genuinely taller cell further along the diagonal.
+      sortKey: ((npc.x + npc.y) * 4) + elevationLevel + 0.5,
     });
   }
 

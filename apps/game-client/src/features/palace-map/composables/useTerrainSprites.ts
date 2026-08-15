@@ -171,6 +171,16 @@ export type SpriteKey =
       elevation?: number;
     }
   | { kind: 'party'; elevation: number }
+  | {
+      kind: 'actor';
+      /** Bestiaire ROSTER figure id (e.g. `'majordome'`, `'habitant'`) resolved from a RoomNpc's
+       * catalogNpcKey by `roomNpcActorFor`. Never routed through the terrain forge below —
+       * TacticalGridMap.vue resolves it directly via bestiaire.js's getCombatantSprite, exactly
+       * like `'party'` already does. */
+      figureId: string;
+      variant: number;
+      elevation: number;
+    }
   | { kind: 'prop'; theme?: RoomTheme; prop: PropKind }
   | { kind: 'highlight'; variant: HighlightVariant; elevation: number };
 
@@ -214,6 +224,8 @@ function toForgeKey(key: SpriteKey): ForgeKey {
       return { kind: 'highlight', variant: key.variant, elevation: key.elevation };
     case 'party':
       return { kind: 'party', elevation: key.elevation };
+    case 'actor':
+      return { kind: 'actor', figureId: key.figureId, variant: key.variant };
   }
 }
 

@@ -469,6 +469,7 @@ const drawPlan = computed(() => {
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
+    roomNpcs: props.room.roomNpcs,
     reachableCells: reachableCells.value,
     pathCells: hoveredRoute.value?.path,
     hoveredCell: hoveredCell.value,
@@ -532,17 +533,21 @@ function paintCanvas(timestamp: number) {
 
   for (const entry of drawPlan.value) {
     const key = entry.spriteKey;
-    const sprite = key.kind === 'party' ? getCombatantSprite(PARTY_FIGURE_ID) : getSprite(key);
+    const sprite = key.kind === 'party'
+      ? getCombatantSprite(PARTY_FIGURE_ID)
+      : key.kind === 'actor'
+        ? getCombatantSprite(key.figureId, key.variant)
+        : getSprite(key);
     const dx = entry.screenX - (destW / 2);
 
     const occludes = seeThroughTargets.some((target) => occludesTarget(entry, target, destW, destH));
     if (occludes) ctx.globalAlpha = OCCLUDER_ALPHA;
 
-    if (key.kind === 'party') {
+    if (key.kind === 'party' || key.kind === 'actor') {
       // Baked on the tall "prop" canvas, same as any combatant figure — the short floor/
       // highlight rect would squash it and misplace its ground anchor. Standing on a raised
       // tile has to lift the figure by the same amount as that tile's own elevation, or the
-      // party reads as floating above the ground / sunk below it depending on the cell —
+      // party/PNJ reads as floating above the ground / sunk below it depending on the cell —
       // exactly like every other elevated entry (see the 'prop' branch below).
       const lift = elevationLiftPx(entry.elevation);
       const propDy = entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO) - lift;

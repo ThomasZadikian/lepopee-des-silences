@@ -505,6 +505,50 @@ describe('buildDrawPlan', () => {
     });
   });
 
+  describe('positioned RoomNpcs (RoomDto.roomNpcs)', () => {
+    it('paints a resolved catalog key as an actor sprite at its own cell', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        roomNpcs: [{ id: 'npc-1', x: 2, y: 2, catalogNpcKey: 'npc.majordome' }],
+      });
+
+      const entry = plan.find((e) => e.cellKey === 'npc:npc-1')!;
+      expect(entry).toBeDefined();
+      expect(entry.spriteKey).toEqual({ kind: 'actor', figureId: 'majordome', variant: 0, elevation: 0 });
+      expect(entry.x).toBe(2);
+      expect(entry.y).toBe(2);
+    });
+
+    it('splits the salle-casting.js "figureId#variant" convention into a variant', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        roomNpcs: [{ id: 'npc-1', x: 1, y: 1, catalogNpcKey: 'npc.habitant#3' }],
+      });
+
+      expect(plan.find((e) => e.cellKey === 'npc:npc-1')!.spriteKey)
+        .toEqual({ kind: 'actor', figureId: 'habitant', variant: 3, elevation: 0 });
+    });
+
+    it('falls back to the generic waiting-figure prop for a catalog key the bestiaire does not cover', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        roomNpcs: [{ id: 'npc-1', x: 1, y: 1, catalogNpcKey: 'npc.not-yet-authored' }],
+      });
+
+      expect(plan.find((e) => e.cellKey === 'npc:npc-1')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'npc' });
+    });
+
+    it('sorts a RoomNpc at the same depth layer as the party (+0.5 on its own tile)', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        roomNpcs: [{ id: 'npc-1', x: 2, y: 2, catalogNpcKey: 'npc.majordome' }],
+      });
+
+      expect(plan.find((e) => e.cellKey === 'npc:npc-1')!.sortKey).toBe(((2 + 2) * 4) + 0.5);
+    });
+  });
+
   describe('hidden caches', () => {
     it('paints a hollow-sounding slab on a cell holding an unfound cache', () => {
       // The position is all the client ever gets — no node, no type, no reward. Without this
