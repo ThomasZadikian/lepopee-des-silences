@@ -1,9 +1,9 @@
 # L’épopée des silences
-services-pre-beta-1.0.0
-web-alpha-0.9.2
-HTTP-alpha-1.0.0
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
+
+Le projet ne suit pas de schéma de version publié pour l'instant — voir [État actuel](#état-actuel)
+pour ce qui est réellement construit aujourd'hui plutôt qu'un numéro.
 
 **L’épopée des silences** est la refonte v2 du projet initial **RPG_ESI07**.
 Le projet évolue d’une application distribuée v1 composée d’un backend monolithique, d’un portail Vue et d’un client Unity vers une architecture v2 full web, serveur-autoritaire, centrée sur un **Game Engine Service** et des services périphériques spécialisés.
@@ -49,50 +49,94 @@ La v2 vise à construire progressivement :
 
 ## État actuel
 
-Versions de travail :
+Le jeu se joue de bout en bout aujourd'hui : une run s'ouvre sur le Hall d'entrée, s'explore sur une
+grille tactique libre, se peuple de PNJ qui perçoivent ou non le joueur, se heurte à des règles
+locales avant de basculer en combat tactique complet. Ce qui suit décrit ce qui est réellement
+construit — pas une intention.
 
-* Backend Game Engine : `alpha-0.3.8`
-* Frontend web-client : `alpha-0.2.1`
+### Exploration et génération de salle
 
-Fondations déjà posées :
+* grille tactique à mouvement libre (`RoomGrid`) : élévation sur plusieurs paliers (montée coûteuse,
+  descente gratuite), obstacles, budget de mouvement, recherche de chemin ;
+* brouillard de guerre par case révélée, rayon de vision et ligne de vue — restitué côté client comme
+  une mémoire d'enceinte (jamais vue / visitée / actuellement occupée) ;
+* overrides de surface et placements de décor authored par cellule (tapis, piliers…), génériques à
+  toute salle plutôt que réservés au Hall ;
+* deux styles de génération pilotés par salle catalogue (`RoomStructuralProfile`) : `Rectangular`
+  (avec sous-pièces et portes) et `Organic` (carving par rayon, jamais de sous-pièces) ;
+* sorties de salle multiples posées à la génération — chaque branche accessible est visible du
+  joueur, pas de tirage pondéré caché ;
+* **Hall d'entrée** : première salle canon à géométrie et casting entièrement authored (grille 26×18,
+  quatre piliers, escalier à sept marches, salons et alcôves, bande de tapis, seuil vers la Pièce des
+  émotions) — premier consommateur concret du moteur générique ci-dessous, pas un algorithme dédié.
 
-* structure v2 du repository ;
-* isolation du legacy v1 ;
-* Game Engine Service en Clean Architecture ;
-* Catalog Service en Clean Architecture ;
-* shared-building-blocks minimal ;
-* génération déterministe de runs, rooms, nodes et events ;
-* contraintes de room et de node ;
-* progression par chemins dans une room ;
-* sélection versionnée des types de rooms et d’événements ;
-* contrats Game Engine ↔ Catalog ;
-* Catalog HTTP Gateway opt-in côté Game Engine ;
-* définitions Catalog pour les Room Bosses ;
-* définitions Catalog pour les ennemis ;
-* définitions Catalog pour les skills ;
-* consommation des RoomBossDefinitions, EnemyDefinitions et SkillDefinitions par le Game Engine ;
-* génération de CombatEncounterDrafts ;
-* composition déterministe des rencontres ;
-* création d’un Combat runtime multi-alliés / multi-ennemis ;
-* persistance du combat actif dans la Run ;
-* endpoint de récupération du combat courant ;
-* endpoint d’action de combat basé sur les skills ;
-* validation des actions de combat ;
-* règles de ciblage des skills ;
-* résolution des effets de base : Damage, Guard, Weaken et Disrupt ;
-* progression de tour déterministe ;
-* tours ennemis automatiques simples ;
-* fin de combat avec victoire ou défaite ;
-* reprise de la progression de run après victoire ;
-* passage de la run en échec après défaite ;
-* documentation de transition v1 vers v2 ;
-* documentation des fondations backend, du Catalog, du combat et des contrats Game Engine ↔ Catalog.
+### PNJ positionnés et moteur d'awareness
 
-Le backend est actuellement stabilisé jusqu’à `alpha-0.3.8`. La prochaine étape backend prévue est `alpha-0.3.9`, dédiée à la stabilisation du flow complet de combat et des contrats API avant reprise du chantier frontend.
+* `RoomNpc` : PNJ physiquement présents sur la grille, avec un état de perception
+  (`Unaware` / `Aware` / `Alert`) et un archétype de comportement (`Fixed` / `Guardian` / `Patrol` /
+  `Hunter` / `Passive`) ;
+* peints côté client par le bestiaire, famille « habitants » : Majordome, Him'Lit, Le Premier Invité,
+  Échos d'Émotion (un par registre émotionnel), habitants et animaux d'ambiance.
 
-Le frontend est actuellement en `alpha-0.2.1`. Une fois le backend combat stabilisé, la prochaine phase consistera à aligner le frontend sur les nouveaux contrats de combat, puis à construire l’interface de combat jouable : scène de combat, sélection de skills, ciblage, feedbacks visuels, animations d’attaque, animations de dégâts, états de fin de combat et reprise de la run.
+### Règles locales et moteur de protocole
 
-La prochaine cible majeure globale est `alpha-0.4.0`, qui correspondra à une première boucle de combat jouable de bout en bout côté backend et frontend.
+* moteur générique condition → information/avertissement → transgression → gravité → conséquences
+  (`LocalRule`), data-driven et indépendant de toute salle ;
+* première instance concrète : le protocole du Hall (le tapis qu'il faut essuyer, le seuil des
+  émotions qu'il ne faut pas franchir).
+
+### Dialogue et relations aux PNJ
+
+* graphe de dialogue versionné côté Catalog, consommé par le Game Engine ;
+* relations multi-axes (au-delà d'un score unique), mémoire à portée et provenance (observé / dit par
+  le joueur / dit par un PNJ / rumeur / confirmé), registre de connaissance versionné, détection de
+  mensonge selon personnalité et relation, conversations ambiantes déclenchées par contexte, priorité
+  scénaristique > urgence > contextuelle > ambiance.
+
+### Combat tactique
+
+* combat sur grille tactique dédiée : déploiement, ciblage (zones d'effet, tir ami compris),
+  mouvement, IA ennemie utilitaire, garde, mana, focus, effets de statut, typage émotionnel avec
+  matrice d'affinité ;
+* onze familles de boss canon avec comportements dédiés (Créations du Forgeron, Faux Habitants du
+  Jardin, Veilleurs du Seuil, Impératrice de la Falaise, Gardiens de Crystal, Squelettes de Souvenirs,
+  Échos d'Émotions, Copistes, Pénitents de la Montagne, Chimères des Plaines, Blouses Blanches).
+
+### Catalog Service
+
+Contenu versionné bien plus large que le socle initial : salles (+ types + affinités thématiques),
+PNJ (dont leur graphe de dialogue), ennemis (+ tables de butin), boss de salle, compétences, objets
+(+ types et raretés), malédictions (+ pools de récompense-malédiction), modèles de récompense + pools
+de butin génériques, lois du Palais, registres émotionnels + matrice d'affinité, définitions de
+combat de personnage, mondes.
+
+### `apps/game-client`
+
+* carte tactique isométrique peinte (`TacticalGridMap`) avec caméra, éclairage par enceinte, décor
+  authored et ambiant ;
+* HUD de combat : rail de portraits, garde/mana/focus, statuts, menu d'objets et de sorts ;
+* panneau de dialogue PNJ ;
+* panneau DevTools complet, à accès contrôlé par jeton.
+
+### `services/player`
+
+Squelette Clean Architecture réel (Domain/Application/Infrastructure/Api + tests), testé en CI —
+au-delà du stade de dossier réservé, mais pas encore consommé par une progression joueur durable de
+bout en bout.
+
+### Ce qui n'est pas encore construit
+
+* les zones d'influence de seuil entre salles (le Palier qui ralentit le temps, la Pièce des émotions
+  qui assombrit selon la distance) — un système générique porté par la connexion entre salles, pas
+  encore posé ;
+* les pools d'événements du Hall (scénaristique, signature, protocole, PNJ, micro, conditionnel) et la
+  rencontre signature Le Premier Invité — la donnée existe, le tirage n'est pas câblé ;
+* l'interaction directe avec un `RoomNpc` (« parler à » depuis son état d'awareness) — les conséquences
+  `LocalRule` qui en dépendent (changement d'attitude, fermeture d'accès, approche de Veilleurs,
+  combat déclenché) restent des données correctes non encore consommées ;
+* toute salle canon au-delà du Hall avec géométrie authored — les autres salles restent procédurales
+  génériques ;
+* `apps/player-portal` et `apps/admin-portal` — dossiers réservés dans le repository, aucun code.
 
 ---
 
@@ -100,17 +144,18 @@ La prochaine cible majeure globale est `alpha-0.4.0`, qui correspondra à une pr
 
 ```text
 apps/
-  admin-portal/
-  player-portal/
+  admin-portal/    # dossier réservé, aucun code
+  player-portal/   # dossier réservé, aucun code
   game-client/
 
 services/
   game-engine/
   catalog/
-  player/          # futur
-  identity/        # futur
-  audit-gdpr/      # futur
-  leaderboard/     # futur
+  player/          # squelette Clean Architecture réel, testé en CI
+  api-gateway/     # dossier réservé, aucun code
+  identity/        # dossier réservé, aucun code
+  audit-gdpr/      # dossier réservé, aucun code
+  leaderboard/     # dossier réservé, aucun code
 
 packages/
   shared-building-blocks/
@@ -137,10 +182,9 @@ Client de jeu principal.
 Responsabilités :
 
 * démarrer ou reprendre une run ;
-* afficher la carte de room ;
-* choisir un node ;
-* résoudre les événements ;
-* afficher les combats ;
+* afficher la grille tactique d’exploration (mouvement libre, brouillard de guerre, PNJ positionnés) ;
+* résoudre les événements et le dialogue ;
+* afficher les combats tactiques ;
 * afficher les récompenses ;
 * afficher les lois actives ;
 * afficher l’état temporaire de run.
@@ -194,12 +238,13 @@ Service central du runtime gameplay.
 Responsabilités :
 
 * runs ;
-* rooms ;
-* nodes ;
-* événements runtime ;
-* génération ;
+* rooms (génération authored et procédurale, grille libre, portes/sous-pièces) ;
+* PNJ positionnés et moteur d’awareness ;
+* moteur générique de règles locales / protocole ;
+* nodes et événements runtime ;
+* dialogue et relations aux PNJ ;
 * choix serveur-autoritaire ;
-* combat runtime ;
+* combat tactique runtime ;
 * récompenses runtime ;
 * lois actives ;
 * narration runtime ;
@@ -213,28 +258,39 @@ Service de contenu versionné.
 
 Responsabilités :
 
-* enemy templates ;
+* room templates (+ types + affinités thématiques) ;
+* NPC templates (dont les graphes de dialogue) ;
+* enemy templates (+ tables de butin) ;
+* room boss templates ;
 * skill templates ;
-* item templates ;
-* event templates ;
+* item templates (+ types et raretés) ;
+* curse templates (+ pools de récompense-malédiction) ;
+* reward templates (+ pools de butin génériques) ;
 * palace law definitions ;
-* futurs NPC templates ;
+* registres émotionnels + matrice d’affinité ;
+* définitions de combat de personnage ;
+* worlds ;
 * contenus administrables.
 
 Le Game Engine consomme Catalog via des contrats et des snapshots, sans dépendre directement de son modèle interne.
 
-### Services prévus
+### `services/player`
 
-Les services suivants seront extraits progressivement :
+Squelette Clean Architecture réel (Domain/Application/Infrastructure/Api + tests), testé en CI aux
+côtés de Game Engine et Catalog. Pas encore consommé par une progression joueur durable de bout en
+bout côté runtime.
+
+### Services encore réservés
+
+Les dossiers suivants existent dans le repository mais ne contiennent aucun code — ils seront extraits
+progressivement, sans être créés prématurément tant que leur frontière n’est pas stabilisée :
 
 ```text
-services/player
+services/api-gateway
 services/identity
 services/audit-gdpr
 services/leaderboard
 ```
-
-Ils ne doivent pas être créés prématurément si leur frontière n’est pas encore stabilisée.
 
 ---
 
@@ -352,7 +408,8 @@ Le frontend envoie des intentions :
 
 ```text
 StartRun
-SelectNode
+MoveParty
+EnterNode
 ResolveEventChoice
 ChooseCombatAction
 SelectReward
@@ -379,51 +436,22 @@ Aucune logique critique ne doit être calculée uniquement côté client.
 
 ## Roadmap synthétique
 
-### `alpha-0.0.x`
+Le projet ne suit pas de numérotation de version, donc pas de jalons chiffrés ici — seulement ce qui
+est réellement en tête de file. Voir [État actuel](#état-actuel) pour ce qui est déjà construit.
 
-Fondations techniques.
-
-```text
-alpha-0.0.1 → structure v2
-alpha-0.0.2 → Game Engine skeleton
-alpha-0.0.3 → Run / Room / Node foundations
-alpha-0.0.4 → Catalog + shared-building-blocks
-alpha-0.0.5 → génération déterministe versionnée
-alpha-0.0.6 → pipeline typé de résolution événementielle
-```
-
-### Prochaines étapes backend
+### Prochaines priorités
 
 ```text
-alpha-0.0.7  → ResolveNodeEventCommand
-alpha-0.0.8  → Combat runtime domain
-alpha-0.0.9  → Start combat from resolved event
-alpha-0.0.10 → Combat action flow
-alpha-0.0.11 → Reward offer flow
-alpha-0.0.12 → Minimal room loop completion
+zones d'influence de seuil entre salles (Palier, Pièce des émotions)
+pools d'événements du Hall et rencontre signature Le Premier Invité
+interaction directe avec un RoomNpc ("parler à" depuis son état d'awareness)
+conséquences LocalRule dépendant de cette interaction
+  (changement d'attitude, fermeture d'accès, approche de Veilleurs, combat déclenché)
+salles canon supplémentaires à géométrie authored, au-delà du Hall
 ```
 
-### `alpha-0.1.0`
-
-Première boucle backend jouable.
-
-Critère :
-
-```text
-Une room complète peut être parcourue côté backend,
-avec choix de node, résolution d’événement,
-combat minimal, récompense minimale et boss de room.
-```
-
-### Prochaines étapes frontend
-
-```text
-web-alpha-0.0.1 → initialiser apps/game-client
-web-alpha-0.0.2 → initialiser apps/player-portal
-web-alpha-0.0.3 → initialiser apps/admin-portal
-web-alpha-0.0.4 → ajouter run playground
-web-alpha-0.1.0 → afficher la première boucle backend jouable
-```
+Aucun de ces chantiers n’est daté — ils sont listés dans l’ordre où ils débloquent le suivant, pas
+dans un ordre calendaire.
 
 ---
 
@@ -432,8 +460,6 @@ web-alpha-0.1.0 → afficher la première boucle backend jouable
 ```powershell
 .\scripts\dev\start-dev.ps1
 ```
-
-See [docs/development/local-dev-environment.md](docs/development/local-dev-environment.md).
 
 ### Bases de données locales
 
@@ -455,14 +481,6 @@ cohérentes (le client web vise le Game Engine sur `http://localhost:5187`). Les
 backend tournent en `Persistence:Mode=InMemory` par défaut ; passer une base en Postgres se
 fait via la chaîne de connexion correspondante (ex. `CATALOG_DB_CONNECTION_STRING`).
 
-## Architecture
-
-See [docs/architecture/alpha-0.5-system-architecture.md](docs/architecture/alpha-0.5-system-architecture.md).
-
-## Gameplay Data Model
-
-See [docs/data-model/00-data-model-0.1-overview.md](docs/data-model/00-data-model-0.1-overview.md).
-
 ---
 
 ## Commandes utiles
@@ -477,6 +495,12 @@ dotnet test services/game-engine/Leds.GameEngine.slnx
 
 ```powershell
 dotnet test services/catalog/Leds.Catalog.slnx
+```
+
+### Tester Player
+
+```powershell
+dotnet test services/player/Leds.Player.slnx
 ```
 
 ### Tester les shared-building-blocks
@@ -514,35 +538,31 @@ Résultat attendu : aucune dépendance interdite.
 
 ## Documentation
 
-La documentation projet est dans :
+La documentation projet est dans `docs/design/` — des briefs et SFD (spécifications fonctionnelles
+détaillées) par sujet plutôt qu’un document d’état unique :
 
 ```text
-docs/
-```
-
-Documents importants :
-
-```text
-docs/v2/
-docs/v2/follow-up/
-docs/v2/roadmap/
-docs/v2/architecture/
+docs/design/sfd-combat-trpg-canonique.md          # SFD combat tactique, canonique
+docs/design/brief-design-par-salle.md             # brief de design par salle
+docs/design/brief-direction-artistique-combat.md
+docs/design/brief-direction-artistique-ui-ux.md
+docs/design/brief-murs-et-decor-exploration.md
+docs/design/brief-superposition-noeuds.md         # popover de résolution au-dessus de la carte
+docs/design/brief-tiroirs-et-popovers.md
+docs/design/direction-visuelle-palais-respire.md
 ```
 
 Les décisions techniques importantes doivent être documentées dans un fichier de suivi ou un ADR.
 
 ## CI
 
-The v2 branch is validated by `.github/workflows/v2-ci.yml`.
+La branche est validée par `.github/workflows/v2-ci.yml` — service par service, sur push/PR vers
+`develop` :
 
-Backend services are tested automatically on push/PR to `develop`:
-
-- Game Engine
-- Catalog
-- Player
-- web-client
-
-See [docs/development/ci.md](docs/development/ci.md).
+- Game Engine (`dotnet test`)
+- Catalog (`dotnet test`)
+- Player (`dotnet test`)
+- frontend (`npm run build` + `npm run test`)
 
 ---
 
