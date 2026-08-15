@@ -2929,6 +2929,324 @@ function bakeProp(name, propKind, grain) {
     return cv;
   }
 
+  // ── Livraison Hall d'entrée (design_handoff_hall_entree) ────────────────────────────
+  // Décors de salon partagés (tilecraft-props.js du handoff) et décors uniques du Hall
+  // (tilecraft-props-uniques.js) — portés vers le vocabulaire local de bakeProp (P/
+  // paintMass/rgba/mix/shade déjà en portée) plutôt que copiés avec la trousse `kit()`
+  // du handoff, qui n'existe pas ici. `grandStair` n'est pas repris : l'escalier du Hall
+  // est de la géométrie de grille réelle (HallEntreeLayout côté backend), pas un décor
+  // plaqué — voir la remarque du handoff lui-même à ce sujet.
+  if (propKind === 'chandelier' || propKind === 'salonTable' || propKind === 'armchair'
+    || propKind === 'silverware' || propKind === 'glassware' || propKind === 'teaService'
+    || propKind === 'hallPortemanteau' || propKind === 'hallRegistre' || propKind === 'hallLustre'
+    || propKind === 'hallTapisRoule' || propKind === 'hallMalles' || propKind === 'hallHorloge') {
+    const M = (pts, o) => paintMass(ctx, pts.map(([a, b]) => P(cx + a, base - b)), th, R, { knots: 0, ...o });
+    const boxProp = (w, h, d, o = {}) => {
+      const col = o.base ?? mix(th.riser, '#5a4630', 0.55);
+      const deep = o.deep ?? shade(col, -0.55);
+      const st = o.striation ?? 'fibre';
+      const y0 = o.y ?? 0, x0 = o.x ?? 0;
+      M([[x0 - w, y0 + h], [x0 - w + d, y0 + h + d * 0.5], [x0 + w + d, y0 + h + d * 0.5], [x0 + w, y0 + h]],
+        { striation: st, base: shade(col, 0.18), deep, rim: o.rim ?? 0.18 });
+      M([[x0 + w, y0], [x0 + w, y0 + h], [x0 + w + d, y0 + h + d * 0.5], [x0 + w + d, y0 + d * 0.5]],
+        { striation: st, base: shade(col, -0.2), deep, rim: 0.1 });
+      M([[x0 - w, y0], [x0 - w, y0 + h], [x0 + w, y0 + h], [x0 + w, y0]],
+        { striation: st, base: col, deep, rim: o.rim ?? 0.16 });
+    };
+    const leg = (x, y0, y1, w, col) =>
+      M([[x - w, y0], [x - w, y1], [x + w, y1], [x + w, y0]],
+        { striation: 'fibre', base: col, deep: shade(col, -0.6), rim: 0.1 });
+    const disc = (x, y, rx, ry, col, a = 1) => {
+      if (typeof ry !== 'number') { a = col === undefined ? 1 : col; col = ry; ry = rx * 0.62; }
+      ctx.beginPath(); ctx.ellipse(cx + x, base - y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(col, a); ctx.fill();
+    };
+    const halo = (x, y, r, col, a = 0.5) => {
+      const g = ctx.createRadialGradient(cx + x, base - y, 1, cx + x, base - y, r);
+      g.addColorStop(0, rgba(col, a));
+      g.addColorStop(0.5, rgba(col, a * 0.34));
+      g.addColorStop(1, rgba(col, 0));
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = g; ctx.fillRect(cx + x - r, base - y - r, r * 2, r * 2);
+      ctx.restore();
+    };
+    const flame = (x, y, s, col, hot) => {
+      halo(x, y, 46 * s, col, 0.55);
+      const f = new Path2D();
+      f.moveTo(cx + x - 7 * s, base - y);
+      f.quadraticCurveTo(cx + x - 9 * s, base - y - 14 * s, cx + x - 1 * s, base - y - 26 * s);
+      f.quadraticCurveTo(cx + x + 3 * s, base - y - 13 * s, cx + x + 8 * s, base - y - 2 * s);
+      f.closePath();
+      ctx.fillStyle = rgba(col, 0.85); ctx.fill(f);
+      const g = new Path2D();
+      g.moveTo(cx + x - 3 * s, base - y);
+      g.quadraticCurveTo(cx + x - 3 * s, base - y - 10 * s, cx + x, base - y - 16 * s);
+      g.quadraticCurveTo(cx + x + 3 * s, base - y - 8 * s, cx + x + 3 * s, base - y);
+      g.closePath();
+      ctx.fillStyle = rgba(hot, 0.92); ctx.fill(g);
+    };
+    const stroke = (pts, col, w, a = 1) => {
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(cx + x, base - y) : ctx.moveTo(cx + x, base - y)));
+      ctx.strokeStyle = rgba(col, a); ctx.lineWidth = w;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    };
+    const groundPatch = (x, y, rx, col, a) => {
+      ctx.save();
+      ctx.translate(cx + x, base - y); ctx.scale(1, 0.5);
+      ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(col, a); ctx.fill();
+      ctx.restore();
+    };
+
+    const wood = mix(th.riser, '#5b452e', 0.58);
+    const woodDark = mix(th.riser, '#3a2b1b', 0.6);
+    const iron = mix(th.riser, '#4a4d55', 0.55);
+    const cloth = mix(th.top, '#cfc6b4', 0.5);
+
+    if (propKind === 'chandelier') {
+      // Lustre suspendu : la lumière de grande hauteur. La chaîne sort du cadre par le haut,
+      // la couronne porte ses bougies, et le halo tombe en nappe — pas de flaque au sol,
+      // c'est ce qui le distingue de la lampe suspendue.
+      const brass = mix(th.accent, '#c9a44e', 0.55);
+      stroke([[0, 190], [0, 128]], iron, 2.6, 0.9);
+      disc(0, 126, 4.5, 2.4, shade(brass, -0.2));
+      for (const [r, y] of [[26, 108], [15, 118]]) {
+        disc(0, y, r, r * 0.5, 'rgba(0,0,0,0)', 0);
+        stroke([[-r, y], [-r * 0.5, y - 3], [r * 0.5, y - 3], [r, y]], brass, 2.4, 0.9);
+        for (let i = -3; i <= 3; i++) stroke([[i * (r / 3.4), y - 2], [i * (r / 3.4), y - 9]], brass, 1.5, 0.7);
+      }
+      stroke([[0, 126], [-24, 110]], brass, 1.6, 0.75);
+      stroke([[0, 126], [24, 110]], brass, 1.6, 0.75);
+      for (let i = 0; i < 6; i++) {
+        const x = -25 + i * 10;
+        const h = 112 + R2(R, 0, 4);
+        stroke([[x, 108], [x, h]], mix(th.top, '#efe6cf', 0.6), 3.2, 0.95);
+        flame(x, h, 0.34, th.glow ?? '#ffcf88', '#fff4d2');
+      }
+      for (let i = 0; i < 9; i++) {
+        const x = R2(R, -24, 24), y = R2(R, 92, 106);
+        disc(x, y, 1.6, 2.6, mix(th.glow ?? '#ffe6b0', '#ffffff', 0.4), 0.75);
+      }
+      halo(0, 112, 96, th.glow ?? '#ffcf88', 0.32);
+      return cv;
+    }
+    if (propKind === 'salonTable') {
+      // Guéridon de salon : rond, un fût central, trois patins. Il porte le service —
+      // c'est la surface sur laquelle les événements d'argenterie se jouent.
+      for (const a of [-1, 0, 1]) stroke([[0, 8], [a * 13, 1]], woodDark, 3.4, 0.95);
+      M([[-3.4, 6], [-3.4, 26], [3.4, 26], [3.4, 6]],
+        { striation: 'fibre', base: woodDark, deep: shade(woodDark, -0.5), rim: 0.12 });
+      disc(0, 26, 24, 12, shade(wood, -0.35));
+      disc(0, 28.5, 24, 12, shade(wood, 0.12));
+      disc(0, 29, 18, 9, shade(wood, 0.26), 0.6);
+      stroke([[-24, 27], [-17, 33], [17, 33], [24, 27]], shade(wood, 0.34), 1.4, 0.4);
+      return cv;
+    }
+    if (propKind === 'armchair') {
+      // Fauteuil de salon : assise capitonnée, dossier haut, deux accotoirs. Tourné de trois
+      // quarts vers l'axe du tapis — le mobilier du Hall regarde le passage.
+      const velour = mix(cloth, '#7a2530', 0.55);
+      for (const x of [-11, 11]) M([[x - 2, 0], [x - 2, 9], [x + 2, 9], [x + 2, 0]],
+        { striation: 'fibre', base: shade(wood, -0.3), deep: shade(wood, -0.7), rim: 0.1 });
+      boxProp(14, 9, 7, { y: 8, base: velour, striation: 'fibre', rim: 0.2 });
+      M([[-14, 17], [-13, 46], [13, 46], [14, 17]],
+        { striation: 'fibre', base: shade(velour, -0.12), deep: shade(velour, -0.6), rim: 0.24 });
+      for (let i = 0; i < 3; i++) stroke([[-10 + i * 10, 22], [-10 + i * 10, 42]], shade(velour, -0.4), 1.2, 0.5);
+      for (let i = 0; i < 3; i++) disc(-10 + i * 10, 32, 1.4, 1.4, shade(velour, 0.3), 0.6);
+      for (const s of [-1, 1]) M([[s * 13, 17], [s * 13, 26], [s * 17, 26], [s * 17, 15]],
+        { striation: 'fibre', base: shade(velour, 0.1), deep: shade(velour, -0.55), rim: 0.16 });
+      return cv;
+    }
+    if (propKind === 'silverware') {
+      // Argenterie dressée : deux assiettes, un couvert de chaque côté, une cloche. Posée au
+      // sol dans le sprite, elle se pose sur un guéridon dans la salle.
+      const silver = mix(iron, '#d8dbe0', 0.6);
+      const nappe = mix(th.top, '#efe9db', 0.55);
+      disc(0, 3, 24, 12, nappe, 0.9);
+      for (const [x, r] of [[-11, 8.5], [10, 7.5]]) {
+        disc(x, 5, r, r * 0.5, shade(silver, -0.42));
+        disc(x, 6.4, r, r * 0.5, silver);
+        disc(x, 6.8, r * 0.55, r * 0.28, shade(silver, 0.3), 0.85);
+      }
+      for (const [x, s] of [[-19, 1], [19, -1]]) {
+        stroke([[x, 5], [x + s * 3, 5]], silver, 2.4, 0.95);
+        for (let i = -1; i <= 1; i++) stroke([[x - s * 1, 5 + i * 1.6], [x - s * 4, 5 + i * 1.6]], silver, 1.1, 0.9);
+      }
+      disc(1, 10, 6.5, 3.2, shade(silver, -0.3));
+      const p = new Path2D();
+      p.ellipse(cx + 1, base - 10, 6.5, 7, 0, Math.PI, Math.PI * 2);
+      ctx.fillStyle = rgba(shade(silver, -0.08), 1); ctx.fill(p);
+      ctx.strokeStyle = rgba(shade(silver, 0.4), 0.55); ctx.lineWidth = 1; ctx.stroke(p);
+      disc(1, 17.5, 1.5, 1.5, shade(silver, 0.3));
+      stroke([[-3, 12], [-1, 15]], shade(silver, 0.45), 1.2, 0.45);
+      return cv;
+    }
+    if (propKind === 'glassware') {
+      // Verres et carafe : le verre se peint en transparences, pas en masses. Trois verres
+      // de hauteurs différentes, une carafe au vin sombre.
+      const glass = mix(th.top, '#cfe0e8', 0.5);
+      const wine = mix(th.accent, '#5c1420', 0.6);
+      disc(0, 2, 18, 9, mix(th.top, '#efe9db', 0.5), 0.75);
+      for (const [x, h] of [[-11, 13], [-2, 11], [7, 14]]) {
+        const p = new Path2D();
+        p.moveTo(cx + x - 3.6, base - 3);
+        p.quadraticCurveTo(cx + x - 4.4, base - 3 - h * 0.7, cx + x - 3, base - 3 - h);
+        p.lineTo(cx + x + 3, base - 3 - h);
+        p.quadraticCurveTo(cx + x + 4.4, base - 3 - h * 0.7, cx + x + 3.6, base - 3);
+        p.closePath();
+        ctx.fillStyle = rgba(glass, 0.42); ctx.fill(p);
+        ctx.strokeStyle = rgba(shade(glass, 0.4), 0.7); ctx.lineWidth = 1; ctx.stroke(p);
+        disc(x, 3, 4.4, 2.2, shade(glass, -0.2), 0.6);
+        stroke([[x - 2.6, 3 + h * 0.45], [x + 2.6, 3 + h * 0.45]], wine, 2.6, 0.55);
+      }
+      const car = new Path2D();
+      car.moveTo(cx + 16, base - 3);
+      car.quadraticCurveTo(cx + 24, base - 10, cx + 20, base - 20);
+      car.lineTo(cx + 17, base - 28);
+      car.lineTo(cx + 14, base - 20);
+      car.quadraticCurveTo(cx + 10, base - 10, cx + 16, base - 3);
+      car.closePath();
+      ctx.fillStyle = rgba(glass, 0.34); ctx.fill(car);
+      ctx.strokeStyle = rgba(shade(glass, 0.4), 0.65); ctx.lineWidth = 1.1; ctx.stroke(car);
+      ctx.save(); ctx.clip(car);
+      ctx.fillStyle = rgba(wine, 0.72); ctx.fillRect(cx + 8, base - 16, 20, 16);
+      ctx.restore();
+      return cv;
+    }
+    if (propKind === 'teaService') {
+      // Service à thé : théière, deux tasses sur soucoupes. Le Porteur de Plateau en
+      // propose ; les événements de politesse s'en servent.
+      const porc = mix(th.top, '#f2ece0', 0.62);
+      const trait = mix(th.accent, '#8a6a2c', 0.5);
+      disc(0, 2, 20, 10, mix(th.top, '#e6ddc9', 0.5), 0.85);
+      const pot = new Path2D();
+      pot.ellipse(cx - 8, base - 12, 9, 8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(porc, 1); ctx.fill(pot);
+      ctx.strokeStyle = rgba(trait, 0.5); ctx.lineWidth = 1; ctx.stroke(pot);
+      stroke([[-17, 12], [-22, 15], [-19, 19]], porc, 2.6, 0.95);
+      stroke([[1, 15], [7, 19]], porc, 2.4, 0.95);
+      disc(-8, 20, 4.4, 2.2, shade(porc, -0.14));
+      disc(-8, 21.4, 2, 1, trait, 0.6);
+      for (const x of [8, 17]) {
+        disc(x, 4, 6, 3, shade(porc, -0.12));
+        disc(x, 5.4, 4.2, 2.1, porc);
+        const cup = new Path2D();
+        cup.moveTo(cx + x - 3.6, base - 6);
+        cup.quadraticCurveTo(cx + x, base - 12, cx + x + 3.6, base - 6);
+        cup.closePath();
+        ctx.fillStyle = rgba(porc, 1); ctx.fill(cup);
+        stroke([[x - 4, 8], [x - 3, 6]], porc, 1.4, 0.9);
+        stroke([[x - 3, 9.5], [x + 3, 9.5]], trait, 1, 0.45);
+      }
+      return cv;
+    }
+    if (propKind === 'hallPortemanteau') {
+      // Encore chargé : les gens sont entrés, personne n'est ressorti.
+      disc(0, 4, 20, 9, shade(woodDark, -0.1));
+      M([[-4, 4], [-3, 118], [3, 118], [4, 4]], { striation: 'fibre', base: woodDark, rim: 0.14 });
+      for (const s of [-1, 1]) stroke([[0, 112], [s * 22, 104]], shade(woodDark, 0.1), 3.4);
+      for (const [x, w, c] of [[-20, 17, mix(cloth, th.riser, 0.55)], [19, 15, mix(cloth, th.riserDeep, 0.4)]]) {
+        const p = new Path2D();
+        p.moveTo(cx + x - w, base - 104); p.lineTo(cx + x + w, base - 104);
+        p.quadraticCurveTo(cx + x + w * 0.7, base - 60, cx + x + w * 0.4, base - 34);
+        p.quadraticCurveTo(cx + x, base - 28, cx + x - w * 0.5, base - 34);
+        p.quadraticCurveTo(cx + x - w * 0.9, base - 62, cx + x - w, base - 104);
+        p.closePath();
+        ctx.fillStyle = rgba(c, 0.96); ctx.fill(p);
+        ctx.strokeStyle = rgba(shade(c, -0.5), 0.6); ctx.lineWidth = 1; ctx.stroke(p);
+      }
+      return cv;
+    }
+    if (propKind === 'hallRegistre') {
+      // Registre ouvert sur un lutrin : la dernière ligne est fraîche.
+      for (const x of [-16, 14]) { leg(x, 0, 44, 3.5, woodDark); leg(x + 10, 4, 48, 3.5, woodDark); }
+      M([[-26, 40], [-22, 58], [26, 58], [30, 38]], { striation: 'fibre', base: shade(woodDark, 0.16), rim: 0.2 });
+      M([[-24, 44], [-21, 58], [1, 58], [0, 44]], { striation: 'fibre', base: cloth, deep: shade(cloth, -0.45), rim: 0.3 });
+      M([[1, 44], [2, 58], [24, 57], [26, 43]], { striation: 'fibre', base: shade(cloth, 0.08), deep: shade(cloth, -0.45), rim: 0.28 });
+      for (let i = 0; i < 5; i++) stroke([[-19, 54 - i * 2.4], [-4, 54 - i * 2.4]], shade(cloth, -0.62), 0.9, 0.7);
+      for (let i = 0; i < 4; i++) stroke([[6, 53 - i * 2.4], [21, 53 - i * 2.4]], shade(cloth, -0.62), 0.9, 0.55);
+      stroke([[20, 58], [30, 78]], shade(th.top, 0.3), 2, 0.9);
+      disc(30, 79, 3, 2, th.glow, 0.8); halo(0, 52, 34, th.accent, 0.12);
+      return cv;
+    }
+    if (propKind === 'hallLustre') {
+      // Descendu si bas qu'on le regarde de face : bras courbes, pendeloques, six flammes.
+      // Distinct du chandelier mutualisé : pas de flaque de lumière au sol.
+      stroke([[0, 190], [0, 132]], shade(iron, -0.15), 2.2);
+      disc(0, 132, 9, 4, shade(iron, 0.1));
+      for (const s of [-1, 1]) {
+        for (const [dx, dy] of [[34, 108], [22, 96]]) {
+          ctx.beginPath(); ctx.moveTo(cx, base - 128);
+          ctx.quadraticCurveTo(cx + s * dx * 0.7, base - dy - 14, cx + s * dx, base - dy);
+          ctx.strokeStyle = rgba(shade(iron, 0.08), 1); ctx.lineWidth = 3; ctx.stroke();
+          disc(s * dx, dy, 6, 2.6, shade(iron, 0.2));
+          flame(s * dx, dy + 2, 0.6, th.accent, th.glow);
+        }
+      }
+      flame(0, 130, 0.6, th.accent, th.glow);
+      for (let i = -4; i <= 4; i++) {
+        stroke([[i * 8, 120], [i * 8, 104 - Math.abs(i) * 3]], th.glow, 0.8, 0.35);
+        disc(i * 8, 102 - Math.abs(i) * 3, 2.4, 3.4, th.glow, 0.6);
+      }
+      halo(0, 112, 92, th.glow, 0.34);
+      return cv;
+    }
+    if (propKind === 'hallTapisRoule') {
+      // Roulé et poussé contre le mur : on a fait de la place, ou on est en train de partir.
+      const rug = mix(th.rug ?? th.accent, th.riser, 0.35);
+      groundPatch(0, 0, 34, '#0a0806', 0.34);
+      const p = new Path2D();
+      p.moveTo(cx - 44, base - 4); p.lineTo(cx - 40, base - 26);
+      p.lineTo(cx + 40, base - 20); p.lineTo(cx + 44, base + 2); p.closePath();
+      const g = ctx.createLinearGradient(0, base - 28, 0, base);
+      g.addColorStop(0, rgba(shade(rug, 0.24), 1)); g.addColorStop(1, rgba(shade(rug, -0.5), 1));
+      ctx.fillStyle = g; ctx.fill(p);
+      for (const s of [-1, 1]) {
+        disc(s * 42, s > 0 ? 9 : 15, 6, 11, shade(rug, 0.1));
+        disc(s * 42, s > 0 ? 9 : 15, 3.4, 6, shade(rug, -0.55));
+      }
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath(); ctx.moveTo(cx + i * 11, base - 4); ctx.lineTo(cx + i * 11 + 1, base - 24);
+        ctx.strokeStyle = rgba(shade(rug, -0.45), 0.5); ctx.lineWidth = 1.4; ctx.stroke();
+      }
+      return cv;
+    }
+    if (propKind === 'hallMalles') {
+      // Trois malles empilées, sanglées, étiquetées. Personne n'est venu les chercher.
+      boxProp(30, 26, 14, { base: shade(wood, -0.12) });
+      boxProp(24, 22, 11, { y: 26, x: -4, base: wood });
+      boxProp(17, 17, 9, { y: 48, x: 3, base: shade(wood, 0.08) });
+      for (const [y, w] of [[13, 30], [37, 24], [56, 17]]) {
+        M([[-w, y], [-w, y + 4], [w, y + 4], [w, y]], { striation: 'masonry', base: shade(iron, 0.06), rim: 0.3 });
+      }
+      for (const [x, y] of [[-26, 40], [10, 62]]) {
+        M([[x - 6, y], [x - 5, y + 9], [x + 6, y + 9], [x + 6, y]], { striation: 'fibre', base: mix(cloth, th.top, 0.4), rim: 0.24 });
+        stroke([[x - 3, y + 6], [x + 3, y + 6]], '#2b2419', 0.9, 0.7);
+      }
+      disc(0, 65, 3, 3, shade(iron, 0.3));
+      return cv;
+    }
+    if (propKind === 'hallHorloge') {
+      // Horloge de parquet, aiguilles figées : le hall a une heure, et c'est toujours la même.
+      boxProp(18, 118, 12, { base: wood });
+      M([[-13, 24], [-13, 96], [13, 96], [13, 24]], { striation: 'fibre', base: shade(woodDark, -0.2), rim: 0.1 });
+      stroke([[0, 92], [0, 46]], shade(th.accent, -0.3), 1.6, 0.8);
+      disc(0, 44, 8, 8, th.accent, 0.9); disc(0, 44, 4, 4, th.glow, 0.7);
+      ctx.beginPath(); ctx.arc(cx, base - 112, 17, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(shade(th.top, 0.3), 1); ctx.fill();
+      ctx.strokeStyle = rgba(shade(wood, -0.4), 1); ctx.lineWidth = 3; ctx.stroke();
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        stroke([[Math.cos(a) * 13, 112 + Math.sin(a) * 13], [Math.cos(a) * 15, 112 + Math.sin(a) * 15]], '#2c2517', 1.4, 0.8);
+      }
+      stroke([[0, 112], [7, 118]], '#2c2517', 2, 0.95);
+      stroke([[0, 112], [-3, 101]], '#2c2517', 1.6, 0.95);
+      halo(0, 112, 30, th.glow, 0.14);
+      return cv;
+    }
+  }
+
   // cairn : petit empilement d'éclats de pierre, discret, sert de repère.
   ctx.save();
   ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 8;
@@ -3410,6 +3728,10 @@ export const PROP_KINDS = [
   'iceShard', 'burialUrn', 'ropeAndPiton', 'glowMoss', 'rockfallPile', 'frozenBanner',
   'cot', 'medicineCabinet', 'bandageRoll', 'surgicalTray', 'IVStand', 'driedFlowers',
   'hedgeRow', 'sundial', 'floweringVine', 'wellhead', 'sunburstLantern', 'birdbath',
+  // Livraison Hall d'entrée (design_handoff_hall_entree) : décors de salon partagés,
+  // puis les six décors uniques du Hall (jamais recyclés dans une autre salle).
+  'chandelier', 'salonTable', 'armchair', 'silverware', 'glassware', 'teaService',
+  'hallPortemanteau', 'hallRegistre', 'hallLustre', 'hallTapisRoule', 'hallMalles', 'hallHorloge',
   'npc', 'merchant', 'campfire', 'star', 'curse', 'monster', 'elite', 'boss',
 ];
 

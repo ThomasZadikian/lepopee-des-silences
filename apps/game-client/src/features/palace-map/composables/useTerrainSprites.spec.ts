@@ -38,6 +38,14 @@ const ALL_KEYS: SpriteKey[] = [
   // Scenery and gameplay layers.
   { kind: 'prop', theme: 'Antechamber', prop: 'column' },
   { kind: 'prop', theme: 'Threshold', prop: 'arch' },
+  // Livraison Hall d'entrée : décors de salon partagés + les six décors uniques du Hall.
+  ...([
+    'chandelier', 'salonTable', 'armchair', 'silverware', 'glassware', 'teaService',
+    'hallPortemanteau', 'hallRegistre', 'hallLustre', 'hallTapisRoule', 'hallMalles', 'hallHorloge',
+  ] as const).map((prop): SpriteKey => ({ kind: 'prop', theme: 'room.halldentree', prop })),
+  // A per-cell surface override (RoomGridDto.surfaceOverrides) must bake and cache distinctly
+  // from the room's own default surface, not collide with it.
+  { kind: 'floor', tint: 'gold', theme: 'Antechamber', elevation: 0, surface: 'carpet' },
   ...(['move', 'attack', 'cursor', 'path'] as const).map((variant): SpriteKey =>
     ({ kind: 'highlight', variant, elevation: 0 })),
   ...([0, 1, 2, 3] as const).map((elevation): SpriteKey => ({ kind: 'party', elevation })),
@@ -75,6 +83,7 @@ describe('useTerrainSprites', () => {
       { ...base, elevation: 2 },
       { ...base, theme: 'Forest' as const },
       { ...base, surfaceSeed: 3 },
+      { ...base, surface: 'carpet' },
       { ...base, resolved: true },
       { ...base, glow: true },
       { ...base, cliffLeft: true },
