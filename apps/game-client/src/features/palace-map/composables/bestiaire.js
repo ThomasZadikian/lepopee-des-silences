@@ -34,6 +34,19 @@ export const TOKEN = {
   sap: '#86dcb4',
 };
 
+// Les sept registres émotionnels — livraison Hall d'entrée (design_handoff_hall_entree).
+// Chaque Écho d'Émotion (famille `habitants`) porte l'un d'eux : le drapé et la capuche sont
+// strictement identiques d'une variante à l'autre, seul ce glyphe/cette couleur change.
+export const REGISTRES = {
+  effroi: { label: 'Effroi', glyph: '✶', col: '#c8394a' },
+  deni: { label: 'Déni', glyph: '◇', col: '#d9a441' },
+  melancolie: { label: 'Mélancolie', glyph: '❍', col: '#6f96c8' },
+  rupture: { label: 'Rupture', glyph: '⟡', col: '#d1662c' },
+  memoire: { label: 'Mémoire', glyph: '◈', col: '#e0b45f' },
+  silence: { label: 'Silence', glyph: '○', col: '#c3bfcc' },
+  folie: { label: 'Folie', glyph: '✳', col: '#cf3f92' },
+};
+
 /** Lecture visuelle attendue par rôle — c'est le contrat de silhouette. */
 export const ROLES = {
   guard: 'large, bas, symétrique — occupe la case entière',
@@ -2902,6 +2915,330 @@ export const ROSTER = {
       line(ctx, tide, pal.light, 0.3, 2);
     },
   },
+
+  // ═══ HABITANTS DU PALAIS ════════════════════════════════════════════════════════════
+  // Livraison Hall d'entrée (design_handoff_hall_entree) — sept figures qui ne se battent
+  // pas. Elles vivent le lieu, parfois sans voir le joueur (voir RoomNpc.Awareness côté
+  // moteur) : c'est l'awareness du PNJ d'exploration, pas cette peinture, qui décide si la
+  // figure "regarde" le joueur.
+
+  majordome: {
+    catalogKey: 'canon.npc.majordome',
+    name: 'Le Majordome', side: 'ally', role: 'support', family: 'habitants', rarity: 'obligatoire',
+    quote: '« Vous êtes attendu. Essuyez vos pieds, je vous prie. »',
+    silhouette: 'Homme âgé, haut et étroit, livrée sombre à queue-de-pie. Monocle : le seul éclat.',
+    pal: { body: '#22212b', deep: '#0d0d13', skin: '#d8c0a6', accent: TOKEN.gold, light: '#efeade' },
+    paint(k) {
+      const { ctx, R, cx, base, th, pal } = k;
+      contact(ctx, cx, base, 18, 7);
+      // Deux jambes serrées : l'homme se tient au repos, talons joints.
+      paintMass(ctx, [P(cx - 9, base), P(cx - 8, base - 32), P(cx - 1, base - 32), P(cx - 2, base)], th, R, { base: pal.deep, rim: 0.1 });
+      paintMass(ctx, [P(cx + 2, base), P(cx + 1, base - 32), P(cx + 8, base - 32), P(cx + 9, base)], th, R, { base: pal.deep, rim: 0.1 });
+      // Queue-de-pie : deux pans qui descendent derrière les cuisses.
+      for (const s of [-1, 1]) {
+        const q = poly([P(cx + s * 4, base - 34), P(cx + s * 13, base - 32), P(cx + s * 11, base - 12), P(cx + s * 5, base - 16)]);
+        fill(ctx, q, shade(pal.body, -0.18)); line(ctx, q, '#000000', 0.3, 1);
+      }
+      paintMass(ctx, [P(cx - 11, base - 32), P(cx - 12, base - 62), P(cx + 12, base - 62), P(cx + 11, base - 32)], th, R,
+        { base: pal.body, deep: pal.deep, rim: 0.16 });
+      // Plastron et gilet : le blanc du col est la seule surface claire du costume.
+      const plas = poly([P(cx - 5, base - 60), P(cx + 5, base - 60), P(cx + 3, base - 38), P(cx - 3, base - 38)]);
+      fill(ctx, plas, pal.light, 0.92);
+      seg(ctx, cx - 6, base - 61, cx, base - 55, pal.light, 0.9, 2);
+      seg(ctx, cx + 6, base - 61, cx, base - 55, pal.light, 0.9, 2);
+      ctx.fillStyle = rgba(pal.accent, 0.9);
+      ctx.fillRect(cx - 2.4, base - 56, 4.8, 3);
+      // Bras le long du corps, main gantée devant : le geste d'accueil est retenu.
+      seg(ctx, cx - 12, base - 58, cx - 6, base - 40, shade(pal.body, -0.1), 0.95, 5);
+      seg(ctx, cx + 12, base - 58, cx + 5, base - 40, shade(pal.body, -0.1), 0.95, 5);
+      ctx.fillStyle = rgba(pal.light, 0.95);
+      ctx.beginPath(); ctx.arc(cx - 5, base - 38, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 4, base - 38, 3, 0, Math.PI * 2); ctx.fill();
+      // Tête : crâne dégarni, favoris gris, et le monocle qui accroche la lumière du Hall.
+      ctx.beginPath(); ctx.ellipse(cx, base - 70, 6.6, 7.8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(pal.skin, 1); ctx.fill();
+      const hair = new Path2D();
+      hair.moveTo(cx - 7, base - 72);
+      hair.quadraticCurveTo(cx, base - 79, cx + 7, base - 72);
+      hair.quadraticCurveTo(cx + 6, base - 74, cx + 4, base - 76);
+      hair.quadraticCurveTo(cx, base - 74, cx - 4, base - 76);
+      hair.quadraticCurveTo(cx - 6, base - 74, cx - 7, base - 72);
+      fill(ctx, hair, '#b9b3ad', 0.9);
+      for (const s of [-1, 1]) seg(ctx, cx + s * 6.4, base - 72, cx + s * 5.6, base - 66, '#b9b3ad', 0.75, 2.4);
+      ctx.fillStyle = rgba('#6a5a4c', 0.85);
+      ctx.fillRect(cx - 2.6, base - 65.5, 5.2, 1.1);
+      seg(ctx, cx - 5, base - 70.5, cx - 2.4, base - 70.5, '#4a3f36', 0.8, 1.3);
+      const mono = new Path2D();
+      mono.arc(cx + 3.4, base - 70.5, 2.9, 0, Math.PI * 2);
+      fill(ctx, mono, '#cfe2ef', 0.35); line(ctx, mono, pal.accent, 0.95, 1.3);
+      glowDot(ctx, cx + 4.4, base - 71.4, 0.9, pal.light, 0.9);
+      seg(ctx, cx + 6.2, base - 69, cx + 9, base - 62, pal.accent, 0.6, 1);
+    },
+  },
+
+  himlit: {
+    catalogKey: 'canon.npc.himlit',
+    name: 'Him’Lit', side: 'enemy', role: 'support', family: 'habitants', rarity: 'scenario',
+    registre: 'melancolie',
+    quote: '« Le Palais vous a ouvert. Ce n’est pas la même chose que vous accueillir. »',
+    silhouette: 'Homme élégant, très haut col, longue cape rouge portée en arrière. Regard bordeaux.',
+    pal: { body: '#1b1a24', deep: '#0a0910', skin: '#cfc2c4', accent: '#8e1420', light: '#e4c9cd' },
+    paint(k) {
+      const { ctx, R, cx, base, th, pal } = k;
+      contact(ctx, cx, base, 21, 8);
+      // La cape d'abord, très large en bas : elle donne la silhouette avant le corps.
+      const cape = new Path2D();
+      cape.moveTo(cx - 19, base + 1);
+      cape.quadraticCurveTo(cx - 15, base - 46, cx - 10, base - 66);
+      cape.lineTo(cx - 5, base - 66);
+      cape.quadraticCurveTo(cx - 7, base - 40, cx - 9, base + 1);
+      cape.closePath();
+      cape.moveTo(cx + 19, base + 1);
+      cape.quadraticCurveTo(cx + 15, base - 46, cx + 10, base - 66);
+      cape.lineTo(cx + 5, base - 66);
+      cape.quadraticCurveTo(cx + 7, base - 40, cx + 9, base + 1);
+      cape.closePath();
+      const g = ctx.createLinearGradient(cx - 19, 0, cx + 19, 0);
+      g.addColorStop(0, rgba('#4a0a12', 1));
+      g.addColorStop(0.5, rgba(pal.accent, 1));
+      g.addColorStop(1, rgba('#3d080f', 1));
+      ctx.save(); ctx.shadowColor = rgba('#000000', 0.6); ctx.shadowBlur = 10;
+      ctx.fillStyle = g; ctx.fill(cape); ctx.restore();
+      for (let i = 0; i < 6; i++) {
+        const x = cx - 16 + (i > 2 ? 20 : 0) + (i % 3) * 4;
+        seg(ctx, x, base, x + R2(R, -2, 2), base - 54, '#000000', R2(R, 0.16, 0.3), R2(R, 1, 2));
+      }
+      // Corps étroit, sombre, sans ornement : tout l'éclat est dans la cape et le regard.
+      paintMass(ctx, [P(cx - 7, base), P(cx - 7, base - 34), P(cx + 7, base - 34), P(cx + 7, base)], th, R, { base: pal.deep, rim: 0.1 });
+      paintMass(ctx, [P(cx - 9, base - 32), P(cx - 10, base - 64), P(cx + 10, base - 64), P(cx + 9, base - 32)], th, R,
+        { base: pal.body, deep: pal.deep, rim: 0.18 });
+      seg(ctx, cx - 3, base - 60, cx - 1, base - 38, pal.accent, 0.5, 1.4);
+      // Col monumental : deux ailes dressées derrière la tête, plus haut que le crâne.
+      for (const s of [-1, 1]) {
+        const col = poly([P(cx + s * 5, base - 62), P(cx + s * 15, base - 82), P(cx + s * 9, base - 62)]);
+        fill(ctx, col, '#5c0d16'); line(ctx, col, '#2a050a', 0.8, 1.2);
+      }
+      // Main gantée, doigts longs, posée devant la poitrine.
+      seg(ctx, cx + 9, base - 58, cx + 2, base - 44, shade(pal.body, 0.06), 0.95, 4.4);
+      ctx.fillStyle = rgba(pal.skin, 0.95);
+      ctx.beginPath(); ctx.ellipse(cx + 1, base - 43, 3.4, 2.6, 0.3, 0, Math.PI * 2); ctx.fill();
+      // Visage pâle, joues creuses, barbe taillée. Les yeux sont la signature.
+      ctx.beginPath(); ctx.ellipse(cx, base - 71, 6.4, 8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(pal.skin, 1); ctx.fill();
+      const hair = new Path2D();
+      hair.moveTo(cx - 7, base - 74);
+      hair.quadraticCurveTo(cx, base - 81, cx + 7, base - 74);
+      hair.quadraticCurveTo(cx + 5, base - 77, cx, base - 76);
+      hair.quadraticCurveTo(cx - 5, base - 77, cx - 7, base - 74);
+      fill(ctx, hair, '#15131a');
+      ctx.fillStyle = rgba('#15131a', 0.85);
+      ctx.beginPath(); ctx.ellipse(cx, base - 64.5, 2.2, 3, 0, 0, Math.PI * 2); ctx.fill();
+      for (const s of [-1, 1]) glowDot(ctx, cx + s * 2.8, base - 71.5, 1.5, '#7d0f1c', 0.95);
+    },
+  },
+
+  'premier-invite': {
+    catalogKey: 'canon.npc.premier-invite',
+    name: 'Le Premier Invité', side: 'enemy', role: 'skirmisher', family: 'habitants', rarity: 'signature',
+    registre: 'deni',
+    quote: '« J’ai trouvé la porte avant vous. Je n’ai jamais trouvé la sortie. »',
+    silhouette: 'Explorateur blond : chapeau à large bord, veste de toile, sangles et sacoche.',
+    pal: { body: '#8a7c56', deep: '#40391f', skin: '#dcb28c', accent: '#e8c76a', light: '#f0e2bd' },
+    paint(k) {
+      const { ctx, R, cx, base, th, pal } = k;
+      contact(ctx, cx, base, 19, 7.5);
+      // Appuis écartés, prêt à repartir : un explorateur ne se tient jamais au repos.
+      paintMass(ctx, [P(cx - 13, base), P(cx - 10, base - 30), P(cx - 2, base - 30), P(cx - 5, base)], th, R, { base: pal.deep, rim: 0.12 });
+      paintMass(ctx, [P(cx + 4, base), P(cx + 2, base - 30), P(cx + 10, base - 30), P(cx + 13, base)], th, R, { base: pal.deep, rim: 0.12 });
+      for (const s of [-1, 1]) {
+        const boot = poly([P(cx + s * 10.5, base), P(cx + s * 3.5, base), P(cx + s * 4, base - 12), P(cx + s * 10, base - 12)]);
+        fill(ctx, boot, '#4a3220'); line(ctx, boot, '#241708', 0.6, 1);
+      }
+      paintMass(ctx, [P(cx - 12, base - 30), P(cx - 13, base - 60), P(cx + 13, base - 60), P(cx + 12, base - 30)], th, R,
+        { base: pal.body, deep: pal.deep, rim: 0.16 });
+      // Sangles croisées et sacoche : l'équipement d'un homme qui a marché longtemps.
+      seg(ctx, cx - 11, base - 58, cx + 10, base - 38, '#5a4224', 0.9, 3);
+      seg(ctx, cx + 11, base - 58, cx - 10, base - 38, '#5a4224', 0.9, 3);
+      const sac = poly([P(cx + 9, base - 40), P(cx + 22, base - 38), P(cx + 21, base - 22), P(cx + 8, base - 24)]);
+      fill(ctx, sac, '#6a4c2c'); line(ctx, sac, '#2c1d0e', 0.7, 1.3);
+      seg(ctx, cx + 8, base - 34, cx + 22, base - 32, '#3a2a16', 0.9, 2);
+      glowDot(ctx, cx + 15, base - 30, 2, pal.accent, 0.7);
+      // Manches roulées : les avant-bras nus, la peau est visible.
+      seg(ctx, cx - 13, base - 56, cx - 17, base - 42, pal.body, 0.95, 5);
+      seg(ctx, cx - 17, base - 42, cx - 15, base - 32, pal.skin, 0.95, 4);
+      ctx.beginPath(); ctx.ellipse(cx, base - 68, 6.6, 7.8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(pal.skin, 1); ctx.fill();
+      // Mèches blondes qui débordent, puis le chapeau à large bord posé par-dessus.
+      const hair = new Path2D();
+      hair.moveTo(cx - 7, base - 70);
+      hair.quadraticCurveTo(cx, base - 78, cx + 7, base - 70);
+      hair.quadraticCurveTo(cx + 8, base - 64, cx + 5, base - 62);
+      hair.quadraticCurveTo(cx, base - 70, cx - 7, base - 70);
+      fill(ctx, hair, '#d9b45c');
+      const brim = new Path2D();
+      brim.ellipse(cx, base - 75, 15, 3.6, 0, 0, Math.PI * 2);
+      fill(ctx, brim, '#7a6238'); line(ctx, brim, '#3a2c14', 0.7, 1.2);
+      const crown = poly([P(cx - 7, base - 75), P(cx - 6, base - 84), P(cx + 6, base - 84), P(cx + 7, base - 75)]);
+      fill(ctx, crown, '#8a6f3f'); line(ctx, crown, '#3a2c14', 0.6, 1.1);
+      seg(ctx, cx - 7, base - 77, cx + 7, base - 77, '#4a3820', 0.9, 2.6);
+      for (const s of [-1, 1]) seg(ctx, cx + s * 2, base - 70, cx + s * 4, base - 70, '#4a3a2c', 0.8, 1.3);
+    },
+  },
+
+  emotion: {
+    catalogKey: 'canon.npc.emotion',
+    name: 'Écho d’Émotion', side: 'enemy', role: 'disruptor', family: 'habitants', rarity: 'gardienne',
+    registre: 'silence',
+    variants: ['effroi', 'deni', 'melancolie', 'rupture', 'memoire', 'silence', 'folie'],
+    quote: '« Elles se ressemblent toutes. C’est ce qu’elles portent au visage qui vous répond. »',
+    silhouette: 'Drapé identique pour toutes, capuche vide. Seul le glyphe du registre change.',
+    pal: { body: '#2e2b3a', deep: '#131120', skin: '#0a0912', accent: TOKEN.ink, light: '#c9c3d8' },
+    paint(k) {
+      const { ctx, R, cx, base, pal, v } = k;
+      const keys = ['effroi', 'deni', 'melancolie', 'rupture', 'memoire', 'silence', 'folie'];
+      const reg = REGISTRES[keys[v % keys.length]];
+      contact(ctx, cx, base, 19, 7.5);
+      // Le drapé, la capuche et la hauteur sont STRICTEMENT les mêmes d'une Émotion à
+      // l'autre : le joueur doit les reconnaître comme une espèce. Le registre ne teinte
+      // que le glyphe et sa lueur — c'est le seul élément différenciant, donc le seul
+      // qu'il faut lire.
+      drape(ctx, R, cx, base, { top: base - 58, halfTop: 11, halfBot: 18, col: pal.body, deep: pal.deep, plis: 8, glow: reg.col });
+      const sh = poly([P(cx - 11, base - 58), P(cx - 8, base - 64), P(cx + 8, base - 64), P(cx + 11, base - 58)]);
+      fill(ctx, sh, shade(pal.body, 0.06)); line(ctx, sh, pal.deep, 0.5, 1.1);
+      hood(ctx, cx, base - 70, 8, 9, pal.body, pal.deep, pal.skin);
+      // Le glyphe flotte là où serait le visage, dans la couleur du registre.
+      ctx.save();
+      ctx.shadowColor = rgba(reg.col, 0.9); ctx.shadowBlur = 12;
+      ctx.fillStyle = rgba(shade(reg.col, 0.4), 0.98);
+      ctx.font = '15px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(reg.glyph, cx, base - 68);
+      ctx.restore();
+      glowDot(ctx, cx, base - 46, 1.6, reg.col, 0.35);
+      // Deux mains fines sorties du drapé, teintées du registre à l'extrémité seulement.
+      for (const s of [-1, 1]) {
+        seg(ctx, cx + s * 10, base - 56, cx + s * 13, base - 40, pal.body, 0.95, 4);
+        glowDot(ctx, cx + s * 13, base - 39, 1.2, reg.col, 0.5);
+      }
+    },
+  },
+
+  habitant: {
+    catalogKey: 'canon.npc.habitant',
+    name: 'Habitant du Palais', side: 'ally', role: 'support', family: 'habitants', rarity: 'ambiance',
+    variants: ['redingote', 'robe', 'livrée', 'visiteur'],
+    quote: '« ... ils poursuivent leur conversation. Ils ne semblent pas vous voir. »',
+    silhouette: 'Forme humaine ordinaire, sans arme ni ornement. Elle existe sans le joueur.',
+    pal: { body: '#4a4653', deep: '#232130', skin: '#d3b294', accent: '#8f8aa0', light: '#dcd6cb' },
+    paint(k) {
+      const { ctx, R, cx, base, th, pal, v } = k;
+      // Quatre habitants, une seule construction : la variante ne change que la teinte du
+      // vêtement, la coiffe et la longueur du vêtement. L'ambiance ne doit pas attirer l'œil.
+      const looks = [
+        { col: '#3f3a4a', long: false, hair: '#3a3128', coif: 'court' },
+        { col: '#5a4352', long: true, hair: '#4a3a2c', coif: 'long' },
+        { col: '#2c2c38', long: false, hair: '#b9b3ad', coif: 'court' },
+        { col: '#4a5250', long: true, hair: '#2e2620', coif: 'chignon' },
+      ];
+      const L = looks[v % looks.length];
+      contact(ctx, cx, base, 17, 7);
+      if (L.long) {
+        drape(ctx, R, cx, base, { top: base - 56, halfTop: 10, halfBot: 15, col: L.col, deep: shade(L.col, -0.5), plis: 6 });
+      } else {
+        paintMass(ctx, [P(cx - 9, base), P(cx - 8, base - 30), P(cx - 1, base - 30), P(cx - 2, base)], th, R, { base: shade(L.col, -0.4), rim: 0.1 });
+        paintMass(ctx, [P(cx + 2, base), P(cx + 1, base - 30), P(cx + 8, base - 30), P(cx + 9, base)], th, R, { base: shade(L.col, -0.4), rim: 0.1 });
+        paintMass(ctx, [P(cx - 10, base - 30), P(cx - 11, base - 56), P(cx + 11, base - 56), P(cx + 10, base - 30)], th, R,
+          { base: L.col, deep: shade(L.col, -0.5), rim: 0.14 });
+      }
+      seg(ctx, cx - 10, base - 54, cx - 12, base - 38, L.col, 0.95, 4.4);
+      seg(ctx, cx + 10, base - 54, cx + 12, base - 38, L.col, 0.95, 4.4);
+      ctx.beginPath(); ctx.ellipse(cx, base - 64, 6.2, 7.4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(pal.skin, 1); ctx.fill();
+      const hair = new Path2D();
+      if (L.coif === 'long') {
+        hair.moveTo(cx - 8, base - 67);
+        hair.quadraticCurveTo(cx, base - 74, cx + 8, base - 67);
+        hair.quadraticCurveTo(cx + 8, base - 54, cx + 4, base - 52);
+        hair.quadraticCurveTo(cx + 4, base - 66, cx - 8, base - 67);
+      } else {
+        hair.moveTo(cx - 7, base - 66);
+        hair.quadraticCurveTo(cx, base - 74, cx + 7, base - 66);
+        hair.quadraticCurveTo(cx, base - 70, cx - 7, base - 66);
+      }
+      fill(ctx, hair, L.hair, 0.95);
+      if (L.coif === 'chignon') { ctx.fillStyle = rgba(L.hair, 0.95); ctx.beginPath(); ctx.arc(cx, base - 74, 3.4, 0, Math.PI * 2); ctx.fill(); }
+      // Le regard n'est pas dirigé vers le joueur : l'awareness fait partie de la lecture.
+      for (const s of [-1, 1]) seg(ctx, cx + s * 2 + 1.4, base - 64, cx + s * 3.4 + 1.4, base - 64, '#3a3040', 0.7, 1.2);
+    },
+  },
+
+  chat: {
+    catalogKey: 'canon.npc.chat',
+    name: 'Chat du Palais', side: 'ally', role: 'skirmisher', family: 'habitants', rarity: 'ambiance',
+    variants: ['gris', 'roux'],
+    quote: 'Il traverse le tapis sans s’essuyer les pattes. Personne ne lui dit rien.',
+    silhouette: 'Petit quadrupède, dos courbé, queue haute. La seule chose du Hall qui ignore le protocole.',
+    pal: { body: '#5c5a63', deep: '#2a2830', skin: '#d8d3c8', accent: '#8fd8a0', light: '#e8e4dc' },
+    paint(k) {
+      const { ctx, cx, base, pal, v } = k;
+      const col = v % 2 ? '#7a4c2c' : pal.body;
+      contact(ctx, cx, base, 11, 4.5);
+      const body = new Path2D();
+      body.moveTo(cx - 10, base - 6);
+      body.quadraticCurveTo(cx - 4, base - 18, cx + 7, base - 14);
+      body.quadraticCurveTo(cx + 12, base - 10, cx + 10, base - 4);
+      body.quadraticCurveTo(cx, base - 2, cx - 10, base - 6);
+      fill(ctx, body, col); line(ctx, body, shade(col, -0.5), 0.6, 1);
+      for (const x of [-7, -3, 5, 8]) seg(ctx, cx + x, base - 6, cx + x, base - 0.5, shade(col, -0.25), 0.95, 2.2);
+      // Queue haute : c'est elle qui rend l'animal lisible de loin.
+      const tail = new Path2D();
+      tail.moveTo(cx - 9, base - 8);
+      tail.quadraticCurveTo(cx - 18, base - 12, cx - 15, base - 24);
+      line(ctx, tail, shade(col, -0.1), 0.95, 3);
+      ctx.fillStyle = rgba(col, 1);
+      ctx.beginPath(); ctx.ellipse(cx + 9, base - 17, 4.4, 4, 0, 0, Math.PI * 2); ctx.fill();
+      for (const s of [-1, 1]) {
+        const ear = poly([P(cx + 9 + s * 2.6, base - 20), P(cx + 9 + s * 4, base - 25), P(cx + 9 + s * 0.6, base - 22)]);
+        fill(ctx, ear, shade(col, -0.15));
+      }
+      glowDot(ctx, cx + 11, base - 17.5, 0.8, pal.accent, 0.8);
+    },
+  },
+
+  chien: {
+    catalogKey: 'canon.npc.chien',
+    name: 'Chien du Palais', side: 'ally', role: 'guard', family: 'habitants', rarity: 'ambiance',
+    quote: 'Il attend quelqu’un qui ne redescendra pas l’escalier.',
+    silhouette: 'Quadrupède plus lourd que le chat, dos droit, queue basse, oreilles tombantes.',
+    pal: { body: '#6b5a48', deep: '#332a20', skin: '#d8d3c8', accent: '#e0b45f', light: '#e8e4dc' },
+    paint(k) {
+      const { ctx, cx, base, pal } = k;
+      contact(ctx, cx, base, 14, 5.5);
+      const body = new Path2D();
+      body.moveTo(cx - 13, base - 8);
+      body.quadraticCurveTo(cx - 6, base - 20, cx + 8, base - 18);
+      body.quadraticCurveTo(cx + 15, base - 14, cx + 13, base - 5);
+      body.quadraticCurveTo(cx, base - 2, cx - 13, base - 8);
+      fill(ctx, body, pal.body); line(ctx, body, pal.deep, 0.6, 1.1);
+      for (const x of [-10, -5, 6, 10]) seg(ctx, cx + x, base - 8, cx + x, base - 0.5, shade(pal.body, -0.25), 0.95, 2.8);
+      // Queue basse, portée à l'horizontale : l'inverse du chat.
+      const tail = new Path2D();
+      tail.moveTo(cx - 12, base - 12);
+      tail.quadraticCurveTo(cx - 21, base - 12, cx - 23, base - 6);
+      line(ctx, tail, shade(pal.body, -0.05), 0.95, 3.4);
+      ctx.fillStyle = rgba(pal.body, 1);
+      ctx.beginPath(); ctx.ellipse(cx + 12, base - 21, 5.2, 4.6, 0, 0, Math.PI * 2); ctx.fill();
+      const muzzle = poly([P(cx + 15, base - 22), P(cx + 21, base - 19), P(cx + 15, base - 17)]);
+      fill(ctx, muzzle, shade(pal.body, 0.12));
+      ctx.fillStyle = rgba('#1a1410', 0.9);
+      ctx.beginPath(); ctx.arc(cx + 20.5, base - 19, 1.2, 0, Math.PI * 2); ctx.fill();
+      for (const s of [-1, 1]) {
+        const ear = poly([P(cx + 11, base - 25), P(cx + 8 + s * 1.5, base - 25), P(cx + 8, base - 17)]);
+        fill(ctx, ear, shade(pal.body, -0.3));
+      }
+      glowDot(ctx, cx + 14, base - 21.5, 0.8, pal.accent, 0.6);
+    },
+  },
 };
 
 
@@ -4200,6 +4537,7 @@ export const FAMILIES = {
   lituisme: { label: 'Lituisme', note: 'Ornement liturgique détourné. Ils officient — la violence est une étape.' },
   psyche: { label: 'Psyché', note: 'Miroir et dédoublement. L’agression est de vous montrer quelque chose.' },
   alchimie: { label: 'Alchimie', note: 'Verre, cuivre, liquide. C’est le contenu qui est vivant, pas le contenant.' },
+  habitants: { label: 'Habitants du Palais', note: 'Elles ne se battent pas. Elles vivent le lieu, parfois sans voir le joueur.' },
 };
 
 /** Peint un combattant. `variant` sélectionne une déclinaison (objet tenu, échelle…). */
