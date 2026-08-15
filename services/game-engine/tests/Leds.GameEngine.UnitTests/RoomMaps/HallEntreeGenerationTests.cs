@@ -173,7 +173,7 @@ public sealed class HallEntreeGenerationTests
         majordome.Behavior.Should().Be(NpcBehaviorArchetype.Hunter);
         majordome.Awareness.Should().Be(NpcAwarenessState.Unaware);
 
-        room.RoomNpcs.Where(n => n.CatalogNpcKey == "npc.habitant.hall")
+        room.RoomNpcs.Where(n => n.CatalogNpcKey is "npc.habitant#0" or "npc.habitant#1")
             .Should().HaveCount(2)
             .And.OnlyContain(n => n.AwarenessRadius == 0, "ambient habitants must never notice the party on their own");
     }

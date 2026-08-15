@@ -42,7 +42,7 @@ public static class HallEntreeProtocol
             LocalRuleConsequence.Create(1, LocalRuleConsequenceType.Look, "npc.majordome"),
             LocalRuleConsequence.Create(2, LocalRuleConsequenceType.NpcRelocate, "npc.majordome"),
             LocalRuleConsequence.Create(3, LocalRuleConsequenceType.Warning),
-            LocalRuleConsequence.Create(4, LocalRuleConsequenceType.IncreasedSurveillance, "npc.veilleur.tapis"),
+            LocalRuleConsequence.Create(4, LocalRuleConsequenceType.IncreasedSurveillance, "npc.veilleur-tapis"),
             LocalRuleConsequence.Create(5, LocalRuleConsequenceType.VeilleurApproach),
         ],
         conditionCells: HallEntreeLayout.TapisCells);
@@ -57,9 +57,9 @@ public static class HallEntreeProtocol
             "Vous franchissez de nouveau le seuil des émotions malgré l'avertissement.",
         consequences:
         [
-            LocalRuleConsequence.Create(1, LocalRuleConsequenceType.Look, "npc.echo-emotion"),
+            LocalRuleConsequence.Create(1, LocalRuleConsequenceType.Look, "npc.emotion#5"),
             LocalRuleConsequence.Create(2, LocalRuleConsequenceType.Warning),
-            LocalRuleConsequence.Create(3, LocalRuleConsequenceType.IncreasedSurveillance, "npc.echo-emotion"),
+            LocalRuleConsequence.Create(3, LocalRuleConsequenceType.IncreasedSurveillance, "npc.emotion#5"),
             LocalRuleConsequence.Create(4, LocalRuleConsequenceType.Combat),
         ],
         conditionCells: [(HallEntreeLayout.EmotionsThresholdX, HallEntreeLayout.EmotionsThresholdY)]);
