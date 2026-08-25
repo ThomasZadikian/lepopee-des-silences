@@ -42,9 +42,9 @@ public sealed record MapNodeDto(
             node.IsInitial,
             node.HasChosenEventOption,
             node.BlocksTransit
-                ? ContactBehavior.Blocking.ToString()
+                ? global::Leds.GameEngine.Domain.Nodes.ContactBehavior.Blocking.ToString()
                 : node.TriggersOnContact
-                    ? ContactBehavior.TriggerOnEnter.ToString()
+                    ? global::Leds.GameEngine.Domain.Nodes.ContactBehavior.TriggerOnEnter.ToString()
                     : node.ContactBehavior.ToString(),
             node.DangerTell.ToString(),
             node.ExitDestinationRoomKey,
