@@ -19,7 +19,7 @@ namespace Leds.GameEngine.Application.Runs.Dtos;
 /// The timestamp at which the player saved and exited the run. <c>null</c> if never suspended.
 /// </param>
 /// <param name="AbandonedAt">
-/// The timestamp at which the run was abandoned (<see cref="RunStatus.Abandoned"/>).
+/// The timestamp at which the run was resolved with <see cref="RunOutcome.Abandon"/>.
 /// Equals <c>EndedAt</c> on the domain object. <c>null</c> for non-abandoned runs.
 /// </param>
 public sealed record RunDto(
@@ -51,7 +51,14 @@ public sealed record RunDto(
     bool LawDenialEnabled = false,
     bool CanUseLawDenial = false,
     bool CaliceInfiniEnabled = false,
-    bool CanUseCaliceInfini = false)
+    bool CanUseCaliceInfini = false,
+    string? Outcome = null,
+    long Revision = 0,
+    string TechnicalRecoveryState = "None",
+    string ProgressionMode = "Standard",
+    string? StoryDifficulty = null,
+    int? DifficultyLevel = null,
+    StoryRunOverlayDto? Story = null)
 {
     public static RunDto FromDomain(
         Run run,
@@ -89,7 +96,7 @@ public sealed record RunDto(
             run.CurrentRoomIndex + 1,
             CanResume: run.Status == RunStatus.Suspended,
             SavedAt: run.SavedAt,
-            AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null,
+            AbandonedAt: run.Outcome == RunOutcome.Abandon ? run.EndedAt : null,
             PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
             ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null,
             Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState),
@@ -99,8 +106,28 @@ public sealed record RunDto(
             LawDenialEnabled: run.LawDenialEnabled,
             CanUseLawDenial: run.CanUseLawDenial,
             CaliceInfiniEnabled: run.CaliceInfiniEnabled,
-            CanUseCaliceInfini: run.CanUseCaliceInfini);
+            CanUseCaliceInfini: run.CanUseCaliceInfini,
+            Outcome: run.Outcome?.ToString(),
+            Revision: run.Revision,
+            TechnicalRecoveryState: run.TechnicalRecoveryState.ToString(),
+            ProgressionMode: run.ProgressionMode.ToString(),
+            StoryDifficulty: run.StoryDifficulty?.ToString(),
+            DifficultyLevel: run.DifficultyLevel?.Value,
+            Story: run.StoryOverlay is null ? null : StoryRunOverlayDto.FromDomain(run.StoryOverlay));
     }
+}
+
+public sealed record StoryRunOverlayDto(
+    string? SequenceKey,
+    string? SequenceVersion,
+    string? StepKey,
+    string? CheckpointKey)
+{
+    public static StoryRunOverlayDto FromDomain(StoryRunOverlay overlay) => new(
+        overlay.SequenceKey,
+        overlay.SequenceVersion,
+        overlay.StepKey,
+        overlay.CheckpointKey);
 }
 
 public sealed record RunJournalEntryDto(

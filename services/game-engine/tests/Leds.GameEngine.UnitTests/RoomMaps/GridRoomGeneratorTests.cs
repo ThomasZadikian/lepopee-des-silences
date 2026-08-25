@@ -51,12 +51,8 @@ public sealed class GridRoomGeneratorTests
         room.Grid.PartyX.Should().Be(0);
         room.Grid.PartyY.Should().Be(9);
 
-        // The budget is no longer the template's constant: it is derived from the cheapest route
-        // to the boss on the room actually generated, plus slack. Asserted as the contract that
-        // matters (never below the template floor, always a full budget at spawn) rather than as
-        // a magic number, which would break whenever the shape or obstacle rolls shift.
-        room.Grid.MovementBudget.Should().BeGreaterThanOrEqualTo(42);
-        room.Grid.MovementBudgetRemaining.Should().Be(room.Grid.MovementBudget);
+        room.BossProfile.Should().BeNull("a procedural scaffold must not invent catalog content");
+        room.Nodes.Should().NotContain(node => node.IsBoss);
     }
 
     [Theory]
@@ -64,22 +60,15 @@ public sealed class GridRoomGeneratorTests
     [InlineData(7)]
     [InlineData(42)]
     [InlineData(1337)]
-    public async Task GenerateRoom_ShouldLeaveBudgetToSpare_BeyondTheCheapestRouteToTheBoss(int seed)
+    public async Task GenerateRoom_ShouldKeepAllGeneratedNodesReachable_WithoutABudgetGate(int seed)
     {
         var sut = CreateSut();
         var random = new Random(seed);
 
         var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
-        var boss = room.Nodes.Single(node => node.IsBoss);
-        var route = room.Grid.FindPath(boss.Lane, boss.Row);
-
-        route.Should().NotBeNull("the boss must always be reachable");
-
-        // Reaching the objective must never be all the budget affords — there has to be room to
-        // detour into a recess and search it.
-        (room.Grid.MovementBudget - route!.Value.Cost)
-            .Should().BeGreaterThan(0, "exploring must stay affordable, not just surviving the room");
+        room.Nodes.Should().AllSatisfy(node =>
+            room.Grid.FindPath(node.Lane, node.Row).Should().NotBeNull());
     }
 
     [Theory]
@@ -92,7 +81,9 @@ public sealed class GridRoomGeneratorTests
         var sut = CreateSut();
         var random = new Random(seed);
 
-        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random,
+            bossDefinitionKey: "boss.threshold.warden");
 
         foreach (var node in room.Nodes)
         {
@@ -200,7 +191,9 @@ public sealed class GridRoomGeneratorTests
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random,
+            bossDefinitionKey: "boss.threshold.warden");
 
         room.Nodes.Where(n => n.IsBoss).Should().ContainSingle()
             .Which.EventType.Should().Be(NodeEventType.RoomBoss);
@@ -266,17 +259,17 @@ public sealed class GridRoomGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateRoom_ShouldPlaceBossWithinMovementBudget()
+    public async Task GenerateRoom_ShouldPlaceAuthoredBossOnReachableFloor()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(
+            Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random,
+            bossDefinitionKey: "boss.threshold.warden");
 
         var boss = room.Nodes.Single(n => n.IsBoss);
-        var distance = Math.Abs(boss.Lane - room.Grid!.PartyX) + Math.Abs(boss.Row - room.Grid.PartyY);
-
-        distance.Should().BeLessThanOrEqualTo(room.Grid.MovementBudget);
+        room.Grid.FindPath(boss.Lane, boss.Row).Should().NotBeNull();
     }
 
     [Fact]
@@ -311,7 +304,9 @@ public sealed class GridRoomGeneratorTests
 
         foreach (var seedValue in new[] { 1, 999 })
         {
-            var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(seedValue));
+            var room = await sut.GenerateAsync(
+                Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(seedValue),
+                bossDefinitionKey: "boss.threshold.warden");
             var boss = room.Nodes.Single(n => n.IsBoss);
 
             room.Grid!.IsFloor(boss.Lane, boss.Row).Should().BeTrue();
@@ -333,7 +328,7 @@ public sealed class GridRoomGeneratorTests
     [InlineData(42)]
     [InlineData(1234)]
     [InlineData(987654)]
-    public async Task GenerateRoom_ShouldNeverPlaceObstaclesOnStartNodeOrBossCell(int seed)
+    public async Task GenerateRoom_ShouldNeverPlaceObstaclesOnStartOrNodeCells(int seed)
     {
         var sut = CreateSut();
         var random = new Random(seed);
@@ -352,7 +347,7 @@ public sealed class GridRoomGeneratorTests
     [InlineData(42)]
     [InlineData(1234)]
     [InlineData(987654)]
-    public async Task GenerateRoom_ShouldKeepEveryNodeAndBossReachableFromStart(int seed)
+    public async Task GenerateRoom_ShouldKeepEveryNodeReachableFromStart(int seed)
     {
         var sut = CreateSut();
         var random = new Random(seed);
@@ -510,7 +505,8 @@ public sealed class GridRoomGeneratorTests
 
         var room = await sut.GenerateAsync(
             Seed, GeneratorVersion, roomDepth: 0, RoomType.Silence, random,
-            catalogRoomKey: "room.hopital");
+            catalogRoomKey: "room.hopital",
+            bossDefinitionKey: "boss.threshold.warden");
         var grid = room.Grid!;
 
         var floorCells = Enumerable.Range(0, grid.Width)
@@ -558,7 +554,8 @@ public sealed class GridRoomGeneratorTests
 
         var room = await sut.GenerateAsync(
             Seed, GeneratorVersion, roomDepth: 0, RoomType.Silence, random,
-            catalogRoomKey: "room.hopital");
+            catalogRoomKey: "room.hopital",
+            bossDefinitionKey: "boss.threshold.warden");
         var grid = room.Grid!;
         var boss = room.Nodes.Single(n => n.IsBoss);
 

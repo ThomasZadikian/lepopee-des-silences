@@ -514,7 +514,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
     private static bool IsClosed(Run run)
     {
-        return run.Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended;
+        return run.Status is RunStatus.Resolved or RunStatus.Suspended;
     }
 
     /// <summary>Same resolution as ConfirmRoomExitCommandHandler's — re-read fresh, never trust

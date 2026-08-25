@@ -83,11 +83,8 @@ export type RoomClimateStateDto = string | RoomClimateDto;
 export type RoomGridDto = {
   width: number;
   height: number;
-  movementBudget: number;
-  movementBudgetRemaining: number;
   partyX: number;
   partyY: number;
-  canChallengeBossRemotely: boolean;
   /** Fog-of-war revealed cells, each as [x, y]. */
   revealedCells: [number, number][];
   /** Flat, row-major (index = y*width+x), one value 0..3 per cell. Sent for the whole grid,
@@ -123,6 +120,7 @@ export type RoomGridDto = {
 export type CellDecorDto = {
   x: number;
   y: number;
+  actorKind: 'Npc';
   key: string;
 };
 
@@ -159,7 +157,7 @@ export type RoomDto = {
   currentNodeDepth: number;
   maxNodeDepth: number;
   totalNodeCount: number;
-  bossPreview: BossPreviewDto;
+  bossPreview: BossPreviewDto | null;
   nodes: NodeDto[];
   availableNodes: NodeDto[];
   /** Positioned NPCs currently visible in this room — empty until a room generator actually
@@ -185,6 +183,15 @@ export type RunDto = {
   generatorVersion: string;
   markovMatrixVersion: string;
   status: string;
+  progressionMode?: 'Story' | 'Standard';
+  storyDifficulty?: 'Canonical' | null;
+  difficultyLevel?: number | null;
+  story?: {
+    sequenceKey?: string | null;
+    sequenceVersion?: string | null;
+    stepKey?: string | null;
+    checkpointKey?: string | null;
+  } | null;
   activeCombatId?: string | null;
   currentDepth: number;
   /** Zero-based index of the current room in the infinite run sequence. Use currentRoomIndex + 1 for display. */
@@ -255,6 +262,17 @@ export type MovePartyResponse = {
   run: RunDto;
   collectedItemIds: string[];
   blockedItemIds: string[];
+};
+
+export type InteractWithRoomNpcResponse = {
+  run: RunDto;
+  actor: RoomNpcDto;
+  localRuleNotices: {
+    ruleKey: string;
+    ruleName: string;
+    outcome: string;
+    message?: string | null;
+  }[];
 };
 
 export type SwapGroundItemResponse = {

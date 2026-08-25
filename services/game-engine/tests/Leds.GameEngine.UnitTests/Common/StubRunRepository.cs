@@ -19,6 +19,14 @@ public sealed class StubRunRepository : IRunRepository
         return Task.FromResult(run);
     }
 
+    public Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken)
+    {
+        var exists = _runs.Values.Any(run =>
+            run.PlayerId == playerId &&
+            run.Status is RunStatus.Active or RunStatus.Suspended);
+        return Task.FromResult(exists);
+    }
+
     public Task UpdateAsync(Run run, CancellationToken cancellationToken)
     {
         _runs[run.Id.Value] = run;

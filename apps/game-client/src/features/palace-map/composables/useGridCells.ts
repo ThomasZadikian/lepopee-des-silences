@@ -5,8 +5,8 @@ export type Cell = { x: number; y: number };
 
 /**
  * Pure grid lookups for a grid room: which cells are fog-revealed, which node (if any)
- * sits on a given cell, whether the party currently stands there, which cells are
- * impassable obstacles, and the flat list of every cell in the grid.
+ * sits on a given cell, whether the party or a positioned NPC currently stands there, which
+ * cells are impassable obstacles, and the flat list of every cell in the grid.
  */
 export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomGridDto | null>) {
   const revealedCells = computed(() => {
@@ -47,6 +47,18 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
 
   function isObstacle(x: number, y: number): boolean {
     return obstacleCells.value.has(`${x},${y}`);
+  }
+
+  const npcCells = computed(() => {
+    const set = new Set<string>();
+    for (const npc of room.value.roomNpcs ?? []) {
+      set.add(`${npc.x},${npc.y}`);
+    }
+    return set;
+  });
+
+  function isNpcOccupied(x: number, y: number): boolean {
+    return npcCells.value.has(`${x},${y}`);
   }
 
   const doorCells = computed(() => {
@@ -114,6 +126,8 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     isParty,
     obstacleCells,
     isObstacle,
+    npcCells,
+    isNpcOccupied,
     doorCells,
     isDoor,
     isFloor,

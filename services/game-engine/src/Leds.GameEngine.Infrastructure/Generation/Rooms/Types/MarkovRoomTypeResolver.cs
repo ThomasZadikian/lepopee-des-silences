@@ -8,9 +8,6 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
 public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
 {
-    // Endless run: a Him'Lit boss room (RoomType.Final) recurs every BossInterval rooms.
-    public const int BossInterval = 10;
-
     private const string Scope = "room-type-generation";
 
     // Source state substitute used to keep the Markov chain valid when leaving a
@@ -64,14 +61,7 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
             return RoomType.Threshold;
         }
 
-        // Him'Lit boss room recurs every BossInterval rooms (10, 20, 30, ...).
-        // The run is endless: there is no maximum depth.
-        if (nextRoomDepth % BossInterval == 0)
-        {
-            return RoomType.Final;
-        }
-
-        // Normal room: resolve via Markov. When leaving a boss room, substitute a
+        // Normal room: resolve via Markov. When leaving an authored boss room, substitute a
         // valid matrix source state (Final is not part of the matrix).
         var sourceType = currentRoomType == RoomType.Final ? PostBossSourceType : currentRoomType;
 

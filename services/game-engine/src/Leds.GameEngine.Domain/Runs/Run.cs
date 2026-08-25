@@ -135,9 +135,8 @@ public sealed class Run
         (CaliceInfiniLastUsedRoomIndex is null || CurrentRoomIndex > CaliceInfiniLastUsedRoomIndex.Value);
 
     /// <summary>
-    /// Number of rooms per "étage" (floor) — matches the Him'Lit boss recurrence interval
-    /// (services/game-engine's BossInterval, Infrastructure-layer, can't be referenced directly
-    /// from Domain). Kept as its own constant here rather than shared across the layer boundary.
+    /// Number of rooms per "étage" (floor), used only by floor-scoped laws and modifiers.
+    /// It has no effect on boss or Him'Lit encounter frequency.
     /// </summary>
     public const int FloorLengthInRooms = 10;
 
@@ -244,7 +243,10 @@ public sealed class Run
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
         string? forgottenSkillKey = null,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
+        RunOutcome? outcome = null,
+        long revision = 0,
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
     {
         Id = id;
         PlayerId = playerId;
@@ -252,6 +254,9 @@ public sealed class Run
         GeneratorVersion = generatorVersion;
         MarkovMatrixVersion = markovMatrixVersion;
         Status = status;
+        Outcome = outcome;
+        Revision = revision;
+        TechnicalRecoveryState = technicalRecoveryState;
         CurrentRoomId = initialRoom.Id;
         StartedAt = startedAt;
         MaxHp = maxHp;
@@ -288,6 +293,12 @@ public sealed class Run
         EmotionalAffinityMatrix = emotionalAffinityMatrix
             ?? throw new DomainException("A Catalog emotional affinity matrix snapshot is required.");
 
+        if ((Status == RunStatus.Resolved) != Outcome.HasValue)
+        {
+            throw new DomainException(
+                "A resolved run requires an outcome and an open run cannot have one.");
+        }
+
         _rooms.Add(initialRoom);
     }
 
@@ -303,7 +314,65 @@ public sealed class Run
 
     public EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
+    public RunProgressionMode ProgressionMode { get; private set; } = RunProgressionMode.Standard;
+    public StoryDifficulty? StoryDifficulty { get; private set; }
+    public DifficultyLevel? DifficultyLevel { get; private set; }
+    public StoryRunOverlay? StoryOverlay { get; private set; }
+
+    public void ConfigureStoryRun(StoryRunOverlay overlay)
+    {
+        EnsureActive();
+        ProgressionMode = RunProgressionMode.Story;
+        StoryDifficulty = global::Leds.GameEngine.Domain.Runs.StoryDifficulty.Canonical;
+        DifficultyLevel = null;
+        StoryOverlay = overlay;
+    }
+
+    public void ConfigureDifficultyRun(DifficultyLevel difficultyLevel)
+    {
+        EnsureActive();
+        ProgressionMode = RunProgressionMode.Standard;
+        StoryDifficulty = null;
+        DifficultyLevel = difficultyLevel;
+        StoryOverlay = null;
+    }
+
+    public void RestoreProgressionMode(
+        RunProgressionMode mode,
+        StoryDifficulty? storyDifficulty,
+        int? difficultyLevel,
+        StoryRunOverlay? storyOverlay)
+    {
+        ProgressionMode = mode;
+        StoryDifficulty = storyDifficulty;
+        DifficultyLevel = difficultyLevel.HasValue
+            ? global::Leds.GameEngine.Domain.Runs.DifficultyLevel.Create(difficultyLevel.Value)
+            : null;
+        StoryOverlay = storyOverlay;
+    }
+
+    public ContentVersionSet ContentVersions => new(
+        GeneratorVersion,
+        MarkovMatrixVersion,
+        EmotionalAffinityMatrix.Version);
+
     public RunStatus Status { get; private set; }
+
+    public RunOutcome? Outcome { get; private set; }
+
+    public long Revision { get; private set; }
+
+    public TechnicalRecoveryState TechnicalRecoveryState { get; private set; }
+
+    public bool IsResolved => Status == RunStatus.Resolved;
+
+    public void AcceptPersistedRevision(long revision)
+    {
+        if (revision <= Revision)
+            throw new DomainException("Persisted run revision must increase.");
+
+        Revision = revision;
+    }
 
     public RoomId CurrentRoomId { get; private set; }
 
@@ -311,6 +380,30 @@ public sealed class Run
 
     public bool HasActiveCombat =>
         ActiveCombatId.HasValue || _activeTacticalCombat is not null;
+
+    /// <summary>
+    /// Projects every physical party member's current combat resources back to the durable run
+    /// snapshot before the combat aggregate is released. Replaying the projection is idempotent.
+    /// </summary>
+    public void CapturePartyResources(IEnumerable<Combatant> allies)
+    {
+        if (PlayerSnapshot is null)
+        {
+            return;
+        }
+
+        var byCharacterId = PlayerSnapshot.Characters.ToDictionary(character => character.CharacterId);
+        foreach (var ally in allies)
+        {
+            if (ally.CharacterInstanceId is not { } characterId
+                || !byCharacterId.TryGetValue(characterId, out var character))
+            {
+                continue;
+            }
+
+            character.UpdateCurrentResources(ally.CurrentVitality, ally.RuntimeState.CurrentMana);
+        }
+    }
 
     /// <summary>
     /// Le combat tactique en cours, le cas échéant. Renseigné par <see cref="StartTacticalCombat"/>.
@@ -382,6 +475,21 @@ public sealed class Run
         var relationship = NpcRelationship.Begin(npcKey, entryNodeKey: null);
         _npcRelationships[npcKey] = relationship;
         return relationship;
+    }
+
+    /// <summary>
+    /// Bridges the room simulation actor to the run-scoped dialogue relationship. The physical
+    /// NPC remains owned by Room while dialogue memory remains owned by Run.
+    /// </summary>
+    public RoomNpc InteractWithRoomNpc(RoomNpcId roomNpcId)
+    {
+        EnsureActive();
+        if (HasActiveCombat)
+            throw new DomainException("A room NPC cannot be approached during tactical combat.");
+
+        var npc = CurrentRoom.InteractWithRoomNpc(roomNpcId);
+        BeginOrResumeNpcEncounter(npc.CatalogNpcKey);
+        return npc;
     }
 
     public void EndNpcEncounter() => _activeNpcKey = null;
@@ -667,8 +775,8 @@ public sealed class Run
     public int MagicDefense { get; private set; }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix"): applies the protagonist's
-    /// freshly-computed effective stats. MaxHp/CurrentHp are kept in sync with
+    /// Equipment resync: applies the protagonist's freshly-computed effective stats.
+    /// MaxHp/CurrentHp are kept in sync with
     /// <see cref="PlayerState"/>'s vitality (the value combat actually reads) so the
     /// two representations don't drift.
     /// </summary>
@@ -698,8 +806,8 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix") for a companion (or the
-    /// protagonist's own mirror entry, index 0): replaces the matching
+    /// Equipment resync for a companion (or the protagonist's own mirror entry,
+    /// index 0): replaces the matching
     /// <see cref="RunCharacterSnapshot"/>'s stat block.
     /// </summary>
     public void ReplaceCharacterStats(
@@ -899,14 +1007,9 @@ public sealed class Run
             throw new DomainException("Initial room node depth must be 0.");
         }
 
-        if (initialRoom.ContentNodeCount is < 6 or > 30)
+        if (initialRoom.ContentNodeCount is < 1 or > 30)
         {
-            throw new DomainException("A new run must start with a room containing between 6 and 30 nodes.");
-        }
-
-        if (initialRoom.Nodes.Count(node => node.IsBoss) != 1)
-        {
-            throw new DomainException("A new run must start with exactly one room boss node.");
+            throw new DomainException("A new run must start with a room containing between 1 and 30 nodes.");
         }
 
         if (currentHp <= 0)
@@ -1098,18 +1201,6 @@ public sealed class Run
         CurrentRoom.EnterNodeAtPartyPosition(new NodeId(nodeId));
     }
 
-    /// <summary>
-    /// Challenges the room boss remotely once the movement budget is exhausted, without
-    /// requiring the party to walk onto its cell. Delegates entirely to
-    /// <see cref="Room.ChallengeBossRemotely"/>.
-    /// </summary>
-    public void ChallengeBossRemotely()
-    {
-        EnsureActive();
-
-        CurrentRoom.ChallengeBossRemotely();
-    }
-
     public void ResolveCurrentEvent()
     {
         EnsureActive();
@@ -1130,8 +1221,7 @@ public sealed class Run
     /// Walks the party through a confirmed room exit (see NodeEventType.Exit) — "valider la
     /// sortie". No longer requires the room's boss to be defeated: it just needs the party to
     /// actually be standing on the exit node's cell, with nothing else pending. Increments
-    /// <see cref="CurrentRoomIndex"/> and stays <see cref="RunStatus.Active"/> (or advances to
-    /// <see cref="RunStatus.BossReached"/> for the Final room). Signals which floor-end payouts
+    /// <see cref="CurrentRoomIndex"/> and stays <see cref="RunStatus.Active"/>. Signals which floor-end payouts
     /// are due when this transition just crossed a floor boundary (see
     /// <see cref="ConsumeFloorEndModifiers"/>).
     /// </summary>
@@ -1169,14 +1259,12 @@ public sealed class Run
         // still be correctly consumed if this same transition also crosses a floor boundary.
         ResumeSuspendedSevereLawModifiers();
 
-        // Run sans fin : aucune profondeur maximale. La room boss (Him'Lit) est portee
-        // par son type de room, que le generateur produit tous les 10 rooms.
+        // Run sans fin : aucune profondeur maximale. Reaching authored content never changes
+        // the Run lifecycle; only an explicit terminal outcome resolves it.
         _rooms.Add(nextRoom);
         CurrentRoomId = nextRoom.Id;
         CurrentRoomIndex++;
-        Status = nextRoom.RoomType == RoomType.Final
-            ? RunStatus.BossReached
-            : RunStatus.Active;
+        Status = RunStatus.Active;
 
         ApplyForcedWeatherPlanToCurrentRoom();
 
@@ -1187,34 +1275,26 @@ public sealed class Run
 
     public void CompleteRun(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
-
-        Status = RunStatus.Completed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Success, endedAt);
     }
 
     public void FailRun(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
-
-        Status = RunStatus.Failed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Defeat, endedAt);
     }
 
     public void Abandon(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
+        ResolveRun(RunOutcome.Abandon, endedAt);
+    }
 
-        Status = RunStatus.Abandoned;
+    private void ResolveRun(RunOutcome outcome, DateTimeOffset endedAt)
+    {
+        if (Status == RunStatus.Resolved)
+            throw new DomainException("Run is already closed.");
+
+        Status = RunStatus.Resolved;
+        Outcome = outcome;
         EndedAt = endedAt;
     }
 
@@ -1399,8 +1479,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeTacticalCombat = null;
-        Status = RunStatus.Failed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Defeat, endedAt);
     }
 
     /// <summary>
@@ -1570,7 +1649,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(choice);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        if (Status is RunStatus.Resolved or RunStatus.Suspended)
         {
             throw new DomainException("Closed runs cannot receive rewards.");
         }
@@ -1894,7 +1973,7 @@ public sealed class Run
     /// <returns>Whether the poured liquid item was fully consumed (quantity reached zero).</returns>
     public bool PourLiquid(RunItemId containerId, RunItemId liquidItemId)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot use items on a closed run.");
 
         var container = _runItems.FirstOrDefault(i => i.Id == containerId)
@@ -1931,7 +2010,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(modifier);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot add a modifier to a closed run.");
 
         _runModifiers.Add(modifier);
@@ -2054,10 +2133,6 @@ public sealed class Run
         }
     }
 
-    /// <summary>"Loi de l'Oubli Partiel" floor-end payout: the number of skill points
-    /// the team learns from having forgotten a skill for the floor.</summary>
-    public const int SkillForgottenFloorEndStatPoints = 8;
-
     /// <summary>"Loi du Prêteur" floor-end clawback: the fraction of the player's total
     /// currency the Palais reclaims (SFD: "25% du total détenu — intérêts compris").</summary>
     public const double PreteurClawbackFraction = 0.25;
@@ -2072,7 +2147,6 @@ public sealed class Run
     public FloorEndModifierConsumptionResult ConsumeFloorEndModifiers()
     {
         var now = DateTime.UtcNow;
-        var oubliPartielPayoutDue = false;
         var preteurClawbackDue = false;
 
         foreach (var modifier in _runModifiers
@@ -2080,7 +2154,6 @@ public sealed class Run
         {
             if (modifier.Type == RunModifierType.SkillForgotten)
             {
-                oubliPartielPayoutDue = true;
                 ForgottenSkillKey = null;
             }
             else if (modifier.Type == RunModifierType.CurrencyGainBonusPercent)
@@ -2094,7 +2167,7 @@ public sealed class Run
             modifier.Consume(now);
         }
 
-        return new FloorEndModifierConsumptionResult(oubliPartielPayoutDue, preteurClawbackDue);
+        return new FloorEndModifierConsumptionResult(preteurClawbackDue);
     }
 
     private void AddRunItemFromPayload(string payloadKey)
@@ -2194,7 +2267,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(curse);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot apply a curse to a closed run.");
 
         _activeCurse = curse;
@@ -2248,7 +2321,7 @@ public sealed class Run
 
     private void EnsureActive()
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
         {
             throw new DomainException("Run is closed.");
         }
@@ -2272,7 +2345,7 @@ public sealed class Run
     /// </summary>
     public void ExitMidRoom(DateTimeOffset savedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        if (Status is RunStatus.Resolved or RunStatus.Suspended)
         {
             throw new DomainException("Run is closed.");
         }
@@ -2334,7 +2407,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(law);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot activate a palace law on a closed run.");
 
         // Idempotent — same law key cannot be active twice.
@@ -2554,7 +2627,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(law);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot promulgate a palace law on a closed run.");
 
         if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
@@ -2741,7 +2814,7 @@ public sealed class Run
 
     public (RunItemEffectType effectType, int amount, bool itemDepleted) UseItem(RunItemId itemId)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot use items on a closed run.");
         if (HasActiveCombat)
             throw new DomainException(
@@ -2749,6 +2822,12 @@ public sealed class Run
 
         var item = _runItems.FirstOrDefault(i => i.Id == itemId)
             ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+
+        if (item.EffectType == RunItemEffectType.GrantTeamSkillPoints)
+        {
+            throw new DomainException(
+                "Legacy permanent stat-point effects are disabled pending their canonical progression mapping.");
+        }
 
         var consumablesRestricted = _runModifiers
             .Any(m => m.Type == RunModifierType.ConsumablesRestrictedInCombat && !m.IsConsumed);
@@ -2941,11 +3020,14 @@ public sealed class Run
         string? forgottenSkillKey = null,
         IEnumerable<Guid>? suspendedSevereLawModifierIds = null,
         Combats.Tactical.TacticalCombat? activeTacticalCombat = null,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
+        RunOutcome? outcome = null,
+        long revision = 0,
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix, outcome, revision, technicalRecoveryState);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);
@@ -3011,14 +3093,12 @@ public sealed class Run
         Guid[]? RunModifierIds = null);
 
     /// <summary>
-    /// Signals which floor-end payouts an Application-layer handler must perform via the
-    /// player-profile gateway after a room transition crosses a floor boundary. See
+    /// Signals which floor-end currency operation an Application-layer handler must perform via
+    /// the player-profile gateway after a room transition crosses a floor boundary. See
     /// <see cref="ConsumeFloorEndModifiers"/>/<see cref="MoveToNextRoom"/>.
     /// </summary>
-    public readonly record struct FloorEndModifierConsumptionResult(
-        bool OubliPartielPayoutDue,
-        bool PreteurClawbackDue)
+    public readonly record struct FloorEndModifierConsumptionResult(bool PreteurClawbackDue)
     {
-        public static readonly FloorEndModifierConsumptionResult None = new(false, false);
+        public static readonly FloorEndModifierConsumptionResult None = new(false);
     }
 }

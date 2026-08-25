@@ -15,6 +15,7 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
+        MainStoryProgress? mainStoryProgress = null,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
         IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
         IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
@@ -23,6 +24,8 @@ public sealed class PlayerProfile
         DisplayName = displayName;
         Roster = roster;
         Progression = progression;
+        MainStoryProgress = mainStoryProgress
+            ?? global::Leds.Player.Domain.Players.MainStoryProgress.CreateDefault();
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
         _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
@@ -34,6 +37,7 @@ public sealed class PlayerProfile
     public string DisplayName { get; }
     public PlayerRoster Roster { get; }
     public PlayerProgression Progression { get; }
+    public MainStoryProgress MainStoryProgress { get; }
     public DateTimeOffset CreatedAtUtc { get; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public IReadOnlyCollection<PlayerPermanentUnlock> PermanentUnlocks => _permanentUnlocks.AsReadOnly();
@@ -51,7 +55,8 @@ public sealed class PlayerProfile
             PlayerRoster.Create(),
             PlayerProgression.CreateDefault(),
             createdAtUtc,
-            createdAtUtc);
+            createdAtUtc,
+            MainStoryProgress.CreateDefault());
 
         profile.AddDefaultCharacter();
 
@@ -156,14 +161,8 @@ public sealed class PlayerProfile
     /// adds a new character to the roster for life. No-op if already recruited
     /// (idempotent by DefinitionKey), mirrors GrantPermanentUnlock/AddPermanentItems.
     /// The companion automatically fights alongside the protagonist in every future
-    /// run (game-engine builds the combat party from the full roster).
-    ///
-    /// Grants a "catch-up" bonus to the shared stat-point pool equal to the most
-    /// stat points already invested in any existing character (usually the
-    /// protagonist) — a companion recruited late in a playthrough would otherwise
-    /// start at its catalog kit's bare baseline and permanently lag behind. The
-    /// bonus lands in the same pool everyone spends from (SpendStatPoint), so the
-    /// player still chooses where to allocate it.
+    /// run (game-engine builds the combat party from the full roster). Recruitment
+    /// never mutates the legacy permanent-stat counters.
     /// </summary>
     public void RecruitCompanion(
         string companionDefinitionKey,
@@ -175,10 +174,6 @@ public sealed class PlayerProfile
         if (Roster.Characters.Any(c => string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        var catchUpAmount = Roster.Characters.Count == 0
-            ? 0
-            : Roster.Characters.Max(c => c.StatPointsInvested);
-
         var skills = skillKeys
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(key => PlayerCharacterSkill.Create(key, now, "npc-offering", isEquipped: true))
@@ -189,9 +184,6 @@ public sealed class PlayerProfile
             characterType: "Companion");
 
         Roster.AddCharacter(companion);
-
-        if (catchUpAmount > 0)
-            Progression.AwardStatPoint(catchUpAmount);
 
         Touch(now);
     }
@@ -216,6 +208,35 @@ public sealed class PlayerProfile
     public void Touch(DateTimeOffset updatedAtUtc)
     {
         UpdatedAtUtc = updatedAtUtc;
+    }
+
+    public void AdvanceMainStory(
+        string sequenceKey,
+        string sequenceVersion,
+        string stepKey,
+        string? checkpointKey,
+        IReadOnlyCollection<string> unlockedRoomKeys,
+        IReadOnlyCollection<string> visibleRoomKeys,
+        bool complete,
+        DateTimeOffset now)
+    {
+        if (MainStoryProgress.IsCompleted)
+            return;
+
+        MainStoryProgress.Advance(sequenceKey, sequenceVersion, stepKey, checkpointKey);
+        foreach (var roomKey in unlockedRoomKeys)
+            MainStoryProgress.UnlockRoom(roomKey);
+        foreach (var roomKey in visibleRoomKeys)
+            MainStoryProgress.RevealRoom(roomKey);
+        if (complete)
+            MainStoryProgress.Complete();
+        Touch(now);
+    }
+
+    public void UnlockDifficultyLevel(int level, DateTimeOffset now)
+    {
+        if (MainStoryProgress.UnlockNextDifficulty(level))
+            Touch(now);
     }
 
     /// <summary>
@@ -267,18 +288,8 @@ public sealed class PlayerProfile
     }
 
     /// <summary>
-    /// Awards permanent stat points. Profile-level (not character-scoped) —
-    /// points aren't earned per-character.
-    /// </summary>
-    public void AwardStatPoint(DateTimeOffset now, int amount = 1)
-    {
-        Progression.AwardStatPoint(amount);
-        Touch(now);
-    }
-
-    /// <summary>
     /// Awards "Éclats du Palais", the player's persistent currency (John's rare offering).
-    /// Profile-level, mirrors AwardStatPoint.
+    /// Profile-level persistent currency operation.
     /// </summary>
     public void AwardCurrency(DateTimeOffset now, int amount)
     {
@@ -320,20 +331,6 @@ public sealed class PlayerProfile
         return succeeded;
     }
 
-    public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
-    {
-        if (Progression.UnspentStatPoints <= 0)
-            throw new DomainException("No stat points available to spend.");
-
-        // Resolve the character before decrementing so an invalid characterId
-        // never burns a point.
-        var character = Roster.GetRequired(characterId);
-
-        character.ApplyStatIncrement(kind);
-        Progression.SpendStatPoint();
-        Touch(now);
-    }
-
     /// <summary>
     /// Rehydrates a player profile from a trusted persistence snapshot.
     /// This method must not be used to create a new player profile.
@@ -345,10 +342,11 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
+        MainStoryProgress? mainStoryProgress = null,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
         IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
         IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
     {
-        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks, permanentItems, npcReputationScores);
+        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, mainStoryProgress, permanentUnlocks, permanentItems, npcReputationScores);
     }
 }

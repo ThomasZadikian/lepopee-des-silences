@@ -22,13 +22,6 @@ public static class HallEntreeLayout
     public const int StartX = 12;
     public const int StartY = 15;
 
-    /// <summary>Not the SFD's "Le Premier Invité" — that's an authored signature encounter still
-    /// to be written (SFD §VI). This is a structural placeholder so the room satisfies
-    /// <c>Room.Create</c>'s "exactly one boss node" invariant, placed off the tapis/salon traffic
-    /// so peaceful traversal (SFD §IV, "aucun combat n'est imposé par défaut") stays valid.</summary>
-    public const int BossX = 4;
-    public const int BossY = 12;
-
     /// <summary>The four marble pillars — SFD §III/§VIII: "exactement quatre piliers de marbre,
     /// toujours situés dans le cœur de la salle". Landmarks, not collision: the reference
     /// implementation renders them as pure decor on walkable floor (no obstacle layer at all),
@@ -43,9 +36,8 @@ public static class HallEntreeLayout
     /// Five minor, non-narrative curiosities (SFD §VII: "l'exploration transmet autant de lore
     /// que les dialogues") placed at authored positions echoing the reference's small decor
     /// objects (registre, papiers, malles) — mechanically ordinary <c>NodeEventType.Item</c>
-    /// nodes, no narrative text authored yet. They exist to satisfy <c>Run.StartNew</c>'s
-    /// content-node floor (6-30) for a room meant to open every run, not to stand in for the
-    /// Hall's real signature content (SFD §VI), which stays a separate, later chantier.
+    /// nodes, no narrative text authored yet. They do not stand in for the Hall's real signature
+    /// content (SFD §VI), which must come from an authored Catalog definition.
     /// </summary>
     public static readonly IReadOnlyList<(int X, int Y)> CurioCells =
     [

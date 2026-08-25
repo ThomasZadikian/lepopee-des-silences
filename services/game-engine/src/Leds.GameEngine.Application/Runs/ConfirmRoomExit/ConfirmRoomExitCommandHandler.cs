@@ -71,15 +71,6 @@ public sealed class ConfirmRoomExitCommandHandler
 
         var floorEndResult = run.ConfirmRoomExit(exitNode.Id, nextRoom);
 
-        // "Loi de l'Oubli Partiel" (law.oubli-partiel): the floor just ended while the
-        // forgotten-skill modifier was still active — pay out the compensation now that
-        // the team "learns the lesson."
-        if (floorEndResult.OubliPartielPayoutDue)
-        {
-            await _playerProfileGateway.AwardStatPointsAsync(
-                run.PlayerId, Run.SkillForgottenFloorEndStatPoints, cancellationToken);
-        }
-
         // "Loi du Prêteur" (law.preteur): the floor just ended while the currency-gain
         // bonus was still active — the Palais claws back a fraction of the current
         // total, interest included.

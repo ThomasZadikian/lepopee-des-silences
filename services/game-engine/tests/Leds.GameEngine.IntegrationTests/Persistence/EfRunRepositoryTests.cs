@@ -5,6 +5,7 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Leds.GameEngine.IntegrationTests.Persistence;
 
@@ -123,6 +124,65 @@ public sealed class EfRunRepositoryTests : IDisposable
 
         loaded.Should().NotBeNull();
         loaded!.CurrentHp.Should().Be(run.CurrentHp);
+        loaded.Revision.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldRejectStaleRevision()
+    {
+        var run = CreateTestRun();
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        using var firstContext = _fixture.CreateContext(_connStr);
+        using var secondContext = _fixture.CreateContext(_connStr);
+        var firstRepository = new EfRunRepository(firstContext);
+        var secondRepository = new EfRunRepository(secondContext);
+        var first = await firstRepository.GetByIdAsync(run.Id, CancellationToken.None);
+        var stale = await secondRepository.GetByIdAsync(run.Id, CancellationToken.None);
+
+        first!.ApplyHeal(1);
+        await firstRepository.UpdateAsync(first, CancellationToken.None);
+
+        stale!.ApplyHeal(2);
+        var act = () => secondRepository.UpdateAsync(stale, CancellationToken.None);
+
+        await act.Should().ThrowAsync<DbUpdateConcurrencyException>();
+    }
+
+    [Fact]
+    public async Task HasActiveOrSuspendedAsync_ShouldFindOnlyOpenRun()
+    {
+        var playerId = Guid.NewGuid();
+        var run = CreateTestRun(playerId);
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        (await _repository.HasActiveOrSuspendedAsync(playerId, CancellationToken.None)).Should().BeTrue();
+
+        run.CompleteRun(DateTimeOffset.UtcNow);
+        await _repository.UpdateAsync(run, CancellationToken.None);
+
+        (await _repository.HasActiveOrSuspendedAsync(playerId, CancellationToken.None)).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("Completed", RunOutcome.Success)]
+    [InlineData("Failed", RunOutcome.Defeat)]
+    [InlineData("Abandoned", RunOutcome.Abandon)]
+    public async Task GetByIdAsync_ShouldNormalizeLegacyTerminalStatus(
+        string legacyStatus,
+        RunOutcome expectedOutcome)
+    {
+        var run = CreateTestRun();
+        await _repository.AddAsync(run, CancellationToken.None);
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE runs SET status = {legacyStatus}, outcome = NULL WHERE id = {run.Id.Value}");
+
+        using var verifyContext = _fixture.CreateContext(_connStr);
+        var loaded = await new EfRunRepository(verifyContext)
+            .GetByIdAsync(run.Id, CancellationToken.None);
+
+        loaded!.Status.Should().Be(RunStatus.Resolved);
+        loaded.Outcome.Should().Be(expectedOutcome);
     }
 
     [Fact]
@@ -211,7 +271,7 @@ public sealed class EfRunRepositoryTests : IDisposable
             because: "The StartingGuardBonus modifier created by the guard shard must survive a full persistence round-trip.");
     }
 
-    private static Run CreateTestRun()
+    private static Run CreateTestRun(Guid? playerId = null)
     {
         var node1 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 1, []);
         var node2 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 2, []);
@@ -238,7 +298,7 @@ public sealed class EfRunRepositoryTests : IDisposable
             layoutTemplateVersion: "1.0.0");
 
         return Run.StartNew(
-            Guid.NewGuid(),
+            playerId ?? Guid.NewGuid(),
             "test-seed-12345",
             "1.0.0",
             "1.0.0",

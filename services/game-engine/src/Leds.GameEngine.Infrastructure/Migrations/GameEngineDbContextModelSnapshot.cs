@@ -1571,31 +1571,26 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("BossDangerHint")
-                        .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
                         .HasColumnName("boss_danger_hint");
 
                     b.Property<string>("BossEnemyTemplateKey")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("boss_enemy_template_key");
 
                     b.Property<string>("BossId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("boss_id");
 
                     b.Property<string>("BossName")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("boss_name");
 
                     b.Property<string>("BossRoomType")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("boss_room_type");
@@ -2115,6 +2110,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("emotional_register_code");
 
+                    b.Property<int>("CurrentMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_mana");
+
+                    b.Property<int>("CurrentVitality")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_vitality");
+
                     b.Property<string>("EquippedItemKeysCsv")
                         .HasColumnType("text")
                         .HasColumnName("equipped_item_keys_csv");
@@ -2265,6 +2268,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("defense");
 
+                    b.Property<int?>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
+
                     b.Property<int>("DotDamageBonusPercent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -2389,6 +2396,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("npc_relationships_json");
 
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("outcome");
+
                     b.Property<Guid?>("PendingRewardOfferId")
                         .HasColumnType("uuid")
                         .HasColumnName("pending_reward_offer_id");
@@ -2402,11 +2414,24 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("pre_suspend_status");
 
+                    b.Property<string>("ProgressionMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Standard")
+                        .HasColumnName("progression_mode");
+
                     b.Property<int>("ReputationGainBonusPercent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("reputation_gain_bonus_percent");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
 
                     b.Property<int>("RunItemCapacity")
                         .ValueGeneratedOnAdd()
@@ -2470,9 +2495,42 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("status");
 
+                    b.Property<string>("StoryCheckpointKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_checkpoint_key");
+
+                    b.Property<string>("StoryDifficulty")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("story_difficulty");
+
+                    b.Property<string>("StorySequenceKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_sequence_key");
+
+                    b.Property<string>("StorySequenceVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("story_sequence_version");
+
+                    b.Property<string>("StoryStepKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_step_key");
+
                     b.Property<string>("SuspendedSevereLawModifierIdsJson")
                         .HasColumnType("text")
                         .HasColumnName("suspended_severe_law_modifier_ids_json");
+
+                    b.Property<string>("TechnicalRecoveryState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("None")
+                        .HasColumnName("technical_recovery_state");
 
                     b.Property<string>("TypedDamageReductionsJson")
                         .HasColumnType("text")
@@ -2489,11 +2547,19 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("PlayerId");
+                    b.HasIndex("PlayerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_runs_player_active_or_suspended")
+                        .HasFilter("status IN ('Active', 'Suspended')");
 
                     b.HasIndex("Status");
 
-                    b.ToTable("runs", (string)null);
+                    b.ToTable("runs", t =>
+                        {
+                            t.HasCheckConstraint("ck_runs_lifecycle_outcome", "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)");
+
+                            t.HasCheckConstraint("ck_runs_progression_mode", "(progression_mode = 'Story' AND story_difficulty IS NOT NULL AND difficulty_level IS NULL) OR (progression_mode = 'Standard' AND story_difficulty IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunItemEntity", b =>

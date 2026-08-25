@@ -112,8 +112,8 @@ public sealed class CatalogIntegrityValidator
             {
                 errors.Add($"Enemy '{enemy.Key}': stat block contains invalid values.");
             }
-            if (enemy.MenaceLevel is < 1 or > 10)
-                errors.Add($"Enemy '{enemy.Key}': menace level must be between 1 and 10.");
+            // MenaceLevel is retained as historical authoring metadata only. Runtime danger is
+            // expressed by RiskTier and encounter composition, so MENACE cannot gate publication.
         }
 
         var npcs = await _context.NpcDefinitions
@@ -129,6 +129,8 @@ public sealed class CatalogIntegrityValidator
 
             var offerings = Deserialize<NpcOffering>(
                 errors, $"NPC '{npc.Key}' OfferingsJson", npc.OfferingsJson ?? "[]");
+            foreach (var offering in offerings.Where(offering => offering.Kind == NpcOfferingKind.StatPoint))
+                errors.Add($"NPC '{npc.Key}': offering '{offering.Key}' uses retired permanent stat-point progression.");
             foreach (var offering in offerings.Where(offering => offering.Kind == NpcOfferingKind.Companion))
             {
                 if (string.IsNullOrWhiteSpace(offering.TargetKey) || offering.CompanionKit is null)
@@ -187,6 +189,102 @@ public sealed class CatalogIntegrityValidator
             {
                 if (!skillKeys.Contains(effect.SkillKey!))
                     errors.Add($"Item '{item.Key}': granted skill '{effect.SkillKey}' does not exist or is not active.");
+            }
+        }
+
+        var rooms = await _context.RoomDefinitions
+            .Where(room => room.Status == "Active")
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        var roomKeys = rooms.Select(room => room.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var bosses = await _context.RoomBossDefinitions
+            .Where(boss => boss.Status == "Active")
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        var bossKeys = bosses.Select(boss => boss.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var enemyKeys = enemies.Select(enemy => enemy.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var room in rooms)
+        {
+            if (string.IsNullOrWhiteSpace(room.Key) || string.IsNullOrWhiteSpace(room.Version)
+                || string.IsNullOrWhiteSpace(room.Theme) || room.BaseWeight <= 0)
+                errors.Add($"Room '{room.Key}': key, version, theme and positive weight are required.");
+            if (room.MinDepth.HasValue && room.MaxDepth.HasValue && room.MinDepth > room.MaxDepth)
+                errors.Add($"Room '{room.Key}': minimum depth cannot exceed maximum depth.");
+            if (!string.IsNullOrWhiteSpace(room.BossDefinitionKey) && !bossKeys.Contains(room.BossDefinitionKey))
+                errors.Add($"Room '{room.Key}': boss '{room.BossDefinitionKey}' does not exist or is not active.");
+        }
+
+        foreach (var boss in bosses)
+        {
+            if (string.IsNullOrWhiteSpace(boss.Version) || boss.BaseDifficulty <= 0)
+                errors.Add($"Boss '{boss.Key}': version and positive base difficulty are required.");
+            if (!string.IsNullOrWhiteSpace(boss.EnemyDefinitionKey)
+                && !enemyKeys.Contains(boss.EnemyDefinitionKey))
+                errors.Add($"Boss '{boss.Key}': enemy '{boss.EnemyDefinitionKey}' does not exist or is not active.");
+        }
+
+        var worlds = await _context.WorldDefinitions
+            .Where(world => world.Status == "Active")
+            .Include(world => world.EntryRoomDefinition)
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        foreach (var world in worlds)
+        {
+            if (string.IsNullOrWhiteSpace(world.Key) || string.IsNullOrWhiteSpace(world.Version))
+                errors.Add($"World '{world.Key}': key and version are required.");
+            if (world.EntryRoomDefinition is null || !roomKeys.Contains(world.EntryRoomDefinition.Key))
+                errors.Add($"World '{world.Key}': active entry room is required.");
+        }
+
+        var roomTypes = await _context.RoomTypeDefinitions
+            .Where(type => type.Status == "Active")
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        foreach (var roomType in roomTypes)
+        {
+            if (string.IsNullOrWhiteSpace(roomType.Key)
+                || string.IsNullOrWhiteSpace(roomType.Version)
+                || string.IsNullOrWhiteSpace(roomType.Theme))
+                errors.Add($"Room type '{roomType.Key}': key, version and theme are required.");
+        }
+
+        var laws = await _context.PalaceLawDefinitions
+            .Where(law => law.Status == "Active")
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        var lawKeys = laws.Select(law => law.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var law in laws)
+        {
+            if (string.IsNullOrWhiteSpace(law.Version) || law.Severity <= 0 || law.BaseWeight <= 0)
+                errors.Add($"Law '{law.Key}': version, positive severity and weight are required.");
+            if (!string.IsNullOrWhiteSpace(law.RoomKey) && !roomKeys.Contains(law.RoomKey))
+                errors.Add($"Law '{law.Key}': room '{law.RoomKey}' does not exist or is not active.");
+            foreach (var missingLaw in Deserialize<string>(errors, $"Law '{law.Key}' ExclusionKeysJson", law.ExclusionKeysJson)
+                         .Where(key => !lawKeys.Contains(key)))
+                errors.Add($"Law '{law.Key}': excluded law '{missingLaw}' does not exist or is not active.");
+        }
+
+        var storySequences = await _context.StorySequenceDefinitions
+            .Where(sequence => sequence.Status == "Active")
+            .Include(sequence => sequence.Steps)
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        foreach (var sequence in storySequences)
+        {
+            if (string.IsNullOrWhiteSpace(sequence.Key) || string.IsNullOrWhiteSpace(sequence.Version))
+                errors.Add($"Story sequence '{sequence.Key}': key and version are required.");
+            if (!sequence.Steps.Any(step => string.Equals(step.Key, sequence.EntryStepKey, StringComparison.OrdinalIgnoreCase)))
+                errors.Add($"Story sequence '{sequence.Key}': entry step '{sequence.EntryStepKey}' does not exist.");
+            if (!sequence.Steps.Any(step => step.IsTerminal))
+                errors.Add($"Story sequence '{sequence.Key}': at least one terminal step is required.");
+
+            foreach (var step in sequence.Steps)
+            {
+                if (!string.IsNullOrWhiteSpace(step.RoomDefinitionKey) && !roomKeys.Contains(step.RoomDefinitionKey))
+                    errors.Add($"Story step '{sequence.Key}/{step.Key}': room '{step.RoomDefinitionKey}' does not exist or is not active.");
+                _ = Deserialize<JsonElement>(errors, $"Story step '{sequence.Key}/{step.Key}' ConditionsJson", step.ConditionsJson);
+                _ = Deserialize<JsonElement>(errors, $"Story step '{sequence.Key}/{step.Key}' EffectsJson", step.EffectsJson);
             }
         }
 

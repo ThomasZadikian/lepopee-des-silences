@@ -54,6 +54,11 @@ public sealed class CombatResolutionService : ICombatResolutionService
         DateTimeOffset now,
         CancellationToken cancellationToken = default)
     {
+        if (combat.Status is CombatStatus.Completed or CombatStatus.Failed)
+        {
+            run.CapturePartyResources(combat.Allies);
+        }
+
         switch (combat.Status)
         {
             case CombatStatus.Completed:
@@ -97,20 +102,6 @@ public sealed class CombatResolutionService : ICombatResolutionService
             NodeEventType.FinalBoss => RewardSource.RoomBoss,
             _ => RewardSource.Combat
         };
-
-        if (source == RewardSource.RoomBoss)
-        {
-            // Must never block or fail combat resolution: the reward offer
-            // always ships even if the Player Service is unreachable.
-            try
-            {
-                await _playerProfileGateway.AwardStatPointAsync(run.PlayerId, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to award stat point for player {PlayerId}", run.PlayerId);
-            }
-        }
 
         return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,
@@ -186,7 +177,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
     /// Modèle Hadès (ambiance) : un petit butin secondaire tombe visiblement au sol à
     /// l'endroit du combat, en plus de l'offre de récompense à choix — jamais à sa place (voir
     /// GroundLootBuilder, qui tire d'un pool distinct et n'écrit jamais dans RewardOffer). Sans
-    /// combatNode (ex. ChallengeBossRemotely, où le groupe n'est pas physiquement sur le nœud),
+    /// combatNode (legacy save/import path where no physical node can be resolved),
     /// il n'y a pas de cellule sensée où déposer quoi que ce soit — le butin secondaire est
     /// simplement omis, la récompense principale reste inchangée. Ne doit jamais bloquer ni
     /// faire échouer la résolution du combat : même posture non-bloquante que

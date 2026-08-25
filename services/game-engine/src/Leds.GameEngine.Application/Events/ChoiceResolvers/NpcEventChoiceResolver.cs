@@ -100,12 +100,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
             await ApplyConsequenceAsync(consequence, npc, run, context.Node, relationship, pools, fragments, effects, cancellationToken);
         }
 
-        // Every resolved choice, with any PNJ, grants a stat point — uncapped by design:
-        // this is the game's primary, ever-available source of stat point income.
-        await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, 1, cancellationToken);
-        fragments.Add(new NarrativeFragmentDto(npc.DisplayName, "Cette rencontre t'apprend quelque chose sur toi-même. +1 point de compétence."));
-        effects.Add(new AppliedConsequenceEffect("statPoint", 1, npc.DisplayName));
-
         EvaluateTransgressions(npc, run, relationship);
         RefreshWounds(npc, run, relationship);
 
@@ -220,6 +214,15 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
             return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
         }
 
+        // Historical STATPOINT content is retained for catalog traceability but cannot be
+        // claimed until SFD-090 defines its non-base-stat replacement.
+        if (string.Equals(offering.Kind, "StatPoint", StringComparison.OrdinalIgnoreCase))
+        {
+            return new NarrativeFragmentDto(
+                npc.DisplayName,
+                "Cette offrande attend encore sa règle de progression canonique.");
+        }
+
         if (offering.IsMajor)
         {
             var alreadyClaimed = await _playerProfileGateway.HasClaimedNpcOfferingAsync(
@@ -256,11 +259,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 await _playerProfileGateway.UnlockSkillAsync(
                     run.PlayerId, protagonistId, offering.TargetKey, cancellationToken, source: $"npc:{npc.Key}");
                 return $"Une nouvelle compétence s'inscrit en toi — {offering.TargetKey}.";
-
-            case "StatPoint":
-                var amount = offering.Amount > 0 ? offering.Amount : 1;
-                await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, amount, cancellationToken);
-                return $"Tu sens ta détermination grandir. +{amount} point de compétence.";
 
             case "Currency":
                 var currencyAmount = offering.Amount > 0 ? offering.Amount : 1;

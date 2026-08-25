@@ -3,6 +3,7 @@ using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using Leds.GameEngine.Infrastructure.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Repositories;
 
@@ -58,9 +59,23 @@ public sealed class EfRunRepository : IRunRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken)
+    {
+        return _dbContext.Runs
+            .AsNoTracking()
+            .AnyAsync(
+                entity => entity.PlayerId == playerId &&
+                    (entity.Status == nameof(RunStatus.Active) ||
+                     entity.Status == nameof(RunStatus.Suspended)),
+                cancellationToken);
+    }
+
     public async Task UpdateAsync(Run run, CancellationToken cancellationToken)
     {
         var runId = run.Id.Value;
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
 
         // Delete existing entity graph first to avoid EF tracking conflicts.
         var existing = await _dbContext.Runs
@@ -98,6 +113,14 @@ public sealed class EfRunRepository : IRunRepository
             throw new InvalidOperationException($"Run with id '{runId}' was not found for update.");
         }
 
+        if (existing.Revision != run.Revision)
+        {
+            throw new DbUpdateConcurrencyException(
+                $"Run '{runId}' revision mismatch. Expected {run.Revision}, found {existing.Revision}.");
+        }
+
+        var nextRevision = checked(run.Revision + 1);
+
         _dbContext.Runs.Remove(existing);
         await _dbContext.SaveChangesAsync(cancellationToken);
         _dbContext.ChangeTracker.Clear();
@@ -108,8 +131,11 @@ public sealed class EfRunRepository : IRunRepository
 
         // Add fresh entity graph.
         var entity = RunPersistenceMapper.ToEntity(run);
+        entity.Revision = nextRevision;
         _dbContext.Runs.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        run.AcceptPersistedRevision(nextRevision);
     }
 
     private void UpdateRooms(RunEntity existing, RunEntity incoming)

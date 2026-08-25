@@ -1295,12 +1295,6 @@ public sealed partial class CatalogSeedRunner
             new[] { "Elle sourit. « Vous méritez une récompense, pour votre... compréhension. »" },
             new[]
             {
-                new NpcDialogueChoice("accepter-bonus-rare", "Accepter cinq points de compétence",
-                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.margot.bonus-rare") }, null),
-                new NpcDialogueChoice("accepter-bonus-legendaire", "Accepter dix points de compétence",
-                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.margot.bonus-legendaire") }, null),
                 new NpcDialogueChoice("don-decliner", "Le remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Elle range sa récompense avec un sourire qui ne change pas. « Une prochaine fois, peut-être. »") }, null)
             });
@@ -1308,14 +1302,7 @@ public sealed partial class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.margot.dialogue", "1.0", "rencontre",
             new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["devouement"] = devouement, ["don"] = don });
 
-        var offerings = new[]
-        {
-            // IsMajor: true — chaque bonus n'est accordé qu'une seule fois, comme demandé.
-            new NpcOffering("offer.margot.bonus-rare", NpcOfferingKind.StatPoint, null, 5, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
-            new NpcOffering("offer.margot.bonus-legendaire", NpcOfferingKind.StatPoint, null, 10, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
-        };
+        var offerings = Array.Empty<NpcOffering>();
 
         return await UpsertNpcAsync("npc.margot", "Margot",
             "Une surveillante de l'orphelinat, d'une violence psychologique implacable sous des dehors maternels. Sa mission : border les enfants dans une fausse confiance. Elle nourrit une affection particulière pour Ethan — et le malheur qui l'accable la ravit, puisqu'il nourrit l'orphelinat, et donc le Palais.",
@@ -1718,9 +1705,6 @@ public sealed partial class CatalogSeedRunner
                 new NpcDialogueChoice("prendre-carnet", "Accepter le \"Carnet de bord\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.carnet") }, null),
-                new NpcDialogueChoice("prendre-bonus", "Accepter son dernier bienfait",
-                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.bonus") }, null),
                 new NpcDialogueChoice("don-decliner", "Partir sans rien prendre", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Ce qui restait tendu se referme, rangé. Ça n'étonne personne — plus rien n'étonne vraiment, ici.") }, null)
             });
@@ -1731,9 +1715,7 @@ public sealed partial class CatalogSeedRunner
         var offerings = new[]
         {
             new NpcOffering($"offer.{offeringSlug}.carnet", NpcOfferingKind.Item, "canon.item.carnet-de-bord", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
-            new NpcOffering($"offer.{offeringSlug}.bonus", NpcOfferingKind.StatPoint, null, 20, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) })
         };
 
         return await UpsertNpcAsync(key, displayName, description, "1.0", register, true, persona, wounds, graph, ct,
@@ -1969,9 +1951,6 @@ public sealed partial class CatalogSeedRunner
             new[] { "Elle vous regarde un instant, presque amusée. « Tu as posé les bonnes questions. Tiens — ça t'aidera, plus tard. »" },
             new[]
             {
-                new NpcDialogueChoice("accepter-competence", "Accepter dix points de compétence",
-                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erika.competence") }, null),
                 new NpcDialogueChoice("accepter-deni", "Accepter le Déni permanent",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erika.deni-permanent") }, null),
@@ -1995,8 +1974,6 @@ public sealed partial class CatalogSeedRunner
 
         var offerings = new[]
         {
-            new NpcOffering("offer.erika.competence", NpcOfferingKind.StatPoint, null, 10, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             new NpcOffering("offer.erika.deni-permanent", NpcOfferingKind.Item, "canon.item.deni-permanent", 1, true,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
             // Héritage — le plus intime de ses dons : ce qu'elle sait de la faille.
@@ -5603,8 +5580,7 @@ public sealed partial class CatalogSeedRunner
     // Témoin" (WoundHealingBlocked), "Loi des Présentations" (PresentationsEnabled — see
     // EnemyCombatTurnResolver.Resolve, gated on Combatant.HasActedThisCombat), and "Loi de
     // l'Oubli Partiel" (SkillForgotten — see RunModifierType.SkillForgotten and
-    // Run.PickForgottenSkill for the random-skill draw and the floor-end +8 stat-point
-    // payout).
+    // Run.PickForgottenSkill for the random-skill draw and floor-end restoration).
     private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5669,17 +5645,15 @@ public sealed partial class CatalogSeedRunner
         // second floor — since Run.FloorIndex = CurrentRoomIndex / FloorLengthInRooms and
         // MinDepth is compared against CurrentRoomIndex-based depth (see
         // AmbientPalaceLawPromulgator). The forgotten skill is drawn once at promulgation
-        // (Run.PickForgottenSkill, excluding "skill.basic.strike"/hors Frappe) and the
-        // +8 stat points are paid out when the floor-end modifier is consumed
-        // (Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).
+        // (Run.PickForgottenSkill, excluding "skill.basic.strike"/hors Frappe), then
+        // restored when the floor-end modifier is consumed.
         await UpsertCompendiumLawAsync(
             key: "law.oubli-partiel",
             name: "Loi de l'Oubli Partiel",
             narrativeText: "Article XXXIII — On ne mesure la valeur d'un mot qu'en le "
                 + "perdant. Le Palais facture la leçon au tarif pédagogique.",
             description: "Un sort aléatoire de l'équipe (hors Frappe) est oublié pour la "
-                + "durée de l'étage. À la fin de l'étage, l'oubli enseigne : +8 points de "
-                + "compétence.",
+                + "durée de l'étage, puis restauré à la fin de l'étage.",
             rarity: "Rare",
             polarity: "DoubleTranchant",
             isMajeure: false,

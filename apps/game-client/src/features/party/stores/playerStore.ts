@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { demoPlayerId } from '../../runs/stores/runStore';
 import { playerApi } from '../api/playerApi';
-import type { PlayerProfileView, PlayerStatKind } from '../types/playerTypes';
+import type { PlayerProfileView } from '../types/playerTypes';
 
 export const usePlayerStore = defineStore('player', () => {
   const profile = ref<PlayerProfileView | null>(null);
@@ -11,7 +11,6 @@ export const usePlayerStore = defineStore('player', () => {
   const error = ref<string | null>(null);
 
   const mainCharacter = computed(() => profile.value?.characters[0] ?? null);
-  const unspentStatPoints = computed(() => profile.value?.progression.unspentStatPoints ?? 0);
   const permanentItems = computed(() => profile.value?.permanentItems ?? []);
 
   async function execute(action: () => Promise<void>) {
@@ -46,12 +45,6 @@ export const usePlayerStore = defineStore('player', () => {
     });
   }
 
-  async function spendStatPoint(characterId: string, stat: PlayerStatKind) {
-    await execute(async () => {
-      profile.value = await playerApi.spendStatPoint(demoPlayerId, characterId, stat);
-    });
-  }
-
   async function equipItem(characterId: string, itemKey: string) {
     await execute(async () => {
       profile.value = await playerApi.equipItem(demoPlayerId, characterId, itemKey);
@@ -69,12 +62,10 @@ export const usePlayerStore = defineStore('player', () => {
     isLoading,
     error,
     mainCharacter,
-    unspentStatPoints,
     permanentItems,
     loadProfile,
     equipSkill,
     unequipSkill,
-    spendStatPoint,
     equipItem,
     unequipItem,
   };

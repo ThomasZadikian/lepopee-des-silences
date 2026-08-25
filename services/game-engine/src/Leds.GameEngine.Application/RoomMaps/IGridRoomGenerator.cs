@@ -23,5 +23,6 @@ public interface IGridRoomGenerator
         Random random,
         CancellationToken cancellationToken = default,
         PalaceRoomState palaceState = PalaceRoomState.Neutral,
-        string? catalogRoomKey = null);
+        string? catalogRoomKey = null,
+        string? bossDefinitionKey = null);
 }

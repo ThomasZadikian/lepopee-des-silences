@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Leds.GameEngine.Application.Runs.ChallengeBossRemotely;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
@@ -12,6 +11,7 @@ using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.GetUpcomingRooms;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.InteractWithRoomNpc;
 using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
@@ -53,7 +53,7 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId);
+        var command = new StartRunCommand(request.PlayerId, request.DifficultyLevel);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -396,6 +396,22 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/rooms/current/npcs/{roomNpcId:guid}/interact")]
+    [ProducesResponseType(typeof(InteractWithRoomNpcResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<InteractWithRoomNpcResponse>> InteractWithRoomNpc(
+        Guid runId,
+        Guid roomNpcId,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new InteractWithRoomNpcCommand(runId, roomNpcId),
+            cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/ground-items/{groundItemId:guid}/swap")]
     [ProducesResponseType(typeof(SwapGroundItemResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -542,20 +558,6 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("{runId:guid}/rooms/current/challenge-boss")]
-    [ProducesResponseType(typeof(ChallengeBossRemotelyResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<ChallengeBossRemotelyResponse>> ChallengeBossRemotely(
-        Guid runId,
-        CancellationToken cancellationToken)
-    {
-        var command = new ChallengeBossRemotelyCommand(runId);
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
-    }
-
     [HttpPost("{runId:guid}/sync-skills")]
     [ProducesResponseType(typeof(SyncPartySkillsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -603,7 +605,7 @@ public sealed class RunsController : ControllerBase
 /// <summary>
 /// Lance une run avec le système de combat tactique.
 /// </summary>
-public sealed record StartRunRequest(Guid PlayerId);
+public sealed record StartRunRequest(Guid PlayerId, int? DifficultyLevel = null);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 public sealed record SwapGroundItemRequest(Guid HeldItemId);

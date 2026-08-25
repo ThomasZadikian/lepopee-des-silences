@@ -440,6 +440,52 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("him_lit_shard_count");
 
+                    b.Property<int>("HighestDifficultyLevelUnlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("highest_difficulty_level_unlocked");
+
+                    b.Property<string>("MainStoryCheckpointKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("main_story_checkpoint_key");
+
+                    b.Property<bool>("MainStoryCompleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("main_story_completed");
+
+                    b.Property<string>("MainStorySequenceKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("main_story_sequence_key");
+
+                    b.Property<string>("MainStorySequenceVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("main_story_sequence_version");
+
+                    b.Property<string>("MainStoryStepKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("main_story_step_key");
+
+                    b.Property<string>("MainStoryUnlockedRoomKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("main_story_unlocked_room_keys_json");
+
+                    b.Property<string>("MainStoryVisibleRoomKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("main_story_visible_room_keys_json");
+
                     b.Property<int>("PalaceShardCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

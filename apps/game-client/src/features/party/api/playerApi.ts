@@ -1,10 +1,14 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
-import type { PlayerProfileView, PlayerStatKind } from '../types/playerTypes';
+import type { PalaceProgressView, PlayerProfileView } from '../types/playerTypes';
 
 export const playerApi = {
   getProfile(playerId: string) {
     return gameEngineApi.get<PlayerProfileView>(`/api/v2/players/${playerId}/profile`);
+  },
+
+  getPalaceProgress(playerId: string) {
+    return gameEngineApi.get<PalaceProgressView>(`/api/v2/players/${playerId}/palace-progress`);
   },
 
   equipSkill(playerId: string, characterId: string, skillKey: string) {
@@ -31,9 +35,4 @@ export const playerApi = {
     );
   },
 
-  spendStatPoint(playerId: string, characterId: string, stat: PlayerStatKind) {
-    return gameEngineApi.post<PlayerProfileView>(
-      `/api/v2/players/${playerId}/characters/${characterId}/stats/${stat}/spend-point`,
-    );
-  },
 };

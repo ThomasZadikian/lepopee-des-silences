@@ -18,6 +18,8 @@ public sealed class RunCharacterSnapshotEntityConfiguration : IEntityTypeConfigu
         builder.Property(e => e.DefinitionKey).HasColumnName("definition_key").HasMaxLength(160).IsRequired();
         builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
         builder.Property(e => e.EmotionalRegisterCode).HasColumnName("emotional_register_code").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.CurrentVitality).HasColumnName("current_vitality");
+        builder.Property(e => e.CurrentMana).HasColumnName("current_mana");
         builder.Property(e => e.SnapshotOrder).HasColumnName("snapshot_order").HasDefaultValue(0);
         builder.Property(e => e.EquippedItemKeysCsv).HasColumnName("equipped_item_keys_csv");
 

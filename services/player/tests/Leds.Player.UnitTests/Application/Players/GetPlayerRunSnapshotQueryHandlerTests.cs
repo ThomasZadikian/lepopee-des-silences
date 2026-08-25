@@ -247,19 +247,4 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         character.Stats.Speed.Should().Be(10);
     }
 
-    [Fact]
-    public async Task Handle_ShouldReflectSpentStatPointsInStatBlock()
-    {
-        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        var characterId = profile.Roster.Characters.Single().Id;
-        profile.AwardStatPoint(DateTimeOffset.UtcNow);
-        profile.SpendStatPoint(characterId, PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
-
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
-
-        var result = await _handler.Handle(new GetPlayerRunSnapshotQuery(profile.Id.Value), CancellationToken.None);
-
-        result.Characters.Single().Stats!.AttackPower.Should().Be(13);
-    }
 }

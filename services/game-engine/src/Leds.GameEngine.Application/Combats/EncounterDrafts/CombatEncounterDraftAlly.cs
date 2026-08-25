@@ -20,4 +20,6 @@ public sealed record CombatEncounterDraftAlly(
     int MagicAttack = 0,
     int MagicDefense = 0,
     int Movement = 4,
-    Guid? CharacterInstanceId = null);
+    Guid? CharacterInstanceId = null,
+    int? CurrentVitality = null,
+    int? CurrentMana = null);

@@ -18,7 +18,6 @@ vi.mock('../features/party/api/playerApi', () => ({
     getProfile: vi.fn(),
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
-    spendStatPoint: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
   },
@@ -72,7 +71,7 @@ function baseProfile(): PlayerProfileView {
         },
       },
     ],
-    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3, palaceShardCount: 0 },
+    progression: { palaceShardCount: 0 },
     permanentItems: [],
   };
 }

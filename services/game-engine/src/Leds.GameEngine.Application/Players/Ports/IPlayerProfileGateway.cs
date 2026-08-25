@@ -2,8 +2,6 @@ namespace Leds.GameEngine.Application.Players.Ports;
 
 public interface IPlayerProfileGateway
 {
-    Task AwardStatPointAsync(Guid playerId, CancellationToken cancellationToken);
-
     Task<PlayerProfileView> GetProfileAsync(Guid playerId, CancellationToken cancellationToken);
 
     Task<PlayerProfileView> EquipSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken);
@@ -25,11 +23,7 @@ public interface IPlayerProfileGateway
 
     Task<PlayerProfileView> ClearPermanentItemContentAsync(Guid playerId, string itemDefinitionKey, CancellationToken cancellationToken);
 
-    Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken);
-
     Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools");
-
-    Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken);
 
     /// <summary>Awards a flat amount of the player's persistent currency ("Éclats du Palais").</summary>
     Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
@@ -67,6 +61,10 @@ public interface IPlayerProfileGateway
     Task<IReadOnlyCollection<NpcReputationScoreView>> GetNpcReputationScoresAsync(Guid playerId, CancellationToken cancellationToken);
 
     Task UpsertNpcReputationScoresAsync(Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> AdvanceMainStoryAsync(Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> UnlockDifficultyLevelAsync(Guid playerId, int level, CancellationToken cancellationToken);
 }
 
 public sealed record NpcReputationScoreView(
@@ -74,3 +72,12 @@ public sealed record NpcReputationScoreView(
     int Score,
     int TimesMet,
     string? CurrentDialogueNodeKey);
+
+public sealed record MainStoryAdvanceView(
+    string SequenceKey,
+    string SequenceVersion,
+    string StepKey,
+    string? CheckpointKey,
+    IReadOnlyCollection<string> UnlockedRoomKeys,
+    IReadOnlyCollection<string> VisibleRoomKeys,
+    bool Complete);

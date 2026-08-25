@@ -1,6 +1,7 @@
 namespace Leds.Catalog.Domain.Npcs;
 
-// A mechanical gift a PNJ can make: a skill/item key to grant, or a stat-point amount.
+// A mechanical gift a PNJ can make. StatPoint remains an enum value only to deserialize
+// historical content; the publication validator rejects it for active definitions.
 // Referenced by key from a dialogue choice's GrantOffering consequence, the same way
 // a RewardOrCurseRoll consequence references a RewardCursePoolKey rather than embedding
 // the pool inline. IsMajor gates the "never given twice" lifetime invariant.

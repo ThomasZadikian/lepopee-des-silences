@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -146,18 +147,13 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
-    public async Task GenerateHall_ShouldHaveExactlyOneReachableBossNode()
+    public async Task GenerateHall_ShouldNotInventABoss_WhenCatalogDeclaresNone()
     {
         var room = await GenerateHallAsync();
 
-        room.Nodes.Should().ContainSingle(n => n.IsBoss);
-        var boss = room.Nodes.Single(n => n.IsBoss);
-        boss.Lane.Should().Be(HallEntreeLayout.BossX);
-        boss.Row.Should().Be(HallEntreeLayout.BossY);
-
-        var route = room.Grid.FindPath(boss.Lane, boss.Row);
-        route.Should().NotBeNull("the boss must be reachable so the room can never soft-lock");
-        (room.Grid.MovementBudget - route!.Value.Cost).Should().BeGreaterThan(0);
+        room.BossProfile.Should().BeNull();
+        room.Nodes.Should().NotContain(n => n.IsBoss);
+        room.Nodes.Should().OnlyContain(n => n.EventType == Leds.GameEngine.Domain.Nodes.NodeEventType.Item);
     }
 
     [Fact]
@@ -179,6 +175,17 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
+    public async Task GenerateHall_ShouldExposeTheInitiallyVisibleCastToTheClient()
+    {
+        var room = await GenerateHallAsync();
+
+        var dto = RoomDto.FromDomain(room);
+
+        dto.RoomNpcs.Should().Contain(npc => npc.CatalogNpcKey == "npc.majordome");
+        dto.RoomNpcs.Should().Contain(npc => npc.CatalogNpcKey == "npc.veilleur-tapis");
+    }
+
+    [Fact]
     public async Task GenerateHall_ShouldPlaceEveryRoomNpcOnWalkableFloor()
     {
         var room = await GenerateHallAsync();
@@ -191,14 +198,23 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
-    public async Task GenerateHall_ShouldHaveBetweenSixAndThirtyContentNodes()
+    public async Task MovePartyInHall_ShouldKeepTheMajordomeOffThePartyCell()
     {
         var room = await GenerateHallAsync();
 
-        // Run.StartNew hard-rejects an initial room outside [6, 30] content nodes, and the Hall
-        // is specifically the room every run opens on (SFD §I) — this must hold for the Hall to
-        // ever actually start a run, not just as an abstract room-generation invariant.
-        room.ContentNodeCount.Should().BeInRange(6, 30);
+        room.MoveParty(12, 12);
+
+        var majordome = room.RoomNpcs.Single(npc => npc.CatalogNpcKey == "npc.majordome");
+        (majordome.X, majordome.Y)
+            .Should().NotBe((room.Grid.PartyX, room.Grid.PartyY));
+    }
+
+    [Fact]
+    public async Task GenerateHall_ShouldKeepOnlyItsExistingAuthoredScaffoldingNodes()
+    {
+        var room = await GenerateHallAsync();
+
+        room.ContentNodeCount.Should().Be(5, "the Hall must not synthesize a boss or a replacement event");
     }
 
     [Fact]

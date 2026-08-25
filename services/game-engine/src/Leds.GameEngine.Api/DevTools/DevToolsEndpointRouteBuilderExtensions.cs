@@ -207,16 +207,6 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
-        group.MapPost("/players/{playerId:guid}/stat-points/award", async Task<Ok<DevToolsPlayerDebugResult>> (
-            Guid playerId,
-            DevToolsAwardStatPointsRequest request,
-            IDevToolsPlayerDebugService service,
-            CancellationToken cancellationToken) =>
-        {
-            var result = await service.AwardStatPointsAsync(playerId, request.Amount, cancellationToken);
-            return TypedResults.Ok(result);
-        });
-
         return endpoints;
     }
 }
@@ -237,7 +227,6 @@ public sealed record DevToolsSetVitalsRequest(int Vitality, int Guard);
 
 public sealed record DevToolsApplyStatusRequest(string StatusKey, int Stacks, int Duration);
 
-public sealed record DevToolsAwardStatPointsRequest(int Amount);
 
 public sealed record DevToolsAddCompanionRequest(string CompanionNpcKey);
 

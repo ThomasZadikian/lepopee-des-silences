@@ -4,6 +4,7 @@ import type {
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
   GetPermanentItemCandidatesResponse,
+  InteractWithRoomNpcResponse,
   MovePartyResponse,
   ResolveCurrentEventResponse,
   RunResponse,
@@ -13,10 +14,10 @@ import type {
 
 export const runApi = {
   /** Lance une run avec le système de combat tactique. */
-  startRun(playerId: string) {
-    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
+  startRun(playerId: string, difficultyLevel?: number) {
+    return gameEngineApi.post<StartRunResponse, { playerId: string; difficultyLevel?: number }>(
       '/api/v2/runs',
-      { playerId },
+      { playerId, ...(difficultyLevel === undefined ? {} : { difficultyLevel }) },
     );
   },
 
@@ -113,6 +114,12 @@ export const runApi = {
     );
   },
 
+  interactWithRoomNpc(runId: string, roomNpcId: string) {
+    return gameEngineApi.post<InteractWithRoomNpcResponse>(
+      `/api/v2/runs/${runId}/rooms/current/npcs/${roomNpcId}/interact`,
+    );
+  },
+
   swapGroundItem(runId: string, groundItemId: string, heldItemId: string) {
     return gameEngineApi.post<SwapGroundItemResponse, { heldItemId: string }>(
       `/api/v2/runs/${runId}/ground-items/${groundItemId}/swap`,
@@ -129,12 +136,6 @@ export const runApi = {
   enterGridNode(runId: string, nodeId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/nodes/${nodeId}/enter`,
-    );
-  },
-
-  challengeBossRemotely(runId: string) {
-    return gameEngineApi.post<RunResponse>(
-      `/api/v2/runs/${runId}/rooms/current/challenge-boss`,
     );
   },
 

@@ -75,8 +75,12 @@ public sealed class RoomGrid
 
     public int Height { get; }
 
+    /// <summary>Legacy save compatibility only; no active exploration rule consumes it.</summary>
+    [Obsolete("Global exploration movement budgets were removed from the canonical model.")]
     public int MovementBudget { get; }
 
+    /// <summary>Legacy save compatibility only; no active exploration rule consumes it.</summary>
+    [Obsolete("Global exploration movement budgets were removed from the canonical model.")]
     public int MovementBudgetRemaining { get; private set; }
 
     public int StartX { get; }
@@ -446,13 +450,12 @@ public sealed class RoomGrid
 
     /// <summary>
     /// Walks the party along an already-validated <paramref name="path"/> (see
-    /// <see cref="FindPath"/> — reachability and budget already checked by
+    /// <see cref="FindPath"/> — reachability already checked by
     /// <see cref="Room.MoveParty"/>), revealing fog of war at every cell walked through rather
     /// than only at the destination.
     /// <para>
     /// The walk stops early on the first cell holding a contact-triggered node, and only the
-    /// distance actually covered is charged — stepping into an ambush costs what it cost to get
-    /// there, not the move the party had intended. Returns that node, or null if the party
+    /// distance actually covered is reported by the caller. Returns that node, or null if the party
     /// walked the whole way; the caller turns a non-null result into the node interaction (see
     /// <see cref="Room.MoveParty"/>).
     /// </para>
@@ -464,15 +467,9 @@ public sealed class RoomGrid
     {
         MapNode? triggered = null;
         var walked = 0;
-        var spent = 0;
-        var (previousX, previousY) = (PartyX, PartyY);
 
         foreach (var (x, y) in path)
         {
-            // Re-priced per step rather than reusing `cost`, because a truncated walk must be
-            // charged for what it covered — same formula as FindPath's edge weight.
-            spent += 1 + Math.Max(0, ElevationAt(x, y) - ElevationAt(previousX, previousY));
-            (previousX, previousY) = (x, y);
             walked++;
 
             RevealAround(x, y, nodes);
@@ -503,27 +500,17 @@ public sealed class RoomGrid
             PartyY = lastY;
         }
 
-        MovementBudgetRemaining -= triggered is null ? cost : spent;
-
         return triggered;
     }
 
-    /// <summary>
-    /// Spends budget on something other than walking (searching the ground — see
-    /// <see cref="Room.SearchAtPartyPosition"/>), then re-reveals around the party: a node that
-    /// just stopped hiding becomes visible without the party having to move again.
-    /// </summary>
-    internal void SpendMovementBudget(int cost, IReadOnlyCollection<MapNode> nodes)
-    {
-        MovementBudgetRemaining -= cost;
+    /// <summary>Refreshes visibility after an interaction reveals content in place.</summary>
+    internal void RefreshVisibility(IReadOnlyCollection<MapNode> nodes) =>
         RevealAround(PartyX, PartyY, nodes);
-    }
 
     public void ResetToInitial(IReadOnlyCollection<MapNode> nodes)
     {
         PartyX = StartX;
         PartyY = StartY;
-        MovementBudgetRemaining = MovementBudget;
         _revealedNodeIds.Clear();
         _revealedCells.Clear();
         RevealAround(StartX, StartY, nodes);

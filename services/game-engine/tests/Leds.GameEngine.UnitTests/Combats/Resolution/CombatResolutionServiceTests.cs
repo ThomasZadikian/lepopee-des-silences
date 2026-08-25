@@ -85,57 +85,6 @@ public sealed class CombatResolutionServiceTests
     }
 
     [Fact]
-    public async Task ApplyOutcomeAsync_ShouldAwardStatPoint_WhenRoomBossDefeated()
-    {
-        var (run, combat) = CreateCompletedCombat(NodeEventType.RoomBoss);
-        var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), CreateGroundLootBuilder(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
-
-        var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
-
-        offer.Should().NotBeNull();
-        gateway.Verify(g => g.AwardStatPointAsync(run.PlayerId, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task ApplyOutcomeAsync_ShouldAwardStatPoint_WhenFinalBossDefeated()
-    {
-        var (run, combat) = CreateCompletedCombat(NodeEventType.FinalBoss);
-        var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), CreateGroundLootBuilder(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
-
-        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
-
-        gateway.Verify(g => g.AwardStatPointAsync(run.PlayerId, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task ApplyOutcomeAsync_ShouldNotAwardStatPoint_WhenNonBossCombatDefeated()
-    {
-        var (run, combat) = CreateCompletedCombat(NodeEventType.Combat);
-        var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), CreateGroundLootBuilder(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
-
-        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
-
-        gateway.Verify(g => g.AwardStatPointAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task ApplyOutcomeAsync_ShouldStillReturnRewardOffer_WhenGatewayThrows()
-    {
-        var (run, combat) = CreateCompletedCombat(NodeEventType.RoomBoss);
-        var gateway = new Mock<IPlayerProfileGateway>();
-        gateway.Setup(g => g.AwardStatPointAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("Player Service unreachable"));
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), CreateGroundLootBuilder(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
-
-        var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
-
-        offer.Should().NotBeNull();
-    }
-
-    [Fact]
     public async Task ApplyOutcomeAsync_ShouldAwardCombatEclats_WhenCombatCompletes()
     {
         // Test fixtures never set an explicit CombatRiskTier, so the node falls back to

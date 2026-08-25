@@ -24,7 +24,6 @@ vi.mock('../api/runApi', () => ({
     wagerNode: vi.fn(),
     moveParty: vi.fn(),
     enterGridNode: vi.fn(),
-    challengeBossRemotely: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
     syncPartyStats: vi.fn(),
@@ -452,27 +451,6 @@ describe('useRunStore actions', () => {
     expect(runApi.resolveCurrentEvent).toHaveBeenCalledWith('run-1');
     expect(store.currentRun?.currentRoom.state).toBe('NodeResolved');
     expect(store.lastOutcome?.title).toBe('Objet trouvé');
-    expect(store.error).toBeNull();
-  });
-
-  it('challengeBossRemotely selects the boss node then resolves it immediately', async () => {
-    const store = useRunStore();
-    store.currentRun = { id: 'run-1', status: 'Active' } as any;
-
-    vi.mocked(runApi.challengeBossRemotely).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'NodeSelected' } },
-    } as any);
-    vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
-      run: { id: 'run-1', status: 'RoomResolved', currentRoom: { state: 'Completed' } },
-      outcome: { title: 'Boss vaincu' },
-    } as any);
-
-    await store.challengeBossRemotely();
-
-    expect(runApi.challengeBossRemotely).toHaveBeenCalledWith('run-1');
-    expect(runApi.resolveCurrentEvent).toHaveBeenCalledWith('run-1');
-    expect(store.currentRun?.currentRoom.state).toBe('Completed');
-    expect(store.lastOutcome?.title).toBe('Boss vaincu');
     expect(store.error).toBeNull();
   });
 

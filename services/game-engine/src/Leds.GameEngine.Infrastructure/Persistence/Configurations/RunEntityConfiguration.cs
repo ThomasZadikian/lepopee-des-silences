@@ -9,13 +9,36 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
 {
     public void Configure(EntityTypeBuilder<RunEntity> builder)
     {
-        builder.ToTable("runs");
+        builder.ToTable("runs", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_runs_lifecycle_outcome",
+                "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)");
+            table.HasCheckConstraint(
+                "ck_runs_progression_mode",
+                "(progression_mode = 'Story' AND story_difficulty IS NOT NULL AND difficulty_level IS NULL) OR " +
+                "(progression_mode = 'Standard' AND story_difficulty IS NULL)");
+        });
 
         builder.HasKey(run => run.Id);
 
         builder.Property(run => run.Id).HasColumnName("id");
         builder.Property(run => run.PlayerId).HasColumnName("player_id");
         builder.Property(run => run.Status).HasColumnName("status").HasMaxLength(64).IsRequired();
+        builder.Property(run => run.Outcome).HasColumnName("outcome").HasMaxLength(32);
+        builder.Property(run => run.Revision).HasColumnName("revision").IsConcurrencyToken();
+        builder.Property(run => run.TechnicalRecoveryState)
+            .HasColumnName("technical_recovery_state")
+            .HasMaxLength(32)
+            .HasDefaultValue("None")
+            .IsRequired();
+        builder.Property(run => run.ProgressionMode).HasColumnName("progression_mode").HasMaxLength(32).HasDefaultValue("Standard").IsRequired();
+        builder.Property(run => run.StoryDifficulty).HasColumnName("story_difficulty").HasMaxLength(32);
+        builder.Property(run => run.DifficultyLevel).HasColumnName("difficulty_level");
+        builder.Property(run => run.StorySequenceKey).HasColumnName("story_sequence_key").HasMaxLength(160);
+        builder.Property(run => run.StorySequenceVersion).HasColumnName("story_sequence_version").HasMaxLength(64);
+        builder.Property(run => run.StoryStepKey).HasColumnName("story_step_key").HasMaxLength(160);
+        builder.Property(run => run.StoryCheckpointKey).HasColumnName("story_checkpoint_key").HasMaxLength(160);
         builder.Property(run => run.Seed).HasColumnName("seed").HasMaxLength(128).IsRequired();
         builder.Property(run => run.GeneratorVersion).HasColumnName("generator_version").HasMaxLength(64).IsRequired();
         builder.Property(run => run.MarkovMatrixVersion).HasColumnName("markov_matrix_version").HasMaxLength(64).IsRequired();
@@ -67,7 +90,10 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
-        builder.HasIndex(run => run.PlayerId);
+        builder.HasIndex(run => run.PlayerId)
+            .IsUnique()
+            .HasDatabaseName("ux_runs_player_active_or_suspended")
+            .HasFilter("status IN ('Active', 'Suspended')");
         builder.HasIndex(run => run.Status);
         builder.HasIndex(run => run.CreatedAtUtc);
 

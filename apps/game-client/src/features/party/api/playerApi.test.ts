@@ -20,6 +20,12 @@ describe('playerApi', () => {
     expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/players/player-1/profile');
   });
 
+  it('gets Palace progress independently from the active Run map', async () => {
+    vi.mocked(gameEngineApi.get).mockResolvedValueOnce({});
+    await playerApi.getPalaceProgress('player-1');
+    expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/players/player-1/palace-progress');
+  });
+
   it('equipSkill sends POST request to the equip route', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
     await playerApi.equipSkill('player-1', 'char-1', 'skill.a');
@@ -49,14 +55,6 @@ describe('playerApi', () => {
     await playerApi.unequipItem('player-1', 'char-1', 'item.relic.tome');
     expect(gameEngineApi.post).toHaveBeenCalledWith(
       '/api/v2/players/player-1/characters/char-1/items/item.relic.tome/unequip',
-    );
-  });
-
-  it('spendStatPoint sends POST request to the spend-point route', async () => {
-    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await playerApi.spendStatPoint('player-1', 'char-1', 'AttackPower');
-    expect(gameEngineApi.post).toHaveBeenCalledWith(
-      '/api/v2/players/player-1/characters/char-1/stats/AttackPower/spend-point',
     );
   });
 

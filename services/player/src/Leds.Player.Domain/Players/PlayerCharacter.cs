@@ -56,13 +56,8 @@ public sealed class PlayerCharacter
     public string Status { get; }
     public PlayerCharacterStatBlock StatBlock { get; private set; }
 
-    /// <summary>
-    /// How many stat points have been spent on this specific character so far.
-    /// Used to catch newly recruited companions up to the party's current level
-    /// (see <see cref="PlayerProfile.RecruitCompanion"/>) — companion base stats are
-    /// arbitrary per-NPC catalog values, so this can't be reverse-engineered from
-    /// the stat block the way it could for the protagonist's fixed starting stats.
-    /// </summary>
+    /// <summary>Historical value retained only to rehydrate pre-baseline saves. No current
+    /// domain operation can increase it.</summary>
     public int StatPointsInvested { get; private set; }
     public int MaxVitality => StatBlock.MaxVitality;
     public int BaseMana => StatBlock.Mana;
@@ -202,12 +197,6 @@ public sealed class PlayerCharacter
     public void UnequipSkill(string skillKey)
     {
         FindSkill(skillKey).Unequip();
-    }
-
-    public void ApplyStatIncrement(PlayerStatKind kind)
-    {
-        StatBlock = StatBlock.WithIncrementedStat(kind);
-        StatPointsInvested++;
     }
 
     private PlayerCharacterSkill FindSkill(string skillKey)

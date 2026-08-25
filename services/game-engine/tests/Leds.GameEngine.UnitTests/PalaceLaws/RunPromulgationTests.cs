@@ -214,9 +214,7 @@ public sealed class RunPromulgationTests
 
     // ---------------------------------------------------------------------------
     // "Loi de l'Oubli Partiel" — the forgotten skill is drawn once at promulgation
-    // time (Run.PickForgottenSkill), then cleared with a +8 stat-point payout signal
-    // when the floor-scoped modifier is consumed (Run.ConsumeFloorEndModifiers /
-    // Run.ConfirmRoomExit's FloorEndModifierConsumptionResult return).
+    // time (Run.PickForgottenSkill), then restored when the floor-scoped modifier is consumed.
     // ---------------------------------------------------------------------------
 
     private static PalaceLaw CreateOubliPartielLaw(string key = "law.oubli-partiel") => PalaceLaw.Create(
@@ -273,27 +271,25 @@ public sealed class RunPromulgationTests
     }
 
     [Fact]
-    public void MoveToNextRoom_ShouldReturnTrueAndClearTheForgottenSkill_WhenCrossingAFloorBoundary()
+    public void MoveToNextRoom_ShouldClearTheForgottenSkill_WhenCrossingAFloorBoundary()
     {
         var run = CreateRunWithMultipleSkills();
         run.PromulgateLaw(CreateOubliPartielLaw());
         run.ForgottenSkillKey.Should().NotBeNull();
 
-        var result = AdvanceToFloorBoundary(run);
+        AdvanceToFloorBoundary(run);
 
-        result.OubliPartielPayoutDue.Should().BeTrue();
         run.ForgottenSkillKey.Should().BeNull();
     }
 
     [Fact]
-    public void MoveToNextRoom_ShouldReturnFalse_WhileStillOnTheSameFloor()
+    public void MoveToNextRoom_ShouldKeepTheForgottenSkill_WhileStillOnTheSameFloor()
     {
         var run = CreateRunWithMultipleSkills();
         run.PromulgateLaw(CreateOubliPartielLaw());
 
-        var result = TestGameEngineFactory.ConfirmExitToNextRoom(run);
+        TestGameEngineFactory.ConfirmExitToNextRoom(run);
 
-        result.OubliPartielPayoutDue.Should().BeFalse();
         run.ForgottenSkillKey.Should().NotBeNull();
     }
 

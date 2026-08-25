@@ -49,16 +49,19 @@ public sealed class AbandonRunCommandHandlerTests
 
         // Assert
         response.Run.Id.Should().Be(run.Id.Value);
-        response.Run.Status.Should().Be(RunStatus.Abandoned.ToString());
+        response.Run.Status.Should().Be(RunStatus.Resolved.ToString());
+        response.Run.Outcome.Should().Be(RunOutcome.Abandon.ToString());
 
-        run.Status.Should().Be(RunStatus.Abandoned);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Abandon);
         run.EndedAt.Should().Be(now);
 
         repository.Verify(
             repo => repo.UpdateAsync(
                 It.Is<Run>(candidate =>
                     candidate.Id == run.Id &&
-                    candidate.Status == RunStatus.Abandoned &&
+                    candidate.Status == RunStatus.Resolved &&
+                    candidate.Outcome == RunOutcome.Abandon &&
                     candidate.EndedAt == now),
                 CancellationToken.None),
             Times.Once);

@@ -9,6 +9,7 @@ public sealed record PlayerProfileDto(
     PlayerProgressionDto Progression,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc,
+    MainStoryProgressDto MainStory,
     IReadOnlyCollection<PlayerPermanentUnlockDto> PermanentUnlocks,
     IReadOnlyCollection<PlayerPermanentItemDto> PermanentItems)
 {
@@ -21,9 +22,31 @@ public sealed record PlayerProfileDto(
             PlayerProgressionDto.FromDomain(profile.Progression),
             profile.CreatedAtUtc,
             profile.UpdatedAtUtc,
+            MainStoryProgressDto.FromDomain(profile.MainStoryProgress),
             profile.PermanentUnlocks.Select(PlayerPermanentUnlockDto.FromDomain).ToArray(),
             profile.PermanentItems.Select(PlayerPermanentItemDto.FromDomain).ToArray());
     }
+}
+
+public sealed record MainStoryProgressDto(
+    string? SequenceKey,
+    string? SequenceVersion,
+    string? StepKey,
+    string? CheckpointKey,
+    bool IsCompleted,
+    int HighestDifficultyLevelUnlocked,
+    IReadOnlyCollection<string> UnlockedRoomKeys,
+    IReadOnlyCollection<string> VisibleRoomKeys)
+{
+    public static MainStoryProgressDto FromDomain(MainStoryProgress progress) => new(
+        progress.SequenceKey,
+        progress.SequenceVersion,
+        progress.StepKey,
+        progress.CheckpointKey,
+        progress.IsCompleted,
+        progress.HighestDifficultyLevelUnlocked,
+        progress.UnlockedRoomKeys.ToArray(),
+        progress.VisibleRoomKeys.ToArray());
 }
 
 public sealed record PlayerPermanentUnlockDto(
@@ -159,8 +182,6 @@ public sealed record PlayerProgressionDto(
     int TotalRunsCompleted,
     int TotalRunsFailed,
     int TotalRunsAbandoned,
-    int UnspentStatPoints,
-    int TotalStatPointsEarned,
     int PalaceShardCount,
     int HimLitShardCount)
 {
@@ -171,8 +192,6 @@ public sealed record PlayerProgressionDto(
             progression.TotalRunsCompleted,
             progression.TotalRunsFailed,
             progression.TotalRunsAbandoned,
-            progression.UnspentStatPoints,
-            progression.TotalStatPointsEarned,
             progression.PalaceShardCount,
             progression.HimLitShardCount);
     }

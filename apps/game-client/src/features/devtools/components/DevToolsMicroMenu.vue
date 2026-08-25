@@ -9,7 +9,6 @@ import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import SkillsDevToolsWindow from '../windows/SkillsDevToolsWindow.vue';
 import ItemsDevToolsWindow from '../windows/ItemsDevToolsWindow.vue';
-import StatPointsDevToolsWindow from '../windows/StatPointsDevToolsWindow.vue';
 import RunDevToolsWindow from '../windows/RunDevToolsWindow.vue';
 import PartyDevToolsWindow from '../windows/PartyDevToolsWindow.vue';
 import RoomDevToolsWindow from '../windows/RoomDevToolsWindow.vue';
@@ -41,18 +40,16 @@ const emit = defineEmits<{
   removeAlly: [];
   addItem: [itemDefinitionKey: string, quantity: number];
   unlockSkill: [characterId: string, skillKey: string];
-  awardStatPoints: [amount: number];
   refreshPsyche: [];
 }>();
 
 type WindowKey =
-  | 'sorts' | 'objets' | 'points' | 'run' | 'compagnons'
+  | 'sorts' | 'objets' | 'run' | 'compagnons'
   | 'salle' | 'lois' | 'malediction' | 'psyche';
 
 const entries: { key: WindowKey; label: string; code: string }[] = [
   { key: 'sorts', label: 'Sorts', code: 'SO' },
   { key: 'objets', label: 'Objets', code: 'OB' },
-  { key: 'points', label: 'Points de compétence', code: 'PC' },
   { key: 'run', label: 'Run', code: 'RN' },
   { key: 'compagnons', label: 'Compagnons', code: 'CP' },
   { key: 'salle', label: 'Salle', code: 'SA' },
@@ -95,12 +92,6 @@ const activeWindow = ref<WindowKey | null>(null);
         :is-loading="props.isLoading"
         :all-items="props.allItems"
         @add-item="(key, quantity) => emit('addItem', key, quantity)"
-      />
-      <StatPointsDevToolsWindow
-        v-else-if="activeWindow === 'points'"
-        :disabled="props.disabled"
-        :is-loading="props.isLoading"
-        @award-stat-points="(amount) => emit('awardStatPoints', amount)"
       />
       <RunDevToolsWindow
         v-else-if="activeWindow === 'run'"

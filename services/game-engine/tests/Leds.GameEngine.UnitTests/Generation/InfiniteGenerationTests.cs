@@ -25,12 +25,12 @@ public sealed class InfiniteGenerationTests
     [InlineData(20)]
     [InlineData(30)]
     [InlineData(100)]
-    public void HimLit_boss_room_recurs_every_ten_rooms(int depth)
+    public void Universal_room_counter_does_not_create_a_HimLit_boss_room(int depth)
     {
         var type = CreateResolver()
             .ResolveNextRoomType("seed-x", depth, RoomType.Antechamber, Version, null);
 
-        type.Should().Be(RoomType.Final);
+        type.Should().NotBe(RoomType.Final);
     }
 
     [Theory]

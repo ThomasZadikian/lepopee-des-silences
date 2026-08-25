@@ -6,7 +6,6 @@ public interface IDevToolsPlayerDebugService
 {
     Task<DevToolsPlayerDebugResult> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken = default);
 
-    Task<DevToolsPlayerDebugResult> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken = default);
 }
 
 public sealed record DevToolsPlayerDebugResult(string Message, PlayerProfileView Profile);

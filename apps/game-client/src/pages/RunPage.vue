@@ -261,7 +261,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @wager-node="runStore.wagerNode"
               @confirm-exit="runStore.confirmRoomExit"
               @set-room-risk-tier="runStore.setRoomRiskTier"
-              @challenge-boss="runStore.challengeBossRemotely"
               @search="runStore.searchParty"
               @toggle-laws="uiStore.toggleLaws"
             />

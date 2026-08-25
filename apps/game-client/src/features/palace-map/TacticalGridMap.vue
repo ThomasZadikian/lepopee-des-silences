@@ -56,7 +56,6 @@ const emit = defineEmits<{
   wagerNode: [nodeId: string];
   confirmExit: [nodeId: string];
   setRoomRiskTier: [tier: string];
-  challengeBoss: [];
   search: [];
   toggleLaws: [];
 }>();
@@ -70,7 +69,7 @@ const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
 const {
-  isRevealed, nodeAt, isParty, cells, obstacleCells, doorCells, isFloor, nodesByCell,
+  isRevealed, nodeAt, isParty, cells, obstacleCells, npcCells, doorCells, isFloor, nodesByCell,
   surfaceOverrides, decorPlacements,
 } = useGridCells(room, grid);
 
@@ -296,7 +295,9 @@ const movementRange = computed(() => {
     gridWidth: g.width,
     gridHeight: g.height,
     elevation: g.elevation,
-    isWalkable: (x, y) => isFloor(x, y) && !obstacleCells.value.has(`${x},${y}`),
+    isWalkable: (x, y) => isFloor(x, y)
+      && !obstacleCells.value.has(`${x},${y}`)
+      && !npcCells.value.has(`${x},${y}`),
     party: { x: g.partyX, y: g.partyY },
     transitBlockers: blockers,
     contactTriggers: triggers,
@@ -304,20 +305,18 @@ const movementRange = computed(() => {
 });
 
 /**
- * Cells the player can actually click. Previously this was every revealed floor cell, which
- * promised reachability the budget could not pay for: the far corner lit up, the click was
- * refused by the server, and the whole thing read as broken movement. The wash now means what
- * it says — inside it, a click always works.
+ * Revealed cells connected by a valid path. Exploration has no global movement resource;
+ * terrain traversal cost remains useful for route choice and pacing only.
  */
 const reachableCells = computed(() => {
   const g = grid.value;
   const range = movementRange.value;
   if (!g || !range) return new Set<string>();
 
-  const affordable = range.within(g.movementBudgetRemaining);
+  const connected = range.within(Number.MAX_SAFE_INTEGER);
   const set = new Set<string>();
 
-  for (const key of affordable) {
+  for (const key of connected) {
     const [x, y] = key.split(',').map(Number);
     // Fog still gates intent: the party does not walk to somewhere nobody has seen.
     if (isRevealed(x, y)) set.add(key);
@@ -336,18 +335,14 @@ const hoveredRoute = computed(() => {
 });
 
 /**
- * What the move under the pointer would spend, and what would be left after. The budget is the
- * whole tension of the room, so the price has to be readable at the moment of the decision
- * rather than discovered from a counter that already dropped.
+ * Traversal cost of the route under the pointer. It is information, not currency.
  */
 const moveReadout = computed(() => {
   const route = hoveredRoute.value;
-  const g = grid.value;
-  if (!route || !g) return null;
+  if (!route) return null;
 
   return {
     cost: route.cost,
-    remaining: g.movementBudgetRemaining - route.cost,
     // The walk stops short because something fires on the way — the price is honest, the
     // destination is not what was clicked.
     truncated: route.truncated,
@@ -857,10 +852,6 @@ function onCanvasMouseLeave() {
   hoveredNode.value = null;
 }
 
-const showChallengeBossBanner = computed(() =>
-  Boolean(grid.value && grid.value.movementBudgetRemaining <= 0 && grid.value.canChallengeBossRemotely),
-);
-
 /** The node the party currently stands on, if any and still Available. */
 const standingNode = computed<NodeDto | null>(() => {
   const g = grid.value;
@@ -1080,24 +1071,14 @@ function toggleInfoCollapsed() {
           <button
             type="button"
             class="tgrid__info-toggle"
-            :class="{ 'tgrid__info-toggle--alert': showChallengeBossBanner }"
             :aria-label="isInfoCollapsed ? 'Afficher les informations' : 'Réduire les informations'"
             @click="toggleInfoCollapsed"
           >
             <span class="es-kicker">Exploration tactique</span>
-            <span
-              v-if="showChallengeBossBanner && isInfoCollapsed"
-              class="tgrid__info-alert-dot"
-              aria-hidden="true"
-            />
             <span class="tgrid__info-chevron">{{ isInfoCollapsed ? '▾' : '▴' }}</span>
           </button>
 
           <div v-if="!isInfoCollapsed" class="tgrid__info-body">
-            <span class="tgrid__budget">
-              Déplacement <strong>{{ grid.movementBudgetRemaining }}</strong> / {{ grid.movementBudget }}
-            </span>
-
             <button
               v-if="grid.canSearch"
               type="button"
@@ -1107,14 +1088,6 @@ function toggleInfoCollapsed() {
               Fouiller les environs
             </button>
 
-            <div v-if="showChallengeBossBanner" class="tgrid__boss-banner">
-              <p class="tgrid__boss-banner-text">
-                Le budget de déplacement est épuisé. Le gardien de la salle approche à grands pas.
-              </p>
-              <button type="button" class="es-btn es-btn--blood" @click="emit('challengeBoss')">
-                Provoquer le combat de boss →
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1172,8 +1145,7 @@ function toggleInfoCollapsed() {
       <div v-if="hoveredNode || moveReadout" class="tgrid__hover-tooltip" :style="tooltipStyle">
         <span v-if="hoveredNode">{{ nodeTypeLabel(hoveredNode) }}</span>
         <span v-if="moveReadout" class="tgrid__move-readout">
-          <span class="tgrid__move-readout-cost">−{{ moveReadout.cost }} PM</span>
-          <span class="tgrid__move-readout-left">reste {{ moveReadout.remaining }}</span>
+          <span class="tgrid__move-readout-cost">Distance {{ moveReadout.cost }}</span>
           <span v-if="moveReadout.truncated" class="tgrid__move-readout-warn">
             arrêt en chemin
           </span>

@@ -192,9 +192,8 @@ public sealed class MapNode
             throw new DomainException("A boss MapNode must have a RoomBoss or FinalBoss event type.");
         }
 
-        // The boss is the room's objective and the fallback the party can always fall back on
-        // (see Room.ChallengeBossRemotely) — hiding it could strand a run with nothing to do.
-        // An exit is likewise always a discoverable landmark, never a search-only cache.
+        // An authored boss encounter and an exit are discoverable landmarks, never search-only
+        // caches. Bosses remain optional at room level.
         if ((isBoss || eventType == NodeEventType.Exit) && hiddenState != HiddenState.None)
         {
             throw new DomainException("A boss or exit MapNode cannot be hidden.");

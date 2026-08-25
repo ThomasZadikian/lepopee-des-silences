@@ -21,7 +21,6 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public bool ForceHimLitSpendFailure { get; set; }
 
     public List<(Guid PlayerId, Guid CharacterId, string SkillKey, string Source)> UnlockedSkills { get; } = [];
-    public List<(Guid PlayerId, int Amount)> AwardedStatPoints { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedCurrency { get; } = [];
     public List<(Guid PlayerId, int Amount, bool Succeeded)> SpentCurrencyAttempts { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedHimLitCurrency { get; } = [];
@@ -48,12 +47,6 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
 
     private int GetHimLitBalance(Guid playerId) => _himLitCurrencyBalances.GetValueOrDefault(playerId);
 
-    public Task AwardStatPointAsync(Guid playerId, CancellationToken cancellationToken)
-    {
-        AwardedStatPoints.Add((playerId, 1));
-        return Task.CompletedTask;
-    }
-
     public Task<PlayerProfileView> GetProfileAsync(Guid playerId, CancellationToken cancellationToken)
         => Task.FromResult(EmptyProfile(playerId));
 
@@ -61,9 +54,6 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         => Task.FromResult(EmptyProfile(playerId));
 
     public Task<PlayerProfileView> UnequipSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken)
-        => Task.FromResult(EmptyProfile(playerId));
-
-    public Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
         => Task.FromResult(EmptyProfile(playerId));
 
     public Task<PlayerProfileView> EquipItemAsync(
@@ -104,12 +94,6 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools")
     {
         UnlockedSkills.Add((playerId, characterId, skillKey, source));
-        return Task.FromResult(EmptyProfile(playerId));
-    }
-
-    public Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken)
-    {
-        AwardedStatPoints.Add((playerId, amount));
         return Task.FromResult(EmptyProfile(playerId));
     }
 
@@ -193,6 +177,14 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         return Task.CompletedTask;
     }
 
+    public Task<PlayerProfileView> AdvanceMainStoryAsync(
+        Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken)
+        => Task.FromResult(EmptyProfile(playerId));
+
+    public Task<PlayerProfileView> UnlockDifficultyLevelAsync(
+        Guid playerId, int level, CancellationToken cancellationToken)
+        => Task.FromResult(EmptyProfile(playerId));
+
     private PlayerProfileView EmptyProfile(Guid playerId) => new(
-        playerId, "Stub Player", [], new PlayerProgressionView(0, 0, GetBalance(playerId), GetHimLitBalance(playerId)));
+        playerId, "Stub Player", [], new PlayerProgressionView(GetBalance(playerId), GetHimLitBalance(playerId)));
 }

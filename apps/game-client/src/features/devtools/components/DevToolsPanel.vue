@@ -174,12 +174,6 @@ function unlockSkill(characterId: string, skillKey: string) {
   );
 }
 
-function awardStatPoints(amount: number) {
-  void execute(
-    (token) => devToolsApi.awardStatPoints(token, demoPlayerId, amount),
-    `${amount} point(s) de competence accorde(s).`,
-  );
-}
 </script>
 
 <template>
@@ -232,7 +226,6 @@ function awardStatPoints(amount: number) {
       @remove-ally="removeAlly"
       @add-item="addItem"
       @unlock-skill="unlockSkill"
-      @award-stat-points="awardStatPoints"
       @refresh-psyche="refreshPsyche"
     />
   </aside>

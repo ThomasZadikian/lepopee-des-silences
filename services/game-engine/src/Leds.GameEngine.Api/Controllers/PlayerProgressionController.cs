@@ -28,6 +28,17 @@ public sealed class PlayerProgressionController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{playerId:guid}/palace-progress")]
+    [ProducesResponseType(typeof(MainStoryProgressView), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MainStoryProgressView>> GetPalaceProgress(
+        Guid playerId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _sender.Send(new GetPlayerProfileQuery(playerId), cancellationToken);
+        return Ok(profile.MainStory ?? MainStoryProgressView.Incomplete);
+    }
+
     [HttpPost("{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/equip")]
     [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -92,19 +103,4 @@ public sealed class PlayerProgressionController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("{playerId:guid}/characters/{characterId:guid}/stats/{stat}/spend-point")]
-    [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PlayerProfileView>> SpendStatPoint(
-        Guid playerId,
-        Guid characterId,
-        string stat,
-        CancellationToken cancellationToken)
-    {
-        var command = new SpendStatPointCommand(playerId, characterId, stat);
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
-    }
 }

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Actors;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Domain.Npcs;
@@ -18,7 +19,7 @@ namespace Leds.GameEngine.Domain.Npcs;
 /// can join against a NpcRelationship/dialogue graph when this NPC is actually approached.
 /// </para>
 /// </summary>
-public sealed class RoomNpc
+public sealed class RoomNpc : IActorInstance
 {
     // BALANCE KNOB — how close the party must be (Manhattan distance) before an Unaware NPC can
     // notice it at all. Line of sight (see RefreshAwareness) still gates the actual transition.
@@ -66,6 +67,12 @@ public sealed class RoomNpc
     }
 
     public RoomNpcId Id { get; }
+
+    public Guid ActorInstanceId => Id.Value;
+
+    public string ActorDefinitionKey => CatalogNpcKey;
+
+    public ActorKind ActorKind => global::Leds.GameEngine.Domain.Actors.ActorKind.Npc;
 
     /// <summary>Catalog NPC this presence embodies — joins to dialogue/relationship state, never
     /// held by reference (see class remarks).</summary>
@@ -181,16 +188,16 @@ public sealed class RoomNpc
                 // Awareness/authored reaction, not by relocating it here.
                 return;
             case NpcBehaviorArchetype.Patrol:
-                StepAlongPatrol(grid);
+                StepAlongPatrol(grid, partyX, partyY);
                 return;
             case NpcBehaviorArchetype.Hunter:
                 if (Awareness >= NpcAwarenessState.Aware)
                 {
-                    StepToward(grid, partyX, partyY);
+                    StepToward(grid, partyX, partyY, partyX, partyY);
                 }
                 return;
             case NpcBehaviorArchetype.Passive:
-                StepIdle(grid);
+                StepIdle(grid, partyX, partyY);
                 return;
         }
     }
@@ -237,7 +244,7 @@ public sealed class RoomNpc
         }
     }
 
-    private void StepAlongPatrol(RoomGrid grid)
+    private void StepAlongPatrol(RoomGrid grid, int partyX, int partyY)
     {
         if (_waypoints.Count == 0)
         {
@@ -252,14 +259,14 @@ public sealed class RoomNpc
             (targetX, targetY) = _waypoints[_waypointIndex];
         }
 
-        StepToward(grid, targetX, targetY);
+        StepToward(grid, targetX, targetY, partyX, partyY);
     }
 
-    private void StepIdle(RoomGrid grid)
+    private void StepIdle(RoomGrid grid, int partyX, int partyY)
     {
         if (Math.Abs(X - OriginX) + Math.Abs(Y - OriginY) >= WanderLeashRadius)
         {
-            StepToward(grid, OriginX, OriginY);
+            StepToward(grid, OriginX, OriginY, partyX, partyY);
             return;
         }
 
@@ -269,10 +276,15 @@ public sealed class RoomNpc
         // canonique §102).
         var directionSeed = unchecked((Id.Value.GetHashCode() * 397) ^ _stepCount);
         var direction = OrthogonalDirections[((directionSeed % OrthogonalDirections.Length) + OrthogonalDirections.Length) % OrthogonalDirections.Length];
-        TryMove(grid, X + direction.Dx, Y + direction.Dy);
+        TryMove(grid, X + direction.Dx, Y + direction.Dy, partyX, partyY);
     }
 
-    private void StepToward(RoomGrid grid, int targetX, int targetY)
+    private void StepToward(
+        RoomGrid grid,
+        int targetX,
+        int targetY,
+        int partyX,
+        int partyY)
     {
         var dx = Math.Sign(targetX - X);
         var dy = Math.Sign(targetY - Y);
@@ -285,33 +297,33 @@ public sealed class RoomNpc
 
         if (horizontalFirst)
         {
-            if (dx != 0 && TryMove(grid, X + dx, Y))
+            if (dx != 0 && TryMove(grid, X + dx, Y, partyX, partyY))
             {
                 return;
             }
 
             if (dy != 0)
             {
-                TryMove(grid, X, Y + dy);
+                TryMove(grid, X, Y + dy, partyX, partyY);
             }
         }
         else
         {
-            if (dy != 0 && TryMove(grid, X, Y + dy))
+            if (dy != 0 && TryMove(grid, X, Y + dy, partyX, partyY))
             {
                 return;
             }
 
             if (dx != 0)
             {
-                TryMove(grid, X + dx, Y);
+                TryMove(grid, X + dx, Y, partyX, partyY);
             }
         }
     }
 
-    private bool TryMove(RoomGrid grid, int x, int y)
+    private bool TryMove(RoomGrid grid, int x, int y, int partyX, int partyY)
     {
-        if (!grid.IsWalkable(x, y))
+        if ((x == partyX && y == partyY) || !grid.IsWalkable(x, y))
         {
             return false;
         }

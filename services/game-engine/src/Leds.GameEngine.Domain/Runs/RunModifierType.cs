@@ -137,8 +137,7 @@ public enum RunModifierType
     /// Run.PickForgottenSkill, called from ActivatePalaceLaw), then baked into Combat
     /// the same way other Run-level flags are (see CombatFactory). This modifier's
     /// only job is to ride the existing UntilFloorEnds consumption/cumul-cap plumbing;
-    /// Run.ConsumeFloorEndModifiers clears ForgottenSkillKey and signals the +8
-    /// skill-point payout when it is consumed.</summary>
+    /// Run.ConsumeFloorEndModifiers clears ForgottenSkillKey when it is consumed.</summary>
     SkillForgotten = 39,
 
     /// <summary>"Loi de l'Impôt du Seuil" (law.impot-seuil) — cost in "Éclats du Palais"

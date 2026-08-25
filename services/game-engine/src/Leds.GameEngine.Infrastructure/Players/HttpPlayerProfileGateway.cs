@@ -15,14 +15,6 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         _httpClient = httpClient;
     }
 
-    public async Task AwardStatPointAsync(Guid playerId, CancellationToken cancellationToken)
-    {
-        var response = await _httpClient.PostAsync(
-            $"/api/v2/internal/players/{playerId}/stat-points/award", content: null, cancellationToken);
-
-        EnsureSuccess(response, playerId);
-    }
-
     public async Task<PlayerProfileView> GetProfileAsync(Guid playerId, CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync($"/api/v2/players/{playerId}", cancellationToken);
@@ -95,27 +87,11 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
-    public async Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
-    {
-        var response = await _httpClient.PostAsync(
-            $"/api/v2/players/{playerId}/characters/{characterId}/stats/{stat}/spend-point", content: null, cancellationToken);
-
-        return await ReadProfileAsync(response, playerId, cancellationToken);
-    }
-
     public async Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools")
     {
         var response = await _httpClient.PostAsJsonAsync(
             $"/api/v2/internal/players/{playerId}/characters/{characterId}/skills/{skillKey}/unlock",
             new UnlockSkillRequestBody(source), cancellationToken);
-
-        return await ReadProfileAsync(response, playerId, cancellationToken);
-    }
-
-    public async Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken)
-    {
-        var response = await _httpClient.PostAsJsonAsync(
-            $"/api/v2/internal/players/{playerId}/stat-points/award", new AwardStatPointsRequestBody(amount), cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
@@ -247,6 +223,26 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<PlayerProfileView> AdvanceMainStoryAsync(
+        Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/main-story/progress",
+            progress,
+            cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> UnlockDifficultyLevelAsync(
+        Guid playerId, int level, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/internal/players/{playerId}/difficulty-levels/{level}/unlock",
+            content: null,
+            cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -317,16 +313,24 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                     CharacterType: c.CharacterType))
                 .ToArray(),
             Progression: new PlayerProgressionView(
-                dto.Progression.UnspentStatPoints,
-                dto.Progression.TotalStatPointsEarned,
                 dto.Progression.PalaceShardCount,
                 dto.Progression.HimLitShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
                 .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
-                .ToArray());
+                .ToArray(),
+            MainStory: dto.MainStory is null
+                ? MainStoryProgressView.Incomplete
+                : new MainStoryProgressView(
+                    dto.MainStory.SequenceKey,
+                    dto.MainStory.SequenceVersion,
+                    dto.MainStory.StepKey,
+                    dto.MainStory.CheckpointKey,
+                    dto.MainStory.IsCompleted,
+                    dto.MainStory.HighestDifficultyLevelUnlocked,
+                    dto.MainStory.UnlockedRoomKeys,
+                    dto.MainStory.VisibleRoomKeys));
     }
 
-    private sealed record AwardStatPointsRequestBody(int Amount);
 
     private sealed record AwardCurrencyRequestBody(int Amount);
 
@@ -364,7 +368,18 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         string DisplayName,
         IReadOnlyCollection<PlayerCharacterResponse> Characters,
         PlayerProgressionResponse Progression,
-        IReadOnlyCollection<PlayerPermanentItemResponse>? PermanentItems = null);
+        IReadOnlyCollection<PlayerPermanentItemResponse>? PermanentItems = null,
+        MainStoryProgressResponse? MainStory = null);
+
+    private sealed record MainStoryProgressResponse(
+        string? SequenceKey,
+        string? SequenceVersion,
+        string? StepKey,
+        string? CheckpointKey,
+        bool IsCompleted,
+        int HighestDifficultyLevelUnlocked,
+        IReadOnlyCollection<string> UnlockedRoomKeys,
+        IReadOnlyCollection<string> VisibleRoomKeys);
 
     private sealed record PlayerCharacterResponse(
         Guid Id,
@@ -411,8 +426,6 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int Movement = 4);
 
     private sealed record PlayerProgressionResponse(
-        int UnspentStatPoints,
-        int TotalStatPointsEarned,
         int PalaceShardCount = 0,
         int HimLitShardCount = 0);
 

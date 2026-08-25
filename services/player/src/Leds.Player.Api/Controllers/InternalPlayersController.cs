@@ -2,7 +2,6 @@ using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardCurrency;
 using Leds.Player.Application.Players.AwardHimLitCurrency;
-using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.SpendCurrency;
 using Leds.Player.Application.Players.SpendHimLitCurrency;
 using Leds.Player.Application.Players.ClaimNpcOffering;
@@ -14,6 +13,8 @@ using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.UnlockSkill;
+using Leds.Player.Application.Players.AdvanceMainStory;
+using Leds.Player.Application.Players.UnlockDifficultyLevel;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,20 +29,6 @@ public sealed class InternalPlayersController : ControllerBase
     public InternalPlayersController(ISender sender)
     {
         _sender = sender;
-    }
-
-    [HttpPost("{playerId:guid}/stat-points/award")]
-    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PlayerProfileDto>> AwardStatPoint(
-        Guid playerId,
-        [FromBody] AwardStatPointsRequest? request,
-        CancellationToken cancellationToken)
-    {
-        var command = new AwardStatPointCommand(playerId, request?.Amount ?? 1);
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
     }
 
     [HttpPost("{playerId:guid}/currency/award")]
@@ -254,9 +241,41 @@ public sealed class InternalPlayersController : ControllerBase
         var result = await _sender.Send(command, cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("{playerId:guid}/main-story/progress")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> AdvanceMainStory(
+        Guid playerId,
+        [FromBody] AdvanceMainStoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AdvanceMainStoryCommand(
+            playerId,
+            request.SequenceKey,
+            request.SequenceVersion,
+            request.StepKey,
+            request.CheckpointKey,
+            request.UnlockedRoomKeys,
+            request.VisibleRoomKeys,
+            request.Complete), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{playerId:guid}/difficulty-levels/{level:int}/unlock")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> UnlockDifficultyLevel(
+        Guid playerId,
+        int level,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _sender.Send(
+            new UnlockDifficultyLevelCommand(playerId, level),
+            cancellationToken));
+    }
 }
 
-public sealed record AwardStatPointsRequest(int Amount);
 
 public sealed record AwardCurrencyRequest(int Amount);
 
@@ -292,3 +311,12 @@ public sealed record AddPermanentItemsRequest(IReadOnlyCollection<string> ItemDe
 public sealed record SetPermanentItemContentRequest(string LiquidDefinitionKey);
 
 public sealed record UpsertNpcReputationScoresRequest(Guid SourceRunId, IReadOnlyCollection<NpcReputationScoreDto> Scores);
+
+public sealed record AdvanceMainStoryRequest(
+    string SequenceKey,
+    string SequenceVersion,
+    string StepKey,
+    string? CheckpointKey,
+    IReadOnlyCollection<string> UnlockedRoomKeys,
+    IReadOnlyCollection<string> VisibleRoomKeys,
+    bool Complete);
