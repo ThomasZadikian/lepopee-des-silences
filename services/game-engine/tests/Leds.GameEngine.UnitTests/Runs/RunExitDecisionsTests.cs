@@ -18,13 +18,12 @@ using Moq;
 namespace Leds.GameEngine.UnitTests.Runs;
 
 /// <summary>
-/// Save / Abandon / Return-to-menu decisions, under the unified "safe point" rule
-/// (<see cref="Run.IsAtSafePoint"/>): nothing in progress — no active combat, no pending
-/// reward offer, room back in free exploration. No dependency on the boss or the removed
-/// Interlude/RoomResolved states anymore.
+/// Save / Abandon / Return-to-menu decisions. Saving requires a safe point
+/// (<see cref="Run.IsAtSafePoint"/>); destructive abandonment remains available for recovery
+/// from any open state. No dependency on the boss or the removed Interlude/RoomResolved states.
 ///
 /// Group A: SaveAndExit domain behavior
-/// Group B: AbandonRun safe-point guard
+/// Group B: AbandonRun destructive recovery
 /// Group C: Guards — game actions blocked when Suspended or Abandoned
 /// </summary>
 public sealed class RunExitDecisionsTests
@@ -209,7 +208,7 @@ public sealed class RunExitDecisionsTests
     }
 
     // -----------------------------------------------------------------------
-    // Group B — AbandonRun safe-point guard (handler + domain)
+    // Group B — AbandonRun destructive recovery (handler + domain)
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -286,21 +285,19 @@ public sealed class RunExitDecisionsTests
     }
 
     [Fact]
-    public async Task AbandonRun_ShouldFail_WhenRoomIsMidNodeSelection()
+    public async Task AbandonRun_ShouldSucceed_WhenRoomIsMidNodeSelection()
     {
-        // Handler-level guard: AbandonRun only allowed from safe points
         var run = CreateRunWithNodeSelected();
         run.IsAtSafePoint.Should().BeFalse();
 
         var (handler, _, _) = CreateAbandonHandler(run);
 
-        var act = () => handler.Handle(
+        await handler.Handle(
             new AbandonRunCommand(run.Id.Value),
             CancellationToken.None);
 
-        await act.Should()
-            .ThrowAsync<DomainException>()
-            .WithMessage("*safe point*");
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Abandon);
     }
 
     [Fact]
@@ -315,7 +312,7 @@ public sealed class RunExitDecisionsTests
             new AbandonRunCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Either the handler-level safe-point guard or the domain "already closed" guard fires
+        // The domain "already closed" guard fires.
         await act.Should()
             .ThrowAsync<DomainException>();
     }

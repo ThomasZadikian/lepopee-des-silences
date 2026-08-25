@@ -3,6 +3,7 @@ import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 import type {
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
+  GetOpenRunResponse,
   GetPermanentItemCandidatesResponse,
   InteractWithRoomNpcResponse,
   MovePartyResponse,
@@ -23,6 +24,12 @@ export const runApi = {
 
   getRun(runId: string) {
     return gameEngineApi.get<RunResponse>(`/api/v2/runs/${runId}`);
+  },
+
+  getOpenRun(playerId: string) {
+    return gameEngineApi.get<GetOpenRunResponse>(
+      `/api/v2/runs/open?playerId=${encodeURIComponent(playerId)}`,
+    );
   },
 
   resolveCurrentEvent(runId: string) {

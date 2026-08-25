@@ -82,11 +82,12 @@ public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixt
 
         payload.Should().NotBeNull();
         payload!.Run.Id.Should().Be(runId);
-        payload.Run.Status.Should().Be("Abandoned");
+        payload.Run.Status.Should().Be("Resolved");
+        payload.Run.Outcome.Should().Be("Abandon");
     }
 
     [Fact]
-    public async Task AbandonRun_ShouldReturnBadRequest_WhenRunIsActive()
+    public async Task AbandonRun_ShouldReturnOk_WhenRunIsActive()
     {
         // Arrange — freshly started run is Active, not at a safe point
         var startRunResponse = await StartRunAsync();
@@ -99,12 +100,15 @@ public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixt
 
         var body = await response.Content.ReadAsStringAsync();
 
-        // Assert — handler-level safe-point guard rejects the request
+        // Assert — destructive abandonment is available even outside a safe point.
         response.StatusCode.Should().Be(
-            HttpStatusCode.BadRequest,
+            HttpStatusCode.OK,
             because: body);
 
-        body.Should().Contain("AbandonRun is only allowed from a safe point");
+        var payload = await response.Content.ReadFromJsonAsync<AbandonRunResponse>();
+        payload.Should().NotBeNull();
+        payload!.Run.Status.Should().Be("Resolved");
+        payload.Run.Outcome.Should().Be("Abandon");
     }
 
     [Fact]
@@ -144,7 +148,7 @@ public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixt
 
         var body = await secondResponse.Content.ReadAsStringAsync();
 
-        // Assert — run is now Abandoned (not at safe point), handler guard fires
+        // Assert — the domain rejects a second close operation.
         secondResponse.StatusCode.Should().Be(
             HttpStatusCode.BadRequest,
             because: body);

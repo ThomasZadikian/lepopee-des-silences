@@ -61,6 +61,22 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
     }
 
     [Fact]
+    public async Task GetOpenRunForPlayer_ShouldRecoverAnActiveRunWithoutItsId()
+    {
+        var startRunResponse = await StartRunAsync();
+
+        var response = await _client.GetAsync(
+            $"/api/v2/runs/open?playerId={startRunResponse.Run.PlayerId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content
+            .ReadFromJsonAsync<Leds.GameEngine.Application.Runs.GetOpenRunForPlayer.GetOpenRunForPlayerResponse>();
+        payload.Should().NotBeNull();
+        payload!.Run.Should().NotBeNull();
+        payload.Run!.Id.Should().Be(startRunResponse.Run.Id);
+    }
+
+    [Fact]
     public async Task GetRunById_ShouldReturnPublicPalaceIndicators_WhenIndicatorsExist()
     {
         var startRunResponse = await StartRunAsync();

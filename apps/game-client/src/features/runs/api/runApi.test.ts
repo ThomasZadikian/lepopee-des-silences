@@ -26,6 +26,12 @@ describe('runApi', () => {
     expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/runs/run-1');
   });
 
+  it('getOpenRun finds the authoritative open run for a player', async () => {
+    vi.mocked(gameEngineApi.get).mockResolvedValueOnce({});
+    await runApi.getOpenRun('player/1');
+    expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/runs/open?playerId=player%2F1');
+  });
+
   it('resolveCurrentEvent sends POST request', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
     await runApi.resolveCurrentEvent('run-1');

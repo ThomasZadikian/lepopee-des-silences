@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useRunStore } from './runStore';
+import { demoPlayerId, useRunStore } from './runStore';
 import { runApi } from '../api/runApi';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
@@ -10,6 +10,7 @@ vi.mock('../api/runApi', () => ({
   runApi: {
     startRun: vi.fn(),
     getRun: vi.fn(),
+    getOpenRun: vi.fn(),
     resolveCurrentEvent: vi.fn(),
     progressRun: vi.fn(),
     generateNextNodes: vi.fn(),
@@ -53,7 +54,51 @@ describe('useRunStore computed properties', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    try { localStorage.clear(); } catch {}
     vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
+  });
+
+  it('discovers an active backend run when localStorage no longer contains its id', async () => {
+    const store = useRunStore();
+    vi.mocked(runApi.getOpenRun).mockResolvedValue({
+      run: {
+        id: 'run-orphaned-locally',
+        playerId: demoPlayerId,
+        seed: 'seed-42',
+        status: 'Active',
+        currentRoomNumber: 4,
+        currentRoom: {},
+      },
+    } as any);
+
+    await store.loadResumableRun();
+
+    expect(runApi.getOpenRun).toHaveBeenCalledWith(demoPlayerId);
+    expect(store.resumableRun).toMatchObject({
+      id: 'run-orphaned-locally',
+      status: 'Active',
+      currentRoomNumber: 4,
+    });
+  });
+
+  it('abandons a discovered run without requiring it to be loaded first', async () => {
+    const store = useRunStore();
+    store.resumableRun = {
+      id: 'run-orphaned-locally',
+      seed: 'seed-42',
+      savedAt: '',
+      currentRoomNumber: 4,
+      status: 'Active',
+    };
+    vi.mocked(runApi.abandonRun).mockResolvedValue({
+      run: { id: 'run-orphaned-locally', status: 'Resolved', currentRoom: {} },
+    } as any);
+
+    const abandoned = await store.abandonResumableRun();
+
+    expect(abandoned).toBe(true);
+    expect(runApi.abandonRun).toHaveBeenCalledWith('run-orphaned-locally');
+    expect(store.resumableRun).toBeNull();
   });
 
   it('currentRoom returns null when no run', () => {

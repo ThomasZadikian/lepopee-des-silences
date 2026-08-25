@@ -10,6 +10,7 @@ const runStore = useRunStore();
 
 const resumableRun = computed(() => runStore.resumableRun);
 const hasResumable = computed(() => Boolean(resumableRun.value));
+const lifecycleError = computed(() => runStore.runActionError || runStore.error);
 
 onMounted(() => { runStore.loadResumableRun(); });
 
@@ -55,9 +56,16 @@ function onClickNouvelle() {
   else startRun();
 }
 
-function confirmAbandon() {
+async function confirmAbandon() {
   showConfirm.value = false;
-  startRun();
+  startTransition('Le Palais referme l’ancienne traversée…');
+  const abandoned = await runStore.abandonResumableRun();
+  if (!abandoned) {
+    isTransitioning.value = false;
+    return;
+  }
+
+  await startRun();
 }
 
 /** Constante du monde du Palais (structure fixe à 27 salles) — pas une donnée de run. */
@@ -81,7 +89,7 @@ const TOTAL_ROOMS = 27;
           type="button"
           class="threshold-link"
           :class="{ 'threshold-link--disabled': !hasResumable }"
-          :disabled="!hasResumable"
+          :disabled="!hasResumable || runStore.isLoadingResumableRun || isTransitioning"
           @click="onClickReprendre"
         >
           <span class="threshold-link__glyph">◈</span>
@@ -90,7 +98,12 @@ const TOTAL_ROOMS = 27;
 
         <div class="threshold-links__divider" />
 
-        <button type="button" class="threshold-link" @click="onClickNouvelle">
+        <button
+          type="button"
+          class="threshold-link"
+          :disabled="runStore.isLoadingResumableRun || isTransitioning"
+          @click="onClickNouvelle"
+        >
           <span class="threshold-link__glyph">○</span>
           <span class="threshold-link__label">Nouvelle traversée</span>
         </button>
@@ -102,7 +115,7 @@ const TOTAL_ROOMS = 27;
         <span>Salle <span class="threshold-info__value">{{ resumableRun.currentRoomNumber }}</span> / {{ TOTAL_ROOMS }}</span>
       </div>
 
-      <p v-if="runStore.error" class="threshold-error">{{ runStore.error }}</p>
+      <p v-if="lifecycleError" class="threshold-error">{{ lifecycleError }}</p>
     </div>
 
     <!-- ── Modale de confirmation ── -->

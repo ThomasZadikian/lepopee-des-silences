@@ -422,9 +422,9 @@ public sealed class Run
     /// Nothing in progress: the run is <see cref="RunStatus.Active"/>, no active combat, no
     /// pending reward offer, and the current room is back in free exploration (not mid
     /// node-selection/resolution). No dependency on the room's boss anymore — it stopped
-    /// gating anything (see <see cref="ConfirmRoomExit"/>) — so this is the single rule both
-    /// <see cref="SaveAndExit"/> and abandoning the run use to decide "can I leave cleanly
-    /// right now."
+    /// gating anything (see <see cref="ConfirmRoomExit"/>). This is the rule for preserving and
+    /// leaving a run cleanly through <see cref="SaveAndExit"/>; abandonment remains available as
+    /// a destructive recovery action even while something is in progress.
     /// </summary>
     public bool IsAtSafePoint =>
         Status == RunStatus.Active

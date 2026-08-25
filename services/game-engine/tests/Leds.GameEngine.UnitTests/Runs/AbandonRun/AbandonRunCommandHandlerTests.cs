@@ -14,7 +14,7 @@ public sealed class AbandonRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldAbandonRun_AndPersistIt()
     {
-        // Arrange — run must be at a safe point (nothing in progress) for AbandonRun to be allowed
+        // Arrange — a normal active run can be abandoned.
         var run = TestGameEngineFactory.CreateRun();
         run.Status.Should().Be(RunStatus.Active);
 
@@ -103,10 +103,9 @@ public sealed class AbandonRunCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowDomainException_WhenRunIsNotAtSafePoint()
+    public async Task Handle_ShouldAbandonRun_WhenRunIsNotAtSafePoint()
     {
-        // Arrange — room mid node-selection: handler-level safe-point guard fires before
-        // the domain Abandon() call.
+        // Arrange — room mid node-selection: abandonment must still recover the account.
         var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(
             Leds.GameEngine.Domain.Nodes.NodeEventType.Item).Run;
 
@@ -126,19 +125,20 @@ public sealed class AbandonRunCommandHandlerTests
             clock.Object);
 
         // Act
-        var act = async () => await handler.Handle(
+        var response = await handler.Handle(
             new AbandonRunCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Assert — handler guard throws before the domain Abandon() call
-        await act.Should()
-            .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
-            .WithMessage("*safe point*");
+        // Assert — abandonment is the recovery escape hatch and must close any open run.
+        response.Run.Status.Should().Be(RunStatus.Resolved.ToString());
+        response.Run.Outcome.Should().Be(RunOutcome.Abandon.ToString());
 
         repository.Verify(
             repo => repo.UpdateAsync(
-                It.IsAny<Run>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+                It.Is<Run>(candidate =>
+                    candidate.Status == RunStatus.Resolved &&
+                    candidate.Outcome == RunOutcome.Abandon),
+                CancellationToken.None),
+            Times.Once);
     }
 }
