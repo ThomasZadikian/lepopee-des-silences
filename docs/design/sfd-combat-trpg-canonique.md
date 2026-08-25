@@ -21,6 +21,19 @@ handoff Claude Design.
 
 ## 2. Composition et déploiement
 
+### 2.0 Déclenchement depuis l'exploration
+
+- Toute rencontre ordinaire (`Combat`, `Rare`, `Elite`, `RoomBoss`,
+  `FinalBoss`) est représentée par un ennemi mobile dans la salle et démarre au
+  contact, conformément à `LEDS-SFD-EXP-001`.
+- À trois cases ou moins en distance de Manhattan, l'ennemi poursuit le joueur.
+- La case de contact devient la case d'événement utilisée comme centre de
+  déploiement tactique.
+- Les combats produits par une règle locale, un dialogue, une zone ou une
+  séquence scénarisée restent déclenchés par ce mécanisme authored. Ils ne
+  créent pas d'ennemi mobile ; cette exception couvre notamment les protocoles
+  du Hall d'entrée.
+
 ### 2.1 Équipe
 
 - L'équipe comporte au maximum quatre alliés.

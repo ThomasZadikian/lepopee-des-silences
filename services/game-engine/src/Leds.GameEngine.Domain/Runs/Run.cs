@@ -1179,6 +1179,18 @@ public sealed class Run
         return new GroundPickupResult(collected, blocked, move.TraversedCells);
     }
 
+    /// <summary>Advances the current room's autonomous exploration actors by one atomic step.</summary>
+    public ActorAdvanceResult AdvanceRoomActors(ActorAdvanceMode mode)
+    {
+        EnsureActive();
+        if (HasActiveCombat)
+        {
+            throw new DomainException("Exploration actors cannot move during tactical combat.");
+        }
+
+        return CurrentRoom.AdvanceActors(mode);
+    }
+
     /// <summary>
     /// Searches the ground around the party for hidden nodes, at the cost of movement budget.
     /// Delegates to the current room — see <see cref="Room.SearchAtPartyPosition"/>.

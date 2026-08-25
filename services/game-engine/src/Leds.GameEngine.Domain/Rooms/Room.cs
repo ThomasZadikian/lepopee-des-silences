@@ -1,5 +1,6 @@
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Actors;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Protocol;
@@ -563,16 +564,13 @@ public sealed class Room
             State = RoomState.NodeSelected;
         }
 
-        // One RoomNpc step per cell ACTUALLY entered (Contrat canonique §13: "chaque case
-        // réellement parcourue constitue un pas déterministe"), not one step per MoveParty call —
-        // a route spanning several cells gives a Hunter that many chances to react, not one.
-        // `traversed` already excludes the party's pre-move cell (route.Path never includes the
-        // start), so every element here is a newly entered cell — nothing to skip.
+        // Player movement freezes neutral actors. Awareness may still change as the party crosses
+        // their sightline, but spatial simulation resumes only through AdvanceActors after the
+        // player's animation has finished.
         foreach (var (stepX, stepY) in traversed)
         {
             foreach (var npc in _roomNpcs)
             {
-                npc.Step(Grid, stepX, stepY);
                 npc.RefreshAwareness(Grid, stepX, stepY);
             }
         }
@@ -587,6 +585,166 @@ public sealed class Room
 
         return new PartyMoveResult(traversed, traversalCost, triggered?.Id);
     }
+
+    /// <summary>
+    /// Advances ambient actors by one atomic exploration step. Neutral actors are optional so
+    /// the client can grant hostiles their mandatory reaction after the player's animation.
+    /// Every collision decision is made here; callers receive only movements that really landed.
+    /// </summary>
+    public ActorAdvanceResult AdvanceActors(ActorAdvanceMode mode)
+    {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new DomainException("Unknown actor advance mode.");
+        }
+
+        if (State is not RoomState.Active)
+        {
+            throw new DomainException("Room is not waiting for actor movement.");
+        }
+
+        var movements = new List<ActorMovement>();
+        var occupied = _roomNpcs.Select(npc => (npc.X, npc.Y))
+            .Concat(_nodes
+                .Where(node => node.State != NodeState.Resolved)
+                .Select(node => (node.Lane, node.Row)))
+            .ToHashSet();
+
+        if (mode == ActorAdvanceMode.All)
+        {
+            var unseenCells = new HashSet<(int X, int Y)>();
+            for (var y = 0; y < Grid.Height; y++)
+            {
+                for (var x = 0; x < Grid.Width; x++)
+                {
+                    if (!Grid.RevealedCells.Contains((x, y))) unseenCells.Add((x, y));
+                }
+            }
+
+            foreach (var npc in _roomNpcs.OrderBy(candidate => candidate.Id.Value))
+            {
+                npc.RefreshAwareness(Grid, Grid.PartyX, Grid.PartyY);
+                var distance = Manhattan(npc.X, npc.Y, Grid.PartyX, Grid.PartyY);
+                if (distance <= 2)
+                {
+                    continue;
+                }
+
+                var from = (npc.X, npc.Y);
+                occupied.Remove(from);
+                // A neutral NPC that walks into fog disappears from the room DTO. Treat unseen
+                // cells as temporarily occupied so an actor already introduced to the player
+                // remains visible instead of blinking out on the next idle tick.
+                var npcBlockedCells = occupied.Concat(unseenCells).ToHashSet();
+                npc.Step(Grid, Grid.PartyX, Grid.PartyY, npcBlockedCells);
+                occupied.Add((npc.X, npc.Y));
+
+                if (from != (npc.X, npc.Y))
+                {
+                    movements.Add(new ActorMovement(
+                        npc.Id.Value,
+                        ActorKind.Npc,
+                        from.X,
+                        from.Y,
+                        npc.X,
+                        npc.Y));
+                }
+            }
+        }
+
+        foreach (var hostile in _nodes
+                     .Where(node => node.CanRoamAsHostile)
+                     .OrderBy(node => node.Id.Value))
+        {
+            if (Manhattan(hostile.Lane, hostile.Row, Grid.PartyX, Grid.PartyY) <= 1)
+            {
+                return SelectHostileContact(hostile, movements);
+            }
+
+            var from = (X: hostile.Lane, Y: hostile.Row);
+            occupied.Remove(from);
+
+            foreach (var candidate in HostileCandidates(hostile))
+            {
+                if (candidate == (Grid.PartyX, Grid.PartyY)
+                    || occupied.Contains(candidate)
+                    || !Grid.IsWalkable(candidate.X, candidate.Y))
+                {
+                    continue;
+                }
+
+                hostile.MoveExplorationActorTo(candidate.X, candidate.Y);
+                movements.Add(new ActorMovement(
+                    hostile.Id.Value,
+                    ActorKind.Enemy,
+                    from.X,
+                    from.Y,
+                    candidate.X,
+                    candidate.Y));
+                break;
+            }
+
+            occupied.Add((hostile.Lane, hostile.Row));
+            if (Manhattan(hostile.Lane, hostile.Row, Grid.PartyX, Grid.PartyY) <= 1)
+            {
+                return SelectHostileContact(hostile, movements);
+            }
+        }
+
+        return new ActorAdvanceResult(movements, null);
+    }
+
+    private ActorAdvanceResult SelectHostileContact(
+        MapNode hostile,
+        IReadOnlyCollection<ActorMovement> movements)
+    {
+        hostile.Select();
+        _currentGridNodeId = hostile.Id;
+        State = RoomState.NodeSelected;
+        return new ActorAdvanceResult(movements, hostile.Id);
+    }
+
+    private IEnumerable<(int X, int Y)> HostileCandidates(MapNode hostile)
+    {
+        var deltaX = Grid.PartyX - hostile.Lane;
+        var deltaY = Grid.PartyY - hostile.Row;
+        var distance = Math.Abs(deltaX) + Math.Abs(deltaY);
+
+        if (distance <= 3)
+        {
+            var horizontal = (X: hostile.Lane + Math.Sign(deltaX), Y: hostile.Row);
+            var vertical = (X: hostile.Lane, Y: hostile.Row + Math.Sign(deltaY));
+            if (Math.Abs(deltaX) >= Math.Abs(deltaY))
+            {
+                if (deltaX != 0) yield return horizontal;
+                if (deltaY != 0) yield return vertical;
+            }
+            else
+            {
+                if (deltaY != 0) yield return vertical;
+                if (deltaX != 0) yield return horizontal;
+            }
+
+            yield break;
+        }
+
+        var directions = new (int X, int Y)[]
+        {
+            (hostile.Lane + 1, hostile.Row),
+            (hostile.Lane - 1, hostile.Row),
+            (hostile.Lane, hostile.Row + 1),
+            (hostile.Lane, hostile.Row - 1),
+        };
+        var bytes = hostile.Id.Value.ToByteArray();
+        var offset = (bytes[0] + hostile.Lane + (hostile.Row * 3)) % directions.Length;
+        for (var index = 0; index < directions.Length; index++)
+        {
+            yield return directions[(offset + index) % directions.Length];
+        }
+    }
+
+    private static int Manhattan(int x1, int y1, int x2, int y2) =>
+        Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
 
     // BALANCE KNOB — how far a search reaches, in cells (Chebyshev: the 8 cells around the
     // party plus its own). Deliberately tight: finding something has to be about standing in

@@ -10,9 +10,13 @@ import {
 import { runApi } from '../api/runApi';
 import { useTacticalCombatStore } from '../../combat/stores/useTacticalCombatStore';
 import { combatApi } from '../../combat/api/combatApi';
-import { partyWalkDurationMs } from '../../palace-map/composables/usePartyTokenPath';
+import {
+  partyWalkDurationMs,
+  prefersReducedMotion,
+} from '../../palace-map/composables/usePartyTokenPath';
 import {
   unwrapRunResponse,
+  type ActorAdvanceMode,
   type NarrativeFragmentDto,
   type NpcDialogueViewDto,
   type PermanentItemCandidateDto,
@@ -36,6 +40,11 @@ export const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 // ---------------------------------------------------------------------------
 
 const SUSPENDED_RUN_KEY = 'rpg:suspended_run_id';
+
+// Matches TacticalGridMap's actor interpolation. The per-actor stagger prevents a whole room
+// from moving on the same frame while keeping one logical tick compact.
+const ACTOR_STEP_MS = 240;
+const ACTOR_STAGGER_MS = 45;
 
 function getSuspendedRunId(): string | null {
   try { return localStorage.getItem(SUSPENDED_RUN_KEY); } catch { return null; }
@@ -85,6 +94,8 @@ export const useRunStore = defineStore('run', () => {
   const runActionError = ref<string | null>(null);
   const groundPickupNotice = ref<string | null>(null);
   const pendingGroundPickupIds = ref<string[]>([]);
+  const actorsAdvancing = ref(false);
+  const actorInteractionNotice = ref<string | null>(null);
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -272,6 +283,11 @@ export const useRunStore = defineStore('run', () => {
       // to be clicked), which leaves the room in NodeSelected exactly like enterGridNode does.
       // Without resolving it here the event never fires and the next move is refused by the
       // domain guard — the room would simply appear stuck.
+      const after = currentRun.value.currentRoom.grid;
+      const walkDuration = plannedSteps > 0
+        ? partyWalkDurationMs(0, 0, plannedSteps, 0)
+        : partyWalkDurationMs(from.x, from.y, after?.partyX ?? from.x, after?.partyY ?? from.y);
+
       if (currentRun.value?.currentRoom?.state === 'NodeSelected') {
         // Let the party actually walk there first. Resolving immediately swaps the board out
         // for the event screen before the token has moved a single frame, so an ambush read as
@@ -280,13 +296,54 @@ export const useRunStore = defineStore('run', () => {
         // Step count from the board when it has one: a route that detours around a wall is
         // longer than the straight-line distance, and waiting only the latter would fire the
         // event while the party is still walking.
-        const after = currentRun.value.currentRoom.grid;
-        await delay(plannedSteps > 0
-          ? partyWalkDurationMs(0, 0, plannedSteps, 0)
-          : partyWalkDurationMs(from.x, from.y, after?.partyX ?? from.x, after?.partyY ?? from.y));
+        await delay(walkDuration);
+      } else {
+        // Neutral NPCs remain frozen for the whole party animation. Hostiles then receive one
+        // reaction step so repeatedly clicking movement cannot permanently freeze pursuit.
+        await delay(walkDuration);
+        await advanceRoomActors('HostilesOnly');
       }
 
       await resolveSelectedNodeIfAny();
+    });
+  }
+
+  async function advanceRoomActors(mode: ActorAdvanceMode = 'All') {
+    if (!currentRun.value || actorsAdvancing.value) return;
+    if (currentRun.value.currentRoom?.state !== 'Active') return;
+
+    actorsAdvancing.value = true;
+    try {
+      const response = await runApi.advanceRoomActors(currentRun.value.id, mode);
+      currentRun.value = response.run;
+      const duration = response.movements.length === 0 || prefersReducedMotion()
+        ? 0
+        : ACTOR_STEP_MS + ((response.movements.length - 1) * ACTOR_STAGGER_MS);
+      await delay(duration);
+      await resolveSelectedNodeIfAny();
+    } catch (caught) {
+      error.value = caught instanceof Error
+        ? caught.message
+        : 'Le déplacement des acteurs a échoué.';
+    } finally {
+      actorsAdvancing.value = false;
+    }
+  }
+
+  async function interactWithRoomNpc(roomNpcId: string) {
+    if (!currentRun.value || actorsAdvancing.value) return;
+
+    await execute(async () => {
+      const response = await runApi.interactWithRoomNpc(currentRun.value!.id, roomNpcId);
+      currentRun.value = response.run;
+      actorInteractionNotice.value = response.localRuleNotices
+        .map(notice => notice.message || notice.ruleName)
+        .filter(Boolean)
+        .join(' · ') || 'Le personnage vous accorde son attention.';
+      const displayedNotice = actorInteractionNotice.value;
+      globalThis.setTimeout(() => {
+        if (actorInteractionNotice.value === displayedNotice) actorInteractionNotice.value = null;
+      }, 3500);
     });
   }
 
@@ -944,7 +1001,9 @@ export const useRunStore = defineStore('run', () => {
     shouldShowRunFailedPanel,
     gameplayPhase,
     isLoading,
+    actorsAdvancing,
     error,
+    actorInteractionNotice,
     permanentItemCandidates,
     isPermanentItemSelectionResolved,
     isLoadingPermanentItemCandidates,
@@ -973,6 +1032,8 @@ export const useRunStore = defineStore('run', () => {
     wagerNode,
     setRoomRiskTier,
     movePartyTo,
+    advanceRoomActors,
+    interactWithRoomNpc,
     swapGroundItem,
     keepInventoryForGroundItem,
     searchParty,

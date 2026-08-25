@@ -43,6 +43,7 @@ const transitionAfterChoice = ref(false);
 const phaseVeilVisible = ref(false);
 const phaseVeilKey = ref(0);
 let phaseVeilTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
+let actorTickTimer: ReturnType<typeof globalThis.setInterval> | null = null;
 
 async function handleEventContinue() {
   const outcome = runStore.lastOutcome;
@@ -226,7 +227,19 @@ async function loadRunFromRoute() {
   await runStore.loadRun(runId);
 }
 
-onMounted(loadRunFromRoute);
+onMounted(() => {
+  void loadRunFromRoute();
+  actorTickTimer = globalThis.setInterval(() => {
+    if (runStore.gameplayPhase !== 'Map'
+      || runStore.currentRoom?.state !== 'Active'
+      || runStore.isLoading
+      || runStore.actorsAdvancing) return;
+    void runStore.advanceRoomActors('All');
+  }, 850);
+});
+onBeforeUnmount(() => {
+  if (actorTickTimer !== null) globalThis.clearInterval(actorTickTimer);
+});
 watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 </script>
 
@@ -256,7 +269,9 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             <TacticalGridMap
               :room="runStore.currentRun.currentRoom"
               :influence-count="totalInfluenceCount"
+              :interaction-locked="runStore.isLoading || runStore.actorsAdvancing"
               @move-request="runStore.movePartyTo"
+              @interact-room-npc="runStore.interactWithRoomNpc"
               @enter-node="runStore.enterGridNode"
               @wager-node="runStore.wagerNode"
               @confirm-exit="runStore.confirmRoomExit"
@@ -268,6 +283,11 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <Transition name="fade">
             <p v-if="runStore.groundPickupNotice" class="ground-pickup-notice">
               {{ runStore.groundPickupNotice }}
+            </p>
+          </Transition>
+          <Transition name="fade">
+            <p v-if="runStore.actorInteractionNotice" class="ground-pickup-notice">
+              {{ runStore.actorInteractionNotice }}
             </p>
           </Transition>
 

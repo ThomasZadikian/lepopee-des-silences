@@ -45,9 +45,9 @@ public sealed class MapNode
 
     public NodeEventType EventType { get; }
 
-    public int Row { get; }
+    public int Row { get; private set; }
 
-    public int Lane { get; }
+    public int Lane { get; private set; }
 
     /// <summary>
     /// Raw generation roll (0-100). Kept as-is for non-combat nodes (Item/Merchant/etc.),
@@ -106,10 +106,20 @@ public sealed class MapNode
 
     /// <summary>Walking onto this cell resolves the node with no prompt.</summary>
     public bool TriggersOnContact =>
-        ContactBehavior is ContactBehavior.TriggerOnEnter or ContactBehavior.Blocking;
+        IsCombatFlavored(EventType)
+        || ContactBehavior is ContactBehavior.TriggerOnEnter or ContactBehavior.Blocking;
 
     /// <summary>The cell cannot be crossed in transit — a path may end on it, never pass through.</summary>
-    public bool BlocksTransit => ContactBehavior == ContactBehavior.Blocking;
+    public bool BlocksTransit =>
+        IsCombatFlavored(EventType) || ContactBehavior == ContactBehavior.Blocking;
+
+    /// <summary>
+    /// A regular exploration encounter is represented by its combat node while it is waiting.
+    /// Scripted combats created by a rule/event have no combat node and therefore never enter
+    /// this actor loop.
+    /// </summary>
+    public bool CanRoamAsHostile =>
+        IsCombatFlavored(EventType) && State == NodeState.Available && !IsHidden;
 
     public bool IsInitial => Row == 0 && _parentNodeIds.Count == 0 && !IsBoss;
 
@@ -265,6 +275,24 @@ public sealed class MapNode
         }
 
         State = NodeState.Selected;
+    }
+
+    /// <summary>Moves the exploration representation of an available combat encounter by one
+    /// orthogonal cell. Room owns collision/path validation; this method owns the node guard.</summary>
+    public void MoveExplorationActorTo(int lane, int row)
+    {
+        if (!CanRoamAsHostile)
+        {
+            throw new DomainException("Only an available combat node can move in exploration.");
+        }
+
+        if (lane < 0 || row < 0 || Math.Abs(lane - Lane) + Math.Abs(row - Row) != 1)
+        {
+            throw new DomainException("A combat exploration actor must move by one orthogonal cell.");
+        }
+
+        Lane = lane;
+        Row = row;
     }
 
     public void Lock()

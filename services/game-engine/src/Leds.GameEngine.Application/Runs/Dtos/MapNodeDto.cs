@@ -41,7 +41,11 @@ public sealed record MapNodeDto(
             node.IsBoss,
             node.IsInitial,
             node.HasChosenEventOption,
-            node.ContactBehavior.ToString(),
+            node.BlocksTransit
+                ? ContactBehavior.Blocking.ToString()
+                : node.TriggersOnContact
+                    ? ContactBehavior.TriggerOnEnter.ToString()
+                    : node.ContactBehavior.ToString(),
             node.DangerTell.ToString(),
             node.ExitDestinationRoomKey,
             node.ExitDestinationDisplayName);

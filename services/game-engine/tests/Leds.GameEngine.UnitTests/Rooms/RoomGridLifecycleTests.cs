@@ -112,9 +112,9 @@ public sealed class RoomGridLifecycleTests
     public void MoveParty_ShouldRemainPossibleRegardlessOfLegacyBudget()
     {
         var room = CreateGridRoom(movementBudget: 10);
-        room.MoveParty(4, 4); // costs 8 (start to boss), remaining = 2
+        room.MoveParty(4, 3);
 
-        var act = () => room.MoveParty(0, 0); // costs 8 back to start, only 2 remaining
+        var act = () => room.MoveParty(0, 0);
 
         act.Should().NotThrow();
     }
@@ -175,7 +175,6 @@ public sealed class RoomGridLifecycleTests
         var room = CreateGridRoom();
         var boss = room.Nodes.Single(n => n.IsBoss);
         room.MoveParty(boss.Lane, boss.Row);
-        room.EnterNodeAtPartyPosition(boss.Id);
 
         room.ResolveSelectedNodeEvent();
 

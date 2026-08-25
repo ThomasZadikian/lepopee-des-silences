@@ -14,7 +14,8 @@ namespace Leds.GameEngine.Domain.Npcs;
 /// <para>
 /// Deliberately independent of <see cref="Nodes.MapNode"/>: a MapNode's state machine
 /// (Planned→Available→Selected→Resolved) models event RESOLUTION, not spatial simulation, and
-/// its position is immutable for the room's lifetime — neither fits a PNJ that walks around.
+/// its event lifecycle does not fit a neutral PNJ that walks around. Combat-flavored MapNodes
+/// may now move as hostile encounter actors, but still never carry dialogue/awareness state.
 /// The two systems meet only through <see cref="CatalogNpcKey"/>, which the Application layer
 /// can join against a NpcRelationship/dialogue graph when this NPC is actually approached.
 /// </para>
@@ -170,12 +171,14 @@ public sealed class RoomNpc : IActorInstance
     }
 
     /// <summary>
-    /// Advances this NPC by exactly one cell of simulation — never more, matching the party's
-    /// own one-step-at-a-time movement (Contrat canonique §13, "chaque case réellement
-    /// parcourue constitue un pas déterministe"). Call once per party step, after the party's
-    /// move has landed, so a Hunter always reacts to where the party actually is.
+    /// Advances this NPC by at most one cell of autonomous simulation. Room calls this only
+    /// while the player is idle; hostile combat nodes use their separate reaction phase.
     /// </summary>
-    public void Step(RoomGrid grid, int partyX, int partyY)
+    public void Step(
+        RoomGrid grid,
+        int partyX,
+        int partyY,
+        IReadOnlySet<(int X, int Y)>? blockedCells = null)
     {
         _stepCount++;
 
@@ -188,16 +191,16 @@ public sealed class RoomNpc : IActorInstance
                 // Awareness/authored reaction, not by relocating it here.
                 return;
             case NpcBehaviorArchetype.Patrol:
-                StepAlongPatrol(grid, partyX, partyY);
+                StepAlongPatrol(grid, partyX, partyY, blockedCells);
                 return;
             case NpcBehaviorArchetype.Hunter:
                 if (Awareness >= NpcAwarenessState.Aware)
                 {
-                    StepToward(grid, partyX, partyY, partyX, partyY);
+                    StepToward(grid, partyX, partyY, partyX, partyY, blockedCells);
                 }
                 return;
             case NpcBehaviorArchetype.Passive:
-                StepIdle(grid, partyX, partyY);
+                StepIdle(grid, partyX, partyY, blockedCells);
                 return;
         }
     }
@@ -244,7 +247,11 @@ public sealed class RoomNpc : IActorInstance
         }
     }
 
-    private void StepAlongPatrol(RoomGrid grid, int partyX, int partyY)
+    private void StepAlongPatrol(
+        RoomGrid grid,
+        int partyX,
+        int partyY,
+        IReadOnlySet<(int X, int Y)>? blockedCells)
     {
         if (_waypoints.Count == 0)
         {
@@ -259,14 +266,18 @@ public sealed class RoomNpc : IActorInstance
             (targetX, targetY) = _waypoints[_waypointIndex];
         }
 
-        StepToward(grid, targetX, targetY, partyX, partyY);
+        StepToward(grid, targetX, targetY, partyX, partyY, blockedCells);
     }
 
-    private void StepIdle(RoomGrid grid, int partyX, int partyY)
+    private void StepIdle(
+        RoomGrid grid,
+        int partyX,
+        int partyY,
+        IReadOnlySet<(int X, int Y)>? blockedCells)
     {
         if (Math.Abs(X - OriginX) + Math.Abs(Y - OriginY) >= WanderLeashRadius)
         {
-            StepToward(grid, OriginX, OriginY, partyX, partyY);
+            StepToward(grid, OriginX, OriginY, partyX, partyY, blockedCells);
             return;
         }
 
@@ -276,7 +287,7 @@ public sealed class RoomNpc : IActorInstance
         // canonique §102).
         var directionSeed = unchecked((Id.Value.GetHashCode() * 397) ^ _stepCount);
         var direction = OrthogonalDirections[((directionSeed % OrthogonalDirections.Length) + OrthogonalDirections.Length) % OrthogonalDirections.Length];
-        TryMove(grid, X + direction.Dx, Y + direction.Dy, partyX, partyY);
+        TryMove(grid, X + direction.Dx, Y + direction.Dy, partyX, partyY, blockedCells);
     }
 
     private void StepToward(
@@ -284,7 +295,8 @@ public sealed class RoomNpc : IActorInstance
         int targetX,
         int targetY,
         int partyX,
-        int partyY)
+        int partyY,
+        IReadOnlySet<(int X, int Y)>? blockedCells)
     {
         var dx = Math.Sign(targetX - X);
         var dy = Math.Sign(targetY - Y);
@@ -297,33 +309,41 @@ public sealed class RoomNpc : IActorInstance
 
         if (horizontalFirst)
         {
-            if (dx != 0 && TryMove(grid, X + dx, Y, partyX, partyY))
+            if (dx != 0 && TryMove(grid, X + dx, Y, partyX, partyY, blockedCells))
             {
                 return;
             }
 
             if (dy != 0)
             {
-                TryMove(grid, X, Y + dy, partyX, partyY);
+                TryMove(grid, X, Y + dy, partyX, partyY, blockedCells);
             }
         }
         else
         {
-            if (dy != 0 && TryMove(grid, X, Y + dy, partyX, partyY))
+            if (dy != 0 && TryMove(grid, X, Y + dy, partyX, partyY, blockedCells))
             {
                 return;
             }
 
             if (dx != 0)
             {
-                TryMove(grid, X + dx, Y, partyX, partyY);
+                TryMove(grid, X + dx, Y, partyX, partyY, blockedCells);
             }
         }
     }
 
-    private bool TryMove(RoomGrid grid, int x, int y, int partyX, int partyY)
+    private bool TryMove(
+        RoomGrid grid,
+        int x,
+        int y,
+        int partyX,
+        int partyY,
+        IReadOnlySet<(int X, int Y)>? blockedCells)
     {
-        if ((x == partyX && y == partyY) || !grid.IsWalkable(x, y))
+        if ((x == partyX && y == partyY)
+            || blockedCells?.Contains((x, y)) == true
+            || !grid.IsWalkable(x, y))
         {
             return false;
         }

@@ -38,7 +38,7 @@ public sealed class CurrentRoomIndexHandlerTests
     [Fact]
     public async Task GetRunById_ShouldExposeCurrentRoomIndexInRunDto()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.Item);
 
         var repository = new Mock<IRunRepository>();
         repository

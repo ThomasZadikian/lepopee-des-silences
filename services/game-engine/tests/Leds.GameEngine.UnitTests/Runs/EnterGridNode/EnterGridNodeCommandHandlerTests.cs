@@ -16,7 +16,7 @@ public sealed class EnterGridNodeCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldSelectTheNode_AndPersistTheRun()
     {
-        var run = TestGameEngineFactory.CreateGridRun();
+        var run = TestGameEngineFactory.CreateGridRun(NodeEventType.Item);
         var node = run.CurrentRoom.Nodes.First(n => !n.IsBoss);
         run.MoveParty(node.Lane, node.Row);
 

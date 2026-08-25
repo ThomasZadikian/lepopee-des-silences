@@ -24,6 +24,8 @@ vi.mock('../api/runApi', () => ({
     removePalaceLaw: vi.fn(),
     wagerNode: vi.fn(),
     moveParty: vi.fn(),
+    advanceRoomActors: vi.fn(),
+    interactWithRoomNpc: vi.fn(),
     enterGridNode: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock('../../combat/api/combatApi', () => ({
 
 describe('useRunStore computed properties', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     setActivePinia(createPinia());
     vi.clearAllMocks();
     try { localStorage.clear(); } catch {}
@@ -236,6 +239,7 @@ describe('useRunStore computed properties', () => {
 
 describe('useRunStore actions', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     setActivePinia(createPinia());
     vi.clearAllMocks();
     vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
@@ -457,6 +461,7 @@ describe('useRunStore actions', () => {
   });
 
   it('movePartyTo sends the target cell and refreshes the run', async () => {
+    vi.useFakeTimers();
     const store = useRunStore();
     store.currentRun = {
       id: 'run-1',
@@ -471,11 +476,47 @@ describe('useRunStore actions', () => {
         currentRoom: { grid: { partyX: 1, partyY: 0 } },
       },
     } as any);
+    vi.mocked(runApi.advanceRoomActors).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        currentRoom: { state: 'Active', grid: { partyX: 1, partyY: 0 } },
+      },
+      movements: [],
+      triggeredNodeId: null,
+    } as any);
 
-    await store.movePartyTo(1, 0);
+    const moving = store.movePartyTo(1, 0);
+    await vi.runAllTimersAsync();
+    await moving;
 
     expect(runApi.moveParty).toHaveBeenCalledWith('run-1', 1, 0);
+    expect(runApi.advanceRoomActors).toHaveBeenCalledWith('run-1', 'HostilesOnly');
     expect(store.currentRun?.currentRoom.grid.partyX).toBe(1);
+  });
+
+  it('interactWithRoomNpc uses the adjacent actor endpoint and exposes its notice', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      currentRoom: { state: 'Active' },
+    } as any;
+    vi.mocked(runApi.interactWithRoomNpc).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'Active' } },
+      actor: { id: 'npc-1' },
+      localRuleNotices: [{
+        ruleKey: 'hall-rule',
+        ruleName: 'Protocole du Hall',
+        outcome: 'Informed',
+        message: 'Le majordome vous rappelle le protocole.',
+      }],
+    } as any);
+
+    await store.interactWithRoomNpc('npc-1');
+
+    expect(runApi.interactWithRoomNpc).toHaveBeenCalledWith('run-1', 'npc-1');
+    expect(store.actorInteractionNotice).toBe('Le majordome vous rappelle le protocole.');
   });
 
   it('enterGridNode selects the node then resolves it immediately, so the room returns to a movable state', async () => {

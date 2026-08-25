@@ -123,7 +123,6 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
         var run = CreateTestRunWithCombat();
         var node1 = run.CurrentRoom.Nodes.First(n => n.Row == 0 && n.Lane == 1);
         run.MoveParty(node1.Lane, node1.Row);
-        run.EnterGridNode(node1.Id.Value);
         await _repository.AddAsync(run, CancellationToken.None);
 
         foreach (var enemy in run.ActiveTacticalCombat!.Enemies)
