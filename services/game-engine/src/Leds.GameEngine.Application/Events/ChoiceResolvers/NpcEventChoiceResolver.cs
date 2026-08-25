@@ -18,7 +18,7 @@ namespace Leds.GameEngine.Application.Events.ChoiceResolvers;
 /// and performs deterministic reward/curse rolls with real effect application.
 /// Unique combat remains deferred to a dedicated wave.
 /// </summary>
-public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
+public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver, INpcDialogueChoiceResolver
 {
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly IPlayerProfileGateway _playerProfileGateway;
@@ -31,16 +31,22 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
     public NodeEventType EventType => NodeEventType.Npc;
 
-    public async Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+    public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
         CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken = default) =>
+        ResolveNpcDialogueChoiceAsync(context.Run, context.Node, context.ChoiceId, cancellationToken);
+
+    public async Task<CurrentEventChoiceResolutionResult> ResolveNpcDialogueChoiceAsync(
+        Run run,
+        MapNode? sourceNode,
+        string choiceId,
         CancellationToken cancellationToken = default)
     {
-        var run = context.Run;
         var npcKey = run.ActiveNpcKey;
 
         if (string.IsNullOrWhiteSpace(npcKey))
         {
-            return Fade(context.ChoiceId);
+            return Fade(choiceId);
         }
 
         var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
@@ -49,7 +55,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         if (npc?.DialogueGraph is null)
         {
             run.EndNpcEncounter();
-            return Fade(context.ChoiceId);
+            return Fade(choiceId);
         }
 
         var graph = npc.DialogueGraph;
@@ -59,24 +65,24 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         if (!graph.Nodes.TryGetValue(currentNodeKey, out var node))
         {
             run.EndNpcEncounter();
-            return Fade(context.ChoiceId);
+            return Fade(choiceId);
         }
 
         var choice = node.Choices.FirstOrDefault(c =>
-            string.Equals(c.Key, context.ChoiceId, StringComparison.OrdinalIgnoreCase));
+            string.Equals(c.Key, choiceId, StringComparison.OrdinalIgnoreCase));
 
         if (choice is null)
         {
             return CurrentEventChoiceResolutionResult.Create(
-                context.ChoiceId, accepted: false,
-                $"Choice '{context.ChoiceId}' is not available right now.",
+                choiceId, accepted: false,
+                $"Choice '{choiceId}' is not available right now.",
                 encounterCompleted: false);
         }
 
         if (!RequirementsMet(choice.Requirements, relationship, run))
         {
             return CurrentEventChoiceResolutionResult.Create(
-                context.ChoiceId, accepted: false,
+                choiceId, accepted: false,
                 "This path is closed to you.",
                 encounterCompleted: false);
         }
@@ -97,7 +103,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
         foreach (var consequence in applicable)
         {
-            await ApplyConsequenceAsync(consequence, npc, run, context.Node, relationship, pools, fragments, effects, cancellationToken);
+            await ApplyConsequenceAsync(consequence, npc, run, sourceNode, relationship, pools, fragments, effects, cancellationToken);
         }
 
         EvaluateTransgressions(npc, run, relationship);
@@ -111,7 +117,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         }
 
         return CurrentEventChoiceResolutionResult.Create(
-            context.ChoiceId, accepted: true,
+            choiceId, accepted: true,
             encounterCompleted ? "La rencontre se referme." : "La conversation se poursuit.",
             fragments, encounterCompleted, effects);
     }
@@ -120,7 +126,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
        CatalogDialogueConsequence consequence,
        CatalogNpcDefinition npc,
        Run run,
-       MapNode node,
+       MapNode? node,
        NpcRelationship relationship,
        IReadOnlyCollection<CatalogRewardCursePool> pools,
        List<NarrativeFragmentDto> fragments,
@@ -361,7 +367,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
     CatalogDialogueConsequence consequence,
     CatalogNpcDefinition npc,
     Run run,
-    MapNode node,
+    MapNode? node,
     NpcRelationship relationship,
     IReadOnlyCollection<CatalogRewardCursePool> pools,
     List<AppliedConsequenceEffect> effects,
@@ -445,7 +451,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         }
     }
 
-    private static bool IsAvailable(CatalogRewardCurseEntry entry, Run run, MapNode node)
+    private static bool IsAvailable(CatalogRewardCurseEntry entry, Run run, MapNode? node)
     {
         if (entry.Availability is null || entry.Availability.Count == 0)
         {
@@ -461,7 +467,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 "MinVitalityRatioPercent" => vitalityRatio >= gate.Value,
                 "MaxVitalityRatioPercent" => vitalityRatio <= gate.Value,
                 "MinActiveLawCount" => run.ActivePalaceLaws.Count >= gate.Value,
-                "MinNodeDepth" => node.Row >= gate.Value,
+                "MinNodeDepth" => (node?.Row ?? run.CurrentRoom.Depth) >= gate.Value,
                 _ => true
             };
 

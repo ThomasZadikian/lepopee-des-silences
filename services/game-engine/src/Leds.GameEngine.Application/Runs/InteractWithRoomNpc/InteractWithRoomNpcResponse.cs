@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Runs.Dtos;
 
 namespace Leds.GameEngine.Application.Runs.InteractWithRoomNpc;
@@ -5,7 +6,8 @@ namespace Leds.GameEngine.Application.Runs.InteractWithRoomNpc;
 public sealed record InteractWithRoomNpcResponse(
     RunDto Run,
     RoomNpcDto Actor,
-    IReadOnlyCollection<RoomNpcInteractionNoticeDto> LocalRuleNotices);
+    IReadOnlyCollection<RoomNpcInteractionNoticeDto> LocalRuleNotices,
+    NpcDialogueViewDto? NpcDialogue = null);
 
 public sealed record RoomNpcInteractionNoticeDto(
     string RuleKey,

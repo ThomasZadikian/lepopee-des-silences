@@ -83,6 +83,20 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveNpcDialogueChoiceAsync_ShouldResolveWithoutAMapNode()
+    {
+        var (run, _) = CreateRunWithActiveOfferingGiver();
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveNpcDialogueChoiceAsync(run, null, "take-skill");
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.UnlockedSkills.Should().ContainSingle(
+            unlocked => unlocked.PlayerId == run.PlayerId && unlocked.SkillKey == "skill.basic.strike");
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldUnlockSkillAndClaimOffering_WhenMajorSkillOfferingIsTaken()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

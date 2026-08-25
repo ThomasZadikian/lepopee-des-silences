@@ -71,6 +71,10 @@ combat disponibles et nœuds bloquants. Avant chaque mouvement, l'ancienne case
 de l'acteur est libérée ; la destination n'est réservée qu'après validation.
 Une destination invalide produit un mouvement nul, jamais une exception.
 
+Pour le pathfinding du joueur uniquement, une case de PNJ neutre est praticable
+en transit mais reste interdite comme destination finale. Les PNJ continuent de
+se bloquer mutuellement durant leurs propres ticks.
+
 ### 3.3 Poursuite ennemie
 
 Pour `d = |node.Lane-partyX| + |node.Row-partyY|` :
@@ -120,17 +124,28 @@ Réponse `200` :
 Le mode est strictement validé. La commande est idempotente seulement au sens
 transactionnel : deux appels réussis représentent deux ticks distincts.
 
+### Interaction et dialogue d'un PNJ physique
+
+- `POST .../npcs/{roomNpcId}/interact` vérifie l'adjacence, applique les règles
+  locales, initialise la relation de run et renvoie le premier
+  `NpcDialogueViewDto` issu du Catalogue.
+- `POST .../npcs/{roomNpcId}/dialogue/choices` applique un choix au graphe actif
+  sans exiger de `MapNode` d'événement, puis renvoie le nœud suivant ou la fin
+  de la rencontre.
+- Un PNJ sans définition Catalog conserve le retour protocolaire local et ne
+  fabrique aucun dialogue artificiel.
+
 ## 5. Client Vue
 
 - `runStore.advanceRoomActors(mode)` utilise un verrou `actorsAdvancing` pour
   interdire les appels concurrents.
 - `RunPage` demande un tick `All` à intervalle régulier uniquement lorsque
   `gameplayPhase == Map`, que la salle est `Active` et qu'aucune action n'est en
-  cours.
+  cours. La cadence nominale est de 1 800 ms.
 - `movePartyTo` attend l'animation du joueur puis demande `HostilesOnly` avant
   de résoudre un éventuel contact.
 - `TacticalGridMap` interpole les positions signalées par les DTO successifs
-  sur 240 ms, avec 45 ms de décalage entre acteurs.
+  sur 420 ms, avec 70 ms de décalage entre acteurs.
 - Un clic sur un PNJ adjacent émet `interactRoomNpc`; un clic plus éloigné ne
   tente jamais une destination occupée.
 - Les entrées du plateau sont désactivées pendant `isLoading` ou
@@ -173,12 +188,16 @@ transactionnel : deux appels réussis représentent deux ticks distincts.
 - mode invalide ;
 - réponse et persistance des mouvements ;
 - contact renvoyé puis résolu par le flux existant.
+- interaction physique renvoyant le dialogue Catalog ;
+- choix de dialogue physique résolu sans nœud d'événement.
 
 ### Client
 
 - verrouillage des ticks concurrents ;
 - phase hostile après animation joueur ;
 - clic adjacent sur PNJ ;
+- ouverture du dialogue Catalog et choix via l'API du PNJ physique ;
+- trajet possible à travers une case de PNJ non choisie comme destination ;
 - interpolation ancien → nouveau ;
 - aucune horloge pendant dialogue, événement ou combat.
 

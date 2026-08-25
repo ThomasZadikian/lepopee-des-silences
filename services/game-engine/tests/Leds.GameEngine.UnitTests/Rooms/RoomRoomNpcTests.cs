@@ -118,7 +118,7 @@ public sealed class RoomRoomNpcTests
     }
 
     [Fact]
-    public void MoveParty_ShouldRouteAroundAnOccupiedNpcCell()
+    public void MoveParty_ShouldAllowTransitThroughAnOccupiedNpcCell()
     {
         var room = CreateRoom();
         room.AddRoomNpc(RoomNpc.Create(
@@ -126,7 +126,7 @@ public sealed class RoomRoomNpcTests
 
         var result = room.MoveParty(2, 0);
 
-        result.TraversedCells.Should().NotContain((1, 0));
+        result.TraversedCells.Should().Contain((1, 0));
         (room.Grid.PartyX, room.Grid.PartyY).Should().Be((2, 0));
     }
 

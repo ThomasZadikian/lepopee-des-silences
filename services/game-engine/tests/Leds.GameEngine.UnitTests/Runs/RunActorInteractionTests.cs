@@ -1,5 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Runs.InteractWithRoomNpc;
 using Leds.GameEngine.Application.Protocol;
 using Leds.GameEngine.Domain.Nodes;
@@ -29,9 +31,31 @@ public sealed class RunActorInteractionTests
         var repository = new Mock<IRunRepository>();
         repository.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(run);
+        var catalog = new Mock<ICatalogContentGateway>();
+        catalog.Setup(gateway => gateway.ListNpcDefinitionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new CatalogNpcDefinition(
+                    "npc.majordome",
+                    "Le Majordome",
+                    "Gardien du protocole.",
+                    [], [], [], [],
+                    DialogueGraph: new CatalogNpcDialogueGraph(
+                        "npc.majordome.dialogue",
+                        "1.0",
+                        "seuil",
+                        new Dictionary<string, CatalogNpcDialogueNode>
+                        {
+                            ["seuil"] = new(
+                                "seuil",
+                                "Le Majordome",
+                                ["Vos pieds, je vous prie."],
+                                [])
+                        }))
+            ]);
         var handler = new InteractWithRoomNpcCommandHandler(
             repository.Object,
-            new LocalRuleProtocolEvaluator(Mock.Of<ILocalRuleProvider>()));
+            new LocalRuleProtocolEvaluator(Mock.Of<ILocalRuleProvider>()),
+            catalog.Object);
 
         var response = await handler.Handle(
             new InteractWithRoomNpcCommand(run.Id.Value, npc.Id.Value),
@@ -40,6 +64,8 @@ public sealed class RunActorInteractionTests
         npc.Awareness.Should().Be(NpcAwarenessState.Aware);
         run.ActiveNpcKey.Should().Be("npc.majordome");
         response.Actor.ActorKind.Should().Be("Npc");
+        response.NpcDialogue.Should().NotBeNull();
+        response.NpcDialogue!.Lines.Should().ContainSingle("Vos pieds, je vous prie.");
         repository.Verify(r => r.UpdateAsync(run, It.IsAny<CancellationToken>()), Times.Once);
     }
 

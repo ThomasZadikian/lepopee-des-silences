@@ -71,7 +71,7 @@ const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
 const {
-  isRevealed, nodeAt, isParty, cells, obstacleCells, npcCells, doorCells, isFloor, nodesByCell,
+  isRevealed, nodeAt, isParty, cells, obstacleCells, doorCells, isFloor, nodesByCell,
   surfaceOverrides, decorPlacements,
 } = useGridCells(room, grid);
 
@@ -87,8 +87,8 @@ const {
 } = usePartyTokenPath(room, grid);
 
 const COMBAT_NODE_TYPES = new Set(['Combat', 'Rare', 'Elite', 'RoomBoss', 'FinalBoss']);
-const ACTOR_STEP_MS = 240;
-const ACTOR_STAGGER_MS = 45;
+const ACTOR_STEP_MS = 420;
+const ACTOR_STAGGER_MS = 70;
 type DisplayPosition = { x: number; y: number };
 type ActorTween = DisplayPosition & {
   fromX: number;
@@ -405,9 +405,10 @@ const movementRange = computed(() => {
     gridWidth: g.width,
     gridHeight: g.height,
     elevation: g.elevation,
+    // A neutral NPC is not a transit blocker: the route may cross its cell, while the click
+    // handler still turns that occupied cell into an interaction rather than a destination.
     isWalkable: (x, y) => isFloor(x, y)
-      && !obstacleCells.value.has(`${x},${y}`)
-      && !npcCells.value.has(`${x},${y}`),
+      && !obstacleCells.value.has(`${x},${y}`),
     party: { x: g.partyX, y: g.partyY },
     transitBlockers: blockers,
     contactTriggers: triggers,

@@ -284,6 +284,7 @@ export type AdvanceRoomActorsResponse = {
 export type InteractWithRoomNpcResponse = {
   run: RunDto;
   actor: RoomNpcDto;
+  npcDialogue?: NpcDialogueViewDto | null;
   localRuleNotices: {
     ruleKey: string;
     ruleName: string;

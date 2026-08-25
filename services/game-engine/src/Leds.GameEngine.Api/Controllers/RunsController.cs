@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.AdvanceRoomActors;
+using Leds.GameEngine.Application.Runs.ChooseRoomNpcDialogueChoice;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
@@ -451,6 +452,23 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/rooms/current/npcs/{roomNpcId:guid}/dialogue/choices")]
+    [ProducesResponseType(typeof(ChooseCurrentEventOptionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ChooseCurrentEventOptionResponse>> ChooseRoomNpcDialogueChoice(
+        Guid runId,
+        Guid roomNpcId,
+        [FromBody] RoomNpcDialogueChoiceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new ChooseRoomNpcDialogueChoiceCommand(runId, roomNpcId, request.ChoiceId),
+            cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/ground-items/{groundItemId:guid}/swap")]
     [ProducesResponseType(typeof(SwapGroundItemResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -648,6 +666,7 @@ public sealed record StartRunRequest(Guid PlayerId, int? DifficultyLevel = null)
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 public sealed record AdvanceRoomActorsRequest(string Mode);
+public sealed record RoomNpcDialogueChoiceRequest(string ChoiceId);
 public sealed record SwapGroundItemRequest(Guid HeldItemId);
 public sealed record SetRoomRiskTierRequest(string Tier);
 

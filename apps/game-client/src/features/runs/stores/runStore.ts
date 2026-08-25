@@ -43,8 +43,8 @@ const SUSPENDED_RUN_KEY = 'rpg:suspended_run_id';
 
 // Matches TacticalGridMap's actor interpolation. The per-actor stagger prevents a whole room
 // from moving on the same frame while keeping one logical tick compact.
-const ACTOR_STEP_MS = 240;
-const ACTOR_STAGGER_MS = 45;
+const ACTOR_STEP_MS = 420;
+const ACTOR_STAGGER_MS = 70;
 
 function getSuspendedRunId(): string | null {
   try { return localStorage.getItem(SUSPENDED_RUN_KEY); } catch { return null; }
@@ -74,6 +74,7 @@ export const useRunStore = defineStore('run', () => {
   const npcDialogue = ref<NpcDialogueViewDto | null>(null);
   const npcDialogueEchoes = ref<NarrativeFragmentDto[]>([]);
   const npcDialogueEnded = ref(false);
+  const activeRoomNpcId = ref<string | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
   const isConfirmingRoomExit = ref(false);
@@ -166,6 +167,7 @@ export const useRunStore = defineStore('run', () => {
     npcDialogue.value = null;
     npcDialogueEchoes.value = [];
     npcDialogueEnded.value = false;
+    activeRoomNpcId.value = null;
   }
 
   async function execute(action: () => Promise<void>) {
@@ -336,6 +338,12 @@ export const useRunStore = defineStore('run', () => {
     await execute(async () => {
       const response = await runApi.interactWithRoomNpc(currentRun.value!.id, roomNpcId);
       currentRun.value = response.run;
+      resetNpcDialogue();
+      if (response.npcDialogue) {
+        activeRoomNpcId.value = roomNpcId;
+        npcDialogue.value = response.npcDialogue;
+        npcDialogueEnded.value = !response.npcDialogue.encounterActive;
+      }
       actorInteractionNotice.value = response.localRuleNotices
         .map(notice => notice.message || notice.ruleName)
         .filter(Boolean)
@@ -933,10 +941,16 @@ export const useRunStore = defineStore('run', () => {
     if (!currentRun.value) return;
 
     await execute(async () => {
-      const response = await eventChoiceApi.chooseCurrentEventOption(
-        currentRun.value!.id,
-        { choiceId, optionId: choiceId, eventChoiceId: choiceId },
-      );
+      const response = activeRoomNpcId.value
+        ? await runApi.chooseRoomNpcDialogueChoice(
+            currentRun.value!.id,
+            activeRoomNpcId.value,
+            choiceId,
+          )
+        : await eventChoiceApi.chooseCurrentEventOption(
+            currentRun.value!.id,
+            { choiceId, optionId: choiceId, eventChoiceId: choiceId },
+          );
 
       const run = unwrapRunFromEventChoiceResponse(response);
       const choiceResult = unwrapChoiceResultFromEventChoiceResponse(response);
@@ -965,8 +979,9 @@ export const useRunStore = defineStore('run', () => {
   }
 
   async function continueAfterNpcDialogue() {
+    const wasRoomActorDialogue = activeRoomNpcId.value !== null;
     resetNpcDialogue();
-    await progressRun();
+    if (!wasRoomActorDialogue) await progressRun();
   }
 
   // -------------------------------------------------------------------------
