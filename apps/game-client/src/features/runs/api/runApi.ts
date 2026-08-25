@@ -4,6 +4,7 @@ import type {
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
   GetPermanentItemCandidatesResponse,
+  InteractWithRoomNpcResponse,
   MovePartyResponse,
   ResolveCurrentEventResponse,
   RunResponse,
@@ -110,6 +111,12 @@ export const runApi = {
     return gameEngineApi.post<MovePartyResponse, { targetX: number; targetY: number }>(
       `/api/v2/runs/${runId}/party/move`,
       { targetX, targetY },
+    );
+  },
+
+  interactWithRoomNpc(runId: string, roomNpcId: string) {
+    return gameEngineApi.post<InteractWithRoomNpcResponse>(
+      `/api/v2/runs/${runId}/rooms/current/npcs/${roomNpcId}/interact`,
     );
   },
 

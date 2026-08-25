@@ -54,23 +54,23 @@ public sealed class RoomRoomNpcTests
     }
 
     [Fact]
-    public void NoticeRoomNpc_ShouldEscalateThatNpcToAware()
+    public void InteractWithRoomNpc_ShouldEscalateAdjacentNpcToAware()
     {
         var room = CreateRoom();
-        var npc = RoomNpc.Create("majordome", x: 3, y: 3, NpcBehaviorArchetype.Guardian, awarenessRadius: 0);
+        var npc = RoomNpc.Create("majordome", x: 1, y: 0, NpcBehaviorArchetype.Guardian, awarenessRadius: 0);
         room.AddRoomNpc(npc);
 
-        room.NoticeRoomNpc(npc.Id);
+        room.InteractWithRoomNpc(npc.Id);
 
         room.RoomNpcs.Single().Awareness.Should().Be(NpcAwarenessState.Aware);
     }
 
     [Fact]
-    public void NoticeRoomNpc_ShouldThrow_WhenNpcDoesNotBelongToRoom()
+    public void InteractWithRoomNpc_ShouldThrow_WhenNpcDoesNotBelongToRoom()
     {
         var room = CreateRoom();
 
-        var act = () => room.NoticeRoomNpc(RoomNpcId.New());
+        var act = () => room.InteractWithRoomNpc(RoomNpcId.New());
 
         act.Should().Throw<DomainException>();
     }

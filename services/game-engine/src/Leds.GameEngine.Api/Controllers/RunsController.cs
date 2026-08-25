@@ -11,6 +11,7 @@ using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.GetUpcomingRooms;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.InteractWithRoomNpc;
 using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
@@ -391,6 +392,22 @@ public sealed class RunsController : ControllerBase
     {
         var command = new MovePartyCommand(runId, request.TargetX, request.TargetY);
         var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/rooms/current/npcs/{roomNpcId:guid}/interact")]
+    [ProducesResponseType(typeof(InteractWithRoomNpcResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<InteractWithRoomNpcResponse>> InteractWithRoomNpc(
+        Guid runId,
+        Guid roomNpcId,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new InteractWithRoomNpcCommand(runId, roomNpcId),
+            cancellationToken);
 
         return Ok(response);
     }

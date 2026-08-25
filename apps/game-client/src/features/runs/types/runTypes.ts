@@ -120,6 +120,7 @@ export type RoomGridDto = {
 export type CellDecorDto = {
   x: number;
   y: number;
+  actorKind: 'Npc';
   key: string;
 };
 
@@ -252,6 +253,17 @@ export type MovePartyResponse = {
   run: RunDto;
   collectedItemIds: string[];
   blockedItemIds: string[];
+};
+
+export type InteractWithRoomNpcResponse = {
+  run: RunDto;
+  actor: RoomNpcDto;
+  localRuleNotices: {
+    ruleKey: string;
+    ruleName: string;
+    outcome: string;
+    message?: string | null;
+  }[];
 };
 
 export type SwapGroundItemResponse = {

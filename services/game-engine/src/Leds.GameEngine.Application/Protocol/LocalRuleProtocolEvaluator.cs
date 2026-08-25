@@ -94,6 +94,33 @@ public sealed class LocalRuleProtocolEvaluator
         return outcomes;
     }
 
+    public IReadOnlyList<LocalRuleTriggerOutcome> EvaluateNpcInteraction(Room room, string npcCatalogKey)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+        if (string.IsNullOrWhiteSpace(npcCatalogKey) || room.LocalRuleStates.Count == 0)
+            return [];
+
+        var outcomes = new List<LocalRuleTriggerOutcome>();
+        foreach (var state in room.LocalRuleStates)
+        {
+            var rule = _provider.GetByKey(state.LocalRuleKey);
+            if (rule is null || rule.ConditionType != LocalRuleConditionType.NpcInteraction)
+                continue;
+
+            var result = LocalRuleEvaluator.Evaluate(
+                rule,
+                state,
+                LocalRuleTriggerContext.ForInteraction(npcCatalogKey));
+            if (result.Outcome == LocalRuleEvaluationOutcome.NotApplicable)
+                continue;
+
+            ApplyMechanicalConsequences(room, result.NewConsequences);
+            outcomes.Add(new LocalRuleTriggerOutcome(rule.Key, rule.Name, result));
+        }
+
+        return outcomes;
+    }
+
     private static void ApplyMechanicalConsequences(Room room, IReadOnlyList<LocalRuleConsequence> consequences)
     {
         foreach (var consequence in consequences)

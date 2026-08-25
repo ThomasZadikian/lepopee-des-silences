@@ -1,10 +1,11 @@
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Actors;
 
 namespace Leds.GameEngine.Domain.Combats;
 
-public sealed class Combatant
+public sealed class Combatant : IActorInstance
 {
     private Combatant(
         CombatantId id,
@@ -56,6 +57,13 @@ public sealed class Combatant
     public string SourceKey { get; }
     public string SourceDefinitionKey { get; }
     public Guid? CharacterInstanceId { get; }
+    public Guid ActorInstanceId => CharacterInstanceId ?? Id.Value;
+    public string ActorDefinitionKey => SourceDefinitionKey;
+    public ActorKind ActorKind => Side == CombatantSide.Enemy
+        ? global::Leds.GameEngine.Domain.Actors.ActorKind.Enemy
+        : SourceDefinitionKey.Contains("player.self", StringComparison.OrdinalIgnoreCase)
+            ? global::Leds.GameEngine.Domain.Actors.ActorKind.Protagonist
+            : global::Leds.GameEngine.Domain.Actors.ActorKind.Companion;
     public string DisplayName { get; }
     public CombatantSide Side { get; }
     public string Archetype { get; }

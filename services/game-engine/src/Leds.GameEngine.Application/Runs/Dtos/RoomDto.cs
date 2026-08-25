@@ -205,6 +205,7 @@ public sealed record RoomNpcDto(
     string CatalogNpcKey,
     int X,
     int Y,
+    string ActorKind,
     string Behavior,
     string Awareness)
 {
@@ -213,6 +214,7 @@ public sealed record RoomNpcDto(
         npc.CatalogNpcKey,
         npc.X,
         npc.Y,
+        npc.ActorKind.ToString(),
         npc.Behavior.ToString(),
         npc.Awareness.ToString());
 }

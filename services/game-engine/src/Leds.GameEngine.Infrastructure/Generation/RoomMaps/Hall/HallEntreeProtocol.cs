@@ -10,10 +10,9 @@ namespace Leds.GameEngine.Infrastructure.Generation.RoomMaps.Hall;
 /// this is the complete authored set, not a partial cut of a longer list.
 /// <para>
 /// Both are <see cref="LocalRuleConditionType.ZoneEntry"/>, not NpcInteraction: the Émotions
-/// rule's "ne pas parler aux Émotions" half needs a "talk to a RoomNpc" interaction path that
-/// doesn't exist yet anywhere in the Application layer (<see cref="Domain.Rooms.Room.NoticeRoomNpc"/>
-/// has no caller today) — building that is a separate chantier, not a byproduct of wiring the
-/// protocol engine. The "ne pas s'approcher" half is fully covered by the threshold zone below.
+/// rule's "ne pas parler aux Émotions" half can now use the generic RoomNpc interaction path,
+/// but remains unauthored until its exact NPC target is available; the "ne pas s'approcher"
+/// half is covered by the threshold zone below.
 /// </para>
 /// <para>
 /// Consequence ladders stay faithful to the SFD's own wording (attention → attitude/relocation →

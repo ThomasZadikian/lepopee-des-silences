@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Actors;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Domain.Npcs;
@@ -18,7 +19,7 @@ namespace Leds.GameEngine.Domain.Npcs;
 /// can join against a NpcRelationship/dialogue graph when this NPC is actually approached.
 /// </para>
 /// </summary>
-public sealed class RoomNpc
+public sealed class RoomNpc : IActorInstance
 {
     // BALANCE KNOB — how close the party must be (Manhattan distance) before an Unaware NPC can
     // notice it at all. Line of sight (see RefreshAwareness) still gates the actual transition.
@@ -66,6 +67,12 @@ public sealed class RoomNpc
     }
 
     public RoomNpcId Id { get; }
+
+    public Guid ActorInstanceId => Id.Value;
+
+    public string ActorDefinitionKey => CatalogNpcKey;
+
+    public ActorKind ActorKind => global::Leds.GameEngine.Domain.Actors.ActorKind.Npc;
 
     /// <summary>Catalog NPC this presence embodies — joins to dialogue/relationship state, never
     /// held by reference (see class remarks).</summary>

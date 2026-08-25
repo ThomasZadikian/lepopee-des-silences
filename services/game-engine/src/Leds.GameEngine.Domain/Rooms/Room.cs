@@ -431,12 +431,18 @@ public sealed class Room
         _roomNpcs.Add(npc);
     }
 
-    /// <summary>Registers a direct interaction with a room NPC — see <see cref="RoomNpc.NoticeParty"/>.</summary>
-    public void NoticeRoomNpc(RoomNpcId id)
+    /// <summary>Registers a spatially valid direct interaction and returns the actor to the Run.</summary>
+    public RoomNpc InteractWithRoomNpc(RoomNpcId id)
     {
         var npc = _roomNpcs.FirstOrDefault(n => n.Id == id)
             ?? throw new DomainException("Room NPC does not belong to this room.");
+
+        var distance = Math.Abs(npc.X - Grid.PartyX) + Math.Abs(npc.Y - Grid.PartyY);
+        if (distance > 1)
+            throw new DomainException("The party must stand next to a room NPC to interact.");
+
         npc.NoticeParty();
+        return npc;
     }
 
     /// <summary>
