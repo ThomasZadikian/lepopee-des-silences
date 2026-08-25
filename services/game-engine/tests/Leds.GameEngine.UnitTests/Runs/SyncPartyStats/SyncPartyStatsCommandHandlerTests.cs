@@ -16,7 +16,7 @@ using Moq;
 namespace Leds.GameEngine.UnitTests.Runs.SyncPartyStats;
 
 /// <summary>
-/// Stat-point "Valider les choix" mid-run resync — re-reads the freshest stat
+/// Equipment mid-run resync — re-reads the freshest effective stat
 /// allocation from player-service and re-applies it to both the protagonist
 /// (<see cref="Run.PlayerState"/> + <see cref="Run.Attack"/>/etc) and every
 /// companion's <see cref="RunCharacterSnapshot"/>.

@@ -288,18 +288,8 @@ public sealed class PlayerProfile
     }
 
     /// <summary>
-    /// Awards permanent stat points. Profile-level (not character-scoped) —
-    /// points aren't earned per-character.
-    /// </summary>
-    public void AwardStatPoint(DateTimeOffset now, int amount = 1)
-    {
-        Progression.AwardStatPoint(amount);
-        Touch(now);
-    }
-
-    /// <summary>
     /// Awards "Éclats du Palais", the player's persistent currency (John's rare offering).
-    /// Profile-level, mirrors AwardStatPoint.
+    /// Profile-level persistent currency operation.
     /// </summary>
     public void AwardCurrency(DateTimeOffset now, int amount)
     {
@@ -339,20 +329,6 @@ public sealed class PlayerProfile
             Touch(now);
 
         return succeeded;
-    }
-
-    public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
-    {
-        if (Progression.UnspentStatPoints <= 0)
-            throw new DomainException("No stat points available to spend.");
-
-        // Resolve the character before decrementing so an invalid characterId
-        // never burns a point.
-        var character = Roster.GetRequired(characterId);
-
-        character.ApplyStatIncrement(kind);
-        Progression.SpendStatPoint();
-        Touch(now);
     }
 
     /// <summary>

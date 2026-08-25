@@ -133,8 +133,8 @@ public sealed class RunCharacterStatSnapshot
     }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix"): overwrites every field with
-    /// the freshly-computed values (see <see cref="Run.ReplaceCharacterStats"/>).
+    /// Equipment resync: overwrites every field with the freshly-computed effective
+    /// values (see <see cref="Run.ReplaceCharacterStats"/>).
     /// Same validation as <see cref="Create"/>.
     /// </summary>
     public void ReplaceStats(

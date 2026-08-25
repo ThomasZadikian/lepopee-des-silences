@@ -10,11 +10,10 @@ using MediatR;
 namespace Leds.GameEngine.Application.Runs.SyncPartyStats;
 
 /// <summary>
-/// Stat-point mid-run resync ("Valider les choix"): re-reads the freshest stat
-/// allocation from player-service and re-applies StartRun's effective-stat
-/// computation (via <see cref="PlayerStatMerger"/>) to every character already in
-/// this run's roster, so a mid-run stat-point spend takes effect in the next combat
-/// instead of only on the next Run. Mirrors <c>SyncPartySkillsCommandHandler</c>
+/// Equipment mid-run resync: re-reads the current base stats and equipment from
+/// player-service and re-applies StartRun's effective-stat computation (via
+/// <see cref="PlayerStatMerger"/>) to every character already in this run's roster.
+/// Mirrors <c>SyncPartySkillsCommandHandler</c>
 /// exactly, kept as a separate command so the already-shipped skill resync isn't touched.
 /// </summary>
 public sealed class SyncPartyStatsCommandHandler

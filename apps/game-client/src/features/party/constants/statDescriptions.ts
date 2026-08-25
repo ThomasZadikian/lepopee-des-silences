@@ -45,21 +45,6 @@ export function statValue(stats: PlayerCharacterStatsView | undefined, stat: Pla
   return stats ? stats[statValueKeys[stat]] ?? 0 : 0;
 }
 
-// Mirrors PlayerCharacterStatBlock.WithIncrementedStat (services/player) — Vitality
-// and Mana grant a bigger jump per point than the other stats.
-export const statPointIncrements: Record<PlayerStatKind, number> = {
-  MaxVitality:   10,
-  AttackPower:   1,
-  Defense:       1,
-  StartingGuard: 1,
-  Speed:         1,
-  Initiative:    1,
-  Focus:         1,
-  Mana:          5,
-  MagicAttack:   1,
-  MagicDefense:  1,
-};
-
 // Purely cosmetic per-stat ceiling used to normalize the radar diagram's 12 axes to
 // a common 0-1 scale (each stat has a wildly different natural range). Not a game
 // rule and not enforced anywhere — just a reasonable "comfortably filled" reference

@@ -266,7 +266,7 @@ public sealed class StartRunCommandHandlerTests
     {
         // Regression test: Run.StartNew used to hardcode PlayerState's starting
         // Mana/Charge at 0 regardless of the character's actual Mana/Charge stat —
-        // silently discarding any stat points invested via SpendStatPointCommand.
+        // silently discarding any persisted effective base-stat history.
         var playerId = Guid.NewGuid();
         var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
 

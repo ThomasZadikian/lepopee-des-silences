@@ -182,10 +182,8 @@ public sealed class PlayerRuntimeState
     }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix"): raises the vitality/mana caps
-    /// and tops both up to the new values, and overwrites Charge — allocating a stat
-    /// point always "levels up" the resource instead of merely raising a ceiling the
-    /// player would have to refill through play.
+    /// Equipment resync: replaces the vitality/mana caps with the effective values,
+    /// tops both resources up, and overwrites Charge.
     /// </summary>
     public void ReplaceEffectiveStats(int maxVitality, int maxMana, int charge)
     {

@@ -106,45 +106,6 @@ public sealed class PlayerCharacterStatBlockTests
         act.Should().Throw<DomainException>();
     }
 
-    [Theory]
-    [InlineData(PlayerStatKind.MaxVitality)]
-    [InlineData(PlayerStatKind.AttackPower)]
-    [InlineData(PlayerStatKind.Defense)]
-    [InlineData(PlayerStatKind.StartingGuard)]
-    [InlineData(PlayerStatKind.Speed)]
-    [InlineData(PlayerStatKind.Initiative)]
-    [InlineData(PlayerStatKind.Focus)]
-    [InlineData(PlayerStatKind.Mana)]
-    [InlineData(PlayerStatKind.MagicAttack)]
-    [InlineData(PlayerStatKind.MagicDefense)]
-    public void WithIncrementedStat_ShouldOnlyIncrementTheSelectedStat(PlayerStatKind kind)
-    {
-        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
-        var incremented = original.WithIncrementedStat(kind);
-
-        var before = Values(original);
-        var after = Values(incremented);
-        var expectedIncrement = kind switch
-        {
-            PlayerStatKind.MaxVitality => PlayerCharacterStatBlock.MaxVitalityIncrementPerPoint,
-            PlayerStatKind.Mana => PlayerCharacterStatBlock.ManaIncrementPerPoint,
-            _ => 1
-        };
-
-        after[kind].Should().Be(before[kind] + expectedIncrement);
-        foreach (var untouched in before.Keys.Where(candidate => candidate != kind))
-            after[untouched].Should().Be(before[untouched]);
-    }
-
-    [Fact]
-    public void WithIncrementedStat_ShouldRejectUnknownKind()
-    {
-        var act = () => PlayerCharacterStatBlock.CreateDefaultPorteur()
-            .WithIncrementedStat((PlayerStatKind)999);
-
-        act.Should().Throw<DomainException>();
-    }
-
     private static PlayerCharacterStatBlock Create(
         int maxVitality = 100,
         int attackPower = 12,
@@ -172,18 +133,4 @@ public sealed class PlayerCharacterStatBlockTests
             magicDefense,
             movement);
 
-    private static Dictionary<PlayerStatKind, int> Values(PlayerCharacterStatBlock stats) =>
-        new()
-        {
-            [PlayerStatKind.MaxVitality] = stats.MaxVitality,
-            [PlayerStatKind.AttackPower] = stats.AttackPower,
-            [PlayerStatKind.Defense] = stats.Defense,
-            [PlayerStatKind.StartingGuard] = stats.StartingGuard,
-            [PlayerStatKind.Speed] = stats.Speed,
-            [PlayerStatKind.Initiative] = stats.Initiative,
-            [PlayerStatKind.Focus] = stats.Focus,
-            [PlayerStatKind.Mana] = stats.Mana,
-            [PlayerStatKind.MagicAttack] = stats.MagicAttack,
-            [PlayerStatKind.MagicDefense] = stats.MagicDefense,
-        };
 }

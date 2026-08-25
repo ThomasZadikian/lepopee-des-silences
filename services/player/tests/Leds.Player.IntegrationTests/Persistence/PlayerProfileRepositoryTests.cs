@@ -86,27 +86,6 @@ public sealed class PlayerProfileRepositoryTests
     }
 
     [Fact]
-    public async Task SaveAsync_ShouldPersistStatPointsInvested_AndRehydrateIt()
-    {
-        var (context, _) = _fixture.CreateContext();
-        await using var _ = context;
-        var repository = new EfPlayerProfileRepository(context);
-
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
-        var character = profile.Roster.Characters.Single();
-        var now = DateTimeOffset.UtcNow;
-        profile.AwardStatPoint(now, amount: 2);
-        profile.SpendStatPoint(character.Id, PlayerStatKind.AttackPower, now);
-        profile.SpendStatPoint(character.Id, PlayerStatKind.Defense, now);
-        await repository.SaveAsync(profile, CancellationToken.None);
-
-        var reloaded = await repository.GetByIdAsync(profile.Id, CancellationToken.None);
-
-        reloaded.Should().NotBeNull();
-        reloaded!.Roster.Characters.Single().StatPointsInvested.Should().Be(2);
-    }
-
-    [Fact]
     public async Task SaveAsync_ShouldNotDuplicateOrThrow_WhenSavedTwiceWithSamePermanentItem()
     {
         var (context, connectionString) = _fixture.CreateContext();

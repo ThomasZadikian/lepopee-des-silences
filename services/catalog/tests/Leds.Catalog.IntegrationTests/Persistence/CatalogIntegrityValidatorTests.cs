@@ -142,6 +142,32 @@ public sealed class CatalogIntegrityValidatorTests
     }
 
     [Fact]
+    public async Task Validate_should_reject_active_legacy_stat_point_offerings()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+
+        var npc = await context.NpcDefinitions.FirstAsync();
+        npc.OfferingsJson = """
+            [{
+              "key": "offer.legacy-stat-point",
+              "kind": "StatPoint",
+              "targetKey": null,
+              "amount": 1,
+              "isMajor": false,
+              "unlockConditions": []
+            }]
+            """;
+        await context.SaveChangesAsync();
+
+        var act = () => new CatalogIntegrityValidator(context).ValidateAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*retired permanent stat-point progression*");
+    }
+
+    [Fact]
     public async Task Validate_should_fail_when_active_story_entry_step_is_missing()
     {
         await using var context = _fixture.CreateContext().Context;

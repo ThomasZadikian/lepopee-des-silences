@@ -775,8 +775,8 @@ public sealed class Run
     public int MagicDefense { get; private set; }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix"): applies the protagonist's
-    /// freshly-computed effective stats. MaxHp/CurrentHp are kept in sync with
+    /// Equipment resync: applies the protagonist's freshly-computed effective stats.
+    /// MaxHp/CurrentHp are kept in sync with
     /// <see cref="PlayerState"/>'s vitality (the value combat actually reads) so the
     /// two representations don't drift.
     /// </summary>
@@ -806,8 +806,8 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Stat-point mid-run resync ("Valider les choix") for a companion (or the
-    /// protagonist's own mirror entry, index 0): replaces the matching
+    /// Equipment resync for a companion (or the protagonist's own mirror entry,
+    /// index 0): replaces the matching
     /// <see cref="RunCharacterSnapshot"/>'s stat block.
     /// </summary>
     public void ReplaceCharacterStats(
@@ -2133,10 +2133,6 @@ public sealed class Run
         }
     }
 
-    /// <summary>"Loi de l'Oubli Partiel" floor-end payout: the number of skill points
-    /// the team learns from having forgotten a skill for the floor.</summary>
-    public const int SkillForgottenFloorEndStatPoints = 8;
-
     /// <summary>"Loi du Prêteur" floor-end clawback: the fraction of the player's total
     /// currency the Palais reclaims (SFD: "25% du total détenu — intérêts compris").</summary>
     public const double PreteurClawbackFraction = 0.25;
@@ -2151,7 +2147,6 @@ public sealed class Run
     public FloorEndModifierConsumptionResult ConsumeFloorEndModifiers()
     {
         var now = DateTime.UtcNow;
-        var oubliPartielPayoutDue = false;
         var preteurClawbackDue = false;
 
         foreach (var modifier in _runModifiers
@@ -2159,7 +2154,6 @@ public sealed class Run
         {
             if (modifier.Type == RunModifierType.SkillForgotten)
             {
-                oubliPartielPayoutDue = true;
                 ForgottenSkillKey = null;
             }
             else if (modifier.Type == RunModifierType.CurrencyGainBonusPercent)
@@ -2173,7 +2167,7 @@ public sealed class Run
             modifier.Consume(now);
         }
 
-        return new FloorEndModifierConsumptionResult(oubliPartielPayoutDue, preteurClawbackDue);
+        return new FloorEndModifierConsumptionResult(preteurClawbackDue);
     }
 
     private void AddRunItemFromPayload(string payloadKey)
@@ -3099,14 +3093,12 @@ public sealed class Run
         Guid[]? RunModifierIds = null);
 
     /// <summary>
-    /// Signals which floor-end payouts an Application-layer handler must perform via the
-    /// player-profile gateway after a room transition crosses a floor boundary. See
+    /// Signals which floor-end currency operation an Application-layer handler must perform via
+    /// the player-profile gateway after a room transition crosses a floor boundary. See
     /// <see cref="ConsumeFloorEndModifiers"/>/<see cref="MoveToNextRoom"/>.
     /// </summary>
-    public readonly record struct FloorEndModifierConsumptionResult(
-        bool OubliPartielPayoutDue,
-        bool PreteurClawbackDue)
+    public readonly record struct FloorEndModifierConsumptionResult(bool PreteurClawbackDue)
     {
-        public static readonly FloorEndModifierConsumptionResult None = new(false, false);
+        public static readonly FloorEndModifierConsumptionResult None = new(false);
     }
 }

@@ -103,35 +103,10 @@ public sealed class PlayerCharacterStatBlock
             mana: 85,
             charge: 0,
             // Same 2:1 ratio as AttackPower/Defense, halved since the starter kit
-            // (skill.basic.strike/guard) is physical-only — a magic baseline of 0
-            // made Magic Attack/Defense inert until stat points were spent on them.
+            // (skill.basic.strike/guard) is physical-only.
             magicAttack: 6,
             magicDefense: 3,
             movement: 4);
     }
 
-    // Per-point increment for each allocatable stat. Most stats grant +1; Vitality
-    // and Mana grant a larger jump since one raw point of PV/Mana barely moves the
-    // needle otherwise.
-    public const int MaxVitalityIncrementPerPoint = 10;
-    public const int ManaIncrementPerPoint = 5;
-    private const int DefaultIncrementPerPoint = 1;
-
-    public PlayerCharacterStatBlock WithIncrementedStat(PlayerStatKind kind)
-    {
-        return kind switch
-        {
-            PlayerStatKind.MaxVitality => Create(MaxVitality + MaxVitalityIncrementPerPoint, AttackPower, Defense, StartingGuard, Speed, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + DefaultIncrementPerPoint, Defense, StartingGuard, Speed, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + DefaultIncrementPerPoint, StartingGuard, Speed, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + DefaultIncrementPerPoint, Speed, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + DefaultIncrementPerPoint, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + DefaultIncrementPerPoint, Focus, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Focus + DefaultIncrementPerPoint, Mana, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Focus, Mana + ManaIncrementPerPoint, Charge, MagicAttack, MagicDefense, Movement),
-            PlayerStatKind.MagicAttack => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Focus, Mana, Charge, MagicAttack + DefaultIncrementPerPoint, MagicDefense, Movement),
-            PlayerStatKind.MagicDefense => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Focus, Mana, Charge, MagicAttack, MagicDefense + DefaultIncrementPerPoint, Movement),
-            _ => throw new DomainException($"Unknown stat kind '{kind}'.")
-        };
-    }
 }

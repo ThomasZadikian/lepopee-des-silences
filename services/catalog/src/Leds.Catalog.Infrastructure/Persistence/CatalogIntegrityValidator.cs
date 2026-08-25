@@ -129,6 +129,8 @@ public sealed class CatalogIntegrityValidator
 
             var offerings = Deserialize<NpcOffering>(
                 errors, $"NPC '{npc.Key}' OfferingsJson", npc.OfferingsJson ?? "[]");
+            foreach (var offering in offerings.Where(offering => offering.Kind == NpcOfferingKind.StatPoint))
+                errors.Add($"NPC '{npc.Key}': offering '{offering.Key}' uses retired permanent stat-point progression.");
             foreach (var offering in offerings.Where(offering => offering.Kind == NpcOfferingKind.Companion))
             {
                 if (string.IsNullOrWhiteSpace(offering.TargetKey) || offering.CompanionKit is null)

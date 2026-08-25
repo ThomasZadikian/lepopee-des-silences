@@ -6,7 +6,7 @@ using Leds.GameEngine.UnitTests.Common.Factories;
 namespace Leds.GameEngine.UnitTests.Runs;
 
 /// <summary>
-/// Stat-point mid-run resync ("Valider les choix") — <see cref="Run.ReplacePlayerStats"/>
+/// Equipment mid-run resync — <see cref="Run.ReplacePlayerStats"/>
 /// (protagonist) and <see cref="Run.ReplaceCharacterStats"/> (companions).
 /// </summary>
 public sealed class RunReplaceStatsTests
