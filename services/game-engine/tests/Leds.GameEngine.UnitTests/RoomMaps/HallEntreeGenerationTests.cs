@@ -146,18 +146,15 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
-    public async Task GenerateHall_ShouldHaveExactlyOneReachableBossNode()
+    public async Task GenerateHall_ShouldNotInventABoss_WhenCatalogDeclaresNone()
     {
         var room = await GenerateHallAsync();
 
-        room.Nodes.Should().ContainSingle(n => n.IsBoss);
-        var boss = room.Nodes.Single(n => n.IsBoss);
-        boss.Lane.Should().Be(HallEntreeLayout.BossX);
-        boss.Row.Should().Be(HallEntreeLayout.BossY);
-
-        var route = room.Grid.FindPath(boss.Lane, boss.Row);
-        route.Should().NotBeNull("the boss must be reachable so the room can never soft-lock");
-        (room.Grid.MovementBudget - route!.Value.Cost).Should().BeGreaterThan(0);
+        room.BossProfile.Should().BeNull();
+        room.Nodes.Should().NotContain(n => n.IsBoss);
+        room.Nodes.Should().ContainSingle(n =>
+            n.Lane == HallEntreeLayout.BossX && n.Row == HallEntreeLayout.BossY)
+            .Which.EventType.Should().Be(Leds.GameEngine.Domain.Nodes.NodeEventType.Event);
     }
 
     [Fact]

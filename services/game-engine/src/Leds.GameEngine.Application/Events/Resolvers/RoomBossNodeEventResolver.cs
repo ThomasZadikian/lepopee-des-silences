@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 
 namespace Leds.GameEngine.Application.Events.Resolvers;
@@ -10,10 +11,13 @@ public sealed class RoomBossNodeEventResolver : INodeEventResolver
 
     public NodeEventResolutionResult Resolve(NodeEventResolutionContext context)
     {
+        var boss = context.Room.BossProfile
+            ?? throw new DomainException("A boss encounter requires an authored boss profile.");
+
         return NodeEventResolutionResult.Create(
             NodeEventResolutionKind.RoomBossEncounterStarted,
-            context.Room.BossProfile.Name,
-            $"Le boss de la pièce se manifeste : {context.Room.BossProfile.Name}.",
+            boss.Name,
+            $"Le boss de la pièce se manifeste : {boss.Name}.",
             narrativeFragments: new[]
             {
                 new NarrativeFragmentDto(

@@ -28,6 +28,9 @@ public static class RunPersistenceMapper
             Id = run.Id.Value,
             PlayerId = run.PlayerId,
             Status = run.Status.ToString(),
+            Outcome = run.Outcome?.ToString(),
+            Revision = run.Revision,
+            TechnicalRecoveryState = run.TechnicalRecoveryState.ToString(),
             Seed = run.Seed,
             GeneratorVersion = run.GeneratorVersion,
             MarkovMatrixVersion = run.MarkovMatrixVersion,
@@ -217,11 +220,11 @@ public static class RunPersistenceMapper
             RoomType = room.RoomType.ToString(),
             PalaceState = room.PalaceState.ToString(),
             Theme = room.Theme,
-            BossId = room.BossProfile.BossId,
-            BossName = room.BossProfile.Name,
-            BossRoomType = room.BossProfile.RoomType.ToString(),
-            BossDangerHint = room.BossProfile.DangerHint,
-            BossEnemyTemplateKey = room.BossProfile.EnemyTemplateKey,
+            BossId = room.BossProfile?.BossId,
+            BossName = room.BossProfile?.Name,
+            BossRoomType = room.BossProfile?.RoomType.ToString(),
+            BossDangerHint = room.BossProfile?.DangerHint,
+            BossEnemyTemplateKey = room.BossProfile?.EnemyTemplateKey,
             State = room.State.ToString(),
             CurrentNodeDepth = room.CurrentNodeDepth,
             MaxNodeDepth = room.MaxNodeDepth,
@@ -515,13 +518,15 @@ public static class RunPersistenceMapper
             ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)
             : null;
 
+        var lifecycle = NormalizeLifecycle(entity.Status, entity.Outcome);
+
        var run = Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
             entity.Seed,
             entity.GeneratorVersion,
             entity.MarkovMatrixVersion,
-            Enum.Parse<RunStatus>(entity.Status),
+            lifecycle.Status,
             new RoomId(entity.CurrentRoomId),
             entity.ActiveCombatId.HasValue ? new CombatId(entity.ActiveCombatId.Value) : null,
             entity.PendingRewardOfferId.HasValue ? new RewardOfferId(entity.PendingRewardOfferId.Value) : null,
@@ -568,6 +573,11 @@ public static class RunPersistenceMapper
             suspendedSevereLawModifierIds: string.IsNullOrWhiteSpace(entity.SuspendedSevereLawModifierIdsJson)
                 ? null
                 : JsonSerializer.Deserialize<Guid[]>(entity.SuspendedSevereLawModifierIdsJson),
+            outcome: lifecycle.Outcome,
+            revision: entity.Revision,
+            technicalRecoveryState: Enum.TryParse<TechnicalRecoveryState>(entity.TechnicalRecoveryState, out var recoveryState)
+                ? recoveryState
+                : TechnicalRecoveryState.None,
             reputationGainBonusPercent: entity.ReputationGainBonusPercent,
             himLitProtectionEnabled: entity.HimLitProtectionEnabled,
             healingBonusPercent: entity.HealingBonusPercent,
@@ -600,12 +610,14 @@ public static class RunPersistenceMapper
         var roomNpcs = entity.RoomNpcs.Select(ToDomain).ToList();
         var localRuleStates = entity.LocalRuleStates.Select(ToDomain).ToList();
 
-        var bossProfile = RoomBossProfile.Create(
-            entity.BossId,
-            entity.BossName,
-            Enum.Parse<RoomType>(entity.BossRoomType),
-            entity.BossDangerHint,
-            entity.BossEnemyTemplateKey);
+        var bossProfile = string.IsNullOrWhiteSpace(entity.BossId)
+            ? null
+            : RoomBossProfile.Create(
+                entity.BossId,
+                entity.BossName ?? throw new InvalidOperationException("Boss name is missing."),
+                Enum.Parse<RoomType>(entity.BossRoomType ?? throw new InvalidOperationException("Boss room type is missing.")),
+                entity.BossDangerHint ?? throw new InvalidOperationException("Boss danger hint is missing."),
+                entity.BossEnemyTemplateKey ?? throw new InvalidOperationException("Boss enemy template key is missing."));
 
         var grid = RoomGrid.Rehydrate(
             entity.GridWidth,
@@ -1192,5 +1204,27 @@ public static class RunPersistenceMapper
         string Name,
         string Version,
         string[] Domains);
+
+    private static (RunStatus Status, RunOutcome? Outcome) NormalizeLifecycle(
+        string persistedStatus,
+        string? persistedOutcome)
+    {
+        if (Enum.TryParse<RunOutcome>(persistedOutcome, ignoreCase: true, out var explicitOutcome))
+            return (RunStatus.Resolved, explicitOutcome);
+
+        return persistedStatus switch
+        {
+            nameof(RunStatus.Completed) => (RunStatus.Resolved, RunOutcome.Success),
+            nameof(RunStatus.Failed) => (RunStatus.Resolved, RunOutcome.Defeat),
+            nameof(RunStatus.Abandoned) => (RunStatus.Resolved, RunOutcome.Abandon),
+            nameof(RunStatus.Created) or nameof(RunStatus.RoomResolved) or
+                nameof(RunStatus.BossReached) or nameof(RunStatus.Interlude)
+                => (RunStatus.Active, null),
+            _ when Enum.TryParse<RunStatus>(persistedStatus, ignoreCase: true, out var status)
+                => (status, null),
+            _ => throw new InvalidOperationException(
+                $"Persisted run status '{persistedStatus}' is not supported.")
+        };
+    }
 
 }

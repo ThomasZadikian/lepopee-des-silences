@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Leds.GameEngine.Application.Runs.ChallengeBossRemotely;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
@@ -537,20 +536,6 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new EnterGridNodeCommand(runId, nodeId);
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
-    }
-
-    [HttpPost("{runId:guid}/rooms/current/challenge-boss")]
-    [ProducesResponseType(typeof(ChallengeBossRemotelyResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<ChallengeBossRemotelyResponse>> ChallengeBossRemotely(
-        Guid runId,
-        CancellationToken cancellationToken)
-    {
-        var command = new ChallengeBossRemotelyCommand(runId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

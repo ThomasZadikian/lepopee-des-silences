@@ -267,7 +267,8 @@ public sealed class RunTests
 
         run.CompleteRun(endedAt);
 
-        run.Status.Should().Be(RunStatus.Completed);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Success);
         run.EndedAt.Should().Be(endedAt);
     }
 
@@ -294,7 +295,8 @@ public sealed class RunTests
 
         run.FailRun(endedAt);
 
-        run.Status.Should().Be(RunStatus.Failed);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Defeat);
         run.EndedAt.Should().Be(endedAt);
     }
 
@@ -321,7 +323,8 @@ public sealed class RunTests
 
         run.Abandon(endedAt);
 
-        run.Status.Should().Be(RunStatus.Abandoned);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Abandon);
         run.EndedAt.Should().Be(endedAt);
     }
 

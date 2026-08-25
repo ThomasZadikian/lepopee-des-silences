@@ -83,11 +83,8 @@ export type RoomClimateStateDto = string | RoomClimateDto;
 export type RoomGridDto = {
   width: number;
   height: number;
-  movementBudget: number;
-  movementBudgetRemaining: number;
   partyX: number;
   partyY: number;
-  canChallengeBossRemotely: boolean;
   /** Fog-of-war revealed cells, each as [x, y]. */
   revealedCells: [number, number][];
   /** Flat, row-major (index = y*width+x), one value 0..3 per cell. Sent for the whole grid,
@@ -159,7 +156,7 @@ export type RoomDto = {
   currentNodeDepth: number;
   maxNodeDepth: number;
   totalNodeCount: number;
-  bossPreview: BossPreviewDto;
+  bossPreview: BossPreviewDto | null;
   nodes: NodeDto[];
   availableNodes: NodeDto[];
   /** Positioned NPCs currently visible in this room — empty until a room generator actually

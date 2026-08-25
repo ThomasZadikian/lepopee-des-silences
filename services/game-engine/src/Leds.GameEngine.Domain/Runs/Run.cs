@@ -244,7 +244,10 @@ public sealed class Run
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
         string? forgottenSkillKey = null,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
+        RunOutcome? outcome = null,
+        long revision = 0,
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
     {
         Id = id;
         PlayerId = playerId;
@@ -252,6 +255,9 @@ public sealed class Run
         GeneratorVersion = generatorVersion;
         MarkovMatrixVersion = markovMatrixVersion;
         Status = status;
+        Outcome = outcome;
+        Revision = revision;
+        TechnicalRecoveryState = technicalRecoveryState;
         CurrentRoomId = initialRoom.Id;
         StartedAt = startedAt;
         MaxHp = maxHp;
@@ -288,6 +294,12 @@ public sealed class Run
         EmotionalAffinityMatrix = emotionalAffinityMatrix
             ?? throw new DomainException("A Catalog emotional affinity matrix snapshot is required.");
 
+        if ((Status == RunStatus.Resolved) != Outcome.HasValue)
+        {
+            throw new DomainException(
+                "A resolved run requires an outcome and an open run cannot have one.");
+        }
+
         _rooms.Add(initialRoom);
     }
 
@@ -303,7 +315,28 @@ public sealed class Run
 
     public EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
+    public ContentVersionSet ContentVersions => new(
+        GeneratorVersion,
+        MarkovMatrixVersion,
+        EmotionalAffinityMatrix.Version);
+
     public RunStatus Status { get; private set; }
+
+    public RunOutcome? Outcome { get; private set; }
+
+    public long Revision { get; private set; }
+
+    public TechnicalRecoveryState TechnicalRecoveryState { get; private set; }
+
+    public bool IsResolved => Status == RunStatus.Resolved;
+
+    public void AcceptPersistedRevision(long revision)
+    {
+        if (revision <= Revision)
+            throw new DomainException("Persisted run revision must increase.");
+
+        Revision = revision;
+    }
 
     public RoomId CurrentRoomId { get; private set; }
 
@@ -1098,18 +1131,6 @@ public sealed class Run
         CurrentRoom.EnterNodeAtPartyPosition(new NodeId(nodeId));
     }
 
-    /// <summary>
-    /// Challenges the room boss remotely once the movement budget is exhausted, without
-    /// requiring the party to walk onto its cell. Delegates entirely to
-    /// <see cref="Room.ChallengeBossRemotely"/>.
-    /// </summary>
-    public void ChallengeBossRemotely()
-    {
-        EnsureActive();
-
-        CurrentRoom.ChallengeBossRemotely();
-    }
-
     public void ResolveCurrentEvent()
     {
         EnsureActive();
@@ -1130,8 +1151,7 @@ public sealed class Run
     /// Walks the party through a confirmed room exit (see NodeEventType.Exit) — "valider la
     /// sortie". No longer requires the room's boss to be defeated: it just needs the party to
     /// actually be standing on the exit node's cell, with nothing else pending. Increments
-    /// <see cref="CurrentRoomIndex"/> and stays <see cref="RunStatus.Active"/> (or advances to
-    /// <see cref="RunStatus.BossReached"/> for the Final room). Signals which floor-end payouts
+    /// <see cref="CurrentRoomIndex"/> and stays <see cref="RunStatus.Active"/>. Signals which floor-end payouts
     /// are due when this transition just crossed a floor boundary (see
     /// <see cref="ConsumeFloorEndModifiers"/>).
     /// </summary>
@@ -1169,14 +1189,12 @@ public sealed class Run
         // still be correctly consumed if this same transition also crosses a floor boundary.
         ResumeSuspendedSevereLawModifiers();
 
-        // Run sans fin : aucune profondeur maximale. La room boss (Him'Lit) est portee
-        // par son type de room, que le generateur produit tous les 10 rooms.
+        // Run sans fin : aucune profondeur maximale. Reaching authored content never changes
+        // the Run lifecycle; only an explicit terminal outcome resolves it.
         _rooms.Add(nextRoom);
         CurrentRoomId = nextRoom.Id;
         CurrentRoomIndex++;
-        Status = nextRoom.RoomType == RoomType.Final
-            ? RunStatus.BossReached
-            : RunStatus.Active;
+        Status = RunStatus.Active;
 
         ApplyForcedWeatherPlanToCurrentRoom();
 
@@ -1187,34 +1205,26 @@ public sealed class Run
 
     public void CompleteRun(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
-
-        Status = RunStatus.Completed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Success, endedAt);
     }
 
     public void FailRun(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
-
-        Status = RunStatus.Failed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Defeat, endedAt);
     }
 
     public void Abandon(DateTimeOffset endedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
-            throw new DomainException("Run is already closed.");
-        }
+        ResolveRun(RunOutcome.Abandon, endedAt);
+    }
 
-        Status = RunStatus.Abandoned;
+    private void ResolveRun(RunOutcome outcome, DateTimeOffset endedAt)
+    {
+        if (Status == RunStatus.Resolved)
+            throw new DomainException("Run is already closed.");
+
+        Status = RunStatus.Resolved;
+        Outcome = outcome;
         EndedAt = endedAt;
     }
 
@@ -1399,8 +1409,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeTacticalCombat = null;
-        Status = RunStatus.Failed;
-        EndedAt = endedAt;
+        ResolveRun(RunOutcome.Defeat, endedAt);
     }
 
     /// <summary>
@@ -1570,7 +1579,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(choice);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        if (Status is RunStatus.Resolved or RunStatus.Suspended)
         {
             throw new DomainException("Closed runs cannot receive rewards.");
         }
@@ -1894,7 +1903,7 @@ public sealed class Run
     /// <returns>Whether the poured liquid item was fully consumed (quantity reached zero).</returns>
     public bool PourLiquid(RunItemId containerId, RunItemId liquidItemId)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot use items on a closed run.");
 
         var container = _runItems.FirstOrDefault(i => i.Id == containerId)
@@ -1931,7 +1940,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(modifier);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot add a modifier to a closed run.");
 
         _runModifiers.Add(modifier);
@@ -2194,7 +2203,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(curse);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot apply a curse to a closed run.");
 
         _activeCurse = curse;
@@ -2248,7 +2257,7 @@ public sealed class Run
 
     private void EnsureActive()
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
         {
             throw new DomainException("Run is closed.");
         }
@@ -2272,7 +2281,7 @@ public sealed class Run
     /// </summary>
     public void ExitMidRoom(DateTimeOffset savedAt)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        if (Status is RunStatus.Resolved or RunStatus.Suspended)
         {
             throw new DomainException("Run is closed.");
         }
@@ -2334,7 +2343,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(law);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot activate a palace law on a closed run.");
 
         // Idempotent — same law key cannot be active twice.
@@ -2554,7 +2563,7 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(law);
 
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot promulgate a palace law on a closed run.");
 
         if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
@@ -2741,7 +2750,7 @@ public sealed class Run
 
     public (RunItemEffectType effectType, int amount, bool itemDepleted) UseItem(RunItemId itemId)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status == RunStatus.Resolved)
             throw new DomainException("Cannot use items on a closed run.");
         if (HasActiveCombat)
             throw new DomainException(
@@ -2941,11 +2950,14 @@ public sealed class Run
         string? forgottenSkillKey = null,
         IEnumerable<Guid>? suspendedSevereLawModifierIds = null,
         Combats.Tactical.TacticalCombat? activeTacticalCombat = null,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
+        RunOutcome? outcome = null,
+        long revision = 0,
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix, outcome, revision, technicalRecoveryState);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

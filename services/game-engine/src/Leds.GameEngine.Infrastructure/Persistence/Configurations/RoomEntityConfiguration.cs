@@ -18,11 +18,11 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.RoomType).HasColumnName("room_type").HasMaxLength(64).IsRequired();
         builder.Property(room => room.PalaceState).HasColumnName("palace_state").HasMaxLength(64).HasDefaultValue("Neutral").IsRequired();
         builder.Property(room => room.Theme).HasColumnName("theme").HasMaxLength(128).IsRequired();
-        builder.Property(room => room.BossId).HasColumnName("boss_id").HasMaxLength(128).IsRequired();
-        builder.Property(room => room.BossName).HasColumnName("boss_name").HasMaxLength(256).IsRequired();
-        builder.Property(room => room.BossRoomType).HasColumnName("boss_room_type").HasMaxLength(64).IsRequired();
-        builder.Property(room => room.BossDangerHint).HasColumnName("boss_danger_hint").HasMaxLength(512).IsRequired();
-        builder.Property(room => room.BossEnemyTemplateKey).HasColumnName("boss_enemy_template_key").HasMaxLength(128).IsRequired();
+        builder.Property(room => room.BossId).HasColumnName("boss_id").HasMaxLength(128);
+        builder.Property(room => room.BossName).HasColumnName("boss_name").HasMaxLength(256);
+        builder.Property(room => room.BossRoomType).HasColumnName("boss_room_type").HasMaxLength(64);
+        builder.Property(room => room.BossDangerHint).HasColumnName("boss_danger_hint").HasMaxLength(512);
+        builder.Property(room => room.BossEnemyTemplateKey).HasColumnName("boss_enemy_template_key").HasMaxLength(128);
         builder.Property(room => room.State).HasColumnName("state").HasMaxLength(64).IsRequired();
         builder.Property(room => room.CurrentNodeDepth).HasColumnName("current_node_depth");
         builder.Property(room => room.MaxNodeDepth).HasColumnName("max_node_depth");

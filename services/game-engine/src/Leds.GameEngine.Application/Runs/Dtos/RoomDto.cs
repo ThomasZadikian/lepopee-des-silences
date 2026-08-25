@@ -18,7 +18,7 @@ public sealed record RoomDto(
     int CurrentNodeDepth,
     int MaxNodeDepth,
     int TotalNodeCount,
-    RoomBossProfileDto BossPreview,
+    RoomBossProfileDto? BossPreview,
     IReadOnlyCollection<MapNodeDto> Nodes,
     IReadOnlyCollection<MapNodeDto> AvailableNodes,
     IReadOnlyCollection<RoomNpcDto> RoomNpcs,
@@ -67,7 +67,7 @@ public sealed record RoomDto(
             room.CurrentNodeDepth,
             room.MaxNodeDepth,
             room.TotalNodeCount,
-            RoomBossProfileDto.FromDomain(room.BossProfile),
+            room.BossProfile is null ? null : RoomBossProfileDto.FromDomain(room.BossProfile),
             nodesForDto.Select(MapNodeDto.FromDomain).ToArray(),
             room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray(),
             roomNpcsForDto.Select(RoomNpcDto.FromDomain).ToArray(),
@@ -80,7 +80,6 @@ public sealed record RoomDto(
             room.CatalogBinding?.NarrativeText,
             RoomGridDto.FromDomain(
                 room.Grid,
-                room.CanChallengeBossRemotely,
                 room.CanSearchAtPartyPosition,
                 room.HintCells,
                 (groundItems ?? [])
@@ -120,11 +119,8 @@ public sealed record RoomDto(
 public sealed record RoomGridDto(
     int Width,
     int Height,
-    int MovementBudget,
-    int MovementBudgetRemaining,
     int PartyX,
     int PartyY,
-    bool CanChallengeBossRemotely,
     IReadOnlyCollection<int[]> RevealedCells,
     // Flat, row-major (index = y*Width+x), one value 0..3 per cell — sent for the whole grid,
     // not gated by fog of war, so the renderer can autotile terrain at the fog boundary and
@@ -161,7 +157,6 @@ public sealed record RoomGridDto(
 {
     public static RoomGridDto FromDomain(
         RoomGrid grid,
-        bool canChallengeBossRemotely,
         bool canSearch,
         IReadOnlyCollection<(int X, int Y)> hintCells,
         IReadOnlyCollection<RunItem> groundItems)
@@ -169,11 +164,8 @@ public sealed record RoomGridDto(
         return new RoomGridDto(
             grid.Width,
             grid.Height,
-            grid.MovementBudget,
-            grid.MovementBudgetRemaining,
             grid.PartyX,
             grid.PartyY,
-            canChallengeBossRemotely,
             grid.RevealedCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             grid.Elevation.ToArray(),
             grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray(),

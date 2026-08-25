@@ -43,7 +43,7 @@ public sealed record GridRoomLayoutTemplate
 
         if (minNodeCount < 1)
         {
-            throw new DomainException("GridRoomLayoutTemplate must allow at least 1 node (the boss).");
+            throw new DomainException("GridRoomLayoutTemplate must allow at least 1 content node.");
         }
 
         if (maxNodeCount < minNodeCount)
@@ -85,10 +85,10 @@ public sealed record GridRoomLayoutTemplate
 
     public int MovementBudget { get; }
 
-    /// <summary>Includes the boss node.</summary>
+    /// <summary>Includes an optional authored boss node when present.</summary>
     public int MinNodeCount { get; }
 
-    /// <summary>Includes the boss node.</summary>
+    /// <summary>Includes an optional authored boss node when present.</summary>
     public int MaxNodeCount { get; }
 
     public int StartX { get; }

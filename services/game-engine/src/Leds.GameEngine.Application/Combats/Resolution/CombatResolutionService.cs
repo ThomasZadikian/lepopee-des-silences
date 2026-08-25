@@ -186,7 +186,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
     /// Modèle Hadès (ambiance) : un petit butin secondaire tombe visiblement au sol à
     /// l'endroit du combat, en plus de l'offre de récompense à choix — jamais à sa place (voir
     /// GroundLootBuilder, qui tire d'un pool distinct et n'écrit jamais dans RewardOffer). Sans
-    /// combatNode (ex. ChallengeBossRemotely, où le groupe n'est pas physiquement sur le nœud),
+    /// combatNode (legacy save/import path where no physical node can be resolved),
     /// il n'y a pas de cellule sensée où déposer quoi que ce soit — le butin secondaire est
     /// simplement omis, la récompense principale reste inchangée. Ne doit jamais bloquer ni
     /// faire échouer la résolution du combat : même posture non-bloquante que

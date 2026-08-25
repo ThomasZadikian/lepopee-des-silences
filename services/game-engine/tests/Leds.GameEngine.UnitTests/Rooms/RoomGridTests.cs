@@ -160,7 +160,7 @@ public sealed class RoomGridTests
     }
 
     [Fact]
-    public void MoveTo_ShouldUpdatePartyPosition_AndDeductCost()
+    public void MoveTo_ShouldUpdatePartyPosition_WithoutConsumingGlobalBudget()
     {
         var grid = RoomGrid.CreateInitial(10, 8, movementBudget: 20, startX: 0, startY: 4, nodes: []);
 
@@ -168,7 +168,7 @@ public sealed class RoomGridTests
 
         grid.PartyX.Should().Be(3);
         grid.PartyY.Should().Be(4);
-        grid.MovementBudgetRemaining.Should().Be(17);
+        grid.MovementBudgetRemaining.Should().Be(20);
     }
 
     [Fact]
@@ -389,7 +389,7 @@ public sealed class RoomGridTests
 
         triggered.Should().BeSameAs(ambush);
         grid.PartyX.Should().Be(2, "the walk stops where the ambush fires, not where it was aimed");
-        grid.MovementBudgetRemaining.Should().Be(18, "only the two steps actually walked are paid for");
+        grid.MovementBudgetRemaining.Should().Be(20, "exploration traversal does not consume a global resource");
     }
 
     [Fact]
@@ -408,7 +408,7 @@ public sealed class RoomGridTests
 
         triggered.Should().BeNull("a node already dealt with has nothing left to fire");
         grid.PartyX.Should().Be(4, "the party crosses its cell and reaches the far side");
-        grid.MovementBudgetRemaining.Should().Be(16);
+        grid.MovementBudgetRemaining.Should().Be(20);
     }
 
     [Fact]

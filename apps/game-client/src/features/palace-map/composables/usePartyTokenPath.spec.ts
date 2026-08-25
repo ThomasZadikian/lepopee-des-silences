@@ -7,11 +7,8 @@ function makeGrid(partyX: number, partyY: number): RoomGridDto {
   return {
     width: 6,
     height: 5,
-    movementBudget: 10,
-    movementBudgetRemaining: 10,
     partyX,
     partyY,
-    canChallengeBossRemotely: false,
     doorCells: [],
     revealedCells: [],
     elevation: new Array(6 * 5).fill(0),

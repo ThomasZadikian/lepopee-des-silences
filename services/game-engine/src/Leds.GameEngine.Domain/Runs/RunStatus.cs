@@ -2,6 +2,8 @@ namespace Leds.GameEngine.Domain.Runs;
 
 public enum RunStatus
 {
+    /// <summary>Legacy-only value kept for persisted saves created before baseline v1.0.</summary>
+    [Obsolete("Legacy-only; new runs start Active.")]
     Created = 0,
     Active = 1,
 
@@ -14,9 +16,16 @@ public enum RunStatus
     [Obsolete("No longer produced; kept for backward Rehydrate compatibility.")]
     RoomResolved = 2,
 
+    [Obsolete("Legacy-only; reaching authored content does not change run lifecycle.")]
     BossReached = 3,
+
+    [Obsolete("Legacy terminal value; rehydrate as Resolved + Success.")]
     Completed = 4,
+
+    [Obsolete("Legacy terminal value; rehydrate as Resolved + Defeat.")]
     Failed = 5,
+
+    [Obsolete("Legacy terminal value; rehydrate as Resolved + Abandon.")]
     Abandoned = 6,
 
     /// <summary>
@@ -33,5 +42,8 @@ public enum RunStatus
     /// offer, no node mid-resolution) and can be resumed. No game actions are permitted
     /// until the player resumes the run.
     /// </summary>
-    Suspended = 8
+    Suspended = 8,
+
+    /// <summary>A terminal lifecycle state whose business result is carried by RunOutcome.</summary>
+    Resolved = 9
 }

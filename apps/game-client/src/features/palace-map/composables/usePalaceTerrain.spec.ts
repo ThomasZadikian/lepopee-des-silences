@@ -9,11 +9,8 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
   return {
     width,
     height,
-    movementBudget: 10,
-    movementBudgetRemaining: 10,
     partyX: 0,
     partyY: 0,
-    canChallengeBossRemotely: false,
     doorCells: [],
     revealedCells: [],
     elevation: new Array(width * height).fill(0),

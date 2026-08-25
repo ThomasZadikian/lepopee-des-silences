@@ -9,6 +9,7 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Common;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.StartRun;
@@ -51,6 +52,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         StartRunCommand request,
         CancellationToken cancellationToken)
     {
+        if (await _runRepository.HasActiveOrSuspendedAsync(request.PlayerId, cancellationToken))
+        {
+            throw new DomainException(
+                "The account already has an active or suspended run.");
+        }
+
         var snapshot = await _playerGateway.GetRunSnapshotAsync(request.PlayerId, cancellationToken);
 
         var profile = await _playerProfileGateway.GetProfileAsync(request.PlayerId, cancellationToken);

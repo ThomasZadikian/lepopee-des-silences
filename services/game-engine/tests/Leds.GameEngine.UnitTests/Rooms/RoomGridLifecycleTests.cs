@@ -42,16 +42,16 @@ public sealed class RoomGridLifecycleTests
     }
 
     [Fact]
-    public void CreateGrid_ShouldRejectMissingBossNode()
+    public void CreateGrid_ShouldAllowRoomWithoutBoss_WhenProfileIsAlsoAbsent()
     {
         var itemNode = CreateAvailableNode(lane: 1, row: 0);
 
         var act = () => Room.Create(
-            0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(),
+            0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", bossProfile: null,
             [itemNode], gridWidth: 5, gridHeight: 5, movementBudget: 10, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
 
-        act.Should().Throw<DomainException>();
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class RoomGridLifecycleTests
     }
 
     [Fact]
-    public void CreateGrid_ShouldRejectBossUnreachableWithinMovementBudget()
+    public void CreateGrid_ShouldAllowBossBeyondLegacyMovementBudget()
     {
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
@@ -93,11 +93,11 @@ public sealed class RoomGridLifecycleTests
             [bossNode], gridWidth: 5, gridHeight: 5, movementBudget: 1, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
 
-        act.Should().Throw<DomainException>();
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void MoveParty_ShouldMoveAndDeductBudget()
+    public void MoveParty_ShouldMoveWithoutConsumingGlobalBudget()
     {
         var room = CreateGridRoom();
 
@@ -105,18 +105,18 @@ public sealed class RoomGridLifecycleTests
 
         room.Grid!.PartyX.Should().Be(1);
         room.Grid.PartyY.Should().Be(0);
-        room.Grid.MovementBudgetRemaining.Should().Be(9);
+        room.Grid.MovementBudgetRemaining.Should().Be(10);
     }
 
     [Fact]
-    public void MoveParty_ShouldThrow_WhenNotEnoughBudget()
+    public void MoveParty_ShouldRemainPossibleRegardlessOfLegacyBudget()
     {
         var room = CreateGridRoom(movementBudget: 10);
         room.MoveParty(4, 4); // costs 8 (start to boss), remaining = 2
 
         var act = () => room.MoveParty(0, 0); // costs 8 back to start, only 2 remaining
 
-        act.Should().Throw<DomainException>();
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -263,48 +263,7 @@ public sealed class RoomGridLifecycleTests
     }
 
     [Fact]
-    public void CanChallengeBossRemotely_ShouldBeFalse_WhenBudgetRemains()
-    {
-        var room = CreateGridRoom();
-
-        room.CanChallengeBossRemotely.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanChallengeBossRemotely_ShouldBeTrue_WhenBudgetIsExhausted()
-    {
-        var room = CreateGridRoom(movementBudget: 8);
-        var boss = room.Nodes.Single(n => n.IsBoss);
-        room.MoveParty(boss.Lane, boss.Row); // costs exactly 8
-
-        room.CanChallengeBossRemotely.Should().BeTrue();
-    }
-
-    [Fact]
-    public void ChallengeBossRemotely_ShouldSelectTheBoss_WithoutRequiringPartyToBeOnItsCell()
-    {
-        var room = CreateGridRoom(movementBudget: 8);
-        room.MoveParty(4, 0); // costs 4, remaining 4
-        room.MoveParty(0, 0); // costs 4 back to start, remaining 0 — nowhere near the boss
-
-        room.ChallengeBossRemotely();
-
-        room.State.Should().Be(RoomState.NodeSelected);
-        room.Nodes.Single(n => n.IsBoss).State.Should().Be(NodeState.Selected);
-    }
-
-    [Fact]
-    public void ChallengeBossRemotely_ShouldThrow_WhenBudgetStillRemains()
-    {
-        var room = CreateGridRoom();
-
-        var act = room.ChallengeBossRemotely;
-
-        act.Should().Throw<DomainException>();
-    }
-
-    [Fact]
-    public void ResetProgress_ShouldRestoreGridPositionBudgetAndNodeStates()
+    public void ResetProgress_ShouldRestoreGridPositionAndNodeStates()
     {
         var room = CreateGridRoom();
         var itemNode = room.Nodes.Single(n => !n.IsBoss);
@@ -317,7 +276,6 @@ public sealed class RoomGridLifecycleTests
         room.State.Should().Be(RoomState.Active);
         room.Grid!.PartyX.Should().Be(0);
         room.Grid.PartyY.Should().Be(0);
-        room.Grid.MovementBudgetRemaining.Should().Be(room.Grid.MovementBudget);
         itemNode.State.Should().Be(NodeState.Available);
     }
 

@@ -225,7 +225,8 @@ public sealed class RunExitDecisionsTests
             CancellationToken.None))
             .Should().NotThrowAsync();
 
-        run.Status.Should().Be(RunStatus.Abandoned);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Abandon);
     }
 
     [Fact]
@@ -236,7 +237,8 @@ public sealed class RunExitDecisionsTests
 
         await handler.Handle(new AbandonRunCommand(run.Id.Value), CancellationToken.None);
 
-        run.Status.Should().Be(RunStatus.Abandoned);
+        run.Status.Should().Be(RunStatus.Resolved);
+        run.Outcome.Should().Be(RunOutcome.Abandon);
     }
 
     [Fact]

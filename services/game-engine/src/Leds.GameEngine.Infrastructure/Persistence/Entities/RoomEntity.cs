@@ -8,11 +8,11 @@ public sealed class RoomEntity
     public string RoomType { get; set; } = string.Empty;
     public string PalaceState { get; set; } = "Neutral";
     public string Theme { get; set; } = string.Empty;
-    public string BossId { get; set; } = string.Empty;
-    public string BossName { get; set; } = string.Empty;
-    public string BossRoomType { get; set; } = string.Empty;
-    public string BossDangerHint { get; set; } = string.Empty;
-    public string BossEnemyTemplateKey { get; set; } = string.Empty;
+    public string? BossId { get; set; }
+    public string? BossName { get; set; }
+    public string? BossRoomType { get; set; }
+    public string? BossDangerHint { get; set; }
+    public string? BossEnemyTemplateKey { get; set; }
     public string State { get; set; } = string.Empty;
     public int CurrentNodeDepth { get; set; }
     public int MaxNodeDepth { get; set; }

@@ -9,13 +9,22 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
 {
     public void Configure(EntityTypeBuilder<RunEntity> builder)
     {
-        builder.ToTable("runs");
+        builder.ToTable("runs", table => table.HasCheckConstraint(
+            "ck_runs_lifecycle_outcome",
+            "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)"));
 
         builder.HasKey(run => run.Id);
 
         builder.Property(run => run.Id).HasColumnName("id");
         builder.Property(run => run.PlayerId).HasColumnName("player_id");
         builder.Property(run => run.Status).HasColumnName("status").HasMaxLength(64).IsRequired();
+        builder.Property(run => run.Outcome).HasColumnName("outcome").HasMaxLength(32);
+        builder.Property(run => run.Revision).HasColumnName("revision").IsConcurrencyToken();
+        builder.Property(run => run.TechnicalRecoveryState)
+            .HasColumnName("technical_recovery_state")
+            .HasMaxLength(32)
+            .HasDefaultValue("None")
+            .IsRequired();
         builder.Property(run => run.Seed).HasColumnName("seed").HasMaxLength(128).IsRequired();
         builder.Property(run => run.GeneratorVersion).HasColumnName("generator_version").HasMaxLength(64).IsRequired();
         builder.Property(run => run.MarkovMatrixVersion).HasColumnName("markov_matrix_version").HasMaxLength(64).IsRequired();
@@ -67,7 +76,10 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
-        builder.HasIndex(run => run.PlayerId);
+        builder.HasIndex(run => run.PlayerId)
+            .IsUnique()
+            .HasDatabaseName("ux_runs_player_active_or_suspended")
+            .HasFilter("status IN ('Active', 'Suspended')");
         builder.HasIndex(run => run.Status);
         builder.HasIndex(run => run.CreatedAtUtc);
 

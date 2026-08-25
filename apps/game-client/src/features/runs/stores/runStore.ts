@@ -342,8 +342,8 @@ export const useRunStore = defineStore('run', () => {
     await refreshPendingRewardIfNeeded();
   }
 
-  /** Searches around the party for hidden nodes, at the cost of movement budget. Optimistic
-   * like every other grid action: the domain rejects it (nothing to find, not enough budget)
+  /** Searches around the party for hidden nodes. Optimistic like every other grid action:
+   * the domain rejects it when there is nothing to find
    * and the message surfaces through `error`. */
   async function searchParty() {
     if (!currentRun.value) return;
@@ -354,8 +354,8 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  // Both enterGridNode and challengeBossRemotely only *select* the node server-side —
-  // resolving it into an outcome is a separate step, so we chain the resolve call
+  // Entering a grid node only *selects* it server-side; resolving it into an outcome is a
+  // separate step, so we chain the resolve call
   // immediately after. Without this, the room stays in NodeSelected forever and the
   // next move/action is rejected by the domain guard ("Room is not waiting for party movement.").
   async function enterGridNode(nodeId: string) {
@@ -366,30 +366,6 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = unwrapRunResponse(enterResponse);
 
       await resolveSelectedNodeIfAny();
-    });
-  }
-
-  async function challengeBossRemotely() {
-    if (!currentRun.value) return;
-
-    await execute(async () => {
-      const challengeResponse = await runApi.challengeBossRemotely(currentRun.value!.id);
-      currentRun.value = unwrapRunResponse(challengeResponse);
-
-      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
-      currentRun.value = resolveResponse.run;
-      lastOutcome.value = resolveResponse.outcome;
-      npcDialogue.value = resolveResponse.npcDialogue ?? null;
-      npcDialogueEchoes.value = [];
-      npcDialogueEnded.value = false;
-      if (resolveResponse.tacticalCombat) {
-        const tactical = useTacticalCombatStore();
-        tactical.setCombat(resolveResponse.tacticalCombat);
-        void tactical.playOpening(
-          resolveResponse.tacticalEvents ?? [], resolveResponse.tacticalCombat);
-      }
-
-      await refreshPendingRewardIfNeeded();
     });
   }
 
@@ -974,7 +950,6 @@ export const useRunStore = defineStore('run', () => {
     keepInventoryForGroundItem,
     searchParty,
     enterGridNode,
-    challengeBossRemotely,
     useCaliceInfini,
     syncPartySkills,
     syncPartyStats,

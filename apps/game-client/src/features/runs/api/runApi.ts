@@ -132,12 +132,6 @@ export const runApi = {
     );
   },
 
-  challengeBossRemotely(runId: string) {
-    return gameEngineApi.post<RunResponse>(
-      `/api/v2/runs/${runId}/rooms/current/challenge-boss`,
-    );
-  },
-
   syncPartySkills(runId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/sync-skills`,

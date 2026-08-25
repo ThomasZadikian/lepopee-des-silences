@@ -19,6 +19,34 @@ namespace Leds.GameEngine.UnitTests.Runs.StartRun;
 
 public sealed class StartRunCommandHandlerTests
 {
+    [Fact]
+    public async Task Handle_ShouldReject_WhenAccountAlreadyHasActiveOrSuspendedRun()
+    {
+        var playerId = Guid.NewGuid();
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(r => r.HasActiveOrSuspendedAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var catalog = new Mock<ICatalogContentGateway>();
+        var handler = new StartRunCommandHandler(
+            new Mock<IRunGenerator>().Object,
+            repository.Object,
+            new Mock<IPlayerRunSnapshotGateway>().Object,
+            new Mock<IPlayerProfileGateway>().Object,
+            new Mock<IAmbientPalaceLawPromulgator>().Object,
+            new PlayerSkillMerger(catalog.Object),
+            new PlayerStatMerger(),
+            new Mock<IClock>().Object,
+            catalog.Object);
+
+        var act = () => handler.Handle(new StartRunCommand(playerId), CancellationToken.None);
+
+        await act.Should().ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
+            .WithMessage("The account already has an active or suspended run.");
+        repository.Verify(r => r.AddAsync(It.IsAny<Run>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static PlayerSkillMerger CreateSkillMerger(Mock<ICatalogContentGateway> gateway)
     {
         gateway

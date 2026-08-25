@@ -178,27 +178,19 @@ public sealed class DeterministicRunGeneratorTests
 
         room.TotalNodeCount.Should().BeInRange(22, 30);
         room.Nodes.Should().HaveCount(room.TotalNodeCount);
-        room.Nodes.Should().ContainSingle(node => node.IsBoss);
+        room.Nodes.Should().NotContain(node => node.IsBoss);
         room.Nodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
 
     [Fact]
-    public async Task GenerateInitialRoom_ShouldCreateRoomBossMatchingRoomType()
+    public async Task GenerateInitialRoom_ShouldNotInventBossWithoutCatalogDeclaration()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
-        room.BossProfile.Should().NotBeNull();
-        room.BossProfile.RoomType.Should().Be(RoomType.Threshold);
-        room.BossProfile.BossId.Should().Be("boss.threshold.warden");
-        room.BossProfile.Name.Should().Be("Gardien du Seuil");
-        room.BossProfile.DangerHint.Should().Be("High");
-
-        var bossNode = room.Nodes.Single(node => node.IsBoss);
-
-        bossNode.State.Should().Be(NodeState.Available);
-        bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
+        room.BossProfile.Should().BeNull();
+        room.Nodes.Should().NotContain(node => node.IsBoss);
     }
 
     [Fact]

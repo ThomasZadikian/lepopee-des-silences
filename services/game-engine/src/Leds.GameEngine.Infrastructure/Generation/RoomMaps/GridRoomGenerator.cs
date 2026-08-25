@@ -33,11 +33,6 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
     // finding.
     private const int MaxHiddenNodes = 4;
 
-    // BALANCE KNOB — movement budget kept ON TOP of the cheapest route to the boss, so reaching
-    // the objective is never the only thing the budget affords. Roughly one detour into a recess
-    // plus a search or two (see Room.SearchCost).
-    private const int MovementBudgetSlack = 12;
-
     // BALANCE KNOB — sub-room count/size, for the Rectangular carving style when
     // RoomStructuralProfile.SubRoomsAllowed. Kept small and modest: this is a first pass at
     // "chambers behind a door," not full architectural layout.
@@ -96,7 +91,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         Random random,
         CancellationToken cancellationToken = default,
         PalaceRoomState palaceState = PalaceRoomState.Neutral,
-        string? catalogRoomKey = null)
+        string? catalogRoomKey = null,
+        string? bossDefinitionKey = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(generatorVersion);
@@ -106,7 +102,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         if (string.Equals(catalogRoomKey, "room.halldentree", StringComparison.OrdinalIgnoreCase))
         {
-            return await GenerateHallEntreeAsync(roomDepth, roomType, palaceState, template, cancellationToken);
+            return await GenerateHallEntreeAsync(
+                roomDepth, roomType, palaceState, template, bossDefinitionKey, cancellationToken);
         }
 
         var profile = _generationProfileProvider.GetProfile(roomType);
@@ -135,13 +132,13 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         var deadEnds = FindDeadEnds(width, height, startX, startY, floor, obstacles, (bossX, bossY));
 
+        var hasBoss = !string.IsNullOrWhiteSpace(bossDefinitionKey);
         var nodes = CreateNodes(
-            template, profile, floor, obstacles, deadEnds, (bossX, bossY), random);
+            template, profile, floor, obstacles, deadEnds, (bossX, bossY), hasBoss, random);
 
-        var movementBudget = ResolveMovementBudget(
-            template, width, height, startX, startY, nodes, elevation, obstacles, floor, bossX, bossY);
-
-        var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
+        var bossProfile = hasBoss
+            ? await _bossProfileResolver.ResolveAsync(roomType, cancellationToken)
+            : null;
 
         var room = Room.Create(
             roomDepth,
@@ -152,7 +149,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             nodes,
             width,
             height,
-            movementBudget,
+            template.MovementBudget,
             startX,
             startY,
             template.Key,
@@ -181,22 +178,26 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         RoomType roomType,
         PalaceRoomState palaceState,
         GridRoomLayoutTemplate template,
+        string? bossDefinitionKey,
         CancellationToken cancellationToken)
     {
         var layout = Hall.HallEntreeLayout.Build();
 
-        var bossNode = MapNode.Create(
-            eventType: NodeEventType.RoomBoss,
-            riskLevel: 85,
-            rewardProfile: "room-boss",
+        var hasBoss = !string.IsNullOrWhiteSpace(bossDefinitionKey);
+        var authoredNode = MapNode.Create(
+            eventType: hasBoss ? NodeEventType.RoomBoss : NodeEventType.Event,
+            riskLevel: hasBoss ? 85 : 0,
+            rewardProfile: hasBoss ? "room-boss" : "standard",
             row: Hall.HallEntreeLayout.BossY,
             lane: Hall.HallEntreeLayout.BossX,
             parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: true,
+            isBoss: hasBoss,
             initialState: NodeState.Available,
-            combatRiskTier: NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85));
+            combatRiskTier: hasBoss
+                ? NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85)
+                : null);
 
-        var nodes = new List<MapNode> { bossNode };
+        var nodes = new List<MapNode> { authoredNode };
 
         // Run.StartNew requires a run's opening room to hold 6-30 content nodes — the Hall must
         // clear that floor to ever actually open a run, not just to pass this test in isolation.
@@ -214,20 +215,9 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 initialState: NodeState.Available));
         }
 
-        var movementBudget = ResolveMovementBudget(
-            template,
-            Hall.HallEntreeLayout.Width,
-            Hall.HallEntreeLayout.Height,
-            Hall.HallEntreeLayout.StartX,
-            Hall.HallEntreeLayout.StartY,
-            nodes,
-            layout.Elevation,
-            layout.Obstacles,
-            layout.Floor,
-            Hall.HallEntreeLayout.BossX,
-            Hall.HallEntreeLayout.BossY);
-
-        var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
+        var bossProfile = hasBoss
+            ? await _bossProfileResolver.ResolveAsync(roomType, cancellationToken)
+            : null;
 
         var room = Room.Create(
             roomDepth,
@@ -238,7 +228,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             nodes,
             Hall.HallEntreeLayout.Width,
             Hall.HallEntreeLayout.Height,
-            movementBudget,
+            template.MovementBudget,
             Hall.HallEntreeLayout.StartX,
             Hall.HallEntreeLayout.StartY,
             template.Key,
@@ -259,41 +249,6 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         AttachLocalRuleStates(room, "room.halldentree");
 
         return room;
-    }
-
-    /// <summary>
-    /// The template's budget is a floor, not the answer: it was tuned for a plain rectangle and
-    /// says nothing about the room actually generated. What matters is that reaching the boss is
-    /// never all the budget affords — so the real cheapest route is measured with the real
-    /// pathfinder (no duplicated cost formula) and <see cref="MovementBudgetSlack"/> is kept on
-    /// top for detours and searching.
-    /// </summary>
-    private static int ResolveMovementBudget(
-        GridRoomLayoutTemplate template,
-        int width,
-        int height,
-        int startX,
-        int startY,
-        IReadOnlyCollection<MapNode> nodes,
-        IReadOnlyList<int> elevation,
-        IReadOnlyCollection<(int X, int Y)> obstacles,
-        IReadOnlyList<bool> floor,
-        int bossX,
-        int bossY)
-    {
-        var probe = RoomGrid.CreateInitial(
-            width, height, movementBudget: 0, startX, startY, nodes, elevation, obstacles, floor);
-
-        var bossRoute = probe.FindPath(bossX, bossY);
-
-        // Unreachable should be impossible (obstacle placement is connectivity-checked), but
-        // falling back to the template's budget beats generating a room nobody can finish.
-        if (bossRoute is null)
-        {
-            return template.MovementBudget;
-        }
-
-        return Math.Max(template.MovementBudget, bossRoute.Value.Cost + MovementBudgetSlack);
     }
 
     /// <summary>
@@ -931,6 +886,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         IReadOnlyCollection<(int X, int Y)> obstacles,
         IReadOnlyList<(int X, int Y)> deadEnds,
         (int X, int Y) bossCell,
+        bool hasBoss,
         Random random)
     {
         var obstacleSet = new HashSet<(int X, int Y)>(obstacles);
@@ -969,7 +925,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 hiddenState: HiddenState.Hint));
         }
 
-        var remainingCount = Math.Max(0, nodeCount - 1 - nodes.Count);
+        var remainingCount = Math.Max(0, nodeCount - (hasBoss ? 1 : 0) - nodes.Count);
 
         var freeCells = new List<(int X, int Y)>();
         for (var x = 0; x < template.Width; x++)
@@ -1028,22 +984,25 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 contactBehavior: contactBehavior));
         }
 
-        nodes.Add(MapNode.Create(
-            eventType: NodeEventType.RoomBoss,
-            riskLevel: 85,
-            rewardProfile: "room-boss",
-            row: bossCell.Y,
-            lane: bossCell.X,
-            parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: true,
-            initialState: NodeState.Available,
-            combatRiskTier: NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85)));
+        if (hasBoss)
+        {
+            nodes.Add(MapNode.Create(
+                eventType: NodeEventType.RoomBoss,
+                riskLevel: 85,
+                rewardProfile: "room-boss",
+                row: bossCell.Y,
+                lane: bossCell.X,
+                parentNodeIds: Array.Empty<NodeId>(),
+                isBoss: true,
+                initialState: NodeState.Available,
+                combatRiskTier: NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85)));
+        }
 
         return nodes;
     }
 
     /// <summary>
-    /// The boss goes as far from the spawn as the room's actual shape allows. Deterministic
+    /// The optional authored boss position goes as far from the spawn as the room's actual shape allows. Deterministic
     /// given (start, size, floor) — does not consume the seeded <see cref="Random"/>, so the
     /// boss's position depends on the room's shape rather than on its roll sequence. Ties broken
     /// by (X desc, Y desc).

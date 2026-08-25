@@ -1571,31 +1571,26 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("BossDangerHint")
-                        .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
                         .HasColumnName("boss_danger_hint");
 
                     b.Property<string>("BossEnemyTemplateKey")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("boss_enemy_template_key");
 
                     b.Property<string>("BossId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("boss_id");
 
                     b.Property<string>("BossName")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("boss_name");
 
                     b.Property<string>("BossRoomType")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("boss_room_type");
@@ -2389,6 +2384,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("npc_relationships_json");
 
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("outcome");
+
                     b.Property<Guid?>("PendingRewardOfferId")
                         .HasColumnType("uuid")
                         .HasColumnName("pending_reward_offer_id");
@@ -2407,6 +2407,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("reputation_gain_bonus_percent");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
 
                     b.Property<int>("RunItemCapacity")
                         .ValueGeneratedOnAdd()
@@ -2474,6 +2479,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("suspended_severe_law_modifier_ids_json");
 
+                    b.Property<string>("TechnicalRecoveryState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("None")
+                        .HasColumnName("technical_recovery_state");
+
                     b.Property<string>("TypedDamageReductionsJson")
                         .HasColumnType("text")
                         .HasColumnName("typed_damage_reductions_json");
@@ -2489,11 +2502,17 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("PlayerId");
+                    b.HasIndex("PlayerId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_runs_player_active_or_suspended")
+                        .HasFilter("status IN ('Active', 'Suspended')");
 
                     b.HasIndex("Status");
 
-                    b.ToTable("runs", (string)null);
+                    b.ToTable("runs", t =>
+                        {
+                            t.HasCheckConstraint("ck_runs_lifecycle_outcome", "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunItemEntity", b =>
