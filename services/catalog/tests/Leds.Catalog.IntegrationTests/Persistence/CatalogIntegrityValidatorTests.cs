@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.Catalog.Infrastructure.Persistence;
+using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -138,6 +139,41 @@ public sealed class CatalogIntegrityValidatorTests
         var act = () => new CatalogIntegrityValidator(context).ValidateAsync();
 
         await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Validate_should_fail_when_active_story_entry_step_is_missing()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+        context.StorySequenceDefinitions.Add(new StorySequenceDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = "story.test",
+            DisplayName = "Story test",
+            Version = "1.0",
+            Status = "Active",
+            EntryStepKey = "missing",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            Steps =
+            [
+                new StoryStepDefinitionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    Key = "terminal",
+                    Order = 1,
+                    IsTerminal = true
+                }
+            ]
+        });
+        await context.SaveChangesAsync();
+
+        var act = () => new CatalogIntegrityValidator(context).ValidateAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*entry step 'missing' does not exist*");
     }
 
     [Fact]

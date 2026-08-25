@@ -2752,6 +2752,48 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_world_definitions", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.StorySequenceDefinitionEntity", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid").HasColumnName("id");
+                    b.Property<DateTime>("CreatedAtUtc").HasColumnType("timestamp with time zone").HasColumnName("created_at_utc");
+                    b.Property<string>("DisplayName").IsRequired().HasMaxLength(256).HasColumnType("character varying(256)").HasColumnName("display_name");
+                    b.Property<string>("EntryStepKey").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)").HasColumnName("entry_step_key");
+                    b.Property<string>("Key").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)").HasColumnName("key");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(32).HasColumnType("character varying(32)").HasColumnName("status");
+                    b.Property<DateTime>("UpdatedAtUtc").HasColumnType("timestamp with time zone").HasColumnName("updated_at_utc");
+                    b.Property<string>("Version").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)").HasColumnName("version");
+                    b.HasKey("Id");
+                    b.HasIndex("Key").IsUnique();
+                    b.ToTable("story_sequence_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.StoryStepDefinitionEntity", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uuid").HasColumnName("id");
+                    b.Property<string>("ConditionsJson").IsRequired().HasColumnType("text").HasColumnName("conditions_json");
+                    b.Property<string>("EffectsJson").IsRequired().HasColumnType("text").HasColumnName("effects_json");
+                    b.Property<bool>("IsTerminal").HasColumnType("boolean").HasColumnName("is_terminal");
+                    b.Property<string>("Key").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)").HasColumnName("key");
+                    b.Property<int>("Order").HasColumnType("integer").HasColumnName("step_order");
+                    b.Property<string>("RoomDefinitionKey").HasMaxLength(160).HasColumnType("character varying(160)").HasColumnName("room_definition_key");
+                    b.Property<Guid>("SequenceDefinitionId").HasColumnType("uuid").HasColumnName("sequence_definition_id");
+                    b.HasKey("Id");
+                    b.HasIndex("SequenceDefinitionId", "Key").IsUnique();
+                    b.HasIndex("SequenceDefinitionId", "Order").IsUnique();
+                    b.ToTable("story_step_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.StoryStepDefinitionEntity", b =>
+                {
+                    b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.StorySequenceDefinitionEntity", "SequenceDefinition")
+                        .WithMany("Steps")
+                        .HasForeignKey("SequenceDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SequenceDefinition");
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.CurseDefinitionEntity", b =>
                 {
                     b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.EffectSetEntity", "EffectSet")
@@ -3152,6 +3194,11 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.SkillDefinitionEntity", b =>
                 {
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.StorySequenceDefinitionEntity", b =>
+                {
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.WorldDefinitionEntity", b =>

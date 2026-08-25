@@ -43,6 +43,8 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<RewardCursePoolEntity> RewardCursePools => Set<RewardCursePoolEntity>();
     public DbSet<EnemyLootTableEntity> EnemyLootTables => Set<EnemyLootTableEntity>();
     public DbSet<GenericLootPoolEntity> GenericLootPools => Set<GenericLootPoolEntity>();
+    public DbSet<StorySequenceDefinitionEntity> StorySequenceDefinitions => Set<StorySequenceDefinitionEntity>();
+    public DbSet<StoryStepDefinitionEntity> StoryStepDefinitions => Set<StoryStepDefinitionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
