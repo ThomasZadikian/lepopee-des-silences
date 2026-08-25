@@ -15,6 +15,7 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
+        MainStoryProgress? mainStoryProgress = null,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
         IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
         IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
@@ -23,6 +24,8 @@ public sealed class PlayerProfile
         DisplayName = displayName;
         Roster = roster;
         Progression = progression;
+        MainStoryProgress = mainStoryProgress
+            ?? global::Leds.Player.Domain.Players.MainStoryProgress.CreateDefault();
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
         _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
@@ -34,6 +37,7 @@ public sealed class PlayerProfile
     public string DisplayName { get; }
     public PlayerRoster Roster { get; }
     public PlayerProgression Progression { get; }
+    public MainStoryProgress MainStoryProgress { get; }
     public DateTimeOffset CreatedAtUtc { get; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public IReadOnlyCollection<PlayerPermanentUnlock> PermanentUnlocks => _permanentUnlocks.AsReadOnly();
@@ -51,7 +55,8 @@ public sealed class PlayerProfile
             PlayerRoster.Create(),
             PlayerProgression.CreateDefault(),
             createdAtUtc,
-            createdAtUtc);
+            createdAtUtc,
+            MainStoryProgress.CreateDefault());
 
         profile.AddDefaultCharacter();
 
@@ -205,6 +210,35 @@ public sealed class PlayerProfile
         UpdatedAtUtc = updatedAtUtc;
     }
 
+    public void AdvanceMainStory(
+        string sequenceKey,
+        string sequenceVersion,
+        string stepKey,
+        string? checkpointKey,
+        IReadOnlyCollection<string> unlockedRoomKeys,
+        IReadOnlyCollection<string> visibleRoomKeys,
+        bool complete,
+        DateTimeOffset now)
+    {
+        if (MainStoryProgress.IsCompleted)
+            return;
+
+        MainStoryProgress.Advance(sequenceKey, sequenceVersion, stepKey, checkpointKey);
+        foreach (var roomKey in unlockedRoomKeys)
+            MainStoryProgress.UnlockRoom(roomKey);
+        foreach (var roomKey in visibleRoomKeys)
+            MainStoryProgress.RevealRoom(roomKey);
+        if (complete)
+            MainStoryProgress.Complete();
+        Touch(now);
+    }
+
+    public void UnlockDifficultyLevel(int level, DateTimeOffset now)
+    {
+        if (MainStoryProgress.UnlockNextDifficulty(level))
+            Touch(now);
+    }
+
     /// <summary>
     /// Upserts NPC reputation scores from a completed/failed/abandoned run.
     /// Scores are absolute (last-write-wins per NPC), not deltas.
@@ -332,10 +366,11 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
+        MainStoryProgress? mainStoryProgress = null,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
         IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
         IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
     {
-        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks, permanentItems, npcReputationScores);
+        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, mainStoryProgress, permanentUnlocks, permanentItems, npcReputationScores);
     }
 }

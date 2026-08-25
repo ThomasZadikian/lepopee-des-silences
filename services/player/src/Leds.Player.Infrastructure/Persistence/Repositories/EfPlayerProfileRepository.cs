@@ -72,6 +72,14 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             TotalStatPointsEarned = profile.Progression.TotalStatPointsEarned,
             PalaceShardCount = profile.Progression.PalaceShardCount,
             HimLitShardCount = profile.Progression.HimLitShardCount,
+            MainStorySequenceKey = profile.MainStoryProgress.SequenceKey,
+            MainStorySequenceVersion = profile.MainStoryProgress.SequenceVersion,
+            MainStoryStepKey = profile.MainStoryProgress.StepKey,
+            MainStoryCheckpointKey = profile.MainStoryProgress.CheckpointKey,
+            MainStoryCompleted = profile.MainStoryProgress.IsCompleted,
+            HighestDifficultyLevelUnlocked = profile.MainStoryProgress.HighestDifficultyLevelUnlocked,
+            MainStoryUnlockedRoomKeysJson = JsonSerializer.Serialize(profile.MainStoryProgress.UnlockedRoomKeys),
+            MainStoryVisibleRoomKeysJson = JsonSerializer.Serialize(profile.MainStoryProgress.VisibleRoomKeys),
             CreatedAtUtc = profile.CreatedAtUtc,
             UpdatedAtUtc = profile.UpdatedAtUtc,
             Characters = profile.Roster.Characters.Select(c => new PlayerCharacterEntity
@@ -110,6 +118,14 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         existing.TotalStatPointsEarned = incoming.Progression.TotalStatPointsEarned;
         existing.PalaceShardCount = incoming.Progression.PalaceShardCount;
         existing.HimLitShardCount = incoming.Progression.HimLitShardCount;
+        existing.MainStorySequenceKey = incoming.MainStoryProgress.SequenceKey;
+        existing.MainStorySequenceVersion = incoming.MainStoryProgress.SequenceVersion;
+        existing.MainStoryStepKey = incoming.MainStoryProgress.StepKey;
+        existing.MainStoryCheckpointKey = incoming.MainStoryProgress.CheckpointKey;
+        existing.MainStoryCompleted = incoming.MainStoryProgress.IsCompleted;
+        existing.HighestDifficultyLevelUnlocked = incoming.MainStoryProgress.HighestDifficultyLevelUnlocked;
+        existing.MainStoryUnlockedRoomKeysJson = JsonSerializer.Serialize(incoming.MainStoryProgress.UnlockedRoomKeys);
+        existing.MainStoryVisibleRoomKeysJson = JsonSerializer.Serialize(incoming.MainStoryProgress.VisibleRoomKeys);
         existing.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
         var incomingCharacterIds = incoming.Roster.Characters.Select(c => c.Id.Value).ToHashSet();
@@ -380,6 +396,16 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             entity.PalaceShardCount,
             entity.HimLitShardCount);
 
+        var mainStoryProgress = MainStoryProgress.Rehydrate(
+            entity.MainStorySequenceKey,
+            entity.MainStorySequenceVersion,
+            entity.MainStoryStepKey,
+            entity.MainStoryCheckpointKey,
+            entity.MainStoryCompleted,
+            entity.HighestDifficultyLevelUnlocked,
+            DeserializeKeys(entity.MainStoryUnlockedRoomKeysJson),
+            DeserializeKeys(entity.MainStoryVisibleRoomKeysJson));
+
         var permanentUnlocks = entity.PermanentUnlocks
             .Select(u => PlayerPermanentUnlock.Create(u.UnlockKey, u.UnlockType, u.SourceRunId, u.UnlockedAtUtc))
             .ToList();
@@ -401,10 +427,16 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             progression,
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc,
+            mainStoryProgress,
             permanentUnlocks,
             permanentItems,
             npcReputationScores);
     }
+
+    private static IReadOnlyCollection<string> DeserializeKeys(string? json) =>
+        string.IsNullOrWhiteSpace(json)
+            ? []
+            : JsonSerializer.Deserialize<string[]>(json) ?? [];
 
     private static PlayerCharacterStatBlockEntity ToStatBlockEntity(PlayerCharacter character)
     {

@@ -158,4 +158,31 @@ public sealed class PlayerProfileRepositoryTests
             i.ItemDefinitionKey == "item.fiole-cristal" &&
             i.ContainedLiquidDefinitionKey == "item.larme-de-racine");
     }
+
+    [Fact]
+    public async Task SaveAsync_ShouldResumeMainStoryAtThePersistedCheckpoint()
+    {
+        var (context, connectionString) = _fixture.CreateContext();
+        await using var _ = context;
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AdvanceMainStory(
+            "story.main",
+            "1.0",
+            "step.hall",
+            "checkpoint.hall",
+            ["room.hall"],
+            ["room.hall", "room.threshold"],
+            complete: false,
+            DateTimeOffset.UtcNow);
+        await new EfPlayerProfileRepository(context).SaveAsync(profile, CancellationToken.None);
+
+        await using var reloadContext = _fixture.CreateContext(connectionString);
+        var reloaded = await new EfPlayerProfileRepository(reloadContext)
+            .GetByIdAsync(profile.Id, CancellationToken.None);
+
+        reloaded!.MainStoryProgress.StepKey.Should().Be("step.hall");
+        reloaded.MainStoryProgress.CheckpointKey.Should().Be("checkpoint.hall");
+        reloaded.MainStoryProgress.UnlockedRoomKeys.Should().Contain("room.hall");
+        reloaded.MainStoryProgress.VisibleRoomKeys.Should().Contain("room.threshold");
+    }
 }

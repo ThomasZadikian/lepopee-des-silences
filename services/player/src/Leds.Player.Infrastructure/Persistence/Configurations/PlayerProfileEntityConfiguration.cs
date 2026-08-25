@@ -23,6 +23,14 @@ public sealed class PlayerProfileEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(p => p.TotalStatPointsEarned).HasColumnName("total_stat_points_earned").HasDefaultValue(0);
         builder.Property(p => p.PalaceShardCount).HasColumnName("palace_shard_count").HasDefaultValue(0);
         builder.Property(p => p.HimLitShardCount).HasColumnName("him_lit_shard_count").HasDefaultValue(0);
+        builder.Property(p => p.MainStorySequenceKey).HasColumnName("main_story_sequence_key").HasMaxLength(160);
+        builder.Property(p => p.MainStorySequenceVersion).HasColumnName("main_story_sequence_version").HasMaxLength(64);
+        builder.Property(p => p.MainStoryStepKey).HasColumnName("main_story_step_key").HasMaxLength(160);
+        builder.Property(p => p.MainStoryCheckpointKey).HasColumnName("main_story_checkpoint_key").HasMaxLength(160);
+        builder.Property(p => p.MainStoryCompleted).HasColumnName("main_story_completed").HasDefaultValue(false);
+        builder.Property(p => p.HighestDifficultyLevelUnlocked).HasColumnName("highest_difficulty_level_unlocked").HasDefaultValue(0);
+        builder.Property(p => p.MainStoryUnlockedRoomKeysJson).HasColumnName("main_story_unlocked_room_keys_json").HasDefaultValue("[]");
+        builder.Property(p => p.MainStoryVisibleRoomKeysJson).HasColumnName("main_story_visible_room_keys_json").HasDefaultValue("[]");
         builder.Property(p => p.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(p => p.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

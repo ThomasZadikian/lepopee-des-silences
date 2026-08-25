@@ -50,6 +50,17 @@ public sealed class PlayersController : ControllerBase
         return profile is null ? NotFound() : Ok(profile);
     }
 
+    [HttpGet("{playerId:guid}/palace-progress")]
+    [ProducesResponseType(typeof(MainStoryProgressDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MainStoryProgressDto>> GetPalaceProgress(
+        Guid playerId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _sender.Send(new GetPlayerProfileByIdQuery(playerId), cancellationToken);
+        return profile is null ? NotFound() : Ok(profile.MainStory);
+    }
+
     [HttpGet("{playerId:guid}/run-snapshot")]
     [ProducesResponseType(typeof(PlayerRunSnapshotResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
