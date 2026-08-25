@@ -19,10 +19,19 @@ jobs:
         service:
           - name: game-engine
             solution: services/game-engine/Leds.GameEngine.slnx
+            migrations_project: services/game-engine/src/Leds.GameEngine.Infrastructure
+            startup_project: services/game-engine/src/Leds.GameEngine.Api
+            db_context: GameEngineDbContext
           - name: catalog
             solution: services/catalog/Leds.Catalog.slnx
+            migrations_project: services/catalog/src/Leds.Catalog.Infrastructure
+            startup_project: services/catalog/src/Leds.Catalog.Api
+            db_context: CatalogDbContext
           - name: player
             solution: services/player/Leds.Player.slnx
+            migrations_project: services/player/src/Leds.Player.Infrastructure
+            startup_project: services/player/src/Leds.Player.Api
+            db_context: PlayerDbContext
 
     steps:
       - name: Checkout repository
@@ -46,6 +55,16 @@ jobs:
 
       - name: Build
         run: dotnet build ${{ matrix.service.solution }} --configuration Release --no-restore
+
+      - name: Check EF migration model
+        run: |
+          dotnet tool restore
+          dotnet tool run dotnet-ef migrations has-pending-model-changes \
+            --project ${{ matrix.service.migrations_project }} \
+            --startup-project ${{ matrix.service.startup_project }} \
+            --context ${{ matrix.service.db_context }} \
+            --configuration Release \
+            --no-build
 
       - name: Test
         run: dotnet test ${{ matrix.service.solution }} --configuration Release --no-build --logger "console;verbosity=normal"

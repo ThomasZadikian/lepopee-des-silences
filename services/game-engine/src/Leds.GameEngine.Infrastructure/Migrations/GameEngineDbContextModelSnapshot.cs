@@ -576,10 +576,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("defense");
 
-                    b.Property<int?>("DifficultyLevel")
-                        .HasColumnType("integer")
-                        .HasColumnName("difficulty_level");
-
                     b.Property<int>("Focus")
                         .HasColumnType("integer")
                         .HasColumnName("focus");
@@ -2271,6 +2267,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int>("Defense")
                         .HasColumnType("integer")
                         .HasColumnName("defense");
+
+                    b.Property<int?>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
 
                     b.Property<int>("DotDamageBonusPercent")
                         .ValueGeneratedOnAdd()
