@@ -46,6 +46,7 @@ const props = defineProps<{
   room: RoomDto;
   /** Total count of active laws/curses/modifiers — badge on the always-visible Lois button. */
   influenceCount?: number;
+  interactionLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -58,6 +59,7 @@ const emit = defineEmits<{
   setRoomRiskTier: [tier: string];
   search: [];
   toggleLaws: [];
+  interactRoomNpc: [roomNpcId: string];
 }>();
 
 // Same display name logic as GameTopBar's "Salle" segment — shown here instead in
@@ -77,7 +79,115 @@ const {
 // replace it — fog alone still decides known vs unknown, regions only nuance the already-known.
 const { isInOccupiedRegion } = useRoomRegions(grid);
 
-const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, grid);
+const {
+  displayPartyX,
+  displayPartyY,
+  planRoute,
+  prefersReducedMotion: partyReducedMotion,
+} = usePartyTokenPath(room, grid);
+
+const COMBAT_NODE_TYPES = new Set(['Combat', 'Rare', 'Elite', 'RoomBoss', 'FinalBoss']);
+const ACTOR_STEP_MS = 240;
+const ACTOR_STAGGER_MS = 45;
+type DisplayPosition = { x: number; y: number };
+type ActorTween = DisplayPosition & {
+  fromX: number;
+  fromY: number;
+  startAt: number;
+  duration: number;
+};
+const actorDisplayPositions = ref(new Map<string, DisplayPosition>());
+const actorTweens = new Map<string, ActorTween>();
+let actorRoomId: string | null = null;
+
+function logicalActorPositions() {
+  const positions = new Map<string, DisplayPosition>();
+  for (const npc of props.room.roomNpcs ?? []) {
+    positions.set(`npc:${npc.id}`, { x: npc.x, y: npc.y });
+  }
+  for (const node of props.room.nodes ?? []) {
+    if (COMBAT_NODE_TYPES.has(node.type) && node.state !== 'Resolved') {
+      positions.set(`node:${node.id}`, { x: node.lane, y: node.row });
+    }
+  }
+  return positions;
+}
+
+watch(
+  () => [props.room.id, props.room.roomNpcs, props.room.nodes] as const,
+  () => {
+    const targets = logicalActorPositions();
+    if (actorRoomId !== props.room.id) {
+      actorRoomId = props.room.id;
+      actorTweens.clear();
+      actorDisplayPositions.value = targets;
+      return;
+    }
+
+    const next = new Map(actorDisplayPositions.value);
+    let stagger = 0;
+    for (const [key, target] of targets) {
+      const current = next.get(key);
+      if (!current) {
+        next.set(key, target);
+        continue;
+      }
+      if (current.x === target.x && current.y === target.y) continue;
+      actorTweens.set(key, {
+        fromX: current.x,
+        fromY: current.y,
+        x: target.x,
+        y: target.y,
+        startAt: (typeof performance === 'undefined' ? Date.now() : performance.now()) + stagger,
+        duration: partyReducedMotion ? 0 : ACTOR_STEP_MS,
+      });
+      stagger += partyReducedMotion ? 0 : ACTOR_STAGGER_MS;
+    }
+    for (const key of [...next.keys()]) {
+      if (!targets.has(key)) {
+        next.delete(key);
+        actorTweens.delete(key);
+      }
+    }
+    actorDisplayPositions.value = next;
+  },
+  { immediate: true },
+);
+
+function tickActorAnimations(timestamp: number) {
+  if (actorTweens.size === 0) return;
+  const next = new Map(actorDisplayPositions.value);
+  for (const [key, tween] of actorTweens) {
+    if (timestamp < tween.startAt) continue;
+    const progress = tween.duration === 0
+      ? 1
+      : Math.min(1, (timestamp - tween.startAt) / tween.duration);
+    // Smoothstep avoids the mechanical constant-speed slide while preserving exact endpoints.
+    const eased = progress * progress * (3 - (2 * progress));
+    next.set(key, {
+      x: tween.fromX + ((tween.x - tween.fromX) * eased),
+      y: tween.fromY + ((tween.y - tween.fromY) * eased),
+    });
+    if (progress >= 1) actorTweens.delete(key);
+  }
+  actorDisplayPositions.value = next;
+}
+
+const displayRoomNpcs = computed(() => (props.room.roomNpcs ?? []).map(npc => ({
+  ...npc,
+  logicalX: npc.x,
+  logicalY: npc.y,
+  ...(actorDisplayPositions.value.get(`npc:${npc.id}`) ?? { x: npc.x, y: npc.y }),
+})));
+
+const nodeDisplayPositions = computed(() => {
+  const positions = new Map<string, DisplayPosition>();
+  for (const node of props.room.nodes ?? []) {
+    const position = actorDisplayPositions.value.get(`node:${node.id}`);
+    if (position) positions.set(node.id, position);
+  }
+  return positions;
+});
 
 const { terrainHeight } = usePalaceTerrain(room, grid);
 
@@ -464,7 +574,8 @@ const drawPlan = computed(() => {
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
-    roomNpcs: props.room.roomNpcs,
+    roomNpcs: displayRoomNpcs.value,
+    nodeDisplayPositions: nodeDisplayPositions.value,
     reachableCells: reachableCells.value,
     pathCells: hoveredRoute.value?.path,
     hoveredCell: hoveredCell.value,
@@ -516,6 +627,7 @@ function paintCanvas(timestamp: number) {
 
   const { destW, destH, propH } = spriteDest.value;
   const revealProgress = tickReveals(timestamp);
+  tickActorAnimations(timestamp);
 
   // Anything painted in front of these has to let them show through, or the player loses track
   // of where they are and what they are about to click.
@@ -804,7 +916,17 @@ function canvasPointToCell(event: MouseEvent): Cell | null {
 }
 
 function onCellClick(cell: Cell) {
+  if (props.interactionLocked) return;
   if (!isRevealed(cell.x, cell.y)) return;
+
+  const roomNpc = props.room.roomNpcs?.find(npc => npc.x === cell.x && npc.y === cell.y);
+  if (roomNpc) {
+    const g = grid.value;
+    if (g && Math.abs(roomNpc.x - g.partyX) + Math.abs(roomNpc.y - g.partyY) <= 1) {
+      emit('interactRoomNpc', roomNpc.id);
+    }
+    return;
+  }
 
   if (isParty(cell.x, cell.y)) {
     // Standing on a node's cell opens the standing-node side panel — clicking the

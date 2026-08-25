@@ -31,7 +31,8 @@ public static class TestGameEngineFactory
 
     /// <summary>
     /// Moves the party onto <paramref name="node"/>'s cell (if not already there) and enters
-    /// it — the grid-room equivalent of the old Classic-mode "choose this node" one-liner.
+    /// it when contact has not already selected it — the grid-room equivalent of the old
+    /// Classic-mode "choose this node" one-liner.
     /// </summary>
     public static void EnterNode(Run run, MapNode node)
     {
@@ -42,7 +43,10 @@ public static class TestGameEngineFactory
             run.MoveParty(node.Lane, node.Row);
         }
 
-        run.EnterGridNode(node.Id.Value);
+        if (node.State != NodeState.Selected)
+        {
+            run.EnterGridNode(node.Id.Value);
+        }
     }
 
     public static Room CreateThresholdRoom(

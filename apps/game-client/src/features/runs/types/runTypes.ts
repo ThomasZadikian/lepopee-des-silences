@@ -264,6 +264,23 @@ export type MovePartyResponse = {
   blockedItemIds: string[];
 };
 
+export type ActorAdvanceMode = 'All' | 'HostilesOnly';
+
+export type ActorMovementDto = {
+  actorId: string;
+  actorKind: 'Npc' | 'Enemy';
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+};
+
+export type AdvanceRoomActorsResponse = {
+  run: RunDto;
+  movements: ActorMovementDto[];
+  triggeredNodeId?: string | null;
+};
+
 export type InteractWithRoomNpcResponse = {
   run: RunDto;
   actor: RoomNpcDto;

@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
+using Leds.GameEngine.Application.Runs.AdvanceRoomActors;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
@@ -32,6 +33,7 @@ using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using Leds.GameEngine.Application.Runs.UseGrimoire;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Rooms;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -410,6 +412,29 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/rooms/current/actors/advance")]
+    [ProducesResponseType(typeof(AdvanceRoomActorsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AdvanceRoomActorsResponse>> AdvanceRoomActors(
+        Guid runId,
+        [FromBody] AdvanceRoomActorsRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.GetNames<ActorAdvanceMode>()
+                .Contains(request.Mode, StringComparer.OrdinalIgnoreCase)
+            || !Enum.TryParse<ActorAdvanceMode>(request.Mode, ignoreCase: true, out var mode))
+        {
+            return BadRequest($"Unknown actor advance mode '{request.Mode}'.");
+        }
+
+        var response = await _sender.Send(
+            new AdvanceRoomActorsCommand(runId, mode),
+            cancellationToken);
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/rooms/current/npcs/{roomNpcId:guid}/interact")]
     [ProducesResponseType(typeof(InteractWithRoomNpcResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -622,6 +647,7 @@ public sealed class RunsController : ControllerBase
 public sealed record StartRunRequest(Guid PlayerId, int? DifficultyLevel = null);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
+public sealed record AdvanceRoomActorsRequest(string Mode);
 public sealed record SwapGroundItemRequest(Guid HeldItemId);
 public sealed record SetRoomRiskTierRequest(string Tier);
 

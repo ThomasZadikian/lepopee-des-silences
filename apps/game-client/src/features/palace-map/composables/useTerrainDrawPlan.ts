@@ -422,7 +422,17 @@ export type BuildDrawPlanInput = {
    * roomNpcActorFor, same depth layer as the party since they are creatures standing on their
    * own tile rather than scenery. A catalog key not yet covered by the bestiaire falls back to
    * the generic waiting-figure prop so an unauthored NPC is still visible rather than absent. */
-  roomNpcs?: { id: string; x: number; y: number; catalogNpcKey: string }[];
+  roomNpcs?: {
+    id: string;
+    x: number;
+    y: number;
+    logicalX?: number;
+    logicalY?: number;
+    catalogNpcKey: string;
+  }[];
+  /** Fractional display positions for mobile combat nodes. Logical node positions remain in
+   * nodesByCell for collision/tells; only the standing encounter prop is interpolated. */
+  nodeDisplayPositions?: Map<string, { x: number; y: number }>;
   /** Cells holding an unfound cache — painted as a slab that rings hollow, which is the whole
    * tell that makes searching worth a player's budget. Position only; what is under it stays
    * unknown until searched. */
@@ -563,18 +573,19 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     const prop = propKindFor(node);
     if (!prop) continue;
 
+    const display = input.nodeDisplayPositions?.get(node.id) ?? cell;
     const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
-    const { screenX, screenY } = project(cell.x, cell.y);
+    const { screenX, screenY } = project(display.x, display.y);
 
     entries.push({
       cellKey: `prop:${cell.x},${cell.y}`,
-      x: cell.x,
-      y: cell.y,
+      x: display.x,
+      y: display.y,
       spriteKey: { kind: 'prop', theme: input.theme, prop },
       screenX,
       screenY,
       elevation: elevationLevel,
-      sortKey: ((cell.x + cell.y) * 4) + elevationLevel + 0.45,
+      sortKey: ((display.x + display.y) * 4) + elevationLevel + 0.45,
     });
   }
 
@@ -742,10 +753,12 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   // Positioned RoomNpcs — painted as actors (see roomNpcActorFor), the same depth layer as the
   // party itself: creatures standing on their own tile, not scenery.
   for (const npc of input.roomNpcs ?? []) {
-    if (!isFloor(npc.x, npc.y)) continue;
-    if (!inBounds(npc.x, npc.y)) continue;
+    const logicalX = npc.logicalX ?? npc.x;
+    const logicalY = npc.logicalY ?? npc.y;
+    if (!isFloor(logicalX, logicalY)) continue;
+    if (!inBounds(logicalX, logicalY)) continue;
 
-    const elevationLevel = input.elevation[(npc.y * input.gridWidth) + npc.x] ?? 0;
+    const elevationLevel = input.elevation[(logicalY * input.gridWidth) + logicalX] ?? 0;
     const { screenX, screenY } = project(npc.x, npc.y);
     const actor = roomNpcActorFor(npc.catalogNpcKey);
 

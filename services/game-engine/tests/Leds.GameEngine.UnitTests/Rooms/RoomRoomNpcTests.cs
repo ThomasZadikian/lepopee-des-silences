@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Domain.Actors;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
@@ -91,12 +92,11 @@ public sealed class RoomRoomNpcTests
     }
 
     [Fact]
-    public void MoveParty_ShouldStepEveryRoomNpc_OncePerCellActuallyEntered()
+    public void MoveParty_ShouldNotMoveRoomNpcsWhileThePartyIsMoving()
     {
         var room = CreateRoom();
-        // Fixed at its post, but tracked to confirm it never relocates during the move below.
-        var fixedNpc = RoomNpc.Create("statue", x: 5, y: 5, NpcBehaviorArchetype.Fixed);
-        room.AddRoomNpc(fixedNpc);
+        var passiveNpc = RoomNpc.Create("habitant", x: 5, y: 5, NpcBehaviorArchetype.Passive);
+        room.AddRoomNpc(passiveNpc);
 
         room.MoveParty(3, 0);
 
@@ -143,19 +143,15 @@ public sealed class RoomRoomNpcTests
     }
 
     [Fact]
-    public void MoveParty_ShouldLetAHunterCloseDistance_OnceAware()
+    public void AdvanceActors_ShouldKeepANeutralNpcStillWithinTwoCells()
     {
         var room = CreateRoom();
-        var hunter = RoomNpc.Create("chasseur", x: 9, y: 0, NpcBehaviorArchetype.Hunter, awarenessRadius: 20);
-        room.AddRoomNpc(hunter);
+        var npc = RoomNpc.Create("habitant", x: 2, y: 0, NpcBehaviorArchetype.Passive);
+        room.AddRoomNpc(npc);
 
-        // Three cells entered: the first Step still finds the hunter Unaware (Step runs before
-        // RefreshAwareness for that same cell — see Room.MoveParty), so it only starts closing
-        // distance on the second and third cell of this same move.
-        room.MoveParty(3, 0);
+        var result = room.AdvanceActors(ActorAdvanceMode.All);
 
-        var tracked = room.RoomNpcs.Single();
-        tracked.Awareness.Should().Be(NpcAwarenessState.Aware);
-        (tracked.X + tracked.Y).Should().BeLessThan(9);
+        result.Movements.Should().NotContain(movement => movement.ActorKind == ActorKind.Npc);
+        (npc.X, npc.Y).Should().Be((2, 0));
     }
 }

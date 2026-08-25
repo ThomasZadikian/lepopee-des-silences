@@ -1,6 +1,8 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
 import type {
+  ActorAdvanceMode,
+  AdvanceRoomActorsResponse,
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
   GetOpenRunResponse,
@@ -118,6 +120,13 @@ export const runApi = {
     return gameEngineApi.post<MovePartyResponse, { targetX: number; targetY: number }>(
       `/api/v2/runs/${runId}/party/move`,
       { targetX, targetY },
+    );
+  },
+
+  advanceRoomActors(runId: string, mode: ActorAdvanceMode) {
+    return gameEngineApi.post<AdvanceRoomActorsResponse, { mode: ActorAdvanceMode }>(
+      `/api/v2/runs/${runId}/rooms/current/actors/advance`,
+      { mode },
     );
   },
 

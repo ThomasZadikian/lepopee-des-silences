@@ -377,6 +377,19 @@ describe('buildDrawPlan', () => {
         .toMatchObject({ kind: 'prop', prop: 'elite' });
     });
 
+    it('projects a mobile combat prop at its fractional display position', () => {
+      const node = makeNode({ id: 'moving-enemy', lane: 1, row: 1, type: 'Combat' });
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['1,1', node]]),
+        nodeDisplayPositions: new Map([['moving-enemy', { x: 1.5, y: 1 }]]),
+      });
+
+      const prop = plan.find((entry) => entry.cellKey === 'prop:1,1')!;
+      expect({ screenX: prop.screenX, screenY: prop.screenY })
+        .toEqual(projectToScreen(1.5, 1, PARAMS));
+    });
+
     it('stands the boss silhouette on the room objective', () => {
       const plan = buildDrawPlan({
         ...baseInput,
