@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -82,6 +83,28 @@ public sealed class EfRunRepositoryTests : IDisposable
             loadedNode.ChosenEventOptionId.Should().Be(originalNode.ChosenEventOptionId);
             loadedNode.ParentNodeIds.Should().BeEquivalentTo(originalNode.ParentNodeIds);
         }
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_ShouldPreservePositionedRoomNpcs()
+    {
+        var run = CreateTestRun();
+        var npc = RoomNpc.Create(
+            "npc.majordome",
+            x: 4,
+            y: 0,
+            behavior: NpcBehaviorArchetype.Fixed);
+        run.CurrentRoom.AddRoomNpc(npc);
+
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        using var verifyContext = _fixture.CreateContext(_connStr);
+        var loaded = await new EfRunRepository(verifyContext)
+            .GetByIdAsync(run.Id, CancellationToken.None);
+
+        loaded.Should().NotBeNull();
+        loaded!.CurrentRoom.RoomNpcs.Should().ContainSingle();
+        loaded.CurrentRoom.RoomNpcs.Single().Should().BeEquivalentTo(npc);
     }
 
     [Fact]
