@@ -1,63 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import type { PlayerCharacterView, PlayerStatKind } from '../../../party/types/playerTypes';
-import { usePlayerStore } from '../../../party/stores/playerStore';
-import { useRunStore } from '../../stores/runStore';
 import {
   statDescriptions,
   statLabels,
   statOrder,
-  statPointIncrements,
   statValue,
 } from '../../../party/constants/statDescriptions';
 import StatRadarChart from './StatRadarChart.vue';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
-
-const playerStore = usePlayerStore();
-const runStore = useRunStore();
-
-// Points staged for THIS character, not yet applied — discarded (matching the
-// Grimoire's staging behavior) if the character picker switches away before
-// "Valider les choix" is clicked.
-const pendingAllocations = ref<Partial<Record<PlayerStatKind, number>>>({});
-
-function resetPending() {
-  pendingAllocations.value = {};
-}
-watch(() => props.character.id, resetPending);
-
-const totalPending = computed(() =>
-  Object.values(pendingAllocations.value).reduce((sum: number, n) => sum + (n ?? 0), 0),
-);
-
-const availableToStage = computed(() => playerStore.unspentStatPoints - totalPending.value);
-
-function stagePoint(stat: PlayerStatKind) {
-  if (availableToStage.value <= 0) return;
-  pendingAllocations.value = {
-    ...pendingAllocations.value,
-    [stat]: (pendingAllocations.value[stat] ?? 0) + 1,
-  };
-}
-
-function unstagePoint(stat: PlayerStatKind) {
-  const current = pendingAllocations.value[stat] ?? 0;
-  if (current <= 0) return;
-
-  const next = { ...pendingAllocations.value };
-  if (current === 1) {
-    delete next[stat];
-  } else {
-    next[stat] = current - 1;
-  }
-  pendingAllocations.value = next;
-}
-
-function previewValue(stat: PlayerStatKind): number {
-  return statValue(props.character.stats, stat)
-    + (pendingAllocations.value[stat] ?? 0) * statPointIncrements[stat];
-}
 
 const radarValues = computed(() => {
   const values = {} as Record<PlayerStatKind, number>;
@@ -65,73 +17,13 @@ const radarValues = computed(() => {
   return values;
 });
 
-const radarPreviewValues = computed(() => {
-  const values = {} as Record<PlayerStatKind, number>;
-  for (const stat of statOrder) values[stat] = previewValue(stat);
-  return values;
-});
-
-const hasPendingChanges = computed(() => totalPending.value > 0);
-
-const isSaving = ref(false);
-const saveError = ref<string | null>(null);
-
-async function validateChoices() {
-  if (!hasPendingChanges.value) return;
-
-  isSaving.value = true;
-  saveError.value = null;
-  try {
-    for (const stat of statOrder) {
-      const count = pendingAllocations.value[stat] ?? 0;
-      for (let i = 0; i < count; i++) {
-        await playerStore.spendStatPoint(props.character.id, stat);
-        if (playerStore.error) {
-          saveError.value = playerStore.error;
-          return;
-        }
-      }
-    }
-    if (runStore.currentRun) {
-      await runStore.syncPartyStats();
-    }
-    resetPending();
-  } finally {
-    isSaving.value = false;
-  }
-}
-
-function cancelChoices() {
-  resetPending();
-}
 </script>
 
 <template>
   <div class="cst-root">
-    <p v-if="playerStore.error" class="cst-error">{{ playerStore.error }}</p>
-    <p v-if="saveError" class="cst-error">{{ saveError }}</p>
-
     <header class="cst-header">
-      <span class="es-label">Points disponibles</span>
-      <span class="cst-points">{{ availableToStage }}</span>
-      <div class="cst-actions">
-        <button
-          type="button"
-          class="cst-btn cst-btn--ghost"
-          :disabled="!hasPendingChanges || isSaving"
-          @click="cancelChoices"
-        >
-          Annuler
-        </button>
-        <button
-          type="button"
-          class="cst-btn cst-btn--primary"
-          :disabled="!hasPendingChanges || isSaving"
-          @click="validateChoices"
-        >
-          {{ isSaving ? 'Validation…' : 'Valider les choix' }}
-        </button>
-      </div>
+      <span class="es-label">Caractéristiques effectives</span>
+      <small>Définies par le personnage, son équipement et les effets de Run.</small>
     </header>
 
     <div class="cst-tactical-resources">
@@ -148,7 +40,7 @@ function cancelChoices() {
     </div>
 
     <div class="cst-body">
-      <StatRadarChart :values="radarValues" :preview-values="radarPreviewValues" class="cst-radar" />
+      <StatRadarChart :values="radarValues" class="cst-radar" />
 
       <ul class="cst-list">
         <li v-for="stat in statOrder" :key="stat" class="cst-row">
@@ -158,29 +50,7 @@ function cancelChoices() {
           </div>
           <span class="cst-row__value">
             {{ statValue(character.stats, stat) }}
-            <span v-if="(pendingAllocations[stat] ?? 0) > 0" class="cst-row__pending">
-              → {{ previewValue(stat) }}
-            </span>
           </span>
-          <div class="cst-row__controls">
-            <button
-              type="button"
-              class="cst-row__step"
-              :disabled="(pendingAllocations[stat] ?? 0) <= 0 || isSaving"
-              @click="unstagePoint(stat)"
-            >
-              −
-            </button>
-            <span class="cst-row__staged">{{ pendingAllocations[stat] ?? 0 }}</span>
-            <button
-              type="button"
-              class="cst-row__step"
-              :disabled="availableToStage <= 0 || isSaving"
-              @click="stagePoint(stat)"
-            >
-              +{{ statPointIncrements[stat] }}
-            </button>
-          </div>
         </li>
       </ul>
     </div>

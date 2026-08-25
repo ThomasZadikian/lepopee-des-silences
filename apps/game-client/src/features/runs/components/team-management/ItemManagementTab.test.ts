@@ -15,7 +15,6 @@ vi.mock('../../../party/api/playerApi', () => ({
     getProfile: vi.fn(),
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
-    spendStatPoint: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
   },
@@ -53,7 +52,7 @@ function baseProfile(character: PlayerCharacterView): PlayerProfileView {
     id: 'player-1',
     displayName: 'Test',
     characters: [character],
-    progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
+    progression: { palaceShardCount: 0 },
     permanentItems: [
       { itemDefinitionKey: 'item.relic.tome', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
       { itemDefinitionKey: 'item.equipment.sac', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },

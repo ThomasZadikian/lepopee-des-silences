@@ -1,6 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
-using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
@@ -15,14 +14,9 @@ public sealed class UseRunItemCommandHandler
     : IRequestHandler<UseRunItemCommand, UseRunItemResponse>
 {
     private readonly IRunRepository _runRepository;
-    private readonly IPlayerProfileGateway? _playerProfileGateway;
-
-    public UseRunItemCommandHandler(
-        IRunRepository runRepository,
-        IPlayerProfileGateway? playerProfileGateway = null)
+    public UseRunItemCommandHandler(IRunRepository runRepository)
     {
         _runRepository = runRepository;
-        _playerProfileGateway = playerProfileGateway;
     }
 
     public async Task<UseRunItemResponse> Handle(
@@ -34,18 +28,6 @@ public sealed class UseRunItemCommandHandler
             ?? throw new NotFoundException("Run", request.RunId);
 
         var (effectType, amount, depleted) = run.UseItem(new RunItemId(request.ItemId));
-
-        if (effectType == RunItemEffectType.GrantTeamSkillPoints)
-        {
-            if (_playerProfileGateway is null)
-                throw new InvalidOperationException(
-                    "Player profile gateway is required for progression items.");
-
-            await _playerProfileGateway.AwardStatPointsAsync(
-                run.PlayerId,
-                amount,
-                cancellationToken);
-        }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 

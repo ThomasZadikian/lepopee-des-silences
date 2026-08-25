@@ -17,8 +17,8 @@ namespace Leds.GameEngine.Application.Players;
 /// character sheet ("Équipe" → onglet Statistiques) showed base stats only — equipping
 /// gear never visibly changed anything there, even though combat correctly used the
 /// boosted stats. Wrapping the gateway (rather than patching each handler) guarantees
-/// every current and future caller — GetProfile, equip/unequip item or skill, spend
-/// stat point, etc. — sees the same effective stats, with no risk of one call path
+/// every current and future caller — GetProfile or equip/unequip item or skill — sees
+/// the same effective stats, with no risk of one call path
 /// drifting back to raw base stats.
 /// </remarks>
 public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
@@ -36,9 +36,6 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
         _skillMerger = skillMerger;
         _statMerger = statMerger;
     }
-
-    public Task AwardStatPointAsync(Guid playerId, CancellationToken cancellationToken)
-        => _inner.AwardStatPointAsync(playerId, cancellationToken);
 
     public async Task<PlayerProfileView> GetProfileAsync(Guid playerId, CancellationToken cancellationToken)
         => await EnrichAsync(await _inner.GetProfileAsync(playerId, cancellationToken), cancellationToken);
@@ -67,15 +64,9 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
     public async Task<PlayerProfileView> ClearPermanentItemContentAsync(Guid playerId, string itemDefinitionKey, CancellationToken cancellationToken)
         => await EnrichAsync(await _inner.ClearPermanentItemContentAsync(playerId, itemDefinitionKey, cancellationToken), cancellationToken);
 
-    public async Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
-        => await EnrichAsync(await _inner.SpendStatPointAsync(playerId, characterId, stat, cancellationToken), cancellationToken);
-
     public async Task<PlayerProfileView> UnlockSkillAsync(
         Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools")
         => await EnrichAsync(await _inner.UnlockSkillAsync(playerId, characterId, skillKey, cancellationToken, source), cancellationToken);
-
-    public async Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken)
-        => await EnrichAsync(await _inner.AwardStatPointsAsync(playerId, amount, cancellationToken), cancellationToken);
 
     public async Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
         => await EnrichAsync(await _inner.AwardCurrencyAsync(playerId, amount, cancellationToken), cancellationToken);

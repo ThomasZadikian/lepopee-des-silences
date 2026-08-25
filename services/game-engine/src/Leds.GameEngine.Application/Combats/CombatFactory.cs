@@ -243,7 +243,7 @@ public sealed class CombatFactory : ICombatFactory
                     return protagonist;
                 }
 
-                // Companion: its OWN kit and stats; starts the fight at full vitality.
+                // Companion: its OWN kit, stats and run-scoped resources from the prior combat.
                 var companionSkills = ally.Skills is { Count: > 0 }
                     ? ally.Skills
                         .Select(s => CombatantSkill.Create(
@@ -275,6 +275,10 @@ public sealed class CombatFactory : ICombatFactory
                 var companionMana = AdjustConditionalScalarStat(
                     ally.Mana, "Mana", roomTheme, activeClimate, effectiveConditionalEffects,
                     minimum: 0);
+                var companionCurrentVitality = Math.Min(
+                    ally.CurrentVitality ?? companionMaxVitality, companionMaxVitality);
+                var companionCurrentMana = Math.Min(
+                    ally.CurrentMana ?? companionMana, companionMana);
 
                 var companion = Combatant.Create(
                     CombatantId.New(),
@@ -283,10 +287,10 @@ public sealed class CombatFactory : ICombatFactory
                     CombatantSide.Player,
                     ally.Role,
                     companionMaxVitality,
-                    currentVitality: companionMaxVitality,
+                    currentVitality: companionCurrentVitality,
                     guard: ally.StartingGuard + guardBonus,
                     baseGuard: guardBonus,
-                    mana: companionMana,
+                    mana: companionCurrentMana,
                     charge: ally.Charge,
                     companionSkills,
                     attackPower: ally.AttackPower,

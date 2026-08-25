@@ -52,14 +52,6 @@ describe('playerApi', () => {
     );
   });
 
-  it('spendStatPoint sends POST request to the spend-point route', async () => {
-    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await playerApi.spendStatPoint('player-1', 'char-1', 'AttackPower');
-    expect(gameEngineApi.post).toHaveBeenCalledWith(
-      '/api/v2/players/player-1/characters/char-1/stats/AttackPower/spend-point',
-    );
-  });
-
   it('returns the API response for getProfile', async () => {
     const mockResponse = { id: 'player-1', displayName: 'Test' };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

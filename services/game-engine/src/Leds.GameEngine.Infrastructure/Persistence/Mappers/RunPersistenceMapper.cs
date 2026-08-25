@@ -352,6 +352,8 @@ public static class RunPersistenceMapper
             DefinitionKey = snapshot.DefinitionKey,
             DisplayName = snapshot.DisplayName,
             EmotionalRegisterCode = snapshot.EmotionalRegisterCode,
+            CurrentVitality = snapshot.CurrentVitality,
+            CurrentMana = snapshot.CurrentMana,
             SnapshotOrder = order,
             EquippedItemKeysCsv = string.Join(';', snapshot.EquippedItemKeys),
             StatBlock = snapshot.StatBlock is not null
@@ -921,7 +923,9 @@ public static class RunPersistenceMapper
                 : entity.EquippedItemKeysCsv.Split(
                     ';',
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            entity.EmotionalRegisterCode);
+            entity.EmotionalRegisterCode,
+            entity.CurrentVitality,
+            entity.CurrentMana);
     }
 
     private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)

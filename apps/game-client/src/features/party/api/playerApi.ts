@@ -1,6 +1,6 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
-import type { PlayerProfileView, PlayerStatKind } from '../types/playerTypes';
+import type { PlayerProfileView } from '../types/playerTypes';
 
 export const playerApi = {
   getProfile(playerId: string) {
@@ -31,9 +31,4 @@ export const playerApi = {
     );
   },
 
-  spendStatPoint(playerId: string, characterId: string, stat: PlayerStatKind) {
-    return gameEngineApi.post<PlayerProfileView>(
-      `/api/v2/players/${playerId}/characters/${characterId}/stats/${stat}/spend-point`,
-    );
-  },
 };

@@ -18,10 +18,4 @@ public sealed class DevToolsPlayerDebugService : IDevToolsPlayerDebugService
         return new DevToolsPlayerDebugResult($"Skill '{skillKey}' unlocked.", profile);
     }
 
-    public async Task<DevToolsPlayerDebugResult> AwardStatPointsAsync(
-        Guid playerId, int amount, CancellationToken cancellationToken = default)
-    {
-        var profile = await _playerProfileGateway.AwardStatPointsAsync(playerId, amount, cancellationToken);
-        return new DevToolsPlayerDebugResult($"Awarded {amount} stat point(s).", profile);
-    }
 }

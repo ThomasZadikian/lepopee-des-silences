@@ -11,7 +11,6 @@ vi.mock('../api/playerApi', () => ({
     getProfile: vi.fn(),
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
-    spendStatPoint: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
   },
@@ -41,7 +40,7 @@ function baseProfile(overrides: Partial<PlayerProfileView['characters'][0]> = {}
         ...overrides,
       },
     ],
-    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3, palaceShardCount: 0 },
+    progression: { palaceShardCount: 0 },
     permanentItems: [],
   };
 }
@@ -68,15 +67,6 @@ describe('usePlayerStore', () => {
     expect(store.error).toBeNull();
   });
 
-  it('exposes unspentStatPoints from progression', async () => {
-    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
-    const store = usePlayerStore();
-
-    await store.loadProfile(demoPlayerId);
-
-    expect(store.unspentStatPoints).toBe(2);
-  });
-
   it('equipSkill replaces the profile with the API response', async () => {
     vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
     const updated = baseProfile();
@@ -89,20 +79,6 @@ describe('usePlayerStore', () => {
 
     expect(playerApi.equipSkill).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'skill.b');
     expect(store.profile?.characters[0].skills[1].isEquipped).toBe(true);
-  });
-
-  it('spendStatPoint replaces the profile and decrements unspent points', async () => {
-    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
-    const updated = baseProfile();
-    updated.progression.unspentStatPoints = 1;
-    vi.mocked(playerApi.spendStatPoint).mockResolvedValue(updated);
-    const store = usePlayerStore();
-    await store.loadProfile(demoPlayerId);
-
-    await store.spendStatPoint('char-1', 'AttackPower');
-
-    expect(playerApi.spendStatPoint).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'AttackPower');
-    expect(store.unspentStatPoints).toBe(1);
   });
 
   it('sets an error message when an action fails', async () => {

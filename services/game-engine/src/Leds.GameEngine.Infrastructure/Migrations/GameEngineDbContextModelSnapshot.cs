@@ -2110,6 +2110,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("emotional_register_code");
 
+                    b.Property<int>("CurrentMana")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_mana");
+
+                    b.Property<int>("CurrentVitality")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_vitality");
+
                     b.Property<string>("EquippedItemKeysCsv")
                         .HasColumnType("text")
                         .HasColumnName("equipped_item_keys_csv");

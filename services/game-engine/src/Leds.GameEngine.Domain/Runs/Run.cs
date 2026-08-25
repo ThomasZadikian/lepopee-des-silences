@@ -346,6 +346,30 @@ public sealed class Run
         ActiveCombatId.HasValue || _activeTacticalCombat is not null;
 
     /// <summary>
+    /// Projects every physical party member's current combat resources back to the durable run
+    /// snapshot before the combat aggregate is released. Replaying the projection is idempotent.
+    /// </summary>
+    public void CapturePartyResources(IEnumerable<Combatant> allies)
+    {
+        if (PlayerSnapshot is null)
+        {
+            return;
+        }
+
+        var byCharacterId = PlayerSnapshot.Characters.ToDictionary(character => character.CharacterId);
+        foreach (var ally in allies)
+        {
+            if (ally.CharacterInstanceId is not { } characterId
+                || !byCharacterId.TryGetValue(characterId, out var character))
+            {
+                continue;
+            }
+
+            character.UpdateCurrentResources(ally.CurrentVitality, ally.RuntimeState.CurrentMana);
+        }
+    }
+
+    /// <summary>
     /// Le combat tactique en cours, le cas échéant. Renseigné par <see cref="StartTacticalCombat"/>.
     /// </summary>
     /// <remarks>
@@ -2758,6 +2782,12 @@ public sealed class Run
 
         var item = _runItems.FirstOrDefault(i => i.Id == itemId)
             ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+
+        if (item.EffectType == RunItemEffectType.GrantTeamSkillPoints)
+        {
+            throw new DomainException(
+                "Legacy permanent stat-point effects are disabled pending their canonical progression mapping.");
+        }
 
         var consumablesRestricted = _runModifiers
             .Any(m => m.Type == RunModifierType.ConsumablesRestrictedInCombat && !m.IsConsumed);

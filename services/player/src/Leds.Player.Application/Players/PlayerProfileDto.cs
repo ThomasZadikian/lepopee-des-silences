@@ -159,8 +159,6 @@ public sealed record PlayerProgressionDto(
     int TotalRunsCompleted,
     int TotalRunsFailed,
     int TotalRunsAbandoned,
-    int UnspentStatPoints,
-    int TotalStatPointsEarned,
     int PalaceShardCount,
     int HimLitShardCount)
 {
@@ -171,8 +169,6 @@ public sealed record PlayerProgressionDto(
             progression.TotalRunsCompleted,
             progression.TotalRunsFailed,
             progression.TotalRunsAbandoned,
-            progression.UnspentStatPoints,
-            progression.TotalStatPointsEarned,
             progression.PalaceShardCount,
             progression.HimLitShardCount);
     }

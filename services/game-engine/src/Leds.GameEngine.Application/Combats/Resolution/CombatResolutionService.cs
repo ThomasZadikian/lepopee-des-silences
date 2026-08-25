@@ -54,6 +54,11 @@ public sealed class CombatResolutionService : ICombatResolutionService
         DateTimeOffset now,
         CancellationToken cancellationToken = default)
     {
+        if (combat.Status is CombatStatus.Completed or CombatStatus.Failed)
+        {
+            run.CapturePartyResources(combat.Allies);
+        }
+
         switch (combat.Status)
         {
             case CombatStatus.Completed:
@@ -97,20 +102,6 @@ public sealed class CombatResolutionService : ICombatResolutionService
             NodeEventType.FinalBoss => RewardSource.RoomBoss,
             _ => RewardSource.Combat
         };
-
-        if (source == RewardSource.RoomBoss)
-        {
-            // Must never block or fail combat resolution: the reward offer
-            // always ships even if the Player Service is unreachable.
-            try
-            {
-                await _playerProfileGateway.AwardStatPointAsync(run.PlayerId, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to award stat point for player {PlayerId}", run.PlayerId);
-            }
-        }
 
         return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,

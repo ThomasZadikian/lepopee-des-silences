@@ -8,6 +8,8 @@ public sealed class RunCharacterSnapshotEntity
     public string DefinitionKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string EmotionalRegisterCode { get; set; } = string.Empty;
+    public int CurrentVitality { get; set; }
+    public int CurrentMana { get; set; }
     public int SnapshotOrder { get; set; }
     public string? EquippedItemKeysCsv { get; set; }
     public RunPlayerSnapshotEntity? PlayerSnapshot { get; set; }

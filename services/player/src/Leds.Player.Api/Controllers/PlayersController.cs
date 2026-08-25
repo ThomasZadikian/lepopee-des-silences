@@ -2,7 +2,6 @@ using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.CreatePlayerProfile;
 using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.EquipSkill;
-using Leds.Player.Application.Players.SpendStatPoint;
 using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Application.Players.UnequipSkill;
 using Leds.Player.Domain.Players;
@@ -130,21 +129,6 @@ public sealed class PlayersController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("{playerId:guid}/characters/{characterId:guid}/stats/{stat}/spend-point")]
-    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PlayerProfileDto>> SpendStatPoint(
-        Guid playerId,
-        Guid characterId,
-        PlayerStatKind stat,
-        CancellationToken cancellationToken)
-    {
-        var command = new SpendStatPointCommand(playerId, characterId, stat);
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
-    }
 }
 
 public sealed record CreatePlayerProfileRequest(string DisplayName);

@@ -52,7 +52,5 @@ public sealed record PlayerCharacterStatsView(
     int Movement = 4);
 
 public sealed record PlayerProgressionView(
-    int UnspentStatPoints,
-    int TotalStatPointsEarned,
     int PalaceShardCount = 0,
     int HimLitShardCount = 0);

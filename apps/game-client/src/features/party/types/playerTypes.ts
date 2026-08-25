@@ -53,10 +53,8 @@ export type PlayerCharacterView = {
 };
 
 export type PlayerProgressionView = {
-  unspentStatPoints: number;
-  totalStatPointsEarned: number;
   palaceShardCount: number;
-  himLitShardCount: number;
+  himLitShardCount?: number;
 };
 
 export type PlayerPermanentItemView = {

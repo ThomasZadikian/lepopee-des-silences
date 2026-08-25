@@ -51,25 +51,6 @@ public sealed class UseGrimoireCommandHandler
         if (string.IsNullOrWhiteSpace(skillKey))
             throw new DomainException($"Grimoire '{item.DefinitionKey}' has no authored temporary skill.");
 
-        var awardsPointsForKnownForgeSkill = (itemDefinition.EquipmentEffects ?? []).Any(effect =>
-            string.Equals(effect.Kind, "RuntimeBehavior", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(effect.BehaviorCode, "known-forge-skill-awards-eight-points", StringComparison.OrdinalIgnoreCase));
-        if (awardsPointsForKnownForgeSkill
-            && character.Skills.Any(skill =>
-                skill.SkillDefinitionKey.Equals(
-                    "canon.skill.souffle-de-la-forge",
-                    StringComparison.OrdinalIgnoreCase)))
-        {
-            var depletedForPoints = run.ConsumeGrimoire(item.Id);
-            await _players.AwardStatPointsAsync(run.PlayerId, 8, cancellationToken);
-            await _runs.UpdateAsync(run, cancellationToken);
-            return new(
-                run.Id.Value, item.Id.Value, request.CharacterId,
-                GrantedSkillKey: null,
-                TeamSkillPointsGranted: 8,
-                ItemDepleted: depletedForPoints);
-        }
-
         var skill = await _catalog.GetSkillDefinitionByKeyAsync(skillKey, cancellationToken)
             ?? throw new DomainException($"Temporary skill '{skillKey}' is missing from the catalog.");
         var runtimeSkill = ToRuntimeSkill(skill);

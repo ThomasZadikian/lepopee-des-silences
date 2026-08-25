@@ -382,7 +382,7 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
-    public void RecruitCompanion_ShouldGrantCatchUpStatPoints_WhenAnExistingCharacterHasInvestedPoints()
+    public void RecruitCompanion_ShouldNotGrantPermanentStatPoints_WhenAnExistingCharacterHasInvestedPoints()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
         var now = DateTimeOffset.UtcNow;
@@ -397,8 +397,8 @@ public sealed class PlayerProfileTests
 
         profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
-        profile.Progression.UnspentStatPoints.Should().Be(3); // 1 leftover + 2 catch-up
-        profile.Progression.TotalStatPointsEarned.Should().Be(5); // 3 awarded + 2 catch-up
+        profile.Progression.UnspentStatPoints.Should().Be(1);
+        profile.Progression.TotalStatPointsEarned.Should().Be(3);
     }
 
     [Fact]
@@ -417,7 +417,7 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
-    public void RecruitCompanion_ShouldCatchUpToTheMostAdvancedExistingCompanion_NotJustTheProtagonist()
+    public void RecruitCompanion_ShouldNotGrantPermanentStatPoints_ForAnAdvancedExistingCompanion()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
         var now = DateTimeOffset.UtcNow;
@@ -438,7 +438,7 @@ public sealed class PlayerProfileTests
 
         profile.RecruitCompanion("character.mane", "Mané", secondCompanionStatBlock, ["skill.basic.strike"], now);
 
-        profile.Progression.UnspentStatPoints.Should().Be(1 + 3); // 1 leftover + catch-up to Thomas's 3
+        profile.Progression.UnspentStatPoints.Should().Be(1);
         protagonist.StatPointsInvested.Should().Be(0);
     }
 

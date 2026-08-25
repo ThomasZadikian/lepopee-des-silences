@@ -15,7 +15,9 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string? emotionalRegisterCode = null)
+        string? emotionalRegisterCode = null,
+        int? currentVitality = null,
+        int? currentMana = null)
     {
         Id = id;
         CharacterId = characterId;
@@ -23,6 +25,8 @@ public sealed class RunCharacterSnapshot
         DisplayName = displayName;
         EmotionalRegisterCode = NormalizeEmotionalRegisterCode(emotionalRegisterCode);
         StatBlock = statBlock;
+        CurrentVitality = Math.Clamp(currentVitality ?? statBlock.MaxVitality, 0, statBlock.MaxVitality);
+        CurrentMana = Math.Clamp(currentMana ?? statBlock.Mana, 0, statBlock.Mana);
         _skills.AddRange(skills);
         EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
     }
@@ -33,6 +37,9 @@ public sealed class RunCharacterSnapshot
     public string DisplayName { get; }
     public string EmotionalRegisterCode { get; }
     public RunCharacterStatSnapshot StatBlock { get; }
+    /// <summary>Run-scoped resource state, distinct from the immutable effective stat block.</summary>
+    public int CurrentVitality { get; private set; }
+    public int CurrentMana { get; private set; }
     public IReadOnlyCollection<RunCharacterSkillSnapshot> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<string> EquippedItemKeys { get; private set; }
 
@@ -65,7 +72,9 @@ public sealed class RunCharacterSnapshot
             statBlock,
             skills,
             equippedItemKeys,
-            emotionalRegisterCode);
+            emotionalRegisterCode,
+            statBlock.MaxVitality,
+            statBlock.Mana);
     }
 
     /// <summary>
@@ -93,6 +102,12 @@ public sealed class RunCharacterSnapshot
         EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
     }
 
+    public void UpdateCurrentResources(int currentVitality, int currentMana)
+    {
+        CurrentVitality = Math.Clamp(currentVitality, 0, StatBlock.MaxVitality);
+        CurrentMana = Math.Clamp(currentMana, 0, StatBlock.Mana);
+    }
+
     private static IReadOnlyCollection<string> NormalizeEquippedItemKeys(
         IReadOnlyCollection<string>? equippedItemKeys)
     {
@@ -118,9 +133,12 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string? emotionalRegisterCode = null)
+        string? emotionalRegisterCode = null,
+        int? currentVitality = null,
+        int? currentMana = null)
     {
         return new RunCharacterSnapshot(
-            id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys, emotionalRegisterCode);
+            id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys,
+            emotionalRegisterCode, currentVitality, currentMana);
     }
 }

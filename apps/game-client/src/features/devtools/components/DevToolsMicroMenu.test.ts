@@ -25,7 +25,6 @@ function mountMenu() {
       stubs: {
         SkillsDevToolsWindow: windowStub('sorts-window'),
         ItemsDevToolsWindow: windowStub('objets-window'),
-        StatPointsDevToolsWindow: windowStub('points-window'),
         RunDevToolsWindow: windowStub('run-window'),
         PartyDevToolsWindow: windowStub('compagnons-window'),
         RoomDevToolsWindow: windowStub('salle-window'),
@@ -44,14 +43,14 @@ describe('DevToolsMicroMenu', () => {
 
   it('renders one button per devtools window', () => {
     const wrapper = mountMenu();
-    expect(wrapper.findAll('.devtools-micro-menu__btn')).toHaveLength(9);
+    expect(wrapper.findAll('.devtools-micro-menu__btn')).toHaveLength(8);
   });
 
   it('gives each button a tooltip label', () => {
     const wrapper = mountMenu();
     const titles = wrapper.findAll('.devtools-micro-menu__btn').map((btn) => btn.attributes('title'));
     expect(titles).toEqual([
-      'Sorts', 'Objets', 'Points de compétence', 'Run', 'Compagnons',
+      'Sorts', 'Objets', 'Run', 'Compagnons',
       'Salle', 'Lois', 'Malédictions', 'Psyché',
     ]);
   });

@@ -156,14 +156,8 @@ public sealed class PlayerProfile
     /// adds a new character to the roster for life. No-op if already recruited
     /// (idempotent by DefinitionKey), mirrors GrantPermanentUnlock/AddPermanentItems.
     /// The companion automatically fights alongside the protagonist in every future
-    /// run (game-engine builds the combat party from the full roster).
-    ///
-    /// Grants a "catch-up" bonus to the shared stat-point pool equal to the most
-    /// stat points already invested in any existing character (usually the
-    /// protagonist) — a companion recruited late in a playthrough would otherwise
-    /// start at its catalog kit's bare baseline and permanently lag behind. The
-    /// bonus lands in the same pool everyone spends from (SpendStatPoint), so the
-    /// player still chooses where to allocate it.
+    /// run (game-engine builds the combat party from the full roster). Recruitment
+    /// never mutates the legacy permanent-stat counters.
     /// </summary>
     public void RecruitCompanion(
         string companionDefinitionKey,
@@ -175,10 +169,6 @@ public sealed class PlayerProfile
         if (Roster.Characters.Any(c => string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        var catchUpAmount = Roster.Characters.Count == 0
-            ? 0
-            : Roster.Characters.Max(c => c.StatPointsInvested);
-
         var skills = skillKeys
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(key => PlayerCharacterSkill.Create(key, now, "npc-offering", isEquipped: true))
@@ -189,9 +179,6 @@ public sealed class PlayerProfile
             characterType: "Companion");
 
         Roster.AddCharacter(companion);
-
-        if (catchUpAmount > 0)
-            Progression.AwardStatPoint(catchUpAmount);
 
         Touch(now);
     }

@@ -163,13 +163,6 @@ export const devToolsApi = {
     );
   },
 
-  awardStatPoints(token: string, playerId: string, amount: number) {
-    return post<DevToolsPlayerDebugResponse>(
-      token,
-      `/api/dev/v2/players/${playerId}/stat-points/award`,
-      { amount },
-    );
-  },
 };
 
 export const devToolsUnavailableMessage = unavailableMessage;

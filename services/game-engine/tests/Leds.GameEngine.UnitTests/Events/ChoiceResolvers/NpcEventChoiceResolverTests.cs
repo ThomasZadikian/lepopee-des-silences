@@ -116,7 +116,7 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldAwardStatPoint_WhenGenericStatPointOfferingIsTaken()
+    public async Task ResolveAsync_ShouldRejectLegacyStatPointOfferingWithoutClaimingIt()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();
         var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-stat");
@@ -126,10 +126,8 @@ public sealed class NpcEventChoiceResolverTests
         var result = await sut.ResolveAsync(context);
 
         result.Accepted.Should().BeTrue();
-        // 2 awards: one from the offering's own StatPoint grant, one from the
-        // unconditional per-interaction stat point every resolved choice now gives.
-        playerProfileGateway.AwardedStatPoints.Where(a => a.PlayerId == run.PlayerId && a.Amount == 1)
-            .Should().HaveCount(2);
+        result.NarrativeFragments.Should().ContainSingle(f =>
+            f.Text.Contains("progression canonique"));
         playerProfileGateway.ClaimedOfferings.Should().BeEmpty();
     }
 
@@ -169,7 +167,7 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldAwardStatPoint_OnEveryResolvedChoice_RegardlessOfConsequences()
+    public async Task ResolveAsync_ShouldNotInventPermanentProgressionForResolvedChoice()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();
         var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-milestone");
@@ -179,9 +177,8 @@ public sealed class NpcEventChoiceResolverTests
         var result = await sut.ResolveAsync(context);
 
         result.Accepted.Should().BeTrue();
-        playerProfileGateway.AwardedStatPoints.Should().ContainSingle(
-            a => a.PlayerId == run.PlayerId && a.Amount == 1);
-        result.NarrativeFragments.Should().Contain(f => f.Text.Contains("point de compétence"));
+        result.NarrativeFragments.Should().NotContain(f =>
+            f.Text.Contains("point de compétence", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

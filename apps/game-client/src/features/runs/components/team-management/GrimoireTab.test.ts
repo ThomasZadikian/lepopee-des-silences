@@ -18,7 +18,6 @@ vi.mock('../../../party/api/playerApi', () => ({
     getProfile: vi.fn(),
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
-    spendStatPoint: vi.fn(),
   },
 }));
 
@@ -102,7 +101,7 @@ function setPlayerProfile(characters: PlayerCharacterView[]) {
     id: 'player-1',
     displayName: 'Test',
     characters,
-    progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
+    progression: { palaceShardCount: 0 },
     permanentItems: [],
   };
 }
@@ -179,7 +178,7 @@ describe('GrimoireTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [baseCharacter()],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
+      progression: { palaceShardCount: 0 },
       permanentItems: [],
     });
     setPlayerProfile([baseCharacter()]);
@@ -200,7 +199,7 @@ describe('GrimoireTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [baseCharacter()],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
+      progression: { palaceShardCount: 0 },
       permanentItems: [],
     });
     vi.mocked(runApi.syncPartySkills).mockResolvedValue({
