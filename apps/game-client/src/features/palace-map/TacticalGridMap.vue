@@ -982,8 +982,6 @@ const standingNode = computed<NodeDto | null>(() => {
   return node && node.state === 'Available' ? node : null;
 });
 
-const COMBAT_NODE_TYPES = new Set(['Combat', 'Elite', 'Rare', 'RoomBoss', 'FinalBoss']);
-
 const canWagerStandingNode = computed(() => {
   const node = standingNode.value;
   if (!node) return false;
