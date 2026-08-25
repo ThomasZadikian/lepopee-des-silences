@@ -59,6 +59,23 @@ public sealed class EfRunRepository : IRunRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<Run?> GetOpenByPlayerIdAsync(
+        Guid playerId,
+        CancellationToken cancellationToken)
+    {
+        var runId = await _dbContext.Runs
+            .AsNoTracking()
+            .Where(entity => entity.PlayerId == playerId &&
+                (entity.Status == nameof(RunStatus.Active) ||
+                 entity.Status == nameof(RunStatus.Suspended)))
+            .Select(entity => (Guid?)entity.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return runId.HasValue
+            ? await GetByIdAsync(new RunId(runId.Value), cancellationToken)
+            : null;
+    }
+
     public Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken)
     {
         return _dbContext.Runs

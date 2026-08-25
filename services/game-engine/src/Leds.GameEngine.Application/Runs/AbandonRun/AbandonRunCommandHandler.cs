@@ -3,7 +3,6 @@ using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.IntegrationEvents;
 using Leds.GameEngine.Application.Runs.Dtos;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -39,12 +38,9 @@ public sealed class AbandonRunCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
-        if (!run.IsAtSafePoint)
-        {
-            throw new DomainException(
-                "AbandonRun is only allowed from a safe point (nothing in progress).");
-        }
-
+        // Abandonment is the recovery escape hatch for any open run. Unlike SaveAndExit it
+        // deliberately discards in-progress combat/event state, so requiring a safe point here
+        // can permanently lock an account after a browser reset or lost local run reference.
         run.Abandon(_clock.UtcNow);
 
         var evt = RunIntegrationEventFactory.CreateAbandoned(run, _clock.UtcNow.UtcDateTime);

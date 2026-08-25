@@ -164,6 +164,19 @@ public sealed class EfRunRepositoryTests : IDisposable
         (await _repository.HasActiveOrSuspendedAsync(playerId, CancellationToken.None)).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task GetOpenByPlayerIdAsync_ShouldReturnThePlayersActiveRun()
+    {
+        var playerId = Guid.NewGuid();
+        var run = CreateTestRun(playerId);
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        var loaded = await _repository.GetOpenByPlayerIdAsync(playerId, CancellationToken.None);
+
+        loaded.Should().NotBeNull();
+        loaded!.Id.Should().Be(run.Id);
+    }
+
     [Theory]
     [InlineData("Completed", RunOutcome.Success)]
     [InlineData("Failed", RunOutcome.Defeat)]

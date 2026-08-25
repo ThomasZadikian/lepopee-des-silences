@@ -646,33 +646,55 @@ export const useRunStore = defineStore('run', () => {
   }
 
   // -------------------------------------------------------------------------
-  // Resumable run (localStorage-backed)
+  // Open run recovery (backend-authoritative, localStorage-compatible)
   // -------------------------------------------------------------------------
 
   async function loadResumableRun() {
-    const runId = getSuspendedRunId();
-    if (!runId) return;
-
     isLoadingResumableRun.value = true;
+    error.value = null;
+    runActionError.value = null;
     try {
-      const response = await runApi.getRun(runId);
-      const run = unwrapRunResponse(response);
-      if (run.canResume) {
-        resumableRun.value = {
-          id: run.id,
-          seed: run.seed,
-          savedAt: run.savedAt ?? new Date().toISOString(),
-          currentRoomNumber: run.currentRoomNumber,
-          status: run.status,
-        };
-      } else {
+      let run: RunDto | null = null;
+      const cachedRunId = getSuspendedRunId();
+
+      if (cachedRunId) {
+        try {
+          const cachedResponse = await runApi.getRun(cachedRunId);
+          const cachedRun = unwrapRunResponse(cachedResponse);
+          if (cachedRun.playerId === demoPlayerId &&
+              (cachedRun.status === 'Active' || cachedRun.status === 'Suspended')) {
+            run = cachedRun;
+          }
+        } catch {
+          // The cache is only a hint. A backend lookup below repairs missing or stale browser state.
+        }
+      }
+
+      if (!run) {
+        const response = await runApi.getOpenRun(demoPlayerId);
+        run = response.run;
+      }
+
+      if (!run || (run.status !== 'Active' && run.status !== 'Suspended')) {
         clearSuspendedRunId();
         resumableRun.value = null;
+        return;
       }
-    } catch {
-      // Backend restarted or run no longer exists — clear stale ref
+
+      setSuspendedRunId(run.id);
+      resumableRun.value = {
+        id: run.id,
+        seed: run.seed,
+        savedAt: run.savedAt ?? '',
+        currentRoomNumber: run.currentRoomNumber,
+        status: run.status,
+      };
+    } catch (caught) {
       clearSuspendedRunId();
       resumableRun.value = null;
+      error.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible de rechercher la traversée en cours.';
     } finally {
       isLoadingResumableRun.value = false;
     }
@@ -742,24 +764,21 @@ export const useRunStore = defineStore('run', () => {
     }
   }
 
-  async function abandonCurrentRun(): Promise<boolean> {
-    if (!currentRun.value) return false;
-    const runId = currentRun.value.id;
-
+  async function abandonRunById(runId: string): Promise<boolean> {
     isAbandoningRun.value = true;
     runActionError.value = null;
 
     try {
       await runApi.abandonRun(runId);
 
-      if (getSuspendedRunId() === runId) {
-        clearSuspendedRunId();
-      }
+      clearSuspendedRunId();
       if (resumableRun.value?.id === runId) {
         resumableRun.value = null;
       }
 
-      clearCurrentRun();
+      if (currentRun.value?.id === runId) {
+        clearCurrentRun();
+      }
       return true;
     } catch (caught) {
       runActionError.value = caught instanceof Error
@@ -769,6 +788,18 @@ export const useRunStore = defineStore('run', () => {
     } finally {
       isAbandoningRun.value = false;
     }
+  }
+
+  async function abandonCurrentRun(): Promise<boolean> {
+    return currentRun.value
+      ? abandonRunById(currentRun.value.id)
+      : false;
+  }
+
+  async function abandonResumableRun(): Promise<boolean> {
+    return resumableRun.value
+      ? abandonRunById(resumableRun.value.id)
+      : false;
   }
 
   function clearCurrentRun() {
@@ -962,6 +993,7 @@ export const useRunStore = defineStore('run', () => {
     saveAndExitCurrentRun,
     exitMidRoom,
     abandonCurrentRun,
+    abandonResumableRun,
     clearCurrentRun,
   };
 });

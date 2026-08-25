@@ -330,8 +330,8 @@ export type ActiveCurseDto = {
 };
 
 /**
- * Snapshot stored in localStorage when a run is saved and exited.
- * Used to display the resumable run card on ThresholdPage without a backend list endpoint.
+ * Lightweight projection of an Active or Suspended run displayed on ThresholdPage.
+ * The backend is authoritative; localStorage is only a compatibility cache for saved runs.
  */
 export type ResumableRunDto = {
   id: string;
@@ -414,6 +414,8 @@ export type RunResponse =
   | { value: RunDto };
 
 export type StartRunResponse = RunResponse;
+
+export type GetOpenRunResponse = { run: RunDto | null };
 
 export type GenerateNextNodesResponse = RunResponse;
 

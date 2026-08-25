@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.GetOpenRunForPlayer;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.GetUpcomingRooms;
@@ -73,6 +74,19 @@ public sealed class RunsController : ControllerBase
         var query = new GetRunByIdQuery(runId);
 
         var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("open")]
+    [ProducesResponseType(typeof(GetOpenRunForPlayerResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<GetOpenRunForPlayerResponse>> GetOpenRunForPlayer(
+        [FromQuery] Guid playerId,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new GetOpenRunForPlayerQuery(playerId),
+            cancellationToken);
 
         return Ok(response);
     }

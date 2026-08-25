@@ -8,6 +8,8 @@ public interface IRunRepository
 
     Task<Run?> GetByIdAsync(RunId runId, CancellationToken cancellationToken);
 
+    Task<Run?> GetOpenByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken);
+
     Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken);
 
     Task UpdateAsync(Run run, CancellationToken cancellationToken);
