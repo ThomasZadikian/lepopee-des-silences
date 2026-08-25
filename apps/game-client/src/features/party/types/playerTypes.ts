@@ -64,10 +64,22 @@ export type PlayerPermanentItemView = {
   containedLiquidDefinitionKey?: string | null;
 };
 
+export type PalaceProgressView = {
+  sequenceKey?: string | null;
+  sequenceVersion?: string | null;
+  stepKey?: string | null;
+  checkpointKey?: string | null;
+  isCompleted: boolean;
+  highestDifficultyLevelUnlocked: number;
+  unlockedRoomKeys: string[];
+  visibleRoomKeys: string[];
+};
+
 export type PlayerProfileView = {
   id: string;
   displayName: string;
   characters: PlayerCharacterView[];
   progression: PlayerProgressionView;
+  mainStory?: PalaceProgressView;
   permanentItems: PlayerPermanentItemView[];
 };

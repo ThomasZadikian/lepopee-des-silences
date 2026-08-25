@@ -14,10 +14,10 @@ import type {
 
 export const runApi = {
   /** Lance une run avec le système de combat tactique. */
-  startRun(playerId: string) {
-    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
+  startRun(playerId: string, difficultyLevel?: number) {
+    return gameEngineApi.post<StartRunResponse, { playerId: string; difficultyLevel?: number }>(
       '/api/v2/runs',
-      { playerId },
+      { playerId, ...(difficultyLevel === undefined ? {} : { difficultyLevel }) },
     );
   },
 

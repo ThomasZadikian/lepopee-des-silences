@@ -5,7 +5,22 @@ public sealed record PlayerProfileView(
     string DisplayName,
     IReadOnlyCollection<PlayerCharacterView> Characters,
     PlayerProgressionView Progression,
-    IReadOnlyCollection<PlayerPermanentItemView>? PermanentItems = null);
+    IReadOnlyCollection<PlayerPermanentItemView>? PermanentItems = null,
+    MainStoryProgressView? MainStory = null);
+
+public sealed record MainStoryProgressView(
+    string? SequenceKey,
+    string? SequenceVersion,
+    string? StepKey,
+    string? CheckpointKey,
+    bool IsCompleted,
+    int HighestDifficultyLevelUnlocked,
+    IReadOnlyCollection<string> UnlockedRoomKeys,
+    IReadOnlyCollection<string> VisibleRoomKeys)
+{
+    public static MainStoryProgressView Incomplete { get; } =
+        new(null, null, null, null, false, 0, [], []);
+}
 
 public sealed record PlayerCharacterView(
     Guid Id,

@@ -61,6 +61,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var snapshot = await _playerGateway.GetRunSnapshotAsync(request.PlayerId, cancellationToken);
 
         var profile = await _playerProfileGateway.GetProfileAsync(request.PlayerId, cancellationToken);
+        var progressionSelection = RunProgressionSelectionPolicy.Resolve(
+            profile.MainStory,
+            request.DifficultyLevel);
         var permanentItemKeys = (profile.PermanentItems ?? [])
             .Select(item => item.ItemDefinitionKey)
             .ToArray();
@@ -211,6 +214,15 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             healingBonusPercent: healingBonusPercent,
             caliceInfiniEnabled: caliceInfiniEnabled,
             emotionalAffinityMatrix: emotionalAffinityMatrix);
+
+        if (progressionSelection.Mode == RunProgressionMode.Story)
+        {
+            run.ConfigureStoryRun(progressionSelection.StoryOverlay!);
+        }
+        else
+        {
+            run.ConfigureDifficultyRun(progressionSelection.DifficultyLevel!.Value);
+        }
 
         foreach (var effect in equipmentEffects.Where(effect =>
                      string.Equals(effect.Kind, "GrantAffinity", StringComparison.OrdinalIgnoreCase)))

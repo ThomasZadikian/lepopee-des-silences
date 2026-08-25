@@ -31,6 +31,13 @@ public static class RunPersistenceMapper
             Outcome = run.Outcome?.ToString(),
             Revision = run.Revision,
             TechnicalRecoveryState = run.TechnicalRecoveryState.ToString(),
+            ProgressionMode = run.ProgressionMode.ToString(),
+            StoryDifficulty = run.StoryDifficulty?.ToString(),
+            DifficultyLevel = run.DifficultyLevel?.Value,
+            StorySequenceKey = run.StoryOverlay?.SequenceKey,
+            StorySequenceVersion = run.StoryOverlay?.SequenceVersion,
+            StoryStepKey = run.StoryOverlay?.StepKey,
+            StoryCheckpointKey = run.StoryOverlay?.CheckpointKey,
             Seed = run.Seed,
             GeneratorVersion = run.GeneratorVersion,
             MarkovMatrixVersion = run.MarkovMatrixVersion,
@@ -589,6 +596,21 @@ public static class RunPersistenceMapper
             magicDefense: entity.MagicDefense);
 
         RehydrateNpcEncounters(run, entity);
+        run.RestoreProgressionMode(
+            Enum.TryParse<RunProgressionMode>(entity.ProgressionMode, out var progressionMode)
+                ? progressionMode
+                : RunProgressionMode.Standard,
+            Enum.TryParse<StoryDifficulty>(entity.StoryDifficulty, out var storyDifficulty)
+                ? storyDifficulty
+                : null,
+            entity.DifficultyLevel,
+            entity.ProgressionMode == RunProgressionMode.Story.ToString()
+                ? new StoryRunOverlay(
+                    entity.StorySequenceKey,
+                    entity.StorySequenceVersion,
+                    entity.StoryStepKey,
+                    entity.StoryCheckpointKey)
+                : null);
         RehydrateKnowledgeEntries(run, entity);
         RehydrateAmbientConversationStates(run, entity);
         return run;

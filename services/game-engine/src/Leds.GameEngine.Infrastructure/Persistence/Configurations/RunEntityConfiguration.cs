@@ -9,9 +9,16 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
 {
     public void Configure(EntityTypeBuilder<RunEntity> builder)
     {
-        builder.ToTable("runs", table => table.HasCheckConstraint(
-            "ck_runs_lifecycle_outcome",
-            "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)"));
+        builder.ToTable("runs", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_runs_lifecycle_outcome",
+                "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)");
+            table.HasCheckConstraint(
+                "ck_runs_progression_mode",
+                "(progression_mode = 'Story' AND story_difficulty IS NOT NULL AND difficulty_level IS NULL) OR " +
+                "(progression_mode = 'Standard' AND story_difficulty IS NULL)");
+        });
 
         builder.HasKey(run => run.Id);
 
@@ -25,6 +32,13 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
             .HasMaxLength(32)
             .HasDefaultValue("None")
             .IsRequired();
+        builder.Property(run => run.ProgressionMode).HasColumnName("progression_mode").HasMaxLength(32).HasDefaultValue("Standard").IsRequired();
+        builder.Property(run => run.StoryDifficulty).HasColumnName("story_difficulty").HasMaxLength(32);
+        builder.Property(run => run.DifficultyLevel).HasColumnName("difficulty_level");
+        builder.Property(run => run.StorySequenceKey).HasColumnName("story_sequence_key").HasMaxLength(160);
+        builder.Property(run => run.StorySequenceVersion).HasColumnName("story_sequence_version").HasMaxLength(64);
+        builder.Property(run => run.StoryStepKey).HasColumnName("story_step_key").HasMaxLength(160);
+        builder.Property(run => run.StoryCheckpointKey).HasColumnName("story_checkpoint_key").HasMaxLength(160);
         builder.Property(run => run.Seed).HasColumnName("seed").HasMaxLength(128).IsRequired();
         builder.Property(run => run.GeneratorVersion).HasColumnName("generator_version").HasMaxLength(64).IsRequired();
         builder.Property(run => run.MarkovMatrixVersion).HasColumnName("markov_matrix_version").HasMaxLength(64).IsRequired();

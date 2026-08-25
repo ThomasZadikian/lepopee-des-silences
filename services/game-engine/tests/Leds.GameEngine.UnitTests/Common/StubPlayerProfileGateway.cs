@@ -177,6 +177,14 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         return Task.CompletedTask;
     }
 
+    public Task<PlayerProfileView> AdvanceMainStoryAsync(
+        Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken)
+        => Task.FromResult(EmptyProfile(playerId));
+
+    public Task<PlayerProfileView> UnlockDifficultyLevelAsync(
+        Guid playerId, int level, CancellationToken cancellationToken)
+        => Task.FromResult(EmptyProfile(playerId));
+
     private PlayerProfileView EmptyProfile(Guid playerId) => new(
         playerId, "Stub Player", [], new PlayerProgressionView(GetBalance(playerId), GetHimLitBalance(playerId)));
 }

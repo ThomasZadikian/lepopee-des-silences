@@ -576,6 +576,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("defense");
 
+                    b.Property<int?>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
+
                     b.Property<int>("Focus")
                         .HasColumnType("integer")
                         .HasColumnName("focus");
@@ -2410,6 +2414,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("pre_suspend_status");
 
+                    b.Property<string>("ProgressionMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Standard")
+                        .HasColumnName("progression_mode");
+
                     b.Property<int>("ReputationGainBonusPercent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -2483,6 +2495,31 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("status");
 
+                    b.Property<string>("StoryCheckpointKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_checkpoint_key");
+
+                    b.Property<string>("StoryDifficulty")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("story_difficulty");
+
+                    b.Property<string>("StorySequenceKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_sequence_key");
+
+                    b.Property<string>("StorySequenceVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("story_sequence_version");
+
+                    b.Property<string>("StoryStepKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("story_step_key");
+
                     b.Property<string>("SuspendedSevereLawModifierIdsJson")
                         .HasColumnType("text")
                         .HasColumnName("suspended_severe_law_modifier_ids_json");
@@ -2520,6 +2557,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.ToTable("runs", t =>
                         {
                             t.HasCheckConstraint("ck_runs_lifecycle_outcome", "(status = 'Resolved' AND outcome IS NOT NULL) OR (status IN ('Active', 'Suspended') AND outcome IS NULL)");
+
+                            t.HasCheckConstraint("ck_runs_progression_mode", "(progression_mode = 'Story' AND story_difficulty IS NOT NULL AND difficulty_level IS NULL) OR (progression_mode = 'Standard' AND story_difficulty IS NULL)");
                         });
                 });
 

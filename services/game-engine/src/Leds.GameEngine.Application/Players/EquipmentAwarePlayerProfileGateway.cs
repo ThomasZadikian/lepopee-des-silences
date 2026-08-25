@@ -111,6 +111,14 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
         Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken)
         => _inner.UpsertNpcReputationScoresAsync(playerId, sourceRunId, scores, cancellationToken);
 
+    public async Task<PlayerProfileView> AdvanceMainStoryAsync(
+        Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken)
+        => await EnrichAsync(await _inner.AdvanceMainStoryAsync(playerId, progress, cancellationToken), cancellationToken);
+
+    public async Task<PlayerProfileView> UnlockDifficultyLevelAsync(
+        Guid playerId, int level, CancellationToken cancellationToken)
+        => await EnrichAsync(await _inner.UnlockDifficultyLevelAsync(playerId, level, cancellationToken), cancellationToken);
+
     /// <summary>
     /// Recomputes each character's Stats as base + equipped-item bonuses, exactly the
     /// way <see cref="PlayerStatMerger"/> does for combat. Characters with no equipped

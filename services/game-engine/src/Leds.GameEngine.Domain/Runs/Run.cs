@@ -314,6 +314,43 @@ public sealed class Run
 
     public EmotionalAffinityMatrixSnapshot EmotionalAffinityMatrix { get; }
 
+    public RunProgressionMode ProgressionMode { get; private set; } = RunProgressionMode.Standard;
+    public StoryDifficulty? StoryDifficulty { get; private set; }
+    public DifficultyLevel? DifficultyLevel { get; private set; }
+    public StoryRunOverlay? StoryOverlay { get; private set; }
+
+    public void ConfigureStoryRun(StoryRunOverlay overlay)
+    {
+        EnsureActive();
+        ProgressionMode = RunProgressionMode.Story;
+        StoryDifficulty = global::Leds.GameEngine.Domain.Runs.StoryDifficulty.Canonical;
+        DifficultyLevel = null;
+        StoryOverlay = overlay;
+    }
+
+    public void ConfigureDifficultyRun(DifficultyLevel difficultyLevel)
+    {
+        EnsureActive();
+        ProgressionMode = RunProgressionMode.Standard;
+        StoryDifficulty = null;
+        DifficultyLevel = difficultyLevel;
+        StoryOverlay = null;
+    }
+
+    public void RestoreProgressionMode(
+        RunProgressionMode mode,
+        StoryDifficulty? storyDifficulty,
+        int? difficultyLevel,
+        StoryRunOverlay? storyOverlay)
+    {
+        ProgressionMode = mode;
+        StoryDifficulty = storyDifficulty;
+        DifficultyLevel = difficultyLevel.HasValue
+            ? global::Leds.GameEngine.Domain.Runs.DifficultyLevel.Create(difficultyLevel.Value)
+            : null;
+        StoryOverlay = storyOverlay;
+    }
+
     public ContentVersionSet ContentVersions => new(
         GeneratorVersion,
         MarkovMatrixVersion,

@@ -183,6 +183,15 @@ export type RunDto = {
   generatorVersion: string;
   markovMatrixVersion: string;
   status: string;
+  progressionMode?: 'Story' | 'Standard';
+  storyDifficulty?: 'Canonical' | null;
+  difficultyLevel?: number | null;
+  story?: {
+    sequenceKey?: string | null;
+    sequenceVersion?: string | null;
+    stepKey?: string | null;
+    checkpointKey?: string | null;
+  } | null;
   activeCombatId?: string | null;
   currentDepth: number;
   /** Zero-based index of the current room in the infinite run sequence. Use currentRoomIndex + 1 for display. */

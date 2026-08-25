@@ -54,7 +54,11 @@ public sealed record RunDto(
     bool CanUseCaliceInfini = false,
     string? Outcome = null,
     long Revision = 0,
-    string TechnicalRecoveryState = "None")
+    string TechnicalRecoveryState = "None",
+    string ProgressionMode = "Standard",
+    string? StoryDifficulty = null,
+    int? DifficultyLevel = null,
+    StoryRunOverlayDto? Story = null)
 {
     public static RunDto FromDomain(
         Run run,
@@ -105,8 +109,25 @@ public sealed record RunDto(
             CanUseCaliceInfini: run.CanUseCaliceInfini,
             Outcome: run.Outcome?.ToString(),
             Revision: run.Revision,
-            TechnicalRecoveryState: run.TechnicalRecoveryState.ToString());
+            TechnicalRecoveryState: run.TechnicalRecoveryState.ToString(),
+            ProgressionMode: run.ProgressionMode.ToString(),
+            StoryDifficulty: run.StoryDifficulty?.ToString(),
+            DifficultyLevel: run.DifficultyLevel?.Value,
+            Story: run.StoryOverlay is null ? null : StoryRunOverlayDto.FromDomain(run.StoryOverlay));
     }
+}
+
+public sealed record StoryRunOverlayDto(
+    string? SequenceKey,
+    string? SequenceVersion,
+    string? StepKey,
+    string? CheckpointKey)
+{
+    public static StoryRunOverlayDto FromDomain(StoryRunOverlay overlay) => new(
+        overlay.SequenceKey,
+        overlay.SequenceVersion,
+        overlay.StepKey,
+        overlay.CheckpointKey);
 }
 
 public sealed record RunJournalEntryDto(

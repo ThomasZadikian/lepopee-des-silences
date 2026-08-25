@@ -61,6 +61,10 @@ public interface IPlayerProfileGateway
     Task<IReadOnlyCollection<NpcReputationScoreView>> GetNpcReputationScoresAsync(Guid playerId, CancellationToken cancellationToken);
 
     Task UpsertNpcReputationScoresAsync(Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> AdvanceMainStoryAsync(Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> UnlockDifficultyLevelAsync(Guid playerId, int level, CancellationToken cancellationToken);
 }
 
 public sealed record NpcReputationScoreView(
@@ -68,3 +72,12 @@ public sealed record NpcReputationScoreView(
     int Score,
     int TimesMet,
     string? CurrentDialogueNodeKey);
+
+public sealed record MainStoryAdvanceView(
+    string SequenceKey,
+    string SequenceVersion,
+    string StepKey,
+    string? CheckpointKey,
+    IReadOnlyCollection<string> UnlockedRoomKeys,
+    IReadOnlyCollection<string> VisibleRoomKeys,
+    bool Complete);

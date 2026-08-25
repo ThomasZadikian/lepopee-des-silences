@@ -223,6 +223,26 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<PlayerProfileView> AdvanceMainStoryAsync(
+        Guid playerId, MainStoryAdvanceView progress, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/main-story/progress",
+            progress,
+            cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> UnlockDifficultyLevelAsync(
+        Guid playerId, int level, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/internal/players/{playerId}/difficulty-levels/{level}/unlock",
+            content: null,
+            cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -297,7 +317,18 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                 dto.Progression.HimLitShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
                 .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
-                .ToArray());
+                .ToArray(),
+            MainStory: dto.MainStory is null
+                ? MainStoryProgressView.Incomplete
+                : new MainStoryProgressView(
+                    dto.MainStory.SequenceKey,
+                    dto.MainStory.SequenceVersion,
+                    dto.MainStory.StepKey,
+                    dto.MainStory.CheckpointKey,
+                    dto.MainStory.IsCompleted,
+                    dto.MainStory.HighestDifficultyLevelUnlocked,
+                    dto.MainStory.UnlockedRoomKeys,
+                    dto.MainStory.VisibleRoomKeys));
     }
 
 
@@ -337,7 +368,18 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         string DisplayName,
         IReadOnlyCollection<PlayerCharacterResponse> Characters,
         PlayerProgressionResponse Progression,
-        IReadOnlyCollection<PlayerPermanentItemResponse>? PermanentItems = null);
+        IReadOnlyCollection<PlayerPermanentItemResponse>? PermanentItems = null,
+        MainStoryProgressResponse? MainStory = null);
+
+    private sealed record MainStoryProgressResponse(
+        string? SequenceKey,
+        string? SequenceVersion,
+        string? StepKey,
+        string? CheckpointKey,
+        bool IsCompleted,
+        int HighestDifficultyLevelUnlocked,
+        IReadOnlyCollection<string> UnlockedRoomKeys,
+        IReadOnlyCollection<string> VisibleRoomKeys);
 
     private sealed record PlayerCharacterResponse(
         Guid Id,
