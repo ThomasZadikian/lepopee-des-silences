@@ -69,7 +69,7 @@ const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
 const {
-  isRevealed, nodeAt, isParty, cells, obstacleCells, doorCells, isFloor, nodesByCell,
+  isRevealed, nodeAt, isParty, cells, obstacleCells, npcCells, doorCells, isFloor, nodesByCell,
   surfaceOverrides, decorPlacements,
 } = useGridCells(room, grid);
 
@@ -295,7 +295,9 @@ const movementRange = computed(() => {
     gridWidth: g.width,
     gridHeight: g.height,
     elevation: g.elevation,
-    isWalkable: (x, y) => isFloor(x, y) && !obstacleCells.value.has(`${x},${y}`),
+    isWalkable: (x, y) => isFloor(x, y)
+      && !obstacleCells.value.has(`${x},${y}`)
+      && !npcCells.value.has(`${x},${y}`),
     party: { x: g.partyX, y: g.partyY },
     transitBlockers: blockers,
     contactTriggers: triggers,

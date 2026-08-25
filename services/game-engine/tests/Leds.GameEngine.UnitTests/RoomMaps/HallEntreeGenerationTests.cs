@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -174,6 +175,17 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
+    public async Task GenerateHall_ShouldExposeTheInitiallyVisibleCastToTheClient()
+    {
+        var room = await GenerateHallAsync();
+
+        var dto = RoomDto.FromDomain(room);
+
+        dto.RoomNpcs.Should().Contain(npc => npc.CatalogNpcKey == "npc.majordome");
+        dto.RoomNpcs.Should().Contain(npc => npc.CatalogNpcKey == "npc.veilleur-tapis");
+    }
+
+    [Fact]
     public async Task GenerateHall_ShouldPlaceEveryRoomNpcOnWalkableFloor()
     {
         var room = await GenerateHallAsync();
@@ -183,6 +195,18 @@ public sealed class HallEntreeGenerationTests
             room.Grid.IsWalkable(npc.X, npc.Y).Should().BeTrue(
                 $"RoomNpc '{npc.CatalogNpcKey}' at ({npc.X},{npc.Y}) must stand on walkable floor");
         }
+    }
+
+    [Fact]
+    public async Task MovePartyInHall_ShouldKeepTheMajordomeOffThePartyCell()
+    {
+        var room = await GenerateHallAsync();
+
+        room.MoveParty(12, 12);
+
+        var majordome = room.RoomNpcs.Single(npc => npc.CatalogNpcKey == "npc.majordome");
+        (majordome.X, majordome.Y)
+            .Should().NotBe((room.Grid.PartyX, room.Grid.PartyY));
     }
 
     [Fact]

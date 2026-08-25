@@ -185,6 +185,18 @@ public sealed class RoomNpcTests
     }
 
     [Fact]
+    public void Step_Hunter_ShouldStopAdjacentToTheParty_InsteadOfOccupyingItsCell()
+    {
+        var grid = CreateOpenGrid();
+        var npc = RoomNpc.Create("majordome", x: 1, y: 0, NpcBehaviorArchetype.Hunter);
+        npc.NoticeParty();
+
+        npc.Step(grid, partyX: 0, partyY: 0);
+
+        (npc.X, npc.Y).Should().Be((1, 0));
+    }
+
+    [Fact]
     public void Step_Patrol_ShouldCycleWaypoints_InOrder()
     {
         var grid = CreateOpenGrid();

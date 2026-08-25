@@ -37,7 +37,11 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
   };
 }
 
-function makeRoom(grid: RoomGridDto, nodes: NodeDto[] = []): RoomDto {
+function makeRoom(
+  grid: RoomGridDto,
+  nodes: NodeDto[] = [],
+  roomNpcs: RoomDto['roomNpcs'] = [],
+): RoomDto {
   return {
     id: 'room-1',
     depth: 0,
@@ -50,6 +54,7 @@ function makeRoom(grid: RoomGridDto, nodes: NodeDto[] = []): RoomDto {
     bossPreview: { bossId: 'boss-1', name: 'Boss', roomType: 'RoomBoss', dangerHint: 'High' },
     nodes,
     availableNodes: [],
+    roomNpcs,
     layoutTemplateKey: null,
     layoutTemplateVersion: null,
     grid,
@@ -134,6 +139,24 @@ describe('useGridCells', () => {
     const { isObstacle } = useGridCells(room, gridRef);
 
     expect(isObstacle(0, 0)).toBe(false);
+  });
+
+  it('identifies cells occupied by positioned room NPCs', () => {
+    const grid = makeGrid();
+    const room = computed(() => makeRoom(grid, [], [{
+      id: 'npc-1',
+      catalogNpcKey: 'npc.majordome',
+      x: 2,
+      y: 1,
+      actorKind: 'Npc',
+      behavior: 'Guardian',
+      awareness: 'Aware',
+    }]));
+    const gridRef = computed(() => grid);
+    const { isNpcOccupied } = useGridCells(room, gridRef);
+
+    expect(isNpcOccupied(2, 1)).toBe(true);
+    expect(isNpcOccupied(1, 1)).toBe(false);
   });
 
   describe('isFloor', () => {

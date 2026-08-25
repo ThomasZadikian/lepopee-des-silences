@@ -54,6 +54,21 @@ public sealed class RoomRoomNpcTests
     }
 
     [Fact]
+    public void AddRoomNpc_ShouldRejectThePartyCell_AndAnotherNpcCell()
+    {
+        var room = CreateRoom();
+        room.AddRoomNpc(RoomNpc.Create("majordome", x: 2, y: 0, NpcBehaviorArchetype.Guardian));
+
+        var onParty = () => room.AddRoomNpc(
+            RoomNpc.Create("chien", x: 0, y: 0, NpcBehaviorArchetype.Passive));
+        var onNpc = () => room.AddRoomNpc(
+            RoomNpc.Create("visiteur", x: 2, y: 0, NpcBehaviorArchetype.Passive));
+
+        onParty.Should().Throw<DomainException>();
+        onNpc.Should().Throw<DomainException>();
+    }
+
+    [Fact]
     public void InteractWithRoomNpc_ShouldEscalateAdjacentNpcToAware()
     {
         var room = CreateRoom();
@@ -100,6 +115,31 @@ public sealed class RoomRoomNpcTests
         room.MoveParty(1, 0);
 
         room.RoomNpcs.Single().Awareness.Should().Be(NpcAwarenessState.Aware);
+    }
+
+    [Fact]
+    public void MoveParty_ShouldRouteAroundAnOccupiedNpcCell()
+    {
+        var room = CreateRoom();
+        room.AddRoomNpc(RoomNpc.Create(
+            "majordome", x: 1, y: 0, NpcBehaviorArchetype.Guardian));
+
+        var result = room.MoveParty(2, 0);
+
+        result.TraversedCells.Should().NotContain((1, 0));
+        (room.Grid.PartyX, room.Grid.PartyY).Should().Be((2, 0));
+    }
+
+    [Fact]
+    public void MoveParty_ShouldRejectATargetCellOccupiedByAnNpc()
+    {
+        var room = CreateRoom();
+        room.AddRoomNpc(RoomNpc.Create(
+            "majordome", x: 1, y: 0, NpcBehaviorArchetype.Guardian));
+
+        var act = () => room.MoveParty(1, 0);
+
+        act.Should().Throw<DomainException>();
     }
 
     [Fact]

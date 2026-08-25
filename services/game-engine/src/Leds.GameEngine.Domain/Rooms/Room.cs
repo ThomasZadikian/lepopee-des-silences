@@ -95,8 +95,8 @@ public sealed class Room
 
     /// <summary>
     /// Physically present, positioned NPCs — see <see cref="RoomNpc"/>'s own remarks for why
-    /// this is a separate collection from <see cref="Nodes"/>. Empty for every room until a
-    /// generator actually populates one (see <see cref="AddRoomNpc"/>) — no room does yet.
+    /// this is a separate collection from <see cref="Nodes"/>. Empty for rooms whose generator
+    /// does not populate one; the authored Hall d'entrée is the first populated room.
     /// </summary>
     public IReadOnlyCollection<RoomNpc> RoomNpcs => _roomNpcs.AsReadOnly();
 
@@ -428,6 +428,12 @@ public sealed class Room
             throw new DomainException("Every room NPC must stand on one of the room's floor cells.");
         }
 
+        if ((npc.X == Grid.PartyX && npc.Y == Grid.PartyY)
+            || _roomNpcs.Any(existing => existing.X == npc.X && existing.Y == npc.Y))
+        {
+            throw new DomainException("A room NPC cannot share a cell with the party or another NPC.");
+        }
+
         _roomNpcs.Add(npc);
     }
 
@@ -495,10 +501,10 @@ public sealed class Room
         .ToHashSet();
 
     /// <summary>
-    /// Moves the party across the grid along the cheapest walkable route (obstacles and holes
-    /// routed around, elevation climbs priced in, unresolved blocking nodes never crossed — see
-    /// <see cref="RoomGrid.FindPath"/>), revealing fog of war along the way. Traversal cost is
-    /// reported for pacing/telemetry but is not a consumable exploration resource.
+    /// Moves the party across the grid along the cheapest walkable route (obstacles, holes and
+    /// occupied NPC cells routed around, elevation climbs priced in, unresolved blocking nodes
+    /// never crossed — see <see cref="RoomGrid.FindPath"/>), revealing fog of war along the way.
+    /// Traversal cost is reported for pacing/telemetry but is not a consumable exploration resource.
     /// <para>
     /// If the walk steps onto a contact-triggered node it stops there, is charged only for the
     /// ground actually covered, and the node is selected immediately — the same interaction
@@ -527,7 +533,19 @@ public sealed class Room
             throw new DomainException("The party is already at the target position.");
         }
 
-        var route = Grid.FindPath(targetX, targetY, CurrentTransitBlockers)
+        if (_roomNpcs.Any(npc => npc.X == targetX && npc.Y == targetY))
+        {
+            throw new DomainException("The target position is occupied by a room NPC.");
+        }
+
+        var occupiedNpcCells = _roomNpcs
+            .Select(npc => (npc.X, npc.Y))
+            .ToHashSet();
+        var transitBlockers = CurrentTransitBlockers
+            .Concat(occupiedNpcCells)
+            .ToHashSet();
+
+        var route = Grid.FindPath(targetX, targetY, transitBlockers)
             ?? throw new DomainException("No walkable path to the target position.");
 
         var (startX, startY) = (Grid.PartyX, Grid.PartyY);
