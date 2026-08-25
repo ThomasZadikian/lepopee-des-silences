@@ -135,9 +135,8 @@ public sealed class Run
         (CaliceInfiniLastUsedRoomIndex is null || CurrentRoomIndex > CaliceInfiniLastUsedRoomIndex.Value);
 
     /// <summary>
-    /// Number of rooms per "étage" (floor) — matches the Him'Lit boss recurrence interval
-    /// (services/game-engine's BossInterval, Infrastructure-layer, can't be referenced directly
-    /// from Domain). Kept as its own constant here rather than shared across the layer boundary.
+    /// Number of rooms per "étage" (floor), used only by floor-scoped laws and modifiers.
+    /// It has no effect on boss or Him'Lit encounter frequency.
     /// </summary>
     public const int FloorLengthInRooms = 10;
 
@@ -439,6 +438,21 @@ public sealed class Run
         var relationship = NpcRelationship.Begin(npcKey, entryNodeKey: null);
         _npcRelationships[npcKey] = relationship;
         return relationship;
+    }
+
+    /// <summary>
+    /// Bridges the room simulation actor to the run-scoped dialogue relationship. The physical
+    /// NPC remains owned by Room while dialogue memory remains owned by Run.
+    /// </summary>
+    public RoomNpc InteractWithRoomNpc(RoomNpcId roomNpcId)
+    {
+        EnsureActive();
+        if (HasActiveCombat)
+            throw new DomainException("A room NPC cannot be approached during tactical combat.");
+
+        var npc = CurrentRoom.InteractWithRoomNpc(roomNpcId);
+        BeginOrResumeNpcEncounter(npc.CatalogNpcKey);
+        return npc;
     }
 
     public void EndNpcEncounter() => _activeNpcKey = null;

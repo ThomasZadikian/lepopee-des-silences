@@ -21,17 +21,13 @@ public interface ICatalogRoomTypeResolver
         string seed,
         int nextRoomDepth,
         string currentRoomTypeKey,
-        CancellationToken cancellationToken = default,
-        int bossInterval = CatalogMarkovRoomTypeResolver.BossInterval);
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class CatalogMarkovRoomTypeResolver : ICatalogRoomTypeResolver
 {
     public const string ThresholdTheme = "Threshold";
     public const string FinalTheme = "Final";
-
-    // Him'Lit boss room recurs every BossInterval rooms (endless run, no max depth).
-    public const int BossInterval = 10;
 
     // Integer weights: the current type is favoured (self-bias) without ever excluding
     // the others. Integer math keeps the deterministic pick exact (no decimal drift).
@@ -49,30 +45,17 @@ public sealed class CatalogMarkovRoomTypeResolver : ICatalogRoomTypeResolver
         string seed,
         int nextRoomDepth,
         string currentRoomTypeKey,
-        CancellationToken cancellationToken = default,
-        int bossInterval = BossInterval)
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(seed))
         {
             throw new ArgumentException("Seed is required.", nameof(seed));
         }
 
-        if (bossInterval <= 0)
-        {
-            bossInterval = BossInterval;
-        }
-
         // Depth 0 is always the Threshold (run entrance).
         if (nextRoomDepth <= 0)
         {
             return ThresholdTheme;
-        }
-
-        // Him'Lit boss room recurs every bossInterval rooms (10, 20, 30, … — or tighter
-        // when the player owns Mina's "Protection de Him'Lit", see DeterministicRunGenerator).
-        if (nextRoomDepth % bossInterval == 0)
-        {
-            return FinalTheme;
         }
 
         var types = await _catalogContentGateway.ListRoomTypeDefinitionsAsync(cancellationToken);

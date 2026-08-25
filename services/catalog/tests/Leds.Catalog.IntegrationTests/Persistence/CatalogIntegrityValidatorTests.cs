@@ -125,6 +125,22 @@ public sealed class CatalogIntegrityValidatorTests
     }
 
     [Fact]
+    public async Task Validate_should_not_gate_publication_on_legacy_enemy_menace()
+    {
+        await using var context = _fixture.CreateContext().Context;
+        var seed = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
+        await seed.ApplyBaseSeedAsync();
+
+        var enemy = await context.EnemyDefinitions.FirstAsync();
+        enemy.MenaceLevel = 0;
+        await context.SaveChangesAsync();
+
+        var act = () => new CatalogIntegrityValidator(context).ValidateAsync();
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task Canonical_reseed_should_repair_existing_enemy_menace_levels()
     {
         var (context, connectionString) = _fixture.CreateContext();

@@ -387,10 +387,6 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             : null;
         var currentRoomType = run.CurrentRoom.RoomType;
 
-        var bossInterval = run.HimLitProtectionEnabled
-            ? (int)Math.Round(CatalogMarkovRoomTypeResolver.BossInterval / 1.5)
-            : CatalogMarkovRoomTypeResolver.BossInterval;
-
         var results = new List<UpcomingRoomPreview>(roomsRemainingInFloor);
 
         for (var i = 0; i < roomsRemainingInFloor; i++)
@@ -405,7 +401,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             if (selected is null)
             {
                 var themeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
-                    run.Seed, depth, currentRoomType.ToString(), cancellationToken, bossInterval);
+                    run.Seed, depth, currentRoomType.ToString(), cancellationToken);
 
                 selected = SelectRoomDefinition(definitions, themeKey, depth, run.Seed);
                 currentRoomType = MapThemeToScaffold(themeKey);
@@ -486,18 +482,11 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     private async Task<(RoomType RoomType, string ThemeKey, CatalogRoomDefinition? PreResolvedDefinition)> ResolveLegacyThemeRoomAsync(
         Run run, int nextRoomDepth, CancellationToken cancellationToken)
     {
-        // Mina's legendary "Protection de Him'Lit" tightens the boss-recurrence interval
-        // (10 rooms -> ~7) for a ~+50% encounter frequency, owned — not equipped.
-        var bossInterval = run.HimLitProtectionEnabled
-            ? (int)Math.Round(CatalogMarkovRoomTypeResolver.BossInterval / 1.5)
-            : CatalogMarkovRoomTypeResolver.BossInterval;
-
         var nextRoomTypeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
             run.Seed,
             nextRoomDepth,
             run.CurrentRoom.RoomType.ToString(),
-            cancellationToken,
-            bossInterval);
+            cancellationToken);
 
         // No PreResolvedDefinition here on purpose — mirrors the original behavior exactly:
         // the actual catalog definition is picked later, by AttachCatalogRoomAsync's own

@@ -112,8 +112,8 @@ public sealed class CatalogIntegrityValidator
             {
                 errors.Add($"Enemy '{enemy.Key}': stat block contains invalid values.");
             }
-            if (enemy.MenaceLevel is < 1 or > 10)
-                errors.Add($"Enemy '{enemy.Key}': menace level must be between 1 and 10.");
+            // MenaceLevel is retained as historical authoring metadata only. Runtime danger is
+            // expressed by RiskTier and encounter composition, so MENACE cannot gate publication.
         }
 
         var npcs = await _context.NpcDefinitions

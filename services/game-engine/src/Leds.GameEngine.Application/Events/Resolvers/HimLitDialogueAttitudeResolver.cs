@@ -3,7 +3,7 @@ using Leds.GameEngine.Domain.Rooms;
 namespace Leds.GameEngine.Application.Events.Resolvers;
 
 /// <summary>
-/// Him'Lit parle à chaque rencontre (RoomType.Final, tous les BossInterval=10 étages).
+/// Résout l'attitude de Him'Lit lorsqu'un encounter authored l'a effectivement placé.
 /// Son ton dépend de deux signaux : le nombre de fois où on l'a déjà rencontré (son
 /// arc, de plus en plus exposé) et l'état de la dernière room Markov traversée avant
 /// lui — sa propre room est toujours Neutral par construction
