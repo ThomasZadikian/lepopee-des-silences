@@ -49,6 +49,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<INodeEventResolver, FinalBossNodeEventResolver>();
         services.AddScoped<ICurrentEventChoiceResolverDispatcher, CurrentEventChoiceResolverDispatcher>();
         services.AddScoped<ICurrentEventChoiceResolver, NpcEventChoiceResolver>();
+        services.AddScoped<INpcDialogueChoiceResolver, NpcEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceResolver, MerchantEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();

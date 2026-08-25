@@ -502,9 +502,10 @@ public sealed class Room
         .ToHashSet();
 
     /// <summary>
-    /// Moves the party across the grid along the cheapest walkable route (obstacles, holes and
-    /// occupied NPC cells routed around, elevation climbs priced in, unresolved blocking nodes
-    /// never crossed — see <see cref="RoomGrid.FindPath"/>), revealing fog of war along the way.
+    /// Moves the party across the grid along the cheapest walkable route (obstacles and holes
+    /// routed around, neutral NPC cells allowed only in transit, elevation climbs priced in,
+    /// unresolved blocking nodes never crossed — see <see cref="RoomGrid.FindPath"/>), revealing
+    /// fog of war along the way.
     /// Traversal cost is reported for pacing/telemetry but is not a consumable exploration resource.
     /// <para>
     /// If the walk steps onto a contact-triggered node it stops there, is charged only for the
@@ -539,12 +540,10 @@ public sealed class Room
             throw new DomainException("The target position is occupied by a room NPC.");
         }
 
-        var occupiedNpcCells = _roomNpcs
-            .Select(npc => (npc.X, npc.Y))
-            .ToHashSet();
-        var transitBlockers = CurrentTransitBlockers
-            .Concat(occupiedNpcCells)
-            .ToHashSet();
+        // Neutral NPCs may be crossed in transit so one of them cannot seal a one-cell-wide
+        // corridor. Their cell remains an invalid destination (guard above), which preserves
+        // adjacency interaction and prevents the party and an NPC from ending on the same cell.
+        var transitBlockers = CurrentTransitBlockers;
 
         var route = Grid.FindPath(targetX, targetY, transitBlockers)
             ?? throw new DomainException("No walkable path to the target position.");

@@ -1,4 +1,5 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
+import type { ChooseCurrentEventOptionResponse } from '../../events/types/eventTypes';
 
 import type {
   ActorAdvanceMode,
@@ -133,6 +134,13 @@ export const runApi = {
   interactWithRoomNpc(runId: string, roomNpcId: string) {
     return gameEngineApi.post<InteractWithRoomNpcResponse>(
       `/api/v2/runs/${runId}/rooms/current/npcs/${roomNpcId}/interact`,
+    );
+  },
+
+  chooseRoomNpcDialogueChoice(runId: string, roomNpcId: string, choiceId: string) {
+    return gameEngineApi.post<ChooseCurrentEventOptionResponse, { choiceId: string }>(
+      `/api/v2/runs/${runId}/rooms/current/npcs/${roomNpcId}/dialogue/choices`,
+      { choiceId },
     );
   },
 

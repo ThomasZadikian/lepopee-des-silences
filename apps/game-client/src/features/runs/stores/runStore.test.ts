@@ -26,6 +26,7 @@ vi.mock('../api/runApi', () => ({
     moveParty: vi.fn(),
     advanceRoomActors: vi.fn(),
     interactWithRoomNpc: vi.fn(),
+    chooseRoomNpcDialogueChoice: vi.fn(),
     enterGridNode: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
@@ -495,7 +496,7 @@ describe('useRunStore actions', () => {
     expect(store.currentRun?.currentRoom.grid.partyX).toBe(1);
   });
 
-  it('interactWithRoomNpc uses the adjacent actor endpoint and exposes its notice', async () => {
+  it('interactWithRoomNpc opens the Catalog dialogue returned for the adjacent actor', async () => {
     const store = useRunStore();
     store.currentRun = {
       id: 'run-1',
@@ -505,6 +506,15 @@ describe('useRunStore actions', () => {
     vi.mocked(runApi.interactWithRoomNpc).mockResolvedValue({
       run: { id: 'run-1', status: 'Active', currentRoom: { state: 'Active' } },
       actor: { id: 'npc-1' },
+      npcDialogue: {
+        npcKey: 'npc.majordome',
+        speaker: 'Le Majordome',
+        nodeKey: 'seuil',
+        lines: ['Vos pieds, je vous prie.'],
+        choices: [{ choiceId: 'saluer', label: 'Saluer', consequencePreview: '' }],
+        aggregateState: 'Latent',
+        encounterActive: true,
+      },
       localRuleNotices: [{
         ruleKey: 'hall-rule',
         ruleName: 'Protocole du Hall',
@@ -517,6 +527,49 @@ describe('useRunStore actions', () => {
 
     expect(runApi.interactWithRoomNpc).toHaveBeenCalledWith('run-1', 'npc-1');
     expect(store.actorInteractionNotice).toBe('Le majordome vous rappelle le protocole.');
+    expect(store.npcDialogue?.speaker).toBe('Le Majordome');
+    expect(store.gameplayPhase).toBe('NpcDialogue');
+  });
+
+  it('selectNpcDialogueChoice uses the room actor dialogue endpoint after a physical interaction', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      currentRoom: { state: 'Active' },
+    } as any;
+    vi.mocked(runApi.interactWithRoomNpc).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'Active' } },
+      actor: { id: 'npc-1' },
+      npcDialogue: {
+        npcKey: 'npc.majordome', speaker: 'Le Majordome', nodeKey: 'seuil',
+        lines: ['Vos pieds.'],
+        choices: [{ choiceId: 'saluer', label: 'Saluer', consequencePreview: '' }],
+        aggregateState: 'Latent', encounterActive: true,
+      },
+      localRuleNotices: [],
+    } as any);
+    vi.mocked(runApi.chooseRoomNpcDialogueChoice).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'Active' } },
+      result: {
+        choiceId: 'saluer',
+        accepted: true,
+        message: 'La rencontre se referme.',
+        narrativeFragments: [],
+      },
+      npcDialogue: null,
+    } as any);
+
+    await store.interactWithRoomNpc('npc-1');
+    await store.selectNpcDialogueChoice('saluer');
+
+    expect(runApi.chooseRoomNpcDialogueChoice).toHaveBeenCalledWith('run-1', 'npc-1', 'saluer');
+    expect(eventChoiceApi.chooseCurrentEventOption).not.toHaveBeenCalled();
+    expect(store.npcDialogueEnded).toBe(true);
+
+    await store.continueAfterNpcDialogue();
+    expect(runApi.progressRun).not.toHaveBeenCalled();
+    expect(store.gameplayPhase).toBe('Map');
   });
 
   it('enterGridNode selects the node then resolves it immediately, so the room returns to a movable state', async () => {

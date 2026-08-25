@@ -44,6 +44,7 @@ const phaseVeilVisible = ref(false);
 const phaseVeilKey = ref(0);
 let phaseVeilTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 let actorTickTimer: ReturnType<typeof globalThis.setInterval> | null = null;
+const ACTOR_IDLE_TICK_MS = 1800;
 
 async function handleEventContinue() {
   const outcome = runStore.lastOutcome;
@@ -235,7 +236,7 @@ onMounted(() => {
       || runStore.isLoading
       || runStore.actorsAdvancing) return;
     void runStore.advanceRoomActors('All');
-  }, 850);
+  }, ACTOR_IDLE_TICK_MS);
 });
 onBeforeUnmount(() => {
   if (actorTickTimer !== null) globalThis.clearInterval(actorTickTimer);

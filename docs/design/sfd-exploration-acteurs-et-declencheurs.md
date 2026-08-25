@@ -52,7 +52,9 @@ une réaction autonome et menaçante.
   cases, le PNJ cesse tout déplacement. Il reste immobile tant que cette
   condition est vraie.
 - **RG-EXP-012** — L'interaction volontaire est disponible à une case de
-  distance. Le joueur ne pénètre pas sur la case du PNJ.
+  distance. Une case occupée par un PNJ peut être traversée au milieu d'un
+  trajet afin de ne jamais condamner un couloir, mais elle ne peut pas être la
+  destination finale du joueur.
 - **RG-EXP-013** — Les archétypes `Fixed` et `Guardian` conservent leur poste.
   `Patrol`, `Passive` et `Hunter` suivent leur comportement authored uniquement
   hors de la zone d'arrêt de deux cases.
@@ -123,6 +125,8 @@ une réaction autonome et menaçante.
   au moins trois ticks successifs.
 - **CA-EXP-003** — Un clic sur un PNJ adjacent appelle l'interaction sans tenter
   de déplacer le joueur sur sa case.
+- **CA-EXP-003b** — Une destination libre située derrière un PNJ dans un couloir
+  reste atteignable ; le trajet traverse la case occupée sans y terminer.
 - **CA-EXP-004** — Un ennemi à distance trois réduit la distance d'une case lors
   de sa réaction, sous réserve de collision.
 - **CA-EXP-005** — Un ennemi adjacent déclenche le combat par contact.
@@ -136,7 +140,8 @@ une réaction autonome et menaçante.
 
 ## 6. Hors périmètre
 
-- Refonte des dialogues ou du contenu narratif des PNJ.
+- Réécriture du contenu narratif des PNJ ; l'interaction réutilise les graphes
+  de dialogue déjà authored dans le Catalogue.
 - Navigation diagonale, vitesse variable ou trajectoires multi-cases par tick.
 - Changement du système de combat T-RPG après le contact.
 - Remplacement des déclencheurs de scénario existants.
