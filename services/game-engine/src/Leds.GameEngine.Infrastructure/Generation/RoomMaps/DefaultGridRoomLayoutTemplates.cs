@@ -105,9 +105,8 @@ public static class DefaultGridRoomLayoutTemplates
     // template only supplies the fixed dimensions/start/key that GridRoomGenerator's Hall branch
     // still reads before it substitutes the authored floor/obstacles/elevation/doors/nodes
     // directly (bypassing the generic weighted-node placement this range would otherwise drive).
-    // minNodeCount/maxNodeCount are exactly the boss node plus HallEntreeLayout.CurioCells's
-    // count — the Hall's node count is fixed, not a range, but Run.StartNew still needs it
-    // within [6, 30] to ever accept the Hall as a run's opening room.
+    // The Hall's five current curiosity nodes are authored scaffolding. An optional authored
+    // boss may add a sixth node, but generation must not manufacture one to satisfy a quota.
     public static readonly GridRoomLayoutTemplate HallDentreeV1 = new(
         key: "room.halldentree-v1",
         version: GeneratorVersion,
@@ -115,7 +114,7 @@ public static class DefaultGridRoomLayoutTemplates
         width: HallEntreeLayout.Width,
         height: HallEntreeLayout.Height,
         movementBudget: 60,
-        minNodeCount: 6,
+        minNodeCount: 5,
         maxNodeCount: 6,
         startX: HallEntreeLayout.StartX,
         startY: HallEntreeLayout.StartY);

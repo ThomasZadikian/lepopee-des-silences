@@ -1007,14 +1007,9 @@ public sealed class Run
             throw new DomainException("Initial room node depth must be 0.");
         }
 
-        if (initialRoom.ContentNodeCount is < 6 or > 30)
+        if (initialRoom.ContentNodeCount is < 1 or > 30)
         {
-            throw new DomainException("A new run must start with a room containing between 6 and 30 nodes.");
-        }
-
-        if (initialRoom.Nodes.Count(node => node.IsBoss) != 1)
-        {
-            throw new DomainException("A new run must start with exactly one room boss node.");
+            throw new DomainException("A new run must start with a room containing between 1 and 30 nodes.");
         }
 
         if (currentHp <= 0)

@@ -184,24 +184,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         var layout = Hall.HallEntreeLayout.Build();
 
         var hasBoss = !string.IsNullOrWhiteSpace(bossDefinitionKey);
-        var authoredNode = MapNode.Create(
-            eventType: hasBoss ? NodeEventType.RoomBoss : NodeEventType.Event,
-            riskLevel: hasBoss ? 85 : 0,
-            rewardProfile: hasBoss ? "room-boss" : "standard",
-            row: Hall.HallEntreeLayout.BossY,
-            lane: Hall.HallEntreeLayout.BossX,
-            parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: hasBoss,
-            initialState: NodeState.Available,
-            combatRiskTier: hasBoss
-                ? NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85)
-                : null);
+        var nodes = new List<MapNode>();
 
-        var nodes = new List<MapNode> { authoredNode };
-
-        // Run.StartNew requires a run's opening room to hold 6-30 content nodes — the Hall must
-        // clear that floor to ever actually open a run, not just to pass this test in isolation.
-        // See Hall.HallEntreeLayout.CurioCells's own remarks for why these are placeholders.
         foreach (var (x, y) in Hall.HallEntreeLayout.CurioCells)
         {
             nodes.Add(MapNode.Create(
@@ -213,6 +197,20 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 parentNodeIds: Array.Empty<NodeId>(),
                 isBoss: false,
                 initialState: NodeState.Available));
+        }
+
+        if (hasBoss)
+        {
+            nodes.Add(MapNode.Create(
+                eventType: NodeEventType.RoomBoss,
+                riskLevel: 85,
+                rewardProfile: "room-boss",
+                row: 12,
+                lane: 4,
+                parentNodeIds: Array.Empty<NodeId>(),
+                isBoss: true,
+                initialState: NodeState.Available,
+                combatRiskTier: NodeGenerationHeuristics.DeriveCombatRiskTier(NodeEventType.RoomBoss, 85)));
         }
 
         var bossProfile = hasBoss

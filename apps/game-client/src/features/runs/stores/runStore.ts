@@ -392,11 +392,7 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  /**
-   * Stat-point "Valider les choix": re-applies the freshly-allocated stat points to
-   * the active Run's live combat state (protagonist + companions), so the change is
-   * felt in the next combat instead of only on the next Run. No-op outside a Run.
-   */
+  /** Re-applies equipment-derived stats to the active Run. No-op outside a Run. */
   async function syncPartyStats() {
     if (!currentRun.value) return;
 

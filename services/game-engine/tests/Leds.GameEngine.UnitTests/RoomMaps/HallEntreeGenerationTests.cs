@@ -152,9 +152,7 @@ public sealed class HallEntreeGenerationTests
 
         room.BossProfile.Should().BeNull();
         room.Nodes.Should().NotContain(n => n.IsBoss);
-        room.Nodes.Should().ContainSingle(n =>
-            n.Lane == HallEntreeLayout.BossX && n.Row == HallEntreeLayout.BossY)
-            .Which.EventType.Should().Be(Leds.GameEngine.Domain.Nodes.NodeEventType.Event);
+        room.Nodes.Should().OnlyContain(n => n.EventType == Leds.GameEngine.Domain.Nodes.NodeEventType.Item);
     }
 
     [Fact]
@@ -188,14 +186,11 @@ public sealed class HallEntreeGenerationTests
     }
 
     [Fact]
-    public async Task GenerateHall_ShouldHaveBetweenSixAndThirtyContentNodes()
+    public async Task GenerateHall_ShouldKeepOnlyItsExistingAuthoredScaffoldingNodes()
     {
         var room = await GenerateHallAsync();
 
-        // Run.StartNew hard-rejects an initial room outside [6, 30] content nodes, and the Hall
-        // is specifically the room every run opens on (SFD §I) — this must hold for the Hall to
-        // ever actually start a run, not just as an abstract room-generation invariant.
-        room.ContentNodeCount.Should().BeInRange(6, 30);
+        room.ContentNodeCount.Should().Be(5, "the Hall must not synthesize a boss or a replacement event");
     }
 
     [Fact]
