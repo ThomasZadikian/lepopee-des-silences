@@ -6,6 +6,8 @@ using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Application.Runs.ConfirmRoomExit;
+using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
@@ -64,13 +66,13 @@ public abstract class RunIntegrationTestBase
                 false, [], []));
     }
 
-    protected static MapNodeDto FirstContactCombatNode(RoomDto room) =>
+    protected static MapNodeDto FirstConfirmableNode(RoomDto room) =>
         room.Nodes.First(node =>
             node.State == "Available"
-            && node.ContactBehavior == "TriggerOnEnter"
-            && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss");
+            && node.Type is not "Exit"
+            && node.ContactBehavior == "None");
 
-    protected async Task<MovePartyResponse> MovePartyToNodeAsync(Guid runId, MapNodeDto node)
+    protected async Task<MovePartyResponse> MovePartyAsync(Guid runId, MapNodeDto node)
     {
         var response = await Client.PostAsJsonAsync(
             $"/api/v2/runs/{runId}/party/move",
@@ -81,10 +83,70 @@ public abstract class RunIntegrationTestBase
 
         var payload = await response.Content.ReadFromJsonAsync<MovePartyResponse>();
         payload.Should().NotBeNull(because: body);
-        payload!.Run.CurrentRoom.State.Should().Be("NodeSelected",
+        return payload!;
+    }
+
+    protected async Task<MovePartyResponse> MovePartyToNodeAsync(Guid runId, MapNodeDto node)
+    {
+        var payload = await MovePartyAsync(runId, node);
+        payload.Run.CurrentRoom.State.Should().Be("NodeSelected",
             because: "combat objectives select automatically when the party reaches their cell");
 
         return payload;
+    }
+
+    protected async Task<EnterGridNodeResponse> MovePartyAndEnterNodeAsync(
+        Guid runId,
+        MapNodeDto node)
+    {
+        await MovePartyAsync(runId, node);
+
+        var response = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/nodes/{node.Id}/enter",
+            content: null);
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<EnterGridNodeResponse>();
+        payload.Should().NotBeNull(because: body);
+        payload!.Run.CurrentRoom.State.Should().Be("NodeSelected");
+        return payload;
+    }
+
+    protected async Task<(RunDto Run, MapNodeDto Node)> StartRunWithCombatNodeAsync()
+    {
+        var run = (await StartRunAsync()).Run;
+
+        for (var roomAttempt = 0; roomAttempt < 5; roomAttempt++)
+        {
+            var grid = run.CurrentRoom.Grid!;
+            var combatNode = run.CurrentRoom.Nodes
+                .Where(node =>
+                    node.State == "Available"
+                    && node.ContactBehavior == "TriggerOnEnter"
+                    && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss")
+                .OrderBy(node => Math.Abs(node.Lane - grid.PartyX) + Math.Abs(node.Row - grid.PartyY))
+                .FirstOrDefault();
+            if (combatNode is not null)
+            {
+                return (run, combatNode);
+            }
+
+            var exitNode = run.CurrentRoom.Nodes.First(node => node.Type == "Exit");
+            await MovePartyAsync(run.Id, exitNode);
+
+            var exitResponse = await Client.PostAsync(
+                $"/api/v2/runs/{run.Id}/nodes/{exitNode.Id}/exit",
+                content: null);
+            var exitBody = await exitResponse.Content.ReadAsStringAsync();
+            exitResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: exitBody);
+
+            var exited = await exitResponse.Content.ReadFromJsonAsync<ConfirmRoomExitResponse>();
+            exited.Should().NotBeNull(because: exitBody);
+            run = exited!.Run;
+        }
+
+        throw new InvalidOperationException("The generated run did not expose a combat room.");
     }
 
     protected async Task CompleteActiveCombatAsync(Guid runId, Guid combatId)

@@ -48,7 +48,10 @@ public sealed class GetRunByIdEndpointTests
         allNodes.Should().OnlyContain(node => node.State == "Available");
         payload.Run.CurrentRoom.BossPreview.Should().BeNull();
         payload.Run.CurrentRoom.Grid.Should().NotBeNull();
-        payload.Run.PalaceIndicators.Should().BeEmpty();
+        payload.Run.PalaceIndicators.Should().OnlyContain(indicator =>
+            !string.IsNullOrWhiteSpace(indicator.Key)
+            && !string.IsNullOrWhiteSpace(indicator.Label)
+            && !string.IsNullOrWhiteSpace(indicator.Source));
     }
 
     [Fact]
@@ -241,21 +244,26 @@ public sealed class GetRunByIdEndpointTests
     }
 
     [Fact]
-    public async Task GetRunById_ShouldReturnPartySnapshot_AfterContactNodeSelection()
+    public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeSelection()
     {
         var startRunResponse = await StartRunAsync();
         var runId = startRunResponse.Run.Id;
 
         var firstNode = startRunResponse.Run.CurrentRoom.Nodes.First(node =>
             node.State == "Available"
-            && node.ContactBehavior == "TriggerOnEnter"
-            && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss");
+            && node.ContactBehavior == "None"
+            && node.Type != "Exit");
 
         var moveResponse = await _client.PostAsJsonAsync(
             $"/api/v2/runs/{runId}/party/move",
             new { TargetX = firstNode.Lane, TargetY = firstNode.Row });
 
         moveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var enterResponse = await _client.PostAsync(
+            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/enter",
+            content: null);
+        enterResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var response = await _client.GetAsync($"/api/v2/runs/{runId}");
 

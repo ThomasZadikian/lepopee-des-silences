@@ -16,12 +16,11 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ResolveCurrentEvent_ShouldStartCombat_WhenEventIsCombat()
     {
-        var startRunResponse = await StartRunAsync();
-        var nodeToChoose = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(startRunResponse.Run.Id, nodeToChoose);
+        var (run, nodeToChoose) = await StartRunWithCombatNodeAsync();
+        await MovePartyToNodeAsync(run.Id, nodeToChoose);
 
         var resolveResponse = await Client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
+            $"/api/v2/runs/{run.Id}/current-event/resolve",
             content: null);
 
         var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
@@ -41,11 +40,10 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ResolveCurrentEvent_ShouldResolveNode_AfterCombatCompleted()
     {
-        var startRunResponse = await StartRunAsync();
-        var nodeToChoose = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(startRunResponse.Run.Id, nodeToChoose);
+        var (run, nodeToChoose) = await StartRunWithCombatNodeAsync();
+        await MovePartyToNodeAsync(run.Id, nodeToChoose);
 
-        var resolvePayload = await ResolveAndHandleCombatAsync(startRunResponse.Run.Id);
+        var resolvePayload = await ResolveAndHandleCombatAsync(run.Id);
 
         resolvePayload.Run.Status.Should().Be("Active");
         resolvePayload.Run.CurrentRoom.State.Should().Be("NodeResolved");

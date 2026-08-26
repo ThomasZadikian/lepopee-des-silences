@@ -22,8 +22,8 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase
         startRunResponse.Run.CurrentRoom.BossPreview.Should().BeNull(
             because: "the authored Hall is a free-exploration social room, not a forced boss room");
 
-        var encounter = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(runId, encounter);
+        var encounter = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyAndEnterNodeAsync(runId, encounter);
 
         var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
         resolvedPayload.Run.Status.Should().Be("Active");

@@ -20,9 +20,9 @@ public sealed class ResolveCurrentEventOutcomeEndpointTests : RunIntegrationTest
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var node = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        var node = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
         var nodeId = node.Id;
-        await MovePartyToNodeAsync(runId, node);
+        await MovePartyAndEnterNodeAsync(runId, node);
 
         var resolveResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/current-event/resolve",

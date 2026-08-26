@@ -101,7 +101,8 @@ public sealed class CombatEncounterDraftGeneratorTests
                 IsProtagonist: true,
                 MaxVitality: 100,
                 AttackPower: 10,
-                Defense: 10)
+                Defense: 10,
+                CharacterInstanceId: Guid.NewGuid())
         ]);
 
     private static Mock<ICatalogContentGateway> CreateGatewayWithSkills(

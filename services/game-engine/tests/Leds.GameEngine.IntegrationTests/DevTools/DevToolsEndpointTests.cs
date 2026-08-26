@@ -158,7 +158,9 @@ public sealed class DevToolsEndpointTests
 
         payload.Should().NotBeNull();
         payload!.Run.CurrentDepth.Should().Be(2);
-        payload.Run.Rooms.Should().HaveCount(3);
+        payload.Run.Rooms.Should().ContainSingle()
+            .Which.Id.Should().Be(payload.Run.CurrentRoom.Id,
+                because: "the runtime DTO intentionally exposes only the current spatial room");
         payload.Run.MarkovMatrixVersion.Should().Be(run.Run.MarkovMatrixVersion);
     }
 

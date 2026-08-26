@@ -872,9 +872,12 @@ public sealed class CombatSkillEffectResolverTests
     public void Resolve_ShouldReduceDamage_WhenSkillIsMagicCategory_AndTargetHasMagicDamageReduction()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 0, magicDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
         enemy.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             magicDamageBonusPercent: 0, magicDamageReductionPercent: 20);
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(

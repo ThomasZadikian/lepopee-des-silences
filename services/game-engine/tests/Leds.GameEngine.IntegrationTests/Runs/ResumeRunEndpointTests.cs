@@ -23,8 +23,8 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         var runId = startResponse.Run.Id;
         var initialGrid = startResponse.Run.CurrentRoom.Grid!;
 
-        var nodeToChoose = FirstContactCombatNode(startResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(runId, nodeToChoose);
+        var nodeToChoose = FirstConfirmableNode(startResponse.Run.CurrentRoom);
+        await MovePartyAndEnterNodeAsync(runId, nodeToChoose);
 
         // Act — exit mid-room
         var exitResponse = await Client.PostAsync(
@@ -66,8 +66,8 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         var startResponse = await StartRunAsync();
         var runId = startResponse.Run.Id;
 
-        var firstNode = FirstContactCombatNode(startResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(runId, firstNode);
+        var firstNode = FirstConfirmableNode(startResponse.Run.CurrentRoom);
+        await MovePartyAndEnterNodeAsync(runId, firstNode);
 
         var exitResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/exit-mid-room",
@@ -86,7 +86,7 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
 
         // The encounter is available again after rollback and can be selected by contact.
         var resumedNode = resumePayload.Run.CurrentRoom.Nodes.Single(node => node.Id == firstNode.Id);
-        await MovePartyToNodeAsync(runId, resumedNode);
+        await MovePartyAndEnterNodeAsync(runId, resumedNode);
 
         // The room should progress normally after resume
         var resolveResponse = await ResolveAndHandleCombatAsync(runId);

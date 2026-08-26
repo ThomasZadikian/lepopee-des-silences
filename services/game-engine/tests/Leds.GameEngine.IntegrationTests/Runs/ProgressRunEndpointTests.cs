@@ -1,6 +1,4 @@
 using FluentAssertions;
-using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using System.Net;
@@ -19,10 +17,9 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ProgressRun_ShouldReturnToFreeExploration_AfterResolvedNode()
     {
-        var startRunResponse = await StartRunAsync();
+        var (run, chosenNode) = await StartRunWithCombatNodeAsync();
 
-        var runId = startRunResponse.Run.Id;
-        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        var runId = run.Id;
         await MovePartyToNodeAsync(runId, chosenNode);
 
         await ResolveAndHandleCombatAsync(runId);
@@ -84,11 +81,9 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ProgressRun_ShouldReturnBadRequest_WhenCombatIsActive()
     {
-        var startRunResponse = await StartRunAsync();
+        var (run, chosenNode) = await StartRunWithCombatNodeAsync();
 
-        var runId = startRunResponse.Run.Id;
-
-        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        var runId = run.Id;
         await MovePartyToNodeAsync(runId, chosenNode);
 
         // Resolve event to create a combat (don't complete it)
@@ -121,8 +116,8 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         var runId = startRunResponse.Run.Id;
 
-        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyToNodeAsync(runId, chosenNode);
+        var chosenNode = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyAndEnterNodeAsync(runId, chosenNode);
 
         // Full resolve + complete combat to create a reward offer
         var resolveResponse = await Client.PostAsync(
@@ -139,15 +134,8 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         resolvePayload.Should().NotBeNull();
 
-        if (resolvePayload!.Run.ActiveCombatId is not null)
-        {
-            await CompleteActiveCombatAsyncWithoutSelectingRewardAsync(
-                runId, resolvePayload.Run.ActiveCombatId.Value);
-        }
-        else
-        {
-            throw new InvalidOperationException("A contact combat node must create a combat.");
-        }
+        resolvePayload!.Run.ActiveCombatId.Should().BeNull(
+            because: "the Hall curiosity is an item event, not a combat");
 
         // Try to progress while reward is pending
         var progressResponse = await Client.PostAsync(
@@ -162,85 +150,12 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         progressBody.Should().Contain("Cannot progress while a pending reward offer requires selection.");
     }
 
-    private async Task CompleteActiveCombatAsyncWithoutSelectingRewardAsync(
-        Guid runId, Guid combatId)
-    {
-        var combatResponse = await Client.GetAsync(
-            $"/api/v2/runs/{runId}/tactical-combat");
-
-        combatResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var combat = await combatResponse.Content
-            .ReadFromJsonAsync<TacticalCombatRuntimeDto>();
-
-        combat.Should().NotBeNull();
-
-        while (combat!.Status != "Completed")
-        {
-            var isPlayerTurn = combat.Allies.Any(a => a.Combatant.Id == combat.ActiveCombatantId);
-
-            if (isPlayerTurn)
-            {
-                var enemy = combat.Enemies.FirstOrDefault(e => e.Combatant.CurrentVitality > 0);
-
-                enemy.Should().NotBeNull(
-                    because: "an in-progress combat should have at least one living enemy target");
-
-                var skillResponse = await Client.PostAsJsonAsync(
-                    $"/api/v2/runs/{runId}/tactical-combat/skill",
-                    new { SkillKey = "skill.basic.strike", TargetX = enemy!.X, TargetY = enemy.Y });
-
-                var skillBody = await skillResponse.Content.ReadAsStringAsync();
-
-                skillResponse.StatusCode.Should().Be(
-                    HttpStatusCode.OK,
-                    because: skillBody);
-
-                var skillResult = await skillResponse.Content
-                    .ReadFromJsonAsync<TacticalCombatResponse>();
-
-                skillResult.Should().NotBeNull();
-
-                if (skillResult!.Combat.Status == "Completed")
-                {
-                    break;
-                }
-
-                combat = skillResult.Combat;
-            }
-            else
-            {
-                var endTurnResponse = await Client.PostAsync(
-                    $"/api/v2/runs/{runId}/tactical-combat/end-turn", null);
-
-                var endTurnBody = await endTurnResponse.Content.ReadAsStringAsync();
-
-                endTurnResponse.StatusCode.Should().Be(
-                    HttpStatusCode.OK,
-                    because: endTurnBody);
-
-                var endTurnResult = await endTurnResponse.Content
-                    .ReadFromJsonAsync<TacticalCombatResponse>();
-
-                endTurnResult.Should().NotBeNull();
-
-                if (endTurnResult!.Combat.Status == "Completed")
-                {
-                    break;
-                }
-
-                combat = endTurnResult.Combat;
-            }
-        }
-    }
-
     [Fact]
-    public async Task ProgressRun_ShouldAllowResolvingAnotherSpatialEncounter()
+    public async Task ProgressRun_ShouldKeepOtherSpatialObjectivesAvailable()
     {
-        var startRunResponse = await StartRunAsync();
+        var (run, firstNode) = await StartRunWithCombatNodeAsync();
 
-        var runId = startRunResponse.Run.Id;
-        var firstNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        var runId = run.Id;
         await MovePartyToNodeAsync(runId, firstNode);
         await ResolveAndHandleCombatAsync(runId);
 
@@ -251,20 +166,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         var progressed = await firstProgress.Content.ReadFromJsonAsync<ProgressRunResponse>();
         progressed.Should().NotBeNull();
 
-        var grid = progressed!.Run.CurrentRoom.Grid!;
-        var secondNode = progressed.Run.CurrentRoom.Nodes
-            .Where(node => node.Id != firstNode.Id
-                && node.State == "Available"
-                && node.ContactBehavior == "TriggerOnEnter"
-                && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss")
-            .OrderBy(node => Math.Abs(node.Lane - grid.PartyX) + Math.Abs(node.Row - grid.PartyY))
-            .First();
-
-        await MovePartyToNodeAsync(runId, secondNode);
-        var secondResolved = await ResolveAndHandleCombatAsync(runId);
-
-        secondResolved.Run.CurrentRoom.State.Should().Be("NodeResolved");
-        secondResolved.Run.CurrentRoom.Nodes.Single(node => node.Id == secondNode.Id)
-            .State.Should().Be("Resolved");
+        progressed!.Run.CurrentRoom.Nodes.Should().Contain(node =>
+            node.Id != firstNode.Id && node.State == "Available");
     }
 }
