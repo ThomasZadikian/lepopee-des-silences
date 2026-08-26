@@ -112,14 +112,11 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ProgressRun_ShouldReturnBadRequest_WhenRewardIsPending()
     {
-        var startRunResponse = await StartRunAsync();
+        var (run, chosenNode) = await StartRunWithCombatNodeAsync();
+        var runId = run.Id;
+        await MovePartyToNodeAsync(runId, chosenNode);
 
-        var runId = startRunResponse.Run.Id;
-
-        var chosenNode = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyAndEnterNodeAsync(runId, chosenNode);
-
-        // Full resolve + complete combat to create a reward offer
+        // Resolve and complete a combat without claiming its guaranteed reward offer.
         var resolveResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/current-event/resolve", null);
 
@@ -134,8 +131,11 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         resolvePayload.Should().NotBeNull();
 
-        resolvePayload!.Run.ActiveCombatId.Should().BeNull(
-            because: "the Hall curiosity is an item event, not a combat");
+        resolvePayload!.Run.ActiveCombatId.Should().NotBeNull();
+        await CompleteActiveCombatAsync(
+            runId,
+            resolvePayload.Run.ActiveCombatId!.Value,
+            selectReward: false);
 
         // Try to progress while reward is pending
         var progressResponse = await Client.PostAsync(

@@ -152,7 +152,7 @@ public abstract class RunIntegrationTestBase
                 .Where(node =>
                     node.State == "Available"
                     && node.ContactBehavior is "TriggerOnEnter" or "Blocking"
-                    && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss")
+                    && node.Type == "Combat")
                 .Select(node => (Node: node, Path: FindSafePath(run.CurrentRoom, node)))
                 .Where(candidate => candidate.Path is not null)
                 .OrderBy(candidate => candidate.Path!.Count)
@@ -252,7 +252,10 @@ public abstract class RunIntegrationTestBase
         return null;
     }
 
-    protected async Task CompleteActiveCombatAsync(Guid runId, Guid combatId)
+    protected async Task CompleteActiveCombatAsync(
+        Guid runId,
+        Guid combatId,
+        bool selectReward = true)
     {
         var combatResponse = await Client.GetAsync(
             $"/api/v2/runs/{runId}/tactical-combat");
@@ -277,7 +280,13 @@ public abstract class RunIntegrationTestBase
 
                 var skillResponse = await Client.PostAsJsonAsync(
                     $"/api/v2/runs/{runId}/tactical-combat/skill",
-                    new { SkillKey = "skill.basic.strike", TargetX = enemy!.X, TargetY = enemy.Y });
+                    new
+                    {
+                        SkillKey = "skill.basic.strike",
+                        TargetX = enemy!.X,
+                        TargetY = enemy.Y,
+                        ConfirmVitalitySacrifice = true
+                    });
 
                 var skillBody = await skillResponse.Content.ReadAsStringAsync();
 
@@ -320,6 +329,11 @@ public abstract class RunIntegrationTestBase
 
                 combat = endTurnResult.Combat;
             }
+        }
+
+        if (!selectReward)
+        {
+            return;
         }
 
         // Select the first available reward

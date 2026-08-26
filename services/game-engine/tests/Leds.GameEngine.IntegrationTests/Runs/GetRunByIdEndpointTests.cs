@@ -2,7 +2,6 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.GetRunById;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,15 +12,16 @@ using System.Text.Json;
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
 [Collection("GameEngineApi")]
-public sealed class GetRunByIdEndpointTests
+public sealed class GetRunByIdEndpointTests : RunIntegrationTestBase
 {
     private readonly GameEngineApiFactory _factory;
     private readonly HttpClient _client;
 
     public GetRunByIdEndpointTests(GameEngineApiFactory factory)
+        : base(factory.CreateClient())
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = Client;
     }
 
     [Fact]
@@ -41,7 +41,8 @@ public sealed class GetRunByIdEndpointTests
         payload.Run.Status.Should().Be("Active");
         var allNodes = payload!.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeGreaterThan(0,
+            because: "authored rooms may legitimately contain more nodes than procedural rooms");
         allNodes.Should().NotBeEmpty();
         allNodes.Count().Should().BeLessThanOrEqualTo(payload.Run.CurrentRoom.TotalNodeCount,
             because: "the room DTO applies fog of war");
@@ -249,21 +250,8 @@ public sealed class GetRunByIdEndpointTests
         var startRunResponse = await StartRunAsync();
         var runId = startRunResponse.Run.Id;
 
-        var firstNode = startRunResponse.Run.CurrentRoom.Nodes.First(node =>
-            node.State == "Available"
-            && node.ContactBehavior == "None"
-            && node.Type != "Exit");
-
-        var moveResponse = await _client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/party/move",
-            new { TargetX = firstNode.Lane, TargetY = firstNode.Row });
-
-        moveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var enterResponse = await _client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/enter",
-            content: null);
-        enterResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var firstNode = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyAndEnterNodeAsync(runId, firstNode);
 
         var response = await _client.GetAsync($"/api/v2/runs/{runId}");
 
@@ -286,25 +274,4 @@ public sealed class GetRunByIdEndpointTests
         startRunResponse.Run.Party!.Members.Should().NotBeEmpty();
     }
 
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new
-            {
-                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
-            });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
 }
