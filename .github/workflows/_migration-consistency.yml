@@ -23,6 +23,12 @@ jobs:
       - name: Restore local tools
         run: dotnet tool restore
 
+      - name: Restore service projects
+        run: |
+          dotnet restore services/game-engine/Leds.GameEngine.slnx
+          dotnet restore services/player/Leds.Player.slnx
+          dotnet restore services/catalog/Leds.Catalog.slnx
+
       - name: Require a migration for every model change
         run: |
           dotnet ef migrations has-pending-model-changes \

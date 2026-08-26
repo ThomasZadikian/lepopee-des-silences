@@ -10,6 +10,15 @@ import {
   useCombatPlayback,
 } from './useCombatPlayback';
 
+async function waitForMicrotasks(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) return;
+    await Promise.resolve();
+  }
+
+  throw new Error('La séquence asynchrone attendue ne s’est pas produite.');
+}
+
 describe('tactical combat playback', () => {
   it('keeps the authored timing curve for short, medium and long paths', () => {
     expect(dynamicStepDurationMs(2)).toBe(Math.floor(BASE_STEP_MS * 0.7));
@@ -139,7 +148,7 @@ describe('file des animations de compétence', () => {
       () => 0,
     );
 
-    await Promise.resolve();
+    await waitForMicrotasks(() => order.includes('sort:4,2'));
     expect(order).toEqual(['transition', 'sort:4,2']);
     expect(playback.isPlaying.value).toBe(true);
 

@@ -474,8 +474,10 @@ describe('useRunStore actions', () => {
       run: {
         id: 'run-1',
         status: 'Active',
-        currentRoom: { grid: { partyX: 1, partyY: 0 } },
+        currentRoom: { state: 'Active', grid: { partyX: 1, partyY: 0 } },
       },
+      collectedItemIds: [],
+      blockedItemIds: [],
     } as any);
     vi.mocked(runApi.advanceRoomActors).mockResolvedValue({
       run: {

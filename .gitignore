@@ -160,7 +160,8 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
-coverage/
+/apps/game-client/coverage/
+/artifacts/coverage/
 playwright-report/
 test-results/
 
@@ -475,7 +476,8 @@ frontend/.env
 **/appsettings.*.json
 
 # Coverage
-coverage/
+/apps/game-client/coverage/
+/artifacts/coverage/
 TestResults/
 *.cobertura.xml
 

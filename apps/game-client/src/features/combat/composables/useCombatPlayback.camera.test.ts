@@ -2,6 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useCombatPlayback } from './useCombatPlayback';
 
+async function waitForMicrotasks(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) return;
+    await Promise.resolve();
+  }
+
+  throw new Error('La séquence asynchrone attendue ne s’est pas produite.');
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -63,17 +72,15 @@ describe('combat camera sequencing', () => {
       () => 0,
     );
 
-    // Laisse passer les awaits synchrones de transition/caméra jusqu'au sort bloquant.
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    // Attend l'étape observable plutôt qu'un nombre fragile de microtâches : chaque nouvelle
+    // barrière caméra peut légitimement ajouter un await sans modifier le contrat fonctionnel.
+    await waitForMicrotasks(() => order.includes('sort'));
 
     expect(order).toEqual(['scene', 'camera:actor', 'camera:action', 'sort']);
     expect(playback.impacts.value).toHaveLength(0);
 
     finishSort!();
-    await Promise.resolve();
+    await waitForMicrotasks(() => playback.impacts.value.length === 1);
 
     expect(order).toEqual([
       'scene',
