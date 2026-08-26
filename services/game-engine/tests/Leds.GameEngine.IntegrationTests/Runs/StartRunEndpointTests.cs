@@ -39,7 +39,7 @@ public sealed class StartRunEndpointTests
         payload!.Run.Id.Should().NotBeEmpty();
         payload.Run.PlayerId.Should().Be(playerId);
         payload.Run.Seed.Should().StartWith("seed-");
-        payload.Run.GeneratorVersion.Should().Be("room-map-layout-1.0.0");
+        payload.Run.GeneratorVersion.Should().Be("grid-room-layout-1.0.0");
         payload.Run.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
         payload.Run.Status.Should().Be("Active");
         payload.Run.CurrentDepth.Should().Be(0);

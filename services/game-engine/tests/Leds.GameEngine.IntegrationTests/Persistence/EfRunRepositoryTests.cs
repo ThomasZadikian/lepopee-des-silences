@@ -7,6 +7,7 @@ using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Leds.GameEngine.IntegrationTests.Persistence;
 
@@ -201,24 +202,20 @@ public sealed class EfRunRepositoryTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Completed", RunOutcome.Success)]
-    [InlineData("Failed", RunOutcome.Defeat)]
-    [InlineData("Abandoned", RunOutcome.Abandon)]
-    public async Task GetByIdAsync_ShouldNormalizeLegacyTerminalStatus(
-        string legacyStatus,
-        RunOutcome expectedOutcome)
+    [InlineData("Completed")]
+    [InlineData("Failed")]
+    [InlineData("Abandoned")]
+    public async Task Database_ShouldRejectLegacyTerminalStatus_AfterCanonicalMigration(
+        string legacyStatus)
     {
         var run = CreateTestRun();
         await _repository.AddAsync(run, CancellationToken.None);
-        await _context.Database.ExecuteSqlInterpolatedAsync(
+
+        var act = () => _context.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE runs SET status = {legacyStatus}, outcome = NULL WHERE id = {run.Id.Value}");
 
-        using var verifyContext = _fixture.CreateContext(_connStr);
-        var loaded = await new EfRunRepository(verifyContext)
-            .GetByIdAsync(run.Id, CancellationToken.None);
-
-        loaded!.Status.Should().Be(RunStatus.Resolved);
-        loaded.Outcome.Should().Be(expectedOutcome);
+        await act.Should().ThrowAsync<PostgresException>(
+            because: "the lifecycle migration canonicalizes legacy values and then enforces the invariant in PostgreSQL");
     }
 
     [Fact]

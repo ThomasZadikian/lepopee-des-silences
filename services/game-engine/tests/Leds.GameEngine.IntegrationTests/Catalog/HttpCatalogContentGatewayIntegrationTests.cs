@@ -5,6 +5,7 @@ using CatalogApi::Leds.Catalog.Api;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Catalog;
