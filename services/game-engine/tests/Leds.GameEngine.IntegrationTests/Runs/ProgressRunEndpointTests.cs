@@ -17,22 +17,13 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task ProgressRun_ShouldUnlockOnlyChildrenOfResolvedNode()
+    public async Task ProgressRun_ShouldReturnToFreeExploration_AfterResolvedNode()
     {
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
-
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
-            content: null);
-
-        var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
-
-        chooseResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: chooseBody);
+        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, chosenNode);
 
         await ResolveAndHandleCombatAsync(runId);
 
@@ -51,22 +42,9 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         payload.Should().NotBeNull();
 
         payload!.Run.Status.Should().Be("Active");
-        payload.Run.CurrentRoom.CurrentNodeDepth.Should().Be(1);
-        payload.Run.CurrentRoom.State.Should().BeOneOf("Active", "BossReached");
-
-        payload.Run.CurrentRoom.AvailableNodes.Should().NotBeEmpty();
-
-        payload.Run.CurrentRoom.AvailableNodes
-            .Should()
-            .OnlyContain(node => node.ParentNodeIds.Contains(chosenNode.Id));
-
-        payload.Run.CurrentRoom.AvailableNodes
-            .Should()
-            .OnlyContain(node => node.State == "Available");
-
-        payload.Run.CurrentRoom.AvailableNodes
-            .Should()
-            .OnlyContain(node => node.Row == payload.Run.CurrentRoom.CurrentNodeDepth);
+        payload.Run.CurrentRoom.State.Should().Be("Active");
+        payload.Run.CurrentRoom.Nodes.Single(node => node.Id == chosenNode.Id)
+            .State.Should().Be("Resolved");
     }
 
     [Fact]
@@ -110,19 +88,8 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         var runId = startRunResponse.Run.Id;
 
-        var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(n => n.Type == "Combat");
-
-        if (chosenNode is null)
-        {
-            return; // Skip when no node has Combat as primary event
-        }
-
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
-            content: null);
-
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, chosenNode);
 
         // Resolve event to create a combat (don't complete it)
         var resolveResponse = await Client.PostAsync(
@@ -154,19 +121,8 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         var runId = startRunResponse.Run.Id;
 
-        var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(n => n.Type == "Combat");
-
-        if (chosenNode is null)
-        {
-            return; // Skip when no node has Combat as primary event
-        }
-
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
-            content: null);
-
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var chosenNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, chosenNode);
 
         // Full resolve + complete combat to create a reward offer
         var resolveResponse = await Client.PostAsync(
@@ -190,7 +146,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         }
         else
         {
-            return; // Skip when no combat was created
+            throw new InvalidOperationException("A contact combat node must create a combat.");
         }
 
         // Try to progress while reward is pending
@@ -279,56 +235,36 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task ProgressRun_ShouldEventuallyReachRoomBoss()
+    public async Task ProgressRun_ShouldAllowResolvingAnotherSpatialEncounter()
     {
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var currentRoom = startRunResponse.Run.CurrentRoom;
+        var firstNode = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, firstNode);
+        await ResolveAndHandleCombatAsync(runId);
 
-        while (currentRoom.State != "BossReached")
-        {
-            var chosenNode = currentRoom.AvailableNodes.First();
+        var firstProgress = await Client.PostAsync($"/api/v2/runs/{runId}/progress", null);
+        var firstProgressBody = await firstProgress.Content.ReadAsStringAsync();
+        firstProgress.StatusCode.Should().Be(HttpStatusCode.OK, because: firstProgressBody);
 
-            var chooseResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
-                content: null);
+        var progressed = await firstProgress.Content.ReadFromJsonAsync<ProgressRunResponse>();
+        progressed.Should().NotBeNull();
 
-            var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
+        var grid = progressed!.Run.CurrentRoom.Grid!;
+        var secondNode = progressed.Run.CurrentRoom.Nodes
+            .Where(node => node.Id != firstNode.Id
+                && node.State == "Available"
+                && node.ContactBehavior == "TriggerOnEnter"
+                && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss")
+            .OrderBy(node => Math.Abs(node.Lane - grid.PartyX) + Math.Abs(node.Row - grid.PartyY))
+            .First();
 
-            chooseResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: chooseBody);
+        await MovePartyToNodeAsync(runId, secondNode);
+        var secondResolved = await ResolveAndHandleCombatAsync(runId);
 
-            var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
-
-            if (resolvedPayload.Run.CurrentRoom.State == "Completed")
-            {
-                currentRoom = resolvedPayload.Run.CurrentRoom;
-                break;
-            }
-
-            var progressResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/progress",
-                content: null);
-
-            var progressBody = await progressResponse.Content.ReadAsStringAsync();
-
-            progressResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: progressBody);
-
-            var progressPayload = await progressResponse.Content
-                .ReadFromJsonAsync<ProgressRunResponse>();
-
-            progressPayload.Should().NotBeNull();
-
-            currentRoom = progressPayload!.Run.CurrentRoom;
-        }
-
-        currentRoom.State.Should().Be("BossReached");
-        currentRoom.AvailableNodes.Should().ContainSingle();
-        currentRoom.AvailableNodes.Single().IsBoss.Should().BeTrue();
-        currentRoom.AvailableNodes.Single().Type.Should().Be("RoomBoss");
+        secondResolved.Run.CurrentRoom.State.Should().Be("NodeResolved");
+        secondResolved.Run.CurrentRoom.Nodes.Single(node => node.Id == secondNode.Id)
+            .State.Should().Be("Resolved");
     }
 }

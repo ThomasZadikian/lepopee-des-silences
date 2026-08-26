@@ -17,19 +17,8 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
     public async Task ResolveCurrentEvent_ShouldStartCombat_WhenEventIsCombat()
     {
         var startRunResponse = await StartRunAsync();
-        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(node => node.Type == "Combat");
-
-        if (nodeToChoose is null)
-        {
-            return;
-        }
-
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
-            content: null);
-
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nodeToChoose = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(startRunResponse.Run.Id, nodeToChoose);
 
         var resolveResponse = await Client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
@@ -53,13 +42,8 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
     public async Task ResolveCurrentEvent_ShouldResolveNode_AfterCombatCompleted()
     {
         var startRunResponse = await StartRunAsync();
-        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
-
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
-            content: null);
-
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nodeToChoose = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(startRunResponse.Run.Id, nodeToChoose);
 
         var resolvePayload = await ResolveAndHandleCombatAsync(startRunResponse.Run.Id);
 
@@ -86,7 +70,7 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
         var body = await response.Content.ReadAsStringAsync();
 
         body.Should().Contain("Domain rule violated.");
-        body.Should().Contain("No node has been selected for the current room depth.");
+        body.Should().Contain("No node has been selected");
     }
 
     [Fact]

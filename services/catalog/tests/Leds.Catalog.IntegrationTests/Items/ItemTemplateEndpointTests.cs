@@ -61,7 +61,7 @@ public sealed class ItemDefinitionContractEndpointTests
         payload.Definition.Status.Should().Be("Active");
         payload.Definition.Category.Should().Be("Consumable");
         payload.Definition.Rarity.Should().Be("Common");
-        payload.Definition.Lifecycle.Should().Be("RunOnly");
+        payload.Definition.Lifecycle.Should().Be("RuntimeRunOnly");
     }
 
     [Fact]

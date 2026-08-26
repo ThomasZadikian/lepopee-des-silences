@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetRunById;
-using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using System.Net;
@@ -20,15 +19,12 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ExitMidRoom_AndResume_ShouldRestoreRoomToInitialState()
     {
-        // Arrange — start a run and progress into the room
         var startResponse = await StartRunAsync();
         var runId = startResponse.Run.Id;
+        var initialGrid = startResponse.Run.CurrentRoom.Grid!;
 
-        var nodeToChoose = startResponse.Run.CurrentRoom.AvailableNodes.First();
-        var chooseResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
-            content: null);
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nodeToChoose = FirstContactCombatNode(startResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, nodeToChoose);
 
         // Act — exit mid-room
         var exitResponse = await Client.PostAsync(
@@ -56,24 +52,22 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         resumePayload!.Run.Status.Should().Be("Active");
         resumePayload.Run.CanResume.Should().BeFalse();
 
-        // Assert — room should be reset to initial state
-        resumePayload.Run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
+        // Mid-room exit deliberately rolls spatial exploration back to its entry snapshot.
         resumePayload.Run.CurrentRoom.State.Should().Be("Active");
-        resumePayload.Run.CurrentRoom.AvailableNodes.Should()
-            .OnlyContain(n => n.Row == 0 && n.State == "Available");
+        resumePayload.Run.CurrentRoom.Grid!.PartyX.Should().Be(initialGrid.PartyX);
+        resumePayload.Run.CurrentRoom.Grid.PartyY.Should().Be(initialGrid.PartyY);
+        resumePayload.Run.CurrentRoom.Nodes.Single(node => node.Id == nodeToChoose.Id)
+            .State.Should().Be("Available");
     }
 
     [Fact]
     public async Task ExitMidRoom_AndResume_ShouldAllowContinuedPlay()
     {
-        // Arrange — start run, pick a node, exit mid-room
         var startResponse = await StartRunAsync();
         var runId = startResponse.Run.Id;
 
-        var firstNode = startResponse.Run.CurrentRoom.AvailableNodes.First();
-        await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/choose",
-            content: null);
+        var firstNode = FirstContactCombatNode(startResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, firstNode);
 
         var exitResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/exit-mid-room",
@@ -90,12 +84,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
             .ReadFromJsonAsync<ResumeRunResponse>();
         resumePayload!.Run.Status.Should().Be("Active");
 
-        // Act — continue playing: choose a node after resume
-        var resumedNode = resumePayload.Run.CurrentRoom.AvailableNodes.First();
-        var chooseAgain = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{resumedNode.Id}/choose",
-            content: null);
-        chooseAgain.StatusCode.Should().Be(HttpStatusCode.OK);
+        // The encounter is available again after rollback and can be selected by contact.
+        var resumedNode = resumePayload.Run.CurrentRoom.Nodes.Single(node => node.Id == firstNode.Id);
+        await MovePartyToNodeAsync(runId, resumedNode);
 
         // The room should progress normally after resume
         var resolveResponse = await ResolveAndHandleCombatAsync(runId);
@@ -103,10 +94,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task SaveAndExit_AndResume_ShouldRestoreRoomResolved_WhenRunWasRoomCleared()
+    public async Task SaveAndExit_AndResume_ShouldRestoreFreeExplorationState()
     {
-        // Arrange — drive run to RoomResolved and save
-        var runId = await StartRunAtRoomResolvedAsync();
+        var runId = (await StartRunAsync()).Run.Id;
 
         var saveResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/save-and-exit",
@@ -129,10 +119,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         var resumePayload = await resumeResponse.Content
             .ReadFromJsonAsync<ResumeRunResponse>();
 
-        // Assert — run returns to RoomResolved
-        resumePayload!.Run.Status.Should().Be("RoomResolved");
+        resumePayload!.Run.Status.Should().Be("Active");
         resumePayload.Run.CanResume.Should().BeFalse();
-        resumePayload.Run.CurrentRoom.State.Should().Be("Completed");
+        resumePayload.Run.CurrentRoom.State.Should().Be("Active");
     }
 
     [Fact]
@@ -168,7 +157,7 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task Resume_ShouldReturnBadRequest_WhenRunIsAbandoned()
     {
-        var runId = await StartRunAtRoomResolvedAsync();
+        var runId = (await StartRunAsync()).Run.Id;
 
         var abandonResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/abandon",
@@ -187,7 +176,7 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task Resume_ShouldClearSavedAt()
     {
-        var runId = await StartRunAtRoomResolvedAsync();
+        var runId = (await StartRunAsync()).Run.Id;
 
         await Client.PostAsync(
             $"/api/v2/runs/{runId}/save-and-exit",
@@ -245,9 +234,14 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task ExitMidRoom_ShouldReturnBadRequest_WhenRunIsRoomResolved()
+    public async Task ExitMidRoom_ShouldReturnBadRequest_WhenRunIsAlreadySuspended()
     {
-        var runId = await StartRunAtRoomResolvedAsync();
+        var runId = (await StartRunAsync()).Run.Id;
+
+        var firstExit = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/exit-mid-room",
+            content: null);
+        firstExit.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var response = await Client.PostAsync(
             $"/api/v2/runs/{runId}/exit-mid-room",
@@ -259,9 +253,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task SaveAndExit_ShouldReturnOk_WhenRunIsRoomResolved()
+    public async Task SaveAndExit_ShouldReturnOk_AtFreeExplorationSafePoint()
     {
-        var runId = await StartRunAtRoomResolvedAsync();
+        var runId = (await StartRunAsync()).Run.Id;
 
         var response = await Client.PostAsync(
             $"/api/v2/runs/{runId}/save-and-exit",
@@ -277,48 +271,4 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         payload.Run.SavedAt.Should().NotBeNull();
     }
 
-    /// <summary>
-    /// Plays through the first room (all nodes + boss + reward) and returns
-    /// the run Id in <see cref="RunStatus.RoomResolved"/> (room cleared).
-    /// </summary>
-    private async Task<Guid> StartRunAtRoomResolvedAsync()
-    {
-        var startRunResponse = await StartRunAsync();
-        var runId = startRunResponse.Run.Id;
-        var currentRoom = startRunResponse.Run.CurrentRoom;
-
-        while (currentRoom.CurrentNodeDepth < currentRoom.MaxNodeDepth)
-        {
-            var nodeToChoose = currentRoom.AvailableNodes.First();
-
-            var chooseResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
-                content: null);
-            chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var resolved = await ResolveAndHandleCombatAsync(runId);
-
-            var progressResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/progress",
-                content: null);
-            progressResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var progressBody = await progressResponse.Content
-                .ReadFromJsonAsync<ProgressRunResponse>();
-            currentRoom = progressBody!.Run.CurrentRoom;
-        }
-
-        var bossNode = currentRoom.AvailableNodes.Single();
-        bossNode.IsBoss.Should().BeTrue();
-
-        var chooseBoss = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
-            content: null);
-        chooseBoss.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var bossResolved = await ResolveAndHandleCombatAsync(runId);
-        bossResolved.Run.Status.Should().Be("RoomResolved");
-
-        return runId;
-    }
 }

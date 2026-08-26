@@ -731,7 +731,7 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
                     MaxDepth = (int?)null,
-                    EmotionalAffinity = "rage"
+                    EmotionalAffinity = "rupture"
                 }
             }
         };
@@ -770,7 +770,7 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatibleRoomClimates = new[] { "Heatwave" },
                     MinDepth = (int?)null,
                     MaxDepth = (int?)null,
-                    EmotionalAffinity = "rage"
+                    EmotionalAffinity = "rupture"
                 },
                 new
                 {

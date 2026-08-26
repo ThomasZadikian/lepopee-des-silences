@@ -168,6 +168,8 @@ public sealed class DevToolsEndpointTests
         bool includeToken,
         string? token = null)
     {
+        _factory.ResetDatabase();
+
         var client = _factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);

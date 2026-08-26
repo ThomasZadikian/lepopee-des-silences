@@ -89,7 +89,20 @@ public sealed class CombatEncounterDraftGeneratorTests
         RoomIndex: 0,
         RiskLevel: 2,
         EncounterType: "Combat",
-        EnemyCount: 1);
+        EnemyCount: 1,
+        PartyAllies:
+        [
+            new CombatEncounterDraftAlly(
+                AllyKey: "player.self",
+                DisplayName: "Protagonist",
+                Role: "Protagonist",
+                Tags: ["player"],
+                EmotionalRegister: "memoire",
+                IsProtagonist: true,
+                MaxVitality: 100,
+                AttackPower: 10,
+                Defense: 10)
+        ]);
 
     private static Mock<ICatalogContentGateway> CreateGatewayWithSkills(
         CatalogEnemyDefinition[] enemies)

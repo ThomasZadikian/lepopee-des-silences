@@ -276,7 +276,7 @@ export function reachableCellsWithPathsFrom(
       if (best !== undefined && best <= g) continue;
 
       reached.set(key, g);
-      previous.set(key, current.previous);
+      previous.set(key, current.cell);
       frontier.push({
         cell: next,
         g,

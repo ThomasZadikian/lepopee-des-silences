@@ -1,20 +1,17 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Application.Runs.StartRun;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
 [Collection("GameEngineApi")]
-public sealed class ResolveCurrentEventOutcomeEndpointTests
+public sealed class ResolveCurrentEventOutcomeEndpointTests : RunIntegrationTestBase
 {
-    private readonly HttpClient _client;
-
     public ResolveCurrentEventOutcomeEndpointTests(
         GameEngineApiFactory factory)
+        : base(factory.CreateClient())
     {
-        _client = factory.CreateClient();
     }
 
     [Fact]
@@ -23,19 +20,11 @@ public sealed class ResolveCurrentEventOutcomeEndpointTests
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var nodeId = startRunResponse.Run.CurrentRoom.AvailableNodes.First().Id;
+        var node = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        var nodeId = node.Id;
+        await MovePartyToNodeAsync(runId, node);
 
-        var chooseResponse = await _client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{nodeId}/choose",
-            content: null);
-
-        var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
-
-        chooseResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: chooseBody);
-
-        var resolveResponse = await _client.PostAsync(
+        var resolveResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/current-event/resolve",
             content: null);
 
@@ -62,22 +51,4 @@ public sealed class ResolveCurrentEventOutcomeEndpointTests
         payload.Outcome.NarrativeFragments.Should().NotBeNull();
     }
 
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new { PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111") });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
 }

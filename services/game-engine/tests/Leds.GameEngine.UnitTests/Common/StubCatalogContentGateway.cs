@@ -1082,7 +1082,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                             Focus: 5,
                             Mana: 20,
                             Charge: 0,
-                            SkillKeys: ["skill.basic.strike"]))
+                            SkillKeys: ["skill.basic.strike", "skill.basic.guard"]))
                 ],
                 DialogueGraph: new CatalogNpcDialogueGraph(
                     "npc.test.offering-giver.dialogue", "1.0", "start",

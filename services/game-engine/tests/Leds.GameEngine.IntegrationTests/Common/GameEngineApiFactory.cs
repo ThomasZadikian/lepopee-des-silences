@@ -82,7 +82,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
         return _container.GetConnectionString();
     }
 
-    private void ResetDatabase()
+    public void ResetDatabase()
     {
         _resetLock.Wait();
 

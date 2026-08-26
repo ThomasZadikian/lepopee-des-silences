@@ -5,6 +5,8 @@ using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
 using System.Net;
@@ -60,6 +62,29 @@ public abstract class RunIntegrationTestBase
                 Guid.Empty, [], string.Empty, string.Empty,
                 0, string.Empty, string.Empty, string.Empty,
                 false, [], []));
+    }
+
+    protected static MapNodeDto FirstContactCombatNode(RoomDto room) =>
+        room.Nodes.First(node =>
+            node.State == "Available"
+            && node.ContactBehavior == "TriggerOnEnter"
+            && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss");
+
+    protected async Task<MovePartyResponse> MovePartyToNodeAsync(Guid runId, MapNodeDto node)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/party/move",
+            new { TargetX = node.Lane, TargetY = node.Row });
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<MovePartyResponse>();
+        payload.Should().NotBeNull(because: body);
+        payload!.Run.CurrentRoom.State.Should().Be("NodeSelected",
+            because: "combat objectives select automatically when the party reaches their cell");
+
+        return payload;
     }
 
     protected async Task CompleteActiveCombatAsync(Guid runId, Guid combatId)

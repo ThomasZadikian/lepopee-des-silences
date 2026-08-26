@@ -14,84 +14,32 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase
     }
 
     [Fact]
-    public async Task RoomProgression_ShouldEventuallyReachRoomBoss_AndCompleteRoom_WhenBossIsResolved()
+    public async Task RoomProgression_ShouldRemainPlayable_WithoutAuthoredHallBoss()
     {
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var currentRoom = startRunResponse.Run.CurrentRoom;
+        startRunResponse.Run.CurrentRoom.BossPreview.Should().BeNull(
+            because: "the authored Hall is a free-exploration social room, not a forced boss room");
 
-        while (currentRoom.CurrentNodeDepth < currentRoom.MaxNodeDepth)
-        {
-            var nodeToChoose = currentRoom.AvailableNodes.First();
+        var encounter = FirstContactCombatNode(startRunResponse.Run.CurrentRoom);
+        await MovePartyToNodeAsync(runId, encounter);
 
-            var chooseResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
-                content: null);
+        var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
+        resolvedPayload.Run.Status.Should().Be("Active");
+        resolvedPayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
 
-            var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
-
-            chooseResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: chooseBody);
-
-            var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
-
-            resolvedPayload.Run.Status.Should().Be("Active");
-            resolvedPayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
-
-            var progressResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/progress",
-                content: null);
-
-            var progressBody = await progressResponse.Content.ReadAsStringAsync();
-
-            progressResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: progressBody);
-
-            var progressPayload = await progressResponse.Content
-                .ReadFromJsonAsync<ProgressRunResponse>();
-
-            progressPayload.Should().NotBeNull();
-
-            currentRoom = progressPayload!.Run.CurrentRoom;
-
-            currentRoom.AvailableNodes.Should().NotBeEmpty();
-            currentRoom.AvailableNodes.Should().OnlyContain(node =>
-                node.Row == currentRoom.CurrentNodeDepth);
-        }
-
-        currentRoom.State.Should().Be("BossReached");
-        currentRoom.CurrentNodeDepth.Should().Be(currentRoom.MaxNodeDepth);
-        currentRoom.AvailableNodes.Should().ContainSingle();
-
-        var bossNode = currentRoom.AvailableNodes.Single();
-
-        bossNode.Type.Should().Be("RoomBoss");
-        bossNode.IsBoss.Should().BeTrue();
-        bossNode.State.Should().Be("Available");
-
-        var chooseBossResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
+        var progressResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/progress",
             content: null);
+        var progressBody = await progressResponse.Content.ReadAsStringAsync();
+        progressResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: progressBody);
 
-        var chooseBossBody = await chooseBossResponse.Content.ReadAsStringAsync();
-
-        chooseBossResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: chooseBossBody);
-
-        var finalPayload = await ResolveAndHandleCombatAsync(runId);
-
-        finalPayload.Run.Status.Should().Be("RoomResolved");
-        finalPayload.Run.CurrentRoom.State.Should().Be("Completed");
-
-        var allNodes = finalPayload.Run.CurrentRoom.Nodes.ToArray();
-
-        allNodes.Single(node => node.Id == bossNode.Id)
-            .State
-            .Should()
-            .Be("Resolved");
+        var progressed = await progressResponse.Content.ReadFromJsonAsync<ProgressRunResponse>();
+        progressed.Should().NotBeNull();
+        progressed!.Run.Status.Should().Be("Active");
+        progressed.Run.CurrentRoom.State.Should().Be("Active");
+        progressed.Run.CurrentRoom.Nodes.Single(node => node.Id == encounter.Id)
+            .State.Should().Be("Resolved");
     }
 }

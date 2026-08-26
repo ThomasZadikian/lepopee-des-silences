@@ -42,21 +42,12 @@ public sealed class GetRunByIdEndpointTests
         var allNodes = payload!.Run.CurrentRoom.Nodes.ToArray();
 
         payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
-        allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
-
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
-
-        allNodes.Where(node => node.Row > 0)
-            .Should()
-            .OnlyContain(node => node.State == "Planned");
-
-        allNodes.Should().ContainSingle(node => node.IsBoss);
-
-        payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
-        payload.Run.CurrentRoom.BossPreview.Name.Should().NotBeNullOrWhiteSpace();
+        allNodes.Should().NotBeEmpty();
+        allNodes.Count().Should().BeLessThanOrEqualTo(payload.Run.CurrentRoom.TotalNodeCount,
+            because: "the room DTO applies fog of war");
+        allNodes.Should().OnlyContain(node => node.State == "Available");
+        payload.Run.CurrentRoom.BossPreview.Should().BeNull();
+        payload.Run.CurrentRoom.Grid.Should().NotBeNull();
         payload.Run.PalaceIndicators.Should().BeEmpty();
     }
 
@@ -101,9 +92,11 @@ public sealed class GetRunByIdEndpointTests
 
         var payload = await response.Content.ReadFromJsonAsync<GetRunByIdResponse>();
         payload.Should().NotBeNull();
-        payload!.Run.PalaceIndicators.Should().ContainSingle();
+        payload!.Run.PalaceIndicators.Should().ContainSingle(indicator =>
+            indicator.Key == "palace.whispers");
 
-        var indicator = payload.Run.PalaceIndicators!.Single();
+        var indicator = payload.Run.PalaceIndicators!.Single(candidate =>
+            candidate.Key == "palace.whispers");
         indicator.Key.Should().Be("palace.whispers");
         indicator.Label.Should().Be("Murmures du Palais");
         indicator.Description.Should().Be("Le Palais observe la travers�e.");
@@ -115,7 +108,7 @@ public sealed class GetRunByIdEndpointTests
             .GetProperty("run")
             .GetProperty("palaceIndicators")
             .EnumerateArray()
-            .Single();
+            .Single(candidate => candidate.GetProperty("key").GetString() == "palace.whispers");
 
         var propertyNames = indicatorJson
             .EnumerateObject()
@@ -248,18 +241,21 @@ public sealed class GetRunByIdEndpointTests
     }
 
     [Fact]
-    public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeChoice()
+    public async Task GetRunById_ShouldReturnPartySnapshot_AfterContactNodeSelection()
     {
         var startRunResponse = await StartRunAsync();
         var runId = startRunResponse.Run.Id;
 
-        var firstNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
+        var firstNode = startRunResponse.Run.CurrentRoom.Nodes.First(node =>
+            node.State == "Available"
+            && node.ContactBehavior == "TriggerOnEnter"
+            && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss");
 
-        var chooseResponse = await _client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/choose",
-            new { });
+        var moveResponse = await _client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/party/move",
+            new { TargetX = firstNode.Lane, TargetY = firstNode.Row });
 
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        moveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var response = await _client.GetAsync($"/api/v2/runs/{runId}");
 
