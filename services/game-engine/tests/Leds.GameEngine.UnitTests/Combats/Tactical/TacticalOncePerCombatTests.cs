@@ -30,7 +30,8 @@ public sealed class TacticalOncePerCombatTests
         combat.MarkOnceSkillUsed("canon.skill.silence-partage");
 
         var reloaded = TacticalCombatPersistenceMapper.ToDomain(
-            TacticalCombatPersistenceMapper.ToEntity(combat, combat.RunId.Value));
+            TacticalCombatPersistenceMapper.ToEntity(combat, combat.RunId.Value),
+            Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
 
         reloaded.HasUsedOnceSkill("canon.skill.silence-partage").Should().BeTrue();
     }

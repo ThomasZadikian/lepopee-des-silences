@@ -283,7 +283,8 @@ public sealed class HttpCatalogContentGatewayTests
                 AttackPower = 15,
                 Defense = 8,
                 Speed = 12,
-                Focus = 6
+                Focus = 6,
+                Registre = "neutral"
             }
         };
 
@@ -466,7 +467,8 @@ public sealed class HttpCatalogContentGatewayTests
                     MinRiskLevel = 2,
                     MaxRiskLevel = 4,
                     Tags = new[] { "silence", "guard" },
-                    SkillKeys = new[] { "skill.basic.shield" }
+                    SkillKeys = new[] { "skill.basic.shield" },
+                    Registre = "silence"
                 },
                 new
                 {
@@ -479,7 +481,8 @@ public sealed class HttpCatalogContentGatewayTests
                     MinRiskLevel = 3,
                     MaxRiskLevel = 5,
                     Tags = new[] { "silence", "disruptor" },
-                    SkillKeys = new[] { "skill.basic.disable" }
+                    SkillKeys = new[] { "skill.basic.disable" },
+                    Registre = "silence"
                 }
             }
         };
@@ -577,7 +580,8 @@ public sealed class HttpCatalogContentGatewayTests
                     MinRiskLevel = 2,
                     MaxRiskLevel = 4,
                     Tags = new[] { "rupture", "skirmisher" },
-                    SkillKeys = new[] { "skill.basic.strike" }
+                    SkillKeys = new[] { "skill.basic.strike" },
+                    Registre = "rupture"
                 }
             }
         };
@@ -665,7 +669,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = Array.Empty<string>(),
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "neutral"
                 },
                 new
                 {
@@ -677,7 +682,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = new[] { "Silent" },
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "silence"
                 }
             }
         };
@@ -711,7 +717,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = new[] { "Silent" },
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "silence"
                 },
                 new
                 {
@@ -723,7 +730,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = new[] { "Enraged" },
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "rage"
                 }
             }
         };
@@ -761,7 +769,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = Array.Empty<string>(),
                     CompatibleRoomClimates = new[] { "Heatwave" },
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "rage"
                 },
                 new
                 {
@@ -773,7 +782,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = Array.Empty<string>(),
                     CompatibleRoomClimates = new[] { "Rain" },
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "melancolie"
                 }
             }
         };
@@ -809,7 +819,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = Array.Empty<string>(),
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = 1,
-                    MaxDepth = 5
+                    MaxDepth = 5,
+                    EmotionalAffinity = "neutral"
                 }
             }
         };
@@ -843,7 +854,8 @@ public sealed class HttpCatalogContentGatewayTests
                     CompatiblePalaceRoomStates = Array.Empty<string>(),
                     CompatibleRoomClimates = Array.Empty<string>(),
                     MinDepth = (int?)null,
-                    MaxDepth = (int?)null
+                    MaxDepth = (int?)null,
+                    EmotionalAffinity = "neutral"
                 }
             }
         };
@@ -941,7 +953,8 @@ public sealed class HttpCatalogContentGatewayTests
                 ManaCost = 5,
                 ChargeCost = 0,
                 BasePower = 10,
-                Tags = new[] { "basic", "damage" }
+                Tags = new[] { "basic", "damage" },
+                EmotionalRegister = "neutral"
             }
         };
 
@@ -980,7 +993,8 @@ public sealed class HttpCatalogContentGatewayTests
                 ManaCost = 3,
                 ChargeCost = 1,
                 BasePower = 0,
-                Tags = (string[]?)null
+                Tags = (string[]?)null,
+                EmotionalRegister = "neutral"
             }
         };
 
@@ -1120,7 +1134,8 @@ public sealed class HttpCatalogContentGatewayTests
                     ManaCost = 5,
                     ChargeCost = 0,
                     BasePower = 10,
-                    Tags = new[] { "basic" }
+                    Tags = new[] { "basic" },
+                    EmotionalRegister = "neutral"
                 },
                 new
                 {
@@ -1133,7 +1148,8 @@ public sealed class HttpCatalogContentGatewayTests
                     ManaCost = 3,
                     ChargeCost = 1,
                     BasePower = 0,
-                    Tags = Array.Empty<string>()
+                    Tags = Array.Empty<string>(),
+                    EmotionalRegister = "neutral"
                 }
             }
         };
@@ -1169,7 +1185,8 @@ public sealed class HttpCatalogContentGatewayTests
                     ManaCost = 5,
                     ChargeCost = 0,
                     BasePower = 10,
-                    Tags = new[] { "tag1" }
+                    Tags = new[] { "tag1" },
+                    EmotionalRegister = "neutral"
                 }
             }
         };
@@ -1296,7 +1313,8 @@ public sealed class HttpCatalogContentGatewayTests
                     ManaCost = 5,
                     ChargeCost = 0,
                     BasePower = 10,
-                    Tags = new[] { "basic" }
+                    Tags = new[] { "basic" },
+                    EmotionalRegister = "neutral"
                 }
             }
         };
@@ -1383,7 +1401,8 @@ public sealed class HttpCatalogContentGatewayTests
                     ManaCost = 0,
                     ChargeCost = 0,
                     BasePower = 10,
-                    Tags = new[] { "basic" }
+                    Tags = new[] { "basic" },
+                    EmotionalRegister = "neutral"
                 }
             }
         };

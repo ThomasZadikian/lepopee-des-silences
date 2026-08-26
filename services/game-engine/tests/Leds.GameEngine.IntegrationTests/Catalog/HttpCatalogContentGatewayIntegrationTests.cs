@@ -2,12 +2,9 @@ extern alias CatalogApi;
 
 using FluentAssertions;
 using CatalogApi::Leds.Catalog.Api;
-using Leds.Catalog.Infrastructure.Persistence;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Catalog;
@@ -20,8 +17,7 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+        _container = new PostgreSqlBuilder("postgres:16")
             .Build();
         await _container.StartAsync();
 
@@ -36,14 +32,8 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
                 builder.UseSetting(
                     "ConnectionStrings:CatalogDb",
                     _container.GetConnectionString());
+                builder.UseSetting("CatalogSeed:ApplyOnStartup", "true");
             });
-
-        using var scope = _factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-        await dbContext.Database.MigrateAsync();
-
-        var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
-        await seedRunner.ApplyBaseSeedAsync();
 
         var httpClient = _factory.CreateClient();
         _gateway = new HttpCatalogContentGateway(httpClient);

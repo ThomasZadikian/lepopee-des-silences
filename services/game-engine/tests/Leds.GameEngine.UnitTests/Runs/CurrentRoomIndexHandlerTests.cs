@@ -72,7 +72,7 @@ public sealed class CurrentRoomIndexHandlerTests
     [Fact]
     public async Task EnterGridNode_ShouldPreserveCurrentRoomIndex()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.Item);
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
         run.MoveParty(selectedNode.Lane, selectedNode.Row);
 

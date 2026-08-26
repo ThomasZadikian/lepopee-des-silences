@@ -2,6 +2,7 @@
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -16,8 +17,8 @@ public sealed class CombatSkillEffectResolverTypingTests
     [Fact]
     public void Weakness_amplifies_damage_and_logs()
     {
-        // Fragile enemy is weak to Rupture; Catalog declares the skill as Rupture.
-        var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Fragile");
+        // Silence is weak to Rupture in the catalog-owned affinity matrix.
+        var (combat, hero, enemy) = CreateCombat(EmotionalType.Silence);
         var skill = DamageSkill("skill.rupture", power: 10, emotionalRegister: "Rupture");
 
         var result = _resolver.Resolve(combat, hero, skill, [enemy]);
@@ -31,8 +32,8 @@ public sealed class CombatSkillEffectResolverTypingTests
     [Fact]
     public void Resistance_reduces_damage_and_logs()
     {
-        // Guard resists Rupture.
-        var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Guard");
+        // Effroi resists Rupture in the catalog-owned affinity matrix.
+        var (combat, hero, enemy) = CreateCombat(EmotionalType.Effroi);
         var skill = DamageSkill("skill.rupture", power: 10, emotionalRegister: "Rupture");
 
         var result = _resolver.Resolve(combat, hero, skill, [enemy]);
@@ -46,8 +47,7 @@ public sealed class CombatSkillEffectResolverTypingTests
     [Fact]
     public void Neutral_attack_is_unchanged()
     {
-        // Unknown hero archetype + no type tag => Neutral => x1.0, no crit (Focus 0).
-        var (combat, hero, enemy) = CreateCombat(enemyArchetype: "Guard");
+        var (combat, hero, enemy) = CreateCombat(EmotionalType.Effroi);
         var skill = DamageSkill("skill.plain", power: 10, emotionalRegister: "Neutral");
 
         _resolver.Resolve(combat, hero, skill, [enemy]);
@@ -56,7 +56,8 @@ public sealed class CombatSkillEffectResolverTypingTests
         enemy.CurrentVitality.Should().Be(68);
     }
 
-    private static (TacticalCombat Combat, Combatant Hero, Combatant Enemy) CreateCombat(string enemyArchetype)
+    private static (TacticalCombat Combat, Combatant Hero, Combatant Enemy) CreateCombat(
+        EmotionalType enemyRegister)
     {
         var hero = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100); // unknown => neutral
         // Guaranteed hit chance: the tactical resolver rolls a real hit/miss chance
@@ -64,7 +65,12 @@ public sealed class CombatSkillEffectResolverTypingTests
         // originally written against never had — pin it so these single-shot damage
         // assertions aren't ~10% flaky.
         hero.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
-        var enemy = Combatant.CreateEnemy("enemy.x", "Enemy", enemyArchetype, 80);
+        var enemy = Combatant.CreateEnemy(
+            "enemy.x",
+            "Enemy",
+            "Guard",
+            80,
+            naturalEmotionalType: enemyRegister);
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [enemy]);
         return (combat, hero, enemy);
     }

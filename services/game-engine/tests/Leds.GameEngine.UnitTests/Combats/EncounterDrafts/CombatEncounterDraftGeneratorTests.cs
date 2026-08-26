@@ -22,7 +22,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MaxRiskLevel: 2,
         Tags: new[] { "threshold", "fragile" },
         SkillKeys: new[] { "skill.basic.strike" },
-        Menace: 1);
+        Menace: 1,
+        Registre: "neutral");
 
     private static readonly CatalogEnemyDefinition ResistanceInterieure = new(
         Key: "enemy.threshold.inner-resistance",
@@ -35,7 +36,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MaxRiskLevel: 3,
         Tags: new[] { "threshold", "guard" },
         SkillKeys: new[] { "skill.basic.strike", "skill.basic.shield" },
-        Menace: 2);
+        Menace: 2,
+        Registre: "neutral");
 
     private static readonly CatalogSkillDefinition SkillStrike = new(
         Key: "skill.basic.strike",

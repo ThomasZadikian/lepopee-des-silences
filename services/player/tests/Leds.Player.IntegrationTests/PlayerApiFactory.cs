@@ -11,8 +11,7 @@ public sealed class PlayerApiFactory : WebApplicationFactory<Program>, IAsyncLif
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+        _container = new PostgreSqlBuilder("postgres:16")
             .Build();
 
         await _container.StartAsync();

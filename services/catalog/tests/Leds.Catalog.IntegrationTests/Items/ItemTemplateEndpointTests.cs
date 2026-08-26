@@ -5,19 +5,19 @@ using FluentAssertions;
 namespace Leds.Catalog.IntegrationTests.Items;
 
 [Collection("CatalogApi")]
-public sealed class ItemTemplateEndpointTests
+public sealed class ItemDefinitionContractEndpointTests
 {
     private readonly HttpClient _client;
 
-    public ItemTemplateEndpointTests(CatalogApiFactory factory)
+    public ItemDefinitionContractEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task ListItems_ShouldReturnActiveItemTemplates()
+    public async Task ListItems_ShouldReturnActiveItemDefinitions()
     {
-        var response = await _client.GetAsync("/api/v2/catalog/items");
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -26,14 +26,14 @@ public sealed class ItemTemplateEndpointTests
             because: body);
 
         var payload = await response.Content
-            .ReadFromJsonAsync<ListItemTemplatesResponse>();
+            .ReadFromJsonAsync<ListItemDefinitionsResponse>();
 
         payload.Should().NotBeNull();
-        payload!.Templates.Should().NotBeEmpty();
-        payload.Templates.Should().OnlyContain(template =>
-            template.Status == "Active");
+        payload!.Definitions.Should().NotBeEmpty();
+        payload.Definitions.Should().OnlyContain(definition =>
+            definition.Status == "Active");
 
-        payload.Templates.Select(template => template.Key)
+        payload.Definitions.Select(definition => definition.Key)
             .Should()
             .Contain("canon.item.potion-de-vie");
     }
@@ -42,7 +42,7 @@ public sealed class ItemTemplateEndpointTests
     public async Task GetItemByKey_ShouldReturnItemTemplate_WhenKeyExists()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/items/canon.item.potion-de-vie");
+            "/api/v2/catalog/item-definitions/canon.item.potion-de-vie");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -51,24 +51,24 @@ public sealed class ItemTemplateEndpointTests
             because: body);
 
         var payload = await response.Content
-            .ReadFromJsonAsync<GetItemTemplateResponse>();
+            .ReadFromJsonAsync<GetItemDefinitionResponse>();
 
         payload.Should().NotBeNull();
-        payload!.Template.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
 
-        payload.Template!.Key.Should().Be("canon.item.potion-de-vie");
-        payload.Template.Name.Should().Be("Potion de vie");
-        payload.Template.Status.Should().Be("Active");
-        payload.Template.Category.Should().Be("Consumable");
-        payload.Template.Rarity.Should().Be("Common");
-        payload.Template.Duration.Should().Be("RunOnly");
+        payload.Definition!.Key.Should().Be("canon.item.potion-de-vie");
+        payload.Definition.DisplayName.Should().Be("Potion de vie");
+        payload.Definition.Status.Should().Be("Active");
+        payload.Definition.Category.Should().Be("Consumable");
+        payload.Definition.Rarity.Should().Be("Common");
+        payload.Definition.Lifecycle.Should().Be("RunOnly");
     }
 
     [Fact]
     public async Task GetItemByKey_ShouldReturnNotFound_WhenKeyDoesNotExist()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/items/unknown-item");
+            "/api/v2/catalog/item-definitions/unknown-item");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -77,7 +77,7 @@ public sealed class ItemTemplateEndpointTests
     public async Task GetItemByKey_ShouldReturnBadRequest_WhenKeyIsWhitespace()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/items/%20%20%20");
+            "/api/v2/catalog/item-definitions/%20%20%20");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -85,25 +85,24 @@ public sealed class ItemTemplateEndpointTests
             HttpStatusCode.BadRequest,
             because: body);
 
-        body.Should().Contain("Item template key is required.");
+        body.Should().Contain("Item definition key is required.");
     }
 
-    private sealed record ListItemTemplatesResponse(
-        IReadOnlyCollection<ItemTemplateDto> Templates);
+    private sealed record ListItemDefinitionsResponse(
+        IReadOnlyCollection<ItemDefinitionDto> Definitions);
 
-    private sealed record GetItemTemplateResponse(
-        ItemTemplateDto? Template);
+    private sealed record GetItemDefinitionResponse(
+        ItemDefinitionDto? Definition);
 
-    private sealed record ItemTemplateDto(
+    private sealed record ItemDefinitionDto(
         Guid Id,
         string Key,
-        string Name,
+        string DisplayName,
         string Description,
         string Version,
         string Status,
         string Category,
         string Rarity,
-        string Duration,
-        int EffectValue,
-        int Price);
+        string Lifecycle,
+        int EffectValue);
 }

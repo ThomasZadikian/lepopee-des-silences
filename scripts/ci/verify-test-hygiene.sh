@@ -6,14 +6,28 @@ cd "$repo_root"
 
 forbidden_patterns=(
   '\.(only|skip|todo)\('
-  '\[(Fact|Theory)\s*\([^]]*Skip\s*='
-  '#if\s+DISABLE_TEST'
+  '\[(Fact|Theory)[[:space:]]*\([^]]*Skip[[:space:]]*='
+  '#if[[:space:]]+DISABLE_TEST'
 )
+
+search_test_sources() {
+  local pattern=$1
+
+  if command -v rg >/dev/null 2>&1; then
+    rg --line-number --glob '*.{cs,ts,tsx,js,jsx}' "$pattern" \
+      services packages apps/game-client/src
+    return
+  fi
+
+  grep --recursive --line-number --extended-regexp \
+    --include='*.cs' --include='*.ts' --include='*.tsx' \
+    --include='*.js' --include='*.jsx' \
+    "$pattern" services packages apps/game-client/src
+}
 
 status=0
 for pattern in "${forbidden_patterns[@]}"; do
-  if rg --line-number --glob '*.{cs,ts,tsx,js,jsx}' "$pattern" \
-      services packages apps/game-client/src; then
+  if search_test_sources "$pattern"; then
     status=1
   fi
 done

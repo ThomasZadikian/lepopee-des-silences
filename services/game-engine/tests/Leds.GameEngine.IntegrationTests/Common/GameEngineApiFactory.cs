@@ -22,8 +22,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+        _container = new PostgreSqlBuilder("postgres:16")
             .Build();
 
         await _container.StartAsync();

@@ -417,7 +417,8 @@ public sealed class DeterministicRunGeneratorTests
             memoryFragments: [],
             activePalaceLaws: [],
             preSuspendStatus: null,
-            snapshot: null);
+            snapshot: null,
+            emotionalAffinityMatrix: TestEmotionalAffinityMatrix.Create());
     }
 
     [Fact]
