@@ -67,10 +67,16 @@ public abstract class RunIntegrationTestBase
     }
 
     protected static MapNodeDto FirstConfirmableNode(RoomDto room) =>
-        room.Nodes.First(node =>
-            node.State == "Available"
-            && node.Type is not "Exit"
-            && node.ContactBehavior == "None");
+        room.Nodes
+            .Where(node =>
+                node.State == "Available"
+                && node.Type is not "Exit"
+                && node.ContactBehavior == "None")
+            .Select(node => (Node: node, Path: FindSafePath(room, node)))
+            .Where(candidate => candidate.Path is not null)
+            .OrderBy(candidate => candidate.Path!.Count)
+            .Select(candidate => candidate.Node)
+            .First();
 
     protected async Task<MovePartyResponse> MovePartyAsync(Guid runId, MapNodeDto node)
     {
@@ -86,9 +92,31 @@ public abstract class RunIntegrationTestBase
         return payload!;
     }
 
+    private async Task<MovePartyResponse> MovePartySafelyAsync(
+        Guid runId,
+        RoomDto room,
+        MapNodeDto node)
+    {
+        var path = FindSafePath(room, node)
+            ?? throw new InvalidOperationException(
+                $"Node '{node.Id}' cannot be reached without crossing another contact trigger.");
+
+        MovePartyResponse? payload = null;
+        foreach (var (x, y) in path)
+        {
+            payload = await MovePartyAsync(
+                runId,
+                node with { Lane = x, Row = y });
+        }
+
+        return payload
+            ?? throw new InvalidOperationException("The party is already standing on the target node.");
+    }
+
     protected async Task<MovePartyResponse> MovePartyToNodeAsync(Guid runId, MapNodeDto node)
     {
-        var payload = await MovePartyAsync(runId, node);
+        var run = await GetRunAsync(runId);
+        var payload = await MovePartySafelyAsync(runId, run.CurrentRoom, node);
         payload.Run.CurrentRoom.State.Should().Be("NodeSelected",
             because: "combat objectives select automatically when the party reaches their cell");
 
@@ -99,7 +127,8 @@ public abstract class RunIntegrationTestBase
         Guid runId,
         MapNodeDto node)
     {
-        await MovePartyAsync(runId, node);
+        var run = await GetRunAsync(runId);
+        await MovePartySafelyAsync(runId, run.CurrentRoom, node);
 
         var response = await Client.PostAsync(
             $"/api/v2/runs/{runId}/nodes/{node.Id}/enter",
@@ -117,15 +146,17 @@ public abstract class RunIntegrationTestBase
     {
         var run = (await StartRunAsync()).Run;
 
-        for (var roomAttempt = 0; roomAttempt < 5; roomAttempt++)
+        for (var roomAttempt = 0; roomAttempt < 10; roomAttempt++)
         {
-            var grid = run.CurrentRoom.Grid!;
             var combatNode = run.CurrentRoom.Nodes
                 .Where(node =>
                     node.State == "Available"
-                    && node.ContactBehavior == "TriggerOnEnter"
+                    && node.ContactBehavior is "TriggerOnEnter" or "Blocking"
                     && node.Type is "Combat" or "Elite" or "Rare" or "RoomBoss" or "FinalBoss")
-                .OrderBy(node => Math.Abs(node.Lane - grid.PartyX) + Math.Abs(node.Row - grid.PartyY))
+                .Select(node => (Node: node, Path: FindSafePath(run.CurrentRoom, node)))
+                .Where(candidate => candidate.Path is not null)
+                .OrderBy(candidate => candidate.Path!.Count)
+                .Select(candidate => candidate.Node)
                 .FirstOrDefault();
             if (combatNode is not null)
             {
@@ -133,7 +164,7 @@ public abstract class RunIntegrationTestBase
             }
 
             var exitNode = run.CurrentRoom.Nodes.First(node => node.Type == "Exit");
-            await MovePartyAsync(run.Id, exitNode);
+            await MovePartySafelyAsync(run.Id, run.CurrentRoom, exitNode);
 
             var exitResponse = await Client.PostAsync(
                 $"/api/v2/runs/{run.Id}/nodes/{exitNode.Id}/exit",
@@ -147,6 +178,78 @@ public abstract class RunIntegrationTestBase
         }
 
         throw new InvalidOperationException("The generated run did not expose a combat room.");
+    }
+
+    protected async Task<RunDto> GetRunAsync(Guid runId)
+    {
+        var response = await Client.GetAsync($"/api/v2/runs/{runId}");
+        var body = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetRunByIdResponse>();
+        payload.Should().NotBeNull(because: body);
+        return payload!.Run;
+    }
+
+    private static IReadOnlyList<(int X, int Y)>? FindSafePath(RoomDto room, MapNodeDto target)
+    {
+        var grid = room.Grid!;
+        var start = (X: grid.PartyX, Y: grid.PartyY);
+        var destination = (X: target.Lane, Y: target.Row);
+        var obstacles = grid.ObstacleCells.Select(cell => (X: cell[0], Y: cell[1])).ToHashSet();
+        var triggers = room.Nodes
+            .Where(node =>
+                node.Id != target.Id
+                && node.State == "Available"
+                && node.ContactBehavior is "TriggerOnEnter" or "Blocking")
+            .Select(node => (X: node.Lane, Y: node.Row))
+            .ToHashSet();
+        var queue = new Queue<(int X, int Y)>();
+        var previous = new Dictionary<(int X, int Y), (int X, int Y)>();
+        var visited = new HashSet<(int X, int Y)> { start };
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current == destination)
+            {
+                var path = new List<(int X, int Y)>();
+                while (current != start)
+                {
+                    path.Add(current);
+                    current = previous[current];
+                }
+
+                path.Reverse();
+                return path;
+            }
+
+            foreach (var next in new[]
+                     {
+                         (current.X + 1, current.Y),
+                         (current.X - 1, current.Y),
+                         (current.X, current.Y + 1),
+                         (current.X, current.Y - 1)
+                     })
+            {
+                var index = (next.Item2 * grid.Width) + next.Item1;
+                if (next.Item1 < 0 || next.Item1 >= grid.Width
+                    || next.Item2 < 0 || next.Item2 >= grid.Height
+                    || !grid.FloorCells[index]
+                    || obstacles.Contains(next)
+                    || triggers.Contains(next)
+                    || !visited.Add(next))
+                {
+                    continue;
+                }
+
+                previous[next] = current;
+                queue.Enqueue(next);
+            }
+        }
+
+        return null;
     }
 
     protected async Task CompleteActiveCombatAsync(Guid runId, Guid combatId)
@@ -236,7 +339,8 @@ public abstract class RunIntegrationTestBase
                     $"/api/v2/runs/{runId}/rewards/select",
                     new { ChoiceId = firstChoice.Id });
 
-                selectResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+                var selectBody = await selectResponse.Content.ReadAsStringAsync();
+                selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
             }
         }
     }
@@ -282,7 +386,8 @@ public abstract class RunIntegrationTestBase
                 $"/api/v2/runs/{runId}/rewards/select",
                 new { ChoiceId = firstChoice.Id });
 
-            selectResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var selectBody = await selectResponse.Content.ReadAsStringAsync();
+            selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
         }
     }
 

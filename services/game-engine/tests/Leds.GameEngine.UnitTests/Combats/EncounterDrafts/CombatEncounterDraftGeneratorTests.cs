@@ -387,11 +387,12 @@ public sealed class CombatEncounterDraftGeneratorTests
         var preferred = draft.Enemies.Single(e => e.EnemyKey == preferredEnemy.Key);
         var escort = draft.Enemies.Single(e => e.EnemyKey == escortEnemy.Key);
 
-        // EliteStatMultiplier = 1.5 applied only to the preferred pick: ceil(10 * 1.5) = 15.
-        preferred.AttackPower.Should().Be(15);
-        preferred.Defense.Should().Be(15);
+        // The preferred pick receives both the two-enemy group scaling (0.92) and the
+        // Elite bonus (1.5): ceil(10 * 0.92 * 1.5) = 14.
+        preferred.AttackPower.Should().Be(14);
+        preferred.Defense.Should().Be(14);
 
-        // The escort gets no bonus at all — same base values as authored.
+        // The escort receives group scaling, but no Elite bonus.
         escort.AttackPower.Should().Be(10);
         escort.Defense.Should().Be(10);
     }
