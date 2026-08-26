@@ -5,7 +5,6 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -13,7 +12,8 @@ using System.Text.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class GetRunByIdEndpointTests
 {
     private readonly GameEngineApiFactory _factory;
     private readonly HttpClient _client;

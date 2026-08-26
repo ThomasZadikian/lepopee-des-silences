@@ -1,0 +1,59 @@
+name: Reusable .NET component quality
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: Stable component identifier used for artifacts
+        required: true
+        type: string
+      solution:
+        description: Path to the component solution
+        required: true
+        type: string
+      assembly-filter:
+        description: ReportGenerator assembly include filter
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ inputs.component }} / tests and coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Verify test hygiene
+        run: ./scripts/ci/verify-test-hygiene.sh
+
+      - name: Build, test and enforce 80% coverage
+        run: >-
+          ./scripts/ci/test-dotnet-component.sh
+          '${{ inputs.component }}'
+          '${{ inputs.solution }}'
+          '${{ inputs.assembly-filter }}'
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: quality-${{ inputs.component }}
+          path: |
+            artifacts/test-results/${{ inputs.component }}/**/*.trx
+            artifacts/test-results/${{ inputs.component }}/**/coverage.cobertura.xml
+            artifacts/coverage/${{ inputs.component }}/
+          if-no-files-found: warn
+          retention-days: 14

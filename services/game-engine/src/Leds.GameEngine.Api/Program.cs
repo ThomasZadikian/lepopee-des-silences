@@ -9,6 +9,7 @@ const string CorsPolicyName = "LedsCorsPolicy";
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -53,6 +54,9 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicyName);
 
 app.MapControllers();
+app.MapHealthChecks("/health/live");
 app.MapGameEngineDevTools();
 
 app.Run();
+
+public partial class Program;

@@ -1,16 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.Catalog.IntegrationTests.Items;
 
+[Collection("CatalogApi")]
 public sealed class ItemDefinitionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public ItemDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    public ItemDefinitionEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

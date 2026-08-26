@@ -2,14 +2,14 @@ using FluentAssertions;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.DevTools;
 
-public sealed class DevToolsEndpointTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class DevToolsEndpointTests
 {
     private const string Token = "local-devtools-token";
     private readonly GameEngineApiFactory _factory;

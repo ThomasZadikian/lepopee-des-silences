@@ -1,0 +1,50 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-sha:
+        description: Commit SHA published by the Release workflow
+        required: true
+        type: string
+      release-run-id:
+        description: Successful Release workflow run ID containing migration bundles
+        required: true
+        type: string
+      environment:
+        description: Protected GitHub environment
+        required: true
+        default: integration
+        type: choice
+        options:
+          - integration
+          - preproduction
+          - beta
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+    branches:
+      - develop
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'integration' }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    uses: ./.github/workflows/_deploy-compose.yml
+    with:
+      environment: ${{ inputs.environment || 'integration' }}
+      source-sha: ${{ inputs.source-sha || github.event.workflow_run.head_sha }}
+      release-run-id: ${{ inputs.release-run-id || github.event.workflow_run.id }}
+    secrets: inherit

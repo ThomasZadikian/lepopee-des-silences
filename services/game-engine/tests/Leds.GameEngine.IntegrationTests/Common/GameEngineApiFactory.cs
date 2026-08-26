@@ -12,6 +12,9 @@ using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Common;
 
+[CollectionDefinition("GameEngineApi")]
+public sealed class GameEngineApiCollection : ICollectionFixture<GameEngineApiFactory>;
+
 public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private PostgreSqlContainer? _container;

@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class AbandonRunEndpointTests : RunIntegrationTestBase
 {
     public AbandonRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())

@@ -4,13 +4,13 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ResumeRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
 {
     public ResumeRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())

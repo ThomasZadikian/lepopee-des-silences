@@ -1,16 +1,15 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.Catalog.IntegrationTests.Worlds;
 
+[Collection("CatalogApi")]
 public sealed class WorldDefinitionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public WorldDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    public WorldDefinitionEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

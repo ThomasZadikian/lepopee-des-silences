@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ProgressRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase
 {
     public RoomBossProgressionEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())

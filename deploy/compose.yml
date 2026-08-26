@@ -1,0 +1,137 @@
+name: leds
+
+services:
+  game-engine:
+    image: ${GAME_ENGINE_IMAGE}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__GameEngineDb: ${GAME_ENGINE_CONNECTION_STRING}
+      CatalogGateway__BaseUrl: http://catalog:8080
+      PlayerGateway__BaseUrl: http://player:8080
+    depends_on:
+      game-engine-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - backend
+
+  player:
+    image: ${PLAYER_IMAGE}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__PlayerDb: ${PLAYER_CONNECTION_STRING}
+    depends_on:
+      player-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - backend
+
+  catalog:
+    image: ${CATALOG_IMAGE}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__CatalogDb: ${CATALOG_CONNECTION_STRING}
+      CatalogSeed__ApplyOnStartup: "true"
+    depends_on:
+      catalog-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - backend
+
+  game-client:
+    image: ${GAME_CLIENT_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - game-engine
+      - player
+      - catalog
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --output-document=/dev/null http://127.0.0.1:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks:
+      - backend
+
+  game-engine-postgres:
+    image: postgres:16.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leds_game_engine
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${GAME_ENGINE_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d leds_game_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - game-engine-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  player-postgres:
+    image: postgres:16.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leds_player
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${PLAYER_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d leds_player"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - player-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  catalog-postgres:
+    image: postgres:16.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leds_catalog
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${CATALOG_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d leds_catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - catalog-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  game-engine-data:
+  player-data:
+  catalog-data:

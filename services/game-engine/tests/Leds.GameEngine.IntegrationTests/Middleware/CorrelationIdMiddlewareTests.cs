@@ -1,9 +1,9 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Middleware;
 
-public sealed class CorrelationIdMiddlewareTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class CorrelationIdMiddlewareTests
 {
     private readonly HttpClient _client;
 

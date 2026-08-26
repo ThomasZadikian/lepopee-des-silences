@@ -1,16 +1,15 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.Catalog.IntegrationTests.RoomBosses;
 
+[Collection("CatalogApi")]
 public sealed class RoomBossDefinitionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public RoomBossDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    public RoomBossDefinitionEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

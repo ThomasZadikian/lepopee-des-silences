@@ -1,0 +1,42 @@
+name: Reusable EF migration consistency
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  migrations:
+    name: EF models match migrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Require a migration for every model change
+        run: |
+          dotnet ef migrations has-pending-model-changes \
+            --project services/game-engine/src/Leds.GameEngine.Infrastructure/Leds.GameEngine.Infrastructure.csproj \
+            --startup-project services/game-engine/src/Leds.GameEngine.Api/Leds.GameEngine.Api.csproj \
+            --context GameEngineDbContext \
+            --configuration Release
+          dotnet ef migrations has-pending-model-changes \
+            --project services/player/src/Leds.Player.Infrastructure/Leds.Player.Infrastructure.csproj \
+            --startup-project services/player/src/Leds.Player.Api/Leds.Player.Api.csproj \
+            --context PlayerDbContext \
+            --configuration Release
+          dotnet ef migrations has-pending-model-changes \
+            --project services/catalog/src/Leds.Catalog.Infrastructure/Leds.Catalog.Infrastructure.csproj \
+            --startup-project services/catalog/src/Leds.Catalog.Api/Leds.Catalog.Api.csproj \
+            --context CatalogDbContext \
+            --configuration Release

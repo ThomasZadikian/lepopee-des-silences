@@ -1,17 +1,16 @@
 using FluentAssertions;
 using Leds.Catalog.Application.Skills.Definitions.Dtos;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.Catalog.IntegrationTests.Skills.Definitions;
 
+[Collection("CatalogApi")]
 public sealed class SkillDefinitionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public SkillDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    public SkillDefinitionEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

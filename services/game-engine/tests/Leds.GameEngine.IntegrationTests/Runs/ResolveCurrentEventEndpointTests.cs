@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase
 {
     public ResolveCurrentEventEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())

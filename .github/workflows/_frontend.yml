@@ -1,0 +1,54 @@
+name: Reusable frontend quality
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: game-client / tests and coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/game-client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: apps/game-client/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Verify test hygiene
+        working-directory: .
+        run: ./scripts/ci/verify-test-hygiene.sh
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit and component tests with 80% coverage
+        run: npm run test:coverage
+
+      - name: Production build
+        run: npm run build
+
+      - name: Upload frontend quality reports
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: quality-game-client
+          path: |
+            apps/game-client/test-results/
+            apps/game-client/coverage/
+            apps/game-client/dist/
+          if-no-files-found: warn
+          retention-days: 14

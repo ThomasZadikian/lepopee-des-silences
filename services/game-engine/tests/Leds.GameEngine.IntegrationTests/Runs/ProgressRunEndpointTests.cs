@@ -3,13 +3,13 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 {
     public ProgressRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())

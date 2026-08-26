@@ -160,6 +160,9 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
+coverage/
+playwright-report/
+test-results/
 
 # Visual Studio code coverage results
 *.coverage
