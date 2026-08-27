@@ -77,7 +77,7 @@ public sealed class NpcDialogueViewFactoryCoverageTests
 
         var result = NpcDialogueViewFactory.Build(npc, relationship, run);
 
-        result!.Choices.Select(x => x.Id).Should().BeEquivalentTo(
+        result!.Choices.Select(x => x.ChoiceId).Should().BeEquivalentTo(
             ["present-ok", "absent-ok", "absent-null"]);
     }
 
@@ -104,7 +104,7 @@ public sealed class NpcDialogueViewFactoryCoverageTests
 
         var result = NpcDialogueViewFactory.Build(npc, relationship, run);
 
-        result!.Choices.Select(x => x.Id).Should().BeEquivalentTo(["wound-ok", "score-ok"]);
+        result!.Choices.Select(x => x.ChoiceId).Should().BeEquivalentTo(["wound-ok", "score-ok"]);
     }
 
     [Fact]
@@ -136,9 +136,9 @@ public sealed class NpcDialogueViewFactoryCoverageTests
 
         var result = NpcDialogueViewFactory.Build(npc, relationship, run);
 
-        result!.Choices.Select(x => x.Id).Should().Contain(["has-self", "lacks-missing", "lacks-null"]);
-        result.Choices.Select(x => x.Id).Should().NotContain(["has-null", "has-missing", "lacks-self"]);
-        result.Choices.Should().ContainSingle(c => c.Id is "balanced" or "unbalanced");
+        result!.Choices.Select(x => x.ChoiceId).Should().Contain(["has-self", "lacks-missing", "lacks-null"]);
+        result.Choices.Select(x => x.ChoiceId).Should().NotContain(["has-null", "has-missing", "lacks-self"]);
+        result.Choices.Should().ContainSingle(c => c.ChoiceId is "balanced" or "unbalanced");
     }
 
     private static CatalogNpcDefinition CreateNpc(CatalogNpcDialogueGraph? graph) =>
@@ -148,7 +148,7 @@ public sealed class NpcDialogueViewFactoryCoverageTests
             "description",
             [],
             ["Threshold"],
-            [PalaceRoomState.Calm],
+            [PalaceRoomState.Neutral],
             [],
             DialogueGraph: graph);
 
