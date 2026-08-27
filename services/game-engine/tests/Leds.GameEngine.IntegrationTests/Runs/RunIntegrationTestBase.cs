@@ -369,31 +369,9 @@ public abstract class RunIntegrationTestBase
             "Completed",
             because: "the deterministic integration party must win generated combat fixtures");
 
-        if (!selectReward)
+        if (selectReward)
         {
-            return;
-        }
-
-        // Select the first available reward
-        var pendingResponse = await Client.GetAsync(
-            $"/api/v2/runs/{runId}/rewards/pending");
-
-        if (pendingResponse.StatusCode == HttpStatusCode.OK)
-        {
-            var rewardOffer = await pendingResponse.Content
-                .ReadFromJsonAsync<RewardOfferDto>();
-
-            if (rewardOffer?.SelectedChoiceId is null && rewardOffer?.Choices.Count > 0)
-            {
-                var firstChoice = rewardOffer.Choices.First();
-
-                var selectResponse = await Client.PostAsJsonAsync(
-                    $"/api/v2/runs/{runId}/rewards/select",
-                    new { ChoiceId = firstChoice.Id });
-
-                var selectBody = await selectResponse.Content.ReadAsStringAsync();
-                selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
-            }
+            await SelectPendingRewardIfAnyAsync(runId);
         }
     }
 
@@ -532,11 +510,14 @@ public abstract class RunIntegrationTestBase
 
         if (rewardOffer?.SelectedChoiceId is null && rewardOffer?.Choices.Count > 0)
         {
-            var firstChoice = rewardOffer.Choices.First();
+            var affordableChoice = rewardOffer.Choices.FirstOrDefault(choice =>
+                choice.PalaceShardCost == 0 && choice.HimLitShardCost == 0);
+            affordableChoice.Should().NotBeNull(
+                because: "every generated offer must expose a free reward or decline choice");
 
             var selectResponse = await Client.PostAsJsonAsync(
                 $"/api/v2/runs/{runId}/rewards/select",
-                new { ChoiceId = firstChoice.Id });
+                new { ChoiceId = affordableChoice!.Id });
 
             var selectBody = await selectResponse.Content.ReadAsStringAsync();
             selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
