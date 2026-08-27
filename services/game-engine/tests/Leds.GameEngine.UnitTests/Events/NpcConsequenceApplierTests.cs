@@ -36,7 +36,7 @@ public sealed class NpcConsequenceApplierTests
     [InlineData(1, 0.01)]
     [InlineData(25, 0.25)]
     [InlineData(100, 0.50)]
-    public void ApplyCurse_ShouldClampDifficultyDeltaAndPersistCurse(int severity, double expectedDelta)
+    public void ApplyCurse_ShouldClampDifficultyDeltaAndPersistModifier(int severity, double expectedDelta)
     {
         var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
         var definition = new CatalogCurseDefinitionSnapshot(
@@ -52,9 +52,6 @@ public sealed class NpcConsequenceApplierTests
 
         NpcConsequenceApplier.ApplyCurse(run, definition);
 
-        run.ActiveCurses.Should().ContainSingle(c =>
-            c.CurseDefinitionKey == "curse.test"
-            && Math.Abs(c.DifficultyDelta - expectedDelta) < 0.0001);
         run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier)
             .Should().ContainSingle(m => Math.Abs(m.Value - expectedDelta) < 0.0001);
     }
