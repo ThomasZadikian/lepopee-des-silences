@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using System.Net;
@@ -22,7 +23,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         var runId = run.Id;
         await MovePartyToNodeAsync(runId, chosenNode);
 
-        await ResolveAndHandleCombatAsync(runId);
+        await ResolveCombatDeterministicallyAsync(runId, selectReward: true);
 
         var progressResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/progress",
@@ -117,25 +118,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         await MovePartyToNodeAsync(runId, chosenNode);
 
         // Resolve and complete a combat without claiming its guaranteed reward offer.
-        var resolveResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/current-event/resolve", null);
-
-        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
-
-        resolveResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: resolveBody);
-
-        var resolvePayload = await resolveResponse.Content
-            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
-
-        resolvePayload.Should().NotBeNull();
-
-        resolvePayload!.Run.ActiveCombatId.Should().NotBeNull();
-        await CompleteActiveCombatAsync(
-            runId,
-            resolvePayload.Run.ActiveCombatId!.Value,
-            selectReward: false);
+        await ResolveCombatDeterministicallyAsync(runId, selectReward: false);
 
         // Try to progress while reward is pending
         var progressResponse = await Client.PostAsync(
@@ -157,7 +140,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         var runId = run.Id;
         await MovePartyToNodeAsync(runId, firstNode);
-        await ResolveAndHandleCombatAsync(runId);
+        await ResolveCombatDeterministicallyAsync(runId, selectReward: true);
 
         var firstProgress = await Client.PostAsync($"/api/v2/runs/{runId}/progress", null);
         var firstProgressBody = await firstProgress.Content.ReadAsStringAsync();
@@ -168,5 +151,62 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
 
         progressed!.Run.CurrentRoom.Nodes.Should().Contain(node =>
             node.Id != firstNode.Id && node.State == "Available");
+    }
+
+    private async Task ResolveCombatDeterministicallyAsync(Guid runId, bool selectReward)
+    {
+        var resolveResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/current-event/resolve", null);
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+        resolveResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: resolveBody);
+
+        var resolvePayload = await resolveResponse.Content
+            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
+        resolvePayload.Should().NotBeNull(because: resolveBody);
+        resolvePayload!.Run.ActiveCombatId.Should().NotBeNull(
+            because: "these progression fixtures deliberately select a combat node");
+
+        using var killRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/dev/v2/runs/{runId}/combats/current/kill-enemies")
+        {
+            Content = JsonContent.Create(new { })
+        };
+        killRequest.Headers.Add(
+            "X-Leds-DevTools-Token",
+            GameEngineApiFactory.DevToolsToken);
+
+        var killResponse = await Client.SendAsync(killRequest);
+        var killBody = await killResponse.Content.ReadAsStringAsync();
+        killResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: killBody);
+
+        if (!selectReward)
+        {
+            return;
+        }
+
+        var pendingResponse = await Client.GetAsync(
+            $"/api/v2/runs/{runId}/rewards/pending");
+        if (pendingResponse.StatusCode != HttpStatusCode.OK)
+        {
+            return;
+        }
+
+        var rewardOffer = await pendingResponse.Content.ReadFromJsonAsync<RewardOfferDto>();
+        if (rewardOffer?.SelectedChoiceId is not null || rewardOffer?.Choices.Count is not > 0)
+        {
+            return;
+        }
+
+        var affordableChoice = rewardOffer.Choices.FirstOrDefault(choice =>
+            choice.PalaceShardCost == 0 && choice.HimLitShardCost == 0);
+        affordableChoice.Should().NotBeNull(
+            because: "every generated offer must expose a free reward or decline choice");
+
+        var selectResponse = await Client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/rewards/select",
+            new { ChoiceId = affordableChoice!.Id });
+        var selectBody = await selectResponse.Content.ReadAsStringAsync();
+        selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
     }
 }
