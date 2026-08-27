@@ -38,7 +38,7 @@ public sealed class NpcDialogueViewFactoryCoverageTests
     }
 
     [Theory]
-    [InlineData(WoundState.Latent, "base")]
+    [InlineData(WoundState.Sain, "base")]
     [InlineData(WoundState.Tendu, "tense")]
     [InlineData(WoundState.Rompu, "ruptured")]
     public void Build_ShouldSelectLinesFromAggregateWoundState(WoundState state, string expected)
