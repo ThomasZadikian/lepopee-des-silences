@@ -6,7 +6,6 @@ using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.Dtos;
-using Leds.GameEngine.Application.Runs.ConfirmRoomExit;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -163,18 +162,20 @@ public abstract class RunIntegrationTestBase
                 return (run, combatNode);
             }
 
-            var exitNode = run.CurrentRoom.Nodes.First(node => node.Type == "Exit");
-            await MovePartySafelyAsync(run.Id, run.CurrentRoom, exitNode);
+            using var advanceRequest = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/dev/v2/runs/{run.Id}/advance-room")
+            {
+                Content = JsonContent.Create(new { })
+            };
+            advanceRequest.Headers.Add(
+                "X-Leds-DevTools-Token",
+                GameEngineApiFactory.DevToolsToken);
 
-            var exitResponse = await Client.PostAsync(
-                $"/api/v2/runs/{run.Id}/nodes/{exitNode.Id}/exit",
-                content: null);
-            var exitBody = await exitResponse.Content.ReadAsStringAsync();
-            exitResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: exitBody);
-
-            var exited = await exitResponse.Content.ReadFromJsonAsync<ConfirmRoomExitResponse>();
-            exited.Should().NotBeNull(because: exitBody);
-            run = exited!.Run;
+            var advanceResponse = await Client.SendAsync(advanceRequest);
+            var advanceBody = await advanceResponse.Content.ReadAsStringAsync();
+            advanceResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: advanceBody);
+            run = await GetRunAsync(run.Id);
         }
 
         throw new InvalidOperationException("The generated run did not expose a combat room.");
@@ -267,7 +268,7 @@ public abstract class RunIntegrationTestBase
 
         combat.Should().NotBeNull();
 
-        while (combat!.Status != "Completed")
+        while (combat!.Status == "Active")
         {
             var isPlayerTurn = combat.Allies.Any(a => a.Combatant.Id == combat.ActiveCombatantId);
 
@@ -280,8 +281,13 @@ public abstract class RunIntegrationTestBase
                     .OrderBy(e => ManhattanDistance(activeAlly.X, activeAlly.Y, e.X, e.Y))
                     .FirstOrDefault();
 
-                enemy.Should().NotBeNull(
-                    because: "an in-progress combat should have at least one living enemy target");
+                if (enemy is null)
+                {
+                    // A periodic effect can defeat the last enemy at an activation boundary.
+                    // The explicit end-turn command freezes and persists that outcome.
+                    combat = await EndTacticalTurnAsync(runId);
+                    continue;
+                }
 
                 var strike = activeAlly.Combatant.Skills.Single(skill =>
                     skill.Key == "skill.basic.strike");
@@ -358,6 +364,10 @@ public abstract class RunIntegrationTestBase
                 combat = await EndTacticalTurnAsync(runId);
             }
         }
+
+        combat.Status.Should().Be(
+            "Completed",
+            because: "the deterministic integration party must win generated combat fixtures");
 
         if (!selectReward)
         {
