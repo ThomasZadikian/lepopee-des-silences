@@ -273,10 +273,54 @@ public abstract class RunIntegrationTestBase
 
             if (isPlayerTurn)
             {
-                var enemy = combat.Enemies.FirstOrDefault(e => e.Combatant.CurrentVitality > 0);
+                var activeAlly = combat.Allies.Single(a =>
+                    a.Combatant.Id == combat.ActiveCombatantId);
+                var enemy = combat.Enemies
+                    .Where(e => e.Combatant.CurrentVitality > 0)
+                    .OrderBy(e => ManhattanDistance(activeAlly.X, activeAlly.Y, e.X, e.Y))
+                    .FirstOrDefault();
 
                 enemy.Should().NotBeNull(
                     because: "an in-progress combat should have at least one living enemy target");
+
+                var strike = activeAlly.Combatant.Skills.Single(skill =>
+                    skill.Key == "skill.basic.strike");
+
+                if (!activeAlly.HasMoved
+                    && ManhattanDistance(activeAlly.X, activeAlly.Y, enemy!.X, enemy.Y)
+                        > strike.TacticalRange)
+                {
+                    var destination = FindBestTacticalAdvance(combat, activeAlly, enemy);
+
+                    if (destination is not null)
+                    {
+                        var moveResponse = await Client.PostAsJsonAsync(
+                            $"/api/v2/runs/{runId}/tactical-combat/move",
+                            new { TargetX = destination.Value.X, TargetY = destination.Value.Y });
+                        var moveBody = await moveResponse.Content.ReadAsStringAsync();
+
+                        moveResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: moveBody);
+
+                        var moveResult = await moveResponse.Content
+                            .ReadFromJsonAsync<TacticalCombatResponse>();
+
+                        moveResult.Should().NotBeNull(because: moveBody);
+                        combat = moveResult!.Combat;
+                        activeAlly = combat.Allies.Single(a =>
+                            a.Combatant.Id == combat.ActiveCombatantId);
+                        enemy = combat.Enemies
+                            .Where(e => e.Combatant.CurrentVitality > 0)
+                            .OrderBy(e => ManhattanDistance(activeAlly.X, activeAlly.Y, e.X, e.Y))
+                            .First();
+                    }
+                }
+
+                if (ManhattanDistance(activeAlly.X, activeAlly.Y, enemy!.X, enemy.Y)
+                    > strike.TacticalRange)
+                {
+                    combat = await EndTacticalTurnAsync(runId);
+                    continue;
+                }
 
                 var skillResponse = await Client.PostAsJsonAsync(
                     $"/api/v2/runs/{runId}/tactical-combat/skill",
@@ -308,26 +352,7 @@ public abstract class RunIntegrationTestBase
             }
             else
             {
-                var endTurnResponse = await Client.PostAsync(
-                    $"/api/v2/runs/{runId}/tactical-combat/end-turn", null);
-
-                var endTurnBody = await endTurnResponse.Content.ReadAsStringAsync();
-
-                endTurnResponse.StatusCode.Should().Be(
-                    HttpStatusCode.OK,
-                    because: endTurnBody);
-
-                var endTurnResult = await endTurnResponse.Content
-                    .ReadFromJsonAsync<TacticalCombatResponse>();
-
-                endTurnResult.Should().NotBeNull();
-
-                if (endTurnResult!.Combat.Status == "Completed")
-                {
-                    break;
-                }
-
-                combat = endTurnResult.Combat;
+                combat = await EndTacticalTurnAsync(runId);
             }
         }
 
@@ -358,6 +383,106 @@ public abstract class RunIntegrationTestBase
             }
         }
     }
+
+    private async Task<TacticalCombatRuntimeDto> EndTacticalTurnAsync(Guid runId)
+    {
+        var response = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/tactical-combat/end-turn", null);
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var result = await response.Content.ReadFromJsonAsync<TacticalCombatResponse>();
+        result.Should().NotBeNull(because: body);
+
+        return result!.Combat;
+    }
+
+    private static (int X, int Y)? FindBestTacticalAdvance(
+        TacticalCombatRuntimeDto combat,
+        TacticalCombatantRuntimeDto actor,
+        TacticalCombatantRuntimeDto target)
+    {
+        var field = combat.Battlefield;
+        var origin = (actor.X, actor.Y);
+        var occupied = combat.Allies
+            .Concat(combat.Enemies)
+            .Where(unit => unit.Combatant.CurrentVitality > 0
+                && unit.Combatant.Id != actor.Combatant.Id)
+            .Select(unit => (unit.X, unit.Y))
+            .ToHashSet();
+        var traversableAllies = combat.Allies
+            .Where(unit => unit.Combatant.CurrentVitality > 0
+                && unit.Combatant.Id != actor.Combatant.Id)
+            .Select(unit => (unit.X, unit.Y))
+            .ToHashSet();
+
+        var costs = new Dictionary<(int X, int Y), int> { [origin] = 0 };
+        var frontier = new PriorityQueue<(int X, int Y), int>();
+        frontier.Enqueue(origin, 0);
+
+        while (frontier.TryDequeue(out var current, out var currentCost))
+        {
+            if (currentCost > costs.GetValueOrDefault(current, int.MaxValue))
+            {
+                continue;
+            }
+
+            foreach (var next in Neighbours(current))
+            {
+                if (!IsWalkable(field, next)
+                    || (occupied.Contains(next) && !traversableAllies.Contains(next)))
+                {
+                    continue;
+                }
+
+                var stepCost = ElevationAt(field, next) > ElevationAt(field, current)
+                    ? 2
+                    : ElevationAt(field, next) < ElevationAt(field, current)
+                        ? 0
+                        : 1;
+                var cost = currentCost + stepCost;
+
+                if (cost > actor.MovementBudget
+                    || cost >= costs.GetValueOrDefault(next, int.MaxValue))
+                {
+                    continue;
+                }
+
+                costs[next] = cost;
+                frontier.Enqueue(next, cost);
+            }
+        }
+
+        return costs
+            .Where(candidate => candidate.Key != origin && !occupied.Contains(candidate.Key))
+            .OrderBy(candidate => ManhattanDistance(
+                candidate.Key.X, candidate.Key.Y, target.X, target.Y))
+            .ThenByDescending(candidate => candidate.Value)
+            .Select(candidate => ((int X, int Y)?)candidate.Key)
+            .FirstOrDefault();
+    }
+
+    private static IEnumerable<(int X, int Y)> Neighbours((int X, int Y) cell)
+    {
+        yield return (cell.X + 1, cell.Y);
+        yield return (cell.X - 1, cell.Y);
+        yield return (cell.X, cell.Y + 1);
+        yield return (cell.X, cell.Y - 1);
+    }
+
+    private static bool IsWalkable(TacticalBattlefieldDto field, (int X, int Y) cell) =>
+        cell.X >= 0
+        && cell.X < field.Width
+        && cell.Y >= 0
+        && cell.Y < field.Height
+        && field.Walkable[(cell.Y * field.Width) + cell.X];
+
+    private static int ElevationAt(TacticalBattlefieldDto field, (int X, int Y) cell) =>
+        field.Elevation[(cell.Y * field.Width) + cell.X];
+
+    private static int ManhattanDistance(int fromX, int fromY, int toX, int toY) =>
+        Math.Abs(fromX - toX) + Math.Abs(fromY - toY);
 
     private async Task ResolveEventChoiceIfRequiredAsync(
         Guid runId,
