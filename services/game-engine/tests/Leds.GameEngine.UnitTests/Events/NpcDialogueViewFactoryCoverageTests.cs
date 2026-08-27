@@ -112,14 +112,7 @@ public sealed class NpcDialogueViewFactoryCoverageTests
     {
         var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
         var relationship = NpcRelationship.Begin("npc.test", "entry");
-
         var protagonist = run.PlayerSnapshot!.Characters.Single();
-        var snapshot = Leds.GameEngine.Domain.Runs.RunPlayerSnapshot.Create(
-            run.PlayerId,
-            "Joueur",
-            [protagonist],
-            DateTimeOffset.UtcNow);
-        run.AttachPlayerSnapshot(snapshot);
 
         var choices = new[]
         {
