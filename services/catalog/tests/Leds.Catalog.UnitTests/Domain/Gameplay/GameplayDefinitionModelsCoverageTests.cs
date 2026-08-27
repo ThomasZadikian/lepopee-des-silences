@@ -101,6 +101,30 @@ public sealed class GameplayDefinitionModelsCoverageTests
     }
 
     [Fact]
+    public void Curse_definition_should_trim_values_and_reject_invalid_contract_fields()
+    {
+        var curse = CurseDefinition.Create(
+            " curse.coverage ", " Coverage curse ", " Coverage description ", 2, " Run ", " 1.0 ");
+
+        curse.Should().Be(new CurseDefinition(
+            "curse.coverage", "Coverage curse", "Coverage description", 2, "Run", "1.0"));
+
+        Action missingKey = () => CurseDefinition.Create(" ", "Curse", "Desc", 1, "Run", "1");
+        Action missingName = () => CurseDefinition.Create("curse", " ", "Desc", 1, "Run", "1");
+        Action missingDescription = () => CurseDefinition.Create("curse", "Curse", " ", 1, "Run", "1");
+        Action missingDuration = () => CurseDefinition.Create("curse", "Curse", "Desc", 1, " ", "1");
+        Action missingVersion = () => CurseDefinition.Create("curse", "Curse", "Desc", 1, "Run", " ");
+        Action invalidSeverity = () => CurseDefinition.Create("curse", "Curse", "Desc", 0, "Run", "1");
+
+        missingKey.Should().Throw<DomainException>();
+        missingName.Should().Throw<DomainException>();
+        missingDescription.Should().Throw<DomainException>();
+        missingDuration.Should().Throw<DomainException>();
+        missingVersion.Should().Throw<DomainException>();
+        invalidSeverity.Should().Throw<DomainException>();
+    }
+
+    [Fact]
     public void Lightweight_gameplay_links_should_trim_and_reject_blank_keys()
     {
         EnemySkillLink.Create(" skill.basic ").SkillDefinitionKey.Should().Be("skill.basic");
