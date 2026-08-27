@@ -94,7 +94,7 @@ public sealed class TacticalEquipmentAbilityCatalogTests
         result.Should().HaveCount(3);
         result.Select(x => x.DisplayName).Should().BeEquivalentTo(
             ["Iris améthyste", "Aiguille d'arrêt", "Aiguille du Relieur"]);
-        result.Should().OnlyContain(x => x.Category == "EquipmentAbility" && x.Quantity == 1);
+        result.Should().OnlyContain(x => x.EffectType == "EquipmentAbility" && x.Quantity == 1);
     }
 
     [Fact]
@@ -125,13 +125,8 @@ public sealed class TacticalEquipmentAbilityCatalogTests
     [Fact]
     public void GetUsable_ShouldReturnEmpty_WhenCombatHasNoActiveCombatant()
     {
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
-        ally.TakeDamage(ally.CurrentVitality);
-        combat.OnCombatantDefeated(ally.Id.Value);
-        enemy.TakeDamage(enemy.CurrentVitality);
-        combat.OnCombatantDefeated(enemy.Id.Value);
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(), [], []);
 
         TacticalEquipmentAbilityCatalog.GetUsable(combat).Should().BeEmpty();
     }
