@@ -77,18 +77,19 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             if (IsClosed(run) || run.CurrentDepth >= 10)
                 break;
 
-            // A direct walk to an arbitrary exit can cross a contact-triggered objective and
-            // stop there, leaving that objective selected instead of the exit. DevTools must
-            // still exercise the normal room-generation and exit-confirmation pipeline, so it
-            // chooses a real exit whose route does not cross unresolved contact content.
-            var exitNode = FindSafelyReachableExit(run.CurrentRoom);
-            if (exitNode is null)
+            // Advancing rooms is an explicit debug fast-forward: keep the real walkable grid,
+            // destination resolution, room generation and exit confirmation, but deliberately
+            // suppress intermediate content interactions. Otherwise a contact node can stop the
+            // move and make the tool incapable of crossing an authored hub such as the Hall.
+            var exitPlan = FindReachableExit(run.CurrentRoom);
+            if (exitPlan is null)
                 break;
 
+            var (exitNode, path, cost) = exitPlan.Value;
             var grid = run.CurrentRoom.Grid;
             if (grid.PartyX != exitNode.Lane || grid.PartyY != exitNode.Row)
             {
-                run.MoveParty(exitNode.Lane, exitNode.Row);
+                grid.MoveTo(path, cost, [exitNode]);
             }
 
             var destination = await ResolveExitDestinationAsync(exitNode, cancellationToken);
@@ -104,24 +105,9 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             RunDto.FromDomain(run));
     }
 
-    private static MapNode? FindSafelyReachableExit(Room room)
+    private static (MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?
+        FindReachableExit(Room room)
     {
-        // Mirror Room.CurrentTransitBlockers so FindPath chooses exactly the route MoveParty
-        // will recalculate. Proving that some alternative safe route exists is not enough.
-        var transitBlockers = room.Nodes
-            .Where(node =>
-                node.BlocksTransit
-                && !node.IsHidden
-                && node.State != NodeState.Resolved)
-            .Select(node => (node.Lane, node.Row))
-            .ToHashSet();
-        var contactTriggers = room.Nodes
-            .Where(node =>
-                node.State == NodeState.Available
-                && node.TriggersOnContact
-                && !node.IsHidden)
-            .Select(node => (node.Lane, node.Row))
-            .ToHashSet();
         var occupiedDestinations = room.RoomNpcs
             .Select(npc => (npc.X, npc.Y))
             .ToHashSet();
@@ -132,12 +118,14 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
                 && node.State == NodeState.Available
                 && !occupiedDestinations.Contains((node.Lane, node.Row)))
             .Select(node =>
-                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row, transitBlockers)))
-            .Where(candidate =>
-                candidate.Route is not null
-                && candidate.Route.Value.Path.All(cell => !contactTriggers.Contains(cell)))
+                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row)))
+            .Where(candidate => candidate.Route is not null)
             .OrderBy(candidate => candidate.Route!.Value.Cost)
-            .Select(candidate => candidate.Node)
+            .Select(candidate =>
+                ((MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?)(
+                    candidate.Node,
+                    candidate.Route!.Value.Path,
+                    candidate.Route.Value.Cost))
             .FirstOrDefault();
     }
 
