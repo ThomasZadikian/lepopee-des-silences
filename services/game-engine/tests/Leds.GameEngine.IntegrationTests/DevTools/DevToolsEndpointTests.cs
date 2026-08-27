@@ -152,8 +152,9 @@ public sealed class DevToolsEndpointTests
         var response = await client.PostAsJsonAsync(
             $"/api/dev/v2/runs/{run.Run.Id}/advance-rooms",
             new { Count = 2 });
+        var body = await response.Content.ReadAsStringAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
         var payload = await response.Content.ReadFromJsonAsync<DevToolsRunDebugResult>();
 
         payload.Should().NotBeNull();
