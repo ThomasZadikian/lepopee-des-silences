@@ -15,7 +15,7 @@ public sealed class SkillEffectSpecValidatorTests
             new SkillEffectSpec("StatModifier", null, 10, 2, Stat: "AttackPower"),
             new SkillEffectSpec("Stun", "stun", 0, 1, Stat: "Speed"),
             new SkillEffectSpec("AffinityModifier", null, 10, 2,
-                AffinityRegister: "silence", AffinityOutcome: "Resist"),
+                AffinityRegister: "silence", AffinityOutcome: "Resistant"),
             new SkillEffectSpec("AffinityModifier", null, 15, 2,
                 AffinityRegister: "memoire"),
             new SkillEffectSpec("SkillGrant", null, 0, 0, IsPermanent: true)
