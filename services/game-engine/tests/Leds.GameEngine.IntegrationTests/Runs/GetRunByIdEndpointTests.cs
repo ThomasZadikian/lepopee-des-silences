@@ -247,11 +247,9 @@ public sealed class GetRunByIdEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeSelection()
     {
-        var startRunResponse = await StartRunAsync();
-        var runId = startRunResponse.Run.Id;
-
-        var firstNode = FirstConfirmableNode(startRunResponse.Run.CurrentRoom);
-        await MovePartyAndEnterNodeAsync(runId, firstNode);
+        var (run, combatNode) = await StartRunWithCombatNodeAsync();
+        var runId = run.Id;
+        await MovePartyToNodeAsync(runId, combatNode);
 
         var response = await _client.GetAsync($"/api/v2/runs/{runId}");
 
