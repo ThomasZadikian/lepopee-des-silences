@@ -77,9 +77,11 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             if (IsClosed(run) || run.CurrentDepth >= 10)
                 break;
 
-            // No more Interlude to force through — walk the first exit the current room
-            // actually offers, same path a real player would confirm.
-            var exitNode = run.CurrentRoom.Nodes.FirstOrDefault(n => n.EventType == NodeEventType.Exit);
+            // A direct walk to an arbitrary exit can cross a contact-triggered objective and
+            // stop there, leaving that objective selected instead of the exit. DevTools must
+            // still exercise the normal room-generation and exit-confirmation pipeline, so it
+            // chooses a real exit whose route does not cross unresolved contact content.
+            var exitNode = FindSafelyReachableExit(run.CurrentRoom);
             if (exitNode is null)
                 break;
 
@@ -100,6 +102,32 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         return new DevToolsRunDebugResult(
             advanced == 1 ? "Advanced 1 room." : $"Advanced {advanced} rooms.",
             RunDto.FromDomain(run));
+    }
+
+    private static MapNode? FindSafelyReachableExit(Room room)
+    {
+        var contactBlockers = room.Nodes
+            .Where(node =>
+                node.State == NodeState.Available
+                && node.TriggersOnContact
+                && node.EventType != NodeEventType.Exit)
+            .Select(node => (node.Lane, node.Row))
+            .ToHashSet();
+        var occupiedDestinations = room.RoomNpcs
+            .Select(npc => (npc.X, npc.Y))
+            .ToHashSet();
+
+        return room.Nodes
+            .Where(node =>
+                node.EventType == NodeEventType.Exit
+                && node.State == NodeState.Available
+                && !occupiedDestinations.Contains((node.Lane, node.Row)))
+            .Select(node =>
+                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row, contactBlockers)))
+            .Where(candidate => candidate.Route is not null)
+            .OrderBy(candidate => candidate.Route!.Value.Cost)
+            .Select(candidate => candidate.Node)
+            .FirstOrDefault();
     }
 
     public async Task<DevToolsRunDebugResult> ForceCurrentRoomPalaceStateAsync(
