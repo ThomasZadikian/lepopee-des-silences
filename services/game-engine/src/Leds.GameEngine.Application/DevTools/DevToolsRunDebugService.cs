@@ -106,11 +106,20 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
     private static MapNode? FindSafelyReachableExit(Room room)
     {
-        var contactBlockers = room.Nodes
+        // Mirror Room.CurrentTransitBlockers so FindPath chooses exactly the route MoveParty
+        // will recalculate. Proving that some alternative safe route exists is not enough.
+        var transitBlockers = room.Nodes
+            .Where(node =>
+                node.BlocksTransit
+                && !node.IsHidden
+                && node.State != NodeState.Resolved)
+            .Select(node => (node.Lane, node.Row))
+            .ToHashSet();
+        var contactTriggers = room.Nodes
             .Where(node =>
                 node.State == NodeState.Available
                 && node.TriggersOnContact
-                && node.EventType != NodeEventType.Exit)
+                && !node.IsHidden)
             .Select(node => (node.Lane, node.Row))
             .ToHashSet();
         var occupiedDestinations = room.RoomNpcs
@@ -123,8 +132,10 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
                 && node.State == NodeState.Available
                 && !occupiedDestinations.Contains((node.Lane, node.Row)))
             .Select(node =>
-                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row, contactBlockers)))
-            .Where(candidate => candidate.Route is not null)
+                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row, transitBlockers)))
+            .Where(candidate =>
+                candidate.Route is not null
+                && candidate.Route.Value.Path.All(cell => !contactTriggers.Contains(cell)))
             .OrderBy(candidate => candidate.Route!.Value.Cost)
             .Select(candidate => candidate.Node)
             .FirstOrDefault();
