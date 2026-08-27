@@ -125,9 +125,16 @@ public sealed class TacticalEquipmentAbilityCatalogTests
     [Fact]
     public void GetUsable_ShouldReturnEmpty_WhenCombatHasNoActiveCombatant()
     {
-        var combat = TestTacticalCombatHelper.Create(
-            RunId.New(), RoomId.New(), NodeId.New(), [], []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
 
+        enemy.TakeDamage(enemy.CurrentVitality);
+        combat.OnCombatantDefeated(enemy.Id.Value);
+        ally.TakeDamage(ally.CurrentVitality);
+        combat.OnCombatantDefeated(ally.Id.Value);
+
+        combat.ActiveCombatantId.Should().BeNull();
         TacticalEquipmentAbilityCatalog.GetUsable(combat).Should().BeEmpty();
     }
 
