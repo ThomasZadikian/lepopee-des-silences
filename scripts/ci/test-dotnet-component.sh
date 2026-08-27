@@ -27,6 +27,11 @@ dotnet build "$repo_root/$solution_path" --configuration Release --no-restore \
   -p:ContinuousIntegrationBuild=true \
   -p:Deterministic=true
 
+# Coverage instrumentation is memory intensive and solution-level `dotnet test` otherwise
+# runs the unit/integration projects concurrently. In the Game Engine this can starve the
+# integration testhost long enough for the 5-minute hang detector to kill an otherwise
+# healthy run. Limit MSBuild to one test project at a time; xUnit still keeps its normal
+# in-project parallelism, while every project continues to emit its own Cobertura report.
 dotnet test "$repo_root/$solution_path" \
   --configuration Release \
   --no-build \
@@ -34,7 +39,8 @@ dotnet test "$repo_root/$solution_path" \
   --collect "XPlat Code Coverage" \
   --results-directory "$results_dir" \
   --logger "trx;LogFilePrefix=$component_name" \
-  --blame-hang-timeout 5m
+  --blame-hang-timeout 5m \
+  -m:1
 
 if ! find "$results_dir" -name coverage.cobertura.xml -print -quit | grep -q .; then
   echo "No Cobertura report was produced for $component_name." >&2
