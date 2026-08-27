@@ -129,9 +129,9 @@ public sealed class TacticalEquipmentAbilityCatalogTests
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
 
-        enemy.TakeDamage(enemy.CurrentVitality);
+        enemy.ApplyDamage(enemy.CurrentVitality);
         combat.OnCombatantDefeated(enemy.Id.Value);
-        ally.TakeDamage(ally.CurrentVitality);
+        ally.ApplyDamage(ally.CurrentVitality);
         combat.OnCombatantDefeated(ally.Id.Value);
 
         combat.ActiveCombatantId.Should().BeNull();
