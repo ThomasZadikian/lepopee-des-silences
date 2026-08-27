@@ -54,8 +54,8 @@ public sealed class NpcConsequenceApplierTests
 
         run.ActiveCurses.Should().ContainSingle(c =>
             c.CurseDefinitionKey == "curse.test"
-            && Math.Abs(c.DifficultyMultiplierDelta - expectedDelta) < 0.0001);
+            && Math.Abs(c.DifficultyDelta - expectedDelta) < 0.0001);
         run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier)
-            .Should().ContainSingle(m => Math.Abs(m.NumericValue - expectedDelta) < 0.0001);
+            .Should().ContainSingle(m => Math.Abs(m.Value - expectedDelta) < 0.0001);
     }
 }
