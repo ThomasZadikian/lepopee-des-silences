@@ -177,7 +177,7 @@ public sealed class ItemEquipmentEffectValidatorTests
         var effect = new ItemEquipmentEffect(
             ItemEquipmentEffectKind.AffinityOutcomeOverride,
             AffinityRegister: EmotionalRegister.Folie,
-            AffinityOutcome: AffinityOutcome.Resist,
+            AffinityOutcome: AffinityOutcome.Resistant,
             DurationActivations: duration);
 
         var act = () => ItemEquipmentEffectValidator.Validate("item.test", [effect]);
