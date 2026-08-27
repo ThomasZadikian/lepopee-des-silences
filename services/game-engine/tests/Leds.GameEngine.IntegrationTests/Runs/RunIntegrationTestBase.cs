@@ -348,7 +348,10 @@ public abstract class RunIntegrationTestBase
                     break;
                 }
 
-                combat = skillResult.Combat;
+                // Acting and ending a turn are deliberately separate commands. Keeping the
+                // same active actor here would make the next loop attempt a second action and
+                // correctly receive "already acted this turn" from the domain.
+                combat = await EndTacticalTurnAsync(runId);
             }
             else
             {
