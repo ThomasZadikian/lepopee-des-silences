@@ -25,7 +25,10 @@ public sealed class CatalogIntegrityValidatorCoverageTests
         skill.TacticalAreaShape = "Circle";
         skill.Audience = "Nobody";
         skill.ManaCost = -1;
-        skill.EffectsJson = "{invalid-json";
+        // jsonb rejects malformed JSON before the publication gate can inspect it. A valid JSON
+        // object is nevertheless the wrong shape for an effect array and exercises the gate's
+        // deserialization failure branch without bypassing PostgreSQL's integrity rules.
+        skill.EffectsJson = "{}";
         skill.AllowedArchetypesJson = "[\"missing-archetype\"]";
 
         var enemies = await context.EnemyDefinitions
@@ -58,7 +61,7 @@ public sealed class CatalogIntegrityValidatorCoverageTests
             Description = "Coverage-only invalid publication candidate.",
             Version = "1.0",
             Status = "Active",
-            Archetype = enemies[0].Archetype == "UnknownArchetype" ? "Minion" : enemies[0].Archetype,
+            Archetype = "UnknownArchetype",
             Registre = "silence",
             MenaceLevel = 1,
             BaseDifficulty = 1,
@@ -135,7 +138,7 @@ public sealed class CatalogIntegrityValidatorCoverageTests
 
         var items = await context.ItemDefinitions.Where(x => x.Status == "Active").Take(2).ToArrayAsync();
         items.Should().HaveCountGreaterThanOrEqualTo(2);
-        items[0].EquipmentEffectsJson = "{invalid-json";
+        items[0].EquipmentEffectsJson = "{}";
         items[1].EquipmentEffectsJson = """
             [{ "kind": "GrantSkill", "skillKey": "missing.skill" }]
             """;
@@ -161,7 +164,8 @@ public sealed class CatalogIntegrityValidatorCoverageTests
             .And.Contain("ArmWound consequence")
             .And.Contain("SootheWound consequence")
             .And.Contain("GrantOffering consequence")
-            .And.Contain("granted skill 'missing.skill'");
+            .And.Contain("granted skill 'missing.skill'")
+            .And.Contain("invalid JSON");
     }
 
     [Fact]
@@ -207,17 +211,31 @@ public sealed class CatalogIntegrityValidatorCoverageTests
         laws[3].RoomKey = "missing.room";
         laws[4].ExclusionKeysJson = "[\"missing.law\"]";
 
-        var sequence = await context.StorySequenceDefinitions
-            .Where(x => x.Status == "Active")
-            .Include(x => x.Steps)
-            .FirstAsync();
-        sequence.Version = string.Empty;
-        foreach (var step in sequence.Steps)
-            step.IsTerminal = false;
-        var firstStep = sequence.Steps.First();
-        firstStep.RoomDefinitionKey = "missing.room";
-        firstStep.ConditionsJson = "{invalid-json";
-        firstStep.EffectsJson = "{invalid-json";
+        var now = DateTime.UtcNow;
+        context.StorySequenceDefinitions.Add(new StorySequenceDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = string.Empty,
+            DisplayName = "Coverage story",
+            Version = string.Empty,
+            Status = "Active",
+            EntryStepKey = "missing-entry",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+            Steps =
+            [
+                new StoryStepDefinitionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    Key = "coverage-step",
+                    Order = 1,
+                    RoomDefinitionKey = "missing.room",
+                    ConditionsJson = "[]",
+                    EffectsJson = "[]",
+                    IsTerminal = false
+                }
+            ]
+        });
 
         await context.SaveChangesAsync();
 
@@ -234,8 +252,8 @@ public sealed class CatalogIntegrityValidatorCoverageTests
             .And.Contain("positive severity and weight")
             .And.Contain("room 'missing.room'")
             .And.Contain("excluded law 'missing.law'")
-            .And.Contain("at least one terminal step is required")
-            .And.Contain("invalid JSON");
+            .And.Contain("entry step 'missing-entry' does not exist")
+            .And.Contain("at least one terminal step is required");
     }
 
     [Fact]
