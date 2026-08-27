@@ -138,7 +138,8 @@ public sealed class NpcDialogueViewFactoryCoverageTests
 
         result!.Choices.Select(x => x.ChoiceId).Should().Contain(["has-self", "lacks-missing", "lacks-null"]);
         result.Choices.Select(x => x.ChoiceId).Should().NotContain(["has-null", "has-missing", "lacks-self"]);
-        result.Choices.Should().ContainSingle(c => c.ChoiceId is "balanced" or "unbalanced");
+        result.Choices.Should().ContainSingle(c =>
+            c.ChoiceId == "balanced" || c.ChoiceId == "unbalanced");
     }
 
     private static CatalogNpcDefinition CreateNpc(CatalogNpcDialogueGraph? graph) =>
