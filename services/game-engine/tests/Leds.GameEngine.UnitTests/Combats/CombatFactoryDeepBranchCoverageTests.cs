@@ -31,36 +31,36 @@ public sealed class CombatFactoryDeepBranchCoverageTests
     [Fact]
     public void InitiativeLawHelpers_ShouldHandleEmptyUniformAndMixedRosters()
     {
-        Invoke("ApplyTurnOrderReversal", Array.Empty<Combatant>());
-        Invoke("ApplyStrictInitiativeOrder", Array.Empty<Combatant>());
-        Invoke("ApplyCruelDestinyToEveryone", Array.Empty<Combatant>());
+        Invoke("ApplyTurnOrderReversal", (object)Array.Empty<Combatant>());
+        Invoke("ApplyStrictInitiativeOrder", (object)Array.Empty<Combatant>());
+        Invoke("ApplyCruelDestinyToEveryone", (object)Array.Empty<Combatant>());
         var uniform = new[] { CombatantWithSpeed("a", 10), CombatantWithSpeed("b", 10) };
-        Invoke("ApplyTurnOrderReversal", uniform);
-        Invoke("ApplyStrictInitiativeOrder", uniform);
+        Invoke("ApplyTurnOrderReversal", (object)uniform);
+        Invoke("ApplyStrictInitiativeOrder", (object)uniform);
         var reversed = new[] { CombatantWithSpeed("slow", 5), CombatantWithSpeed("middle", 10), CombatantWithSpeed("fast", 15) };
-        Invoke("ApplyTurnOrderReversal", reversed);
+        Invoke("ApplyTurnOrderReversal", (object)reversed);
         reversed[0].EffectiveSpeed.Should().BeGreaterThan(reversed[2].EffectiveSpeed);
         var flattened = new[] { CombatantWithSpeed("slow-flat", 5), CombatantWithSpeed("middle-flat", 10), CombatantWithSpeed("fast-flat", 15) };
-        Invoke("ApplyStrictInitiativeOrder", flattened);
+        Invoke("ApplyStrictInitiativeOrder", (object)flattened);
         flattened.Select(c => c.EffectiveSpeed).Distinct().Should().ContainSingle();
         var destined = CombatantWithSpeed("destined", 10);
-        Invoke("ApplyCruelDestinyToEveryone", new[] { destined });
+        Invoke("ApplyCruelDestinyToEveryone", (object)new[] { destined });
         destined.StatusEffects.Should().Contain(effect => effect.Key == "law-destinee:dot");
     }
 
     [Fact]
     public void AttackTypeOverride_ShouldCoverMissingConsumedInvalidNeutralAndValidModifiers()
     {
-        Invoke("ResolveAttackTypeOverride", Array.Empty<RunModifier>()).Should().BeNull();
+        Invoke("ResolveAttackTypeOverride", (object)Array.Empty<RunModifier>()).Should().BeNull();
         var neutral = Modifier(RunModifierType.AttackTypeOverride, (double)EmotionalType.Neutral);
-        Invoke("ResolveAttackTypeOverride", new[] { neutral }).Should().BeNull();
+        Invoke("ResolveAttackTypeOverride", (object)new[] { neutral }).Should().BeNull();
         var invalid = Modifier(RunModifierType.AttackTypeOverride, 999);
-        Invoke("ResolveAttackTypeOverride", new[] { invalid }).Should().BeNull();
+        Invoke("ResolveAttackTypeOverride", (object)new[] { invalid }).Should().BeNull();
         var validType = Enum.GetValues<EmotionalType>().First(value => value != EmotionalType.Neutral);
         var valid = Modifier(RunModifierType.AttackTypeOverride, (double)validType);
-        Invoke("ResolveAttackTypeOverride", new[] { valid }).Should().Be(validType);
+        Invoke("ResolveAttackTypeOverride", (object)new[] { valid }).Should().Be(validType);
         valid.Consume(DateTime.UtcNow);
-        Invoke("ResolveAttackTypeOverride", new[] { valid }).Should().BeNull();
+        Invoke("ResolveAttackTypeOverride", (object)new[] { valid }).Should().BeNull();
     }
 
     [Fact]
