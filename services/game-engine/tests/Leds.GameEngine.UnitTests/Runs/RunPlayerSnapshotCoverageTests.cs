@@ -11,9 +11,7 @@ public sealed class RunPlayerSnapshotCoverageTests
     {
         var character = Character("character.main");
         var createdAt = DateTimeOffset.UtcNow;
-
         var snapshot = RunPlayerSnapshot.Create(Guid.NewGuid(), " Player ", [character], createdAt);
-
         snapshot.DisplayName.Should().Be("Player");
         snapshot.Characters.Should().ContainSingle().Which.Should().BeSameAs(character);
         snapshot.CreatedAtUtc.Should().Be(createdAt);
@@ -22,23 +20,27 @@ public sealed class RunPlayerSnapshotCoverageTests
     [Fact]
     public void Create_ShouldRejectInvalidPlayerId()
     {
-        (() => RunPlayerSnapshot.Create(Guid.Empty, "Player", [Character("character.main")], DateTimeOffset.UtcNow))
+        FluentActions.Invoking(() => RunPlayerSnapshot.Create(
+                Guid.Empty, "Player", [Character("character.main")], DateTimeOffset.UtcNow))
             .Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Create_ShouldRejectBlankName()
     {
-        (() => RunPlayerSnapshot.Create(Guid.NewGuid(), " ", [Character("character.main")], DateTimeOffset.UtcNow))
+        FluentActions.Invoking(() => RunPlayerSnapshot.Create(
+                Guid.NewGuid(), " ", [Character("character.main")], DateTimeOffset.UtcNow))
             .Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Create_ShouldRejectNullOrEmptyCharacters()
     {
-        (() => RunPlayerSnapshot.Create(Guid.NewGuid(), "Player", null!, DateTimeOffset.UtcNow))
+        FluentActions.Invoking(() => RunPlayerSnapshot.Create(
+                Guid.NewGuid(), "Player", null!, DateTimeOffset.UtcNow))
             .Should().Throw<DomainException>();
-        (() => RunPlayerSnapshot.Create(Guid.NewGuid(), "Player", [], DateTimeOffset.UtcNow))
+        FluentActions.Invoking(() => RunPlayerSnapshot.Create(
+                Guid.NewGuid(), "Player", [], DateTimeOffset.UtcNow))
             .Should().Throw<DomainException>();
     }
 
@@ -47,10 +49,9 @@ public sealed class RunPlayerSnapshotCoverageTests
     {
         var protagonist = Character("character.main");
         var snapshot = RunPlayerSnapshot.Create(Guid.NewGuid(), "Player", [protagonist], DateTimeOffset.UtcNow);
-
         snapshot.DebugRemoveLastCompanion().Should().BeFalse();
-        (() => snapshot.DebugAddCharacter(null!)).Should().Throw<ArgumentNullException>();
-
+        FluentActions.Invoking(() => snapshot.DebugAddCharacter(null!))
+            .Should().Throw<ArgumentNullException>();
         var companion = Character("character.friend");
         snapshot.DebugAddCharacter(companion);
         snapshot.Characters.Should().HaveCount(2);
@@ -64,10 +65,8 @@ public sealed class RunPlayerSnapshotCoverageTests
         var id = Guid.NewGuid();
         var playerId = Guid.NewGuid();
         var character = Character("character.main");
-
         var snapshot = RunPlayerSnapshot.Rehydrate(
             id, playerId, "Persisted", DateTimeOffset.UnixEpoch, [character]);
-
         snapshot.Id.Should().Be(id);
         snapshot.PlayerId.Should().Be(playerId);
         snapshot.DisplayName.Should().Be("Persisted");
