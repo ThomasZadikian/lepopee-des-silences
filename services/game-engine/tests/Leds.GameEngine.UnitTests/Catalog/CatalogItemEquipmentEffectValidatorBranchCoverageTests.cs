@@ -14,7 +14,7 @@ public sealed class CatalogItemEquipmentEffectValidatorBranchCoverageTests
             E("StatBonus", stat: "AttackPower", amount: 2),
             E("StatBonusPercent", stat: "Speed", amount: 5, condition: "room:Forest"),
             E("GrantSkill", skill: "skill.test"),
-            E("GrantAffinity", affinity: "Mémoire"),
+            E("GrantAffinity", affinity: "Memoire"),
             E("DamageReductionByType", amount: 20, affinity: "Rupture"),
             E("HitChanceBonus", amount: 10),
             E("DotDurationReduction", amount: 15),
@@ -107,7 +107,7 @@ public sealed class CatalogItemEquipmentEffectValidatorBranchCoverageTests
     [InlineData("MagicDamageReductionPercent", 101)]
     public void Validate_ShouldBoundReductionAmounts(string kind, int amount)
     {
-        var affinity = kind == "DamageReductionByType" ? "Mémoire" : null;
+        var affinity = kind == "DamageReductionByType" ? "Memoire" : null;
         AssertInvalid(E(kind, amount: amount, affinity: affinity), "between 0 and 100");
     }
 
@@ -120,7 +120,7 @@ public sealed class CatalogItemEquipmentEffectValidatorBranchCoverageTests
     [Fact]
     public void Validate_ShouldRejectNonPositiveAffinityDuration()
     {
-        AssertInvalid(E("GrantAffinity", affinity: "Mémoire", duration: 0), "duration must be positive");
+        AssertInvalid(E("GrantAffinity", affinity: "Memoire", duration: 0), "duration must be positive");
     }
 
     [Theory]
