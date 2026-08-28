@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.ResumeRun;
@@ -19,14 +20,12 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ExitMidRoom_AndResume_ShouldRestoreRoomToInitialState()
     {
-        var startResponse = await StartRunAsync();
-        var runId = startResponse.Run.Id;
-        var initialGrid = startResponse.Run.CurrentRoom.Grid!;
+        var (run, nodeToChoose) = await StartRunWithConfirmableNodeAsync();
+        var runId = run.Id;
+        var initialGrid = run.CurrentRoom.Grid!;
 
-        var nodeToChoose = FirstConfirmableNode(startResponse.Run.CurrentRoom);
         await MovePartyAndEnterNodeAsync(runId, nodeToChoose);
 
-        // Act — exit mid-room
         var exitResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/exit-mid-room",
             content: null);
@@ -39,7 +38,6 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         exitPayload!.Run.Status.Should().Be("Suspended");
         exitPayload.Run.CanResume.Should().BeTrue();
 
-        // Act — resume the run
         var resumeResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/resume",
             content: null);
@@ -52,7 +50,6 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         resumePayload!.Run.Status.Should().Be("Active");
         resumePayload.Run.CanResume.Should().BeFalse();
 
-        // Mid-room exit deliberately rolls spatial exploration back to its entry snapshot.
         resumePayload.Run.CurrentRoom.State.Should().Be("Active");
         resumePayload.Run.CurrentRoom.Grid!.PartyX.Should().Be(initialGrid.PartyX);
         resumePayload.Run.CurrentRoom.Grid.PartyY.Should().Be(initialGrid.PartyY);
@@ -63,10 +60,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
     [Fact]
     public async Task ExitMidRoom_AndResume_ShouldAllowContinuedPlay()
     {
-        var startResponse = await StartRunAsync();
-        var runId = startResponse.Run.Id;
+        var (run, firstNode) = await StartRunWithConfirmableNodeAsync();
+        var runId = run.Id;
 
-        var firstNode = FirstConfirmableNode(startResponse.Run.CurrentRoom);
         await MovePartyAndEnterNodeAsync(runId, firstNode);
 
         var exitResponse = await Client.PostAsync(
@@ -74,7 +70,6 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
             content: null);
         exitResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Resume
         var resumeResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/resume",
             content: null);
@@ -84,12 +79,9 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
             .ReadFromJsonAsync<ResumeRunResponse>();
         resumePayload!.Run.Status.Should().Be("Active");
 
-        // The encounter is available again after rollback and can be selected by contact.
         var resumedNode = resumePayload.Run.CurrentRoom.Nodes.Single(node => node.Id == firstNode.Id);
         await MovePartyAndEnterNodeAsync(runId, resumedNode);
 
-        // Re-selecting the rolled-back objective proves play can continue. Its reward lifecycle
-        // is covered independently; this resume contract stops at the restored interaction.
         var continuedRun = await GetRunAsync(runId);
         continuedRun.CurrentRoom.State.Should().Be("NodeSelected");
     }
@@ -110,7 +102,6 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         savePayload!.Run.Status.Should().Be("Suspended");
         savePayload.Run.CanResume.Should().BeTrue();
 
-        // Act — resume
         var resumeResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/resume",
             content: null);
@@ -272,4 +263,35 @@ public sealed class ResumeRunEndpointTests : RunIntegrationTestBase
         payload.Run.SavedAt.Should().NotBeNull();
     }
 
+    private async Task<(RunDto Run, MapNodeDto Node)> StartRunWithConfirmableNodeAsync()
+    {
+        var run = (await StartRunAsync()).Run;
+
+        for (var roomAttempt = 0; roomAttempt < 10; roomAttempt++)
+        {
+            try
+            {
+                return (run, FirstConfirmableNode(run.CurrentRoom));
+            }
+            catch (InvalidOperationException) when (roomAttempt < 9)
+            {
+                using var advanceRequest = new HttpRequestMessage(
+                    HttpMethod.Post,
+                    $"/api/dev/v2/runs/{run.Id}/advance-room")
+                {
+                    Content = JsonContent.Create(new { })
+                };
+                advanceRequest.Headers.Add(
+                    "X-Leds-DevTools-Token",
+                    GameEngineApiFactory.DevToolsToken);
+
+                var advanceResponse = await Client.SendAsync(advanceRequest);
+                var advanceBody = await advanceResponse.Content.ReadAsStringAsync();
+                advanceResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: advanceBody);
+                run = await GetRunAsync(run.Id);
+            }
+        }
+
+        throw new InvalidOperationException("The generated run did not expose a confirmable exploration node.");
+    }
 }
