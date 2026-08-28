@@ -3,6 +3,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
+using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.Runs;
