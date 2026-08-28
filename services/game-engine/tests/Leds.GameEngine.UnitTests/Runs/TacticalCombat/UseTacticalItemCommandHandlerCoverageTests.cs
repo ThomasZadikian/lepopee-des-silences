@@ -6,7 +6,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Runs;
 
-namespace Leds.GameEngine.UnitTests.Runs.TacticalCombat;
+namespace Leds.GameEngine.UnitTests.Runs.TacticalItems;
 
 public sealed class UseTacticalItemCommandHandlerCoverageTests
 {
@@ -164,8 +164,6 @@ public sealed class UseTacticalItemCommandHandlerCoverageTests
     {
         try
         {
-            // The covered effect families do not read the combat clock. Passing null lets
-            // these pure switch branches be tested without manufacturing a tactical aggregate.
             ApplyEffectMethod.Invoke(null, [null, actor, item, targets]);
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
