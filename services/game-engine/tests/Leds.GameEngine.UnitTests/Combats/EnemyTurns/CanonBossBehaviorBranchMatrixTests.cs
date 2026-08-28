@@ -133,10 +133,10 @@ public sealed class CanonBossBehaviorBranchMatrixTests
             mana: mana,
             charge: 5,
             skills: skills,
+            defense: 8,
+            speed: 10,
             maxMana: 20,
-            baseDefense: 8,
-            baseSpeed: 10,
-            baseMagicDefense: 8);
+            magicDefense: 8);
 
     private static Combatant Ally(
         string key,
@@ -157,10 +157,10 @@ public sealed class CanonBossBehaviorBranchMatrixTests
             mana: 10,
             charge: 0,
             skills: [],
+            defense: defense,
+            speed: speed,
             maxMana: 10,
-            baseDefense: defense,
-            baseSpeed: speed,
-            baseMagicDefense: magicDefense);
+            magicDefense: magicDefense);
 
     private sealed class FakeCombatContext(
         int turnNumber,
