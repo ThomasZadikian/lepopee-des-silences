@@ -189,6 +189,11 @@ public sealed class NpcEventChoiceResolverRequirementCoverageTests
         if (characterKeys.Length == 0)
             characterKeys = ["character.player.self"];
 
+        SetRunStat(run, nameof(Run.Attack), attack);
+        SetRunStat(run, nameof(Run.Defense), defense);
+        SetRunStat(run, nameof(Run.Speed), speed);
+        SetRunStat(run, nameof(Run.Focus), focus);
+
         var characters = characterKeys.Select((key, index) =>
         {
             var stats = RunCharacterStatSnapshot.Create(
@@ -216,5 +221,12 @@ public sealed class NpcEventChoiceResolverRequirementCoverageTests
             characters,
             DateTimeOffset.UtcNow));
         return run;
+    }
+
+    private static void SetRunStat(Run run, string propertyName, int value)
+    {
+        var property = typeof(Run).GetProperty(propertyName)
+            ?? throw new InvalidOperationException($"Run.{propertyName} was not found.");
+        property.SetValue(run, value);
     }
 }
