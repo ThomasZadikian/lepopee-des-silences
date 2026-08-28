@@ -65,7 +65,7 @@ public sealed class PlayerRuntimeSkillCoverageTests
         skill.RequiresLineOfSight.Should().BeTrue();
         skill.Cooldown.Should().Be(2);
         skill.IsUltimate.Should().BeTrue();
-        skill.EmotionalRegister.Should().Be("Rupture");
+        skill.EmotionalRegister.Should().Be("rupture");
     }
 
     [Fact]
@@ -81,6 +81,6 @@ public sealed class PlayerRuntimeSkillCoverageTests
         skill.Key.Should().Be(" persisted ");
         skill.DisplayName.Should().Be(" Persisted ");
         skill.Category.Should().Be("Support");
-        skill.EmotionalRegister.Should().Be("Neutral");
+        skill.EmotionalRegister.Should().Be("neutral");
     }
 }
