@@ -12,8 +12,7 @@ public sealed class CatalogPostgresFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+        _container = new PostgreSqlBuilder("postgres:16")
             .Build();
         await _container.StartAsync();
     }

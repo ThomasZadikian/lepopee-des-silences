@@ -14,7 +14,18 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
 
     public Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListActiveEnemyDefinitionsAsync(
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(ActiveEnemyDefinitions);
+        Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(
+            ActiveEnemyDefinitions.Select(WithRequiredRegister).ToArray());
+
+    private static CatalogEnemyDefinition WithRequiredRegister(CatalogEnemyDefinition definition) =>
+        string.IsNullOrWhiteSpace(definition.Registre)
+            ? definition with { Registre = "neutral" }
+            : definition;
+
+    private static CatalogNpcDefinition WithRequiredAffinity(CatalogNpcDefinition definition) =>
+        string.IsNullOrWhiteSpace(definition.EmotionalAffinity)
+            ? definition with { EmotionalAffinity = "neutral" }
+            : definition;
 
     public CatalogEmotionalRegisterCatalog EmotionalRegisterCatalog { get; set; } =
         new("emotional-registers-test-1.0.0",
@@ -1054,7 +1065,24 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                     new CatalogNpcOffering("offer.item.container-gated", "Item", "item.consumable.minor-heal", 1, IsMajor: false,
                         UnlockConditions: [new CatalogDialogueRequirement("PlayerHasContainerItem", null, null, null, null)]),
                     new CatalogNpcOffering("offer.reputation", "ReputationBoost", "npc.other", 250, IsMajor: true, UnlockConditions: []),
-                    new CatalogNpcOffering("offer.companion", "Companion", "character.test-companion", 1, IsMajor: true, UnlockConditions: [])
+                    new CatalogNpcOffering(
+                        "offer.companion",
+                        "Companion",
+                        "character.test-companion",
+                        1,
+                        IsMajor: true,
+                        UnlockConditions: [],
+                        CompanionKit: new CatalogCompanionKit(
+                            MaxVitality: 80,
+                            AttackPower: 10,
+                            Defense: 8,
+                            StartingGuard: 0,
+                            Speed: 10,
+                            Initiative: 10,
+                            Focus: 5,
+                            Mana: 20,
+                            Charge: 0,
+                            SkillKeys: ["skill.basic.strike", "skill.basic.guard"]))
                 ],
                 DialogueGraph: new CatalogNpcDialogueGraph(
                     "npc.test.offering-giver.dialogue", "1.0", "start",
@@ -1344,6 +1372,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
         }
 
         var definition = EnemyDefinitions.GetValueOrDefault(key.Trim());
+        if (definition is not null)
+        {
+            definition = WithRequiredRegister(definition);
+        }
+
         return Task.FromResult(definition);
     }
 
@@ -1359,6 +1392,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
         var trimmed = roomType.Trim();
         var results = EnemyDefinitions.Values
             .Where(d => d.CompatibleRoomTypes.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+            .Select(WithRequiredRegister)
             .ToArray();
 
         return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(results);
@@ -1380,6 +1414,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 d.CompatibleRoomTypes.Contains(trimmed, StringComparer.OrdinalIgnoreCase) &&
                 d.MinRiskLevel <= riskLevel &&
                 riskLevel <= d.MaxRiskLevel)
+            .Select(WithRequiredRegister)
             .ToArray();
 
         return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(results);
@@ -1388,7 +1423,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     public Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default)
     {
-        var results = NpcDefinitions.Values.ToArray();
+        var results = NpcDefinitions.Values.Select(WithRequiredAffinity).ToArray();
         return Task.FromResult<IReadOnlyCollection<CatalogNpcDefinition>>(results);
     }
 

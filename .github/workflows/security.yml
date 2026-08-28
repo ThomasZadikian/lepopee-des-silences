@@ -1,0 +1,121 @@
+name: Security
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+      - T-RPG
+  push:
+    branches:
+      - develop
+      - T-RPG
+  schedule:
+    - cron: '41 3 * * 2'
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Reject vulnerable dependency changes
+        id: dependency-review
+        continue-on-error: true
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+      - name: Report unavailable dependency graph
+        if: steps.dependency-review.outcome == 'failure'
+        run: |
+          echo "::warning::GitHub dependency review is unavailable. Enable the repository dependency graph to restore pull-request diff scanning; the blocking full dependency audit still runs below."
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: apps/game-client/package-lock.json
+      - name: Audit .NET dependencies
+        run: |
+          for solution in \
+            services/game-engine/Leds.GameEngine.slnx \
+            services/player/Leds.Player.slnx \
+            services/catalog/Leds.Catalog.slnx \
+            packages/shared-building-blocks/Leds.SharedBuildingBlocks.slnx; do
+            dotnet restore "$solution" '-warnaserror:NU1903;NU1904'
+            dotnet list "$solution" package --vulnerable --include-transitive
+          done
+      - name: Audit frontend dependencies
+        working-directory: apps/game-client
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=high
+
+  codeql:
+    name: CodeQL / ${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - csharp
+          - javascript-typescript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          languages: ${{ matrix.language }}
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+      - name: Build .NET for analysis
+        if: matrix.language == 'csharp'
+        run: |
+          for solution in \
+            services/game-engine/Leds.GameEngine.slnx \
+            services/player/Leds.Player.slnx \
+            services/catalog/Leds.Catalog.slnx \
+            packages/shared-building-blocks/Leds.SharedBuildingBlocks.slnx; do
+            dotnet build "$solution" --configuration Release
+          done
+      - name: Setup Node.js
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: apps/game-client/package-lock.json
+      - name: Build frontend for analysis
+        if: matrix.language == 'javascript-typescript'
+        working-directory: apps/game-client
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Analyze
+        uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8

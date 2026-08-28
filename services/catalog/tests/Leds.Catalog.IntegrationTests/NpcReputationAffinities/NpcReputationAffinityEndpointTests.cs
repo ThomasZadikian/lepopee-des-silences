@@ -1,16 +1,15 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.Catalog.IntegrationTests.NpcReputationAffinities;
 
+[Collection("CatalogApi")]
 public sealed class NpcReputationAffinityEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public NpcReputationAffinityEndpointTests(WebApplicationFactory<Program> factory)
+    public NpcReputationAffinityEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

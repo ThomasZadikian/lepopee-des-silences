@@ -1,70 +1,23 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class AbandonRunEndpointTests : RunIntegrationTestBase
 {
     public AbandonRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }
 
-    /// <summary>
-    /// Drives the run to RoomResolved by choosing and resolving all nodes up to and including
-    /// the boss, then collecting the boss reward. Returns the run Id.
-    /// </summary>
-    private async Task<Guid> StartRunAtSafePointAsync()
-    {
-        var startRunResponse = await StartRunAsync();
-        var runId = startRunResponse.Run.Id;
-        var currentRoom = startRunResponse.Run.CurrentRoom;
-
-        // Navigate through all non-boss layers
-        while (currentRoom.CurrentNodeDepth < currentRoom.MaxNodeDepth)
-        {
-            var nodeToChoose = currentRoom.AvailableNodes.First();
-
-            var chooseResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
-                content: null);
-            chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var resolved = await ResolveAndHandleCombatAsync(runId);
-
-            var progressResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/progress",
-                content: null);
-            progressResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var progressBody = await progressResponse.Content
-                .ReadFromJsonAsync<Leds.GameEngine.Application.Runs.ProgressRun.ProgressRunResponse>();
-            currentRoom = progressBody!.Run.CurrentRoom;
-        }
-
-        // Choose and resolve the boss node
-        var bossNode = currentRoom.AvailableNodes.Single();
-        bossNode.IsBoss.Should().BeTrue();
-
-        var chooseBoss = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
-            content: null);
-        chooseBoss.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var bossResolved = await ResolveAndHandleCombatAsync(runId);
-        bossResolved.Run.Status.Should().Be("RoomResolved");
-
-        return runId;
-    }
-
     [Fact]
-    public async Task AbandonRun_ShouldReturnOk_WhenRunIsAtSafePoint()
+    public async Task AbandonRun_ShouldReturnOk_FromFreeExplorationSafePoint()
     {
-        // Arrange — drive run to RoomResolved (safe point)
-        var runId = await StartRunAtSafePointAsync();
+        // A freshly opened spatial room is a safe point: no encounter, combat or reward is active.
+        var runId = (await StartRunAsync()).Run.Id;
 
         // Act
         var response = await Client.PostAsync(
@@ -133,8 +86,7 @@ public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixt
     [Fact]
     public async Task AbandonRun_ShouldReturnBadRequest_WhenRunIsAlreadyAbandoned()
     {
-        // Arrange — drive to safe point, then abandon successfully
-        var runId = await StartRunAtSafePointAsync();
+        var runId = (await StartRunAsync()).Run.Id;
 
         var firstResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/abandon",

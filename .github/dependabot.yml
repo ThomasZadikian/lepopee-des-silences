@@ -1,0 +1,120 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:17'
+      timezone: Europe/Paris
+    groups:
+      actions:
+        patterns:
+          - '*'
+
+  - package-ecosystem: npm
+    directory: /apps/game-client
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:27'
+      timezone: Europe/Paris
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: nuget
+    directory: /services/game-engine
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:37'
+      timezone: Europe/Paris
+    groups:
+      game-engine-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: nuget
+    directory: /services/player
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:47'
+      timezone: Europe/Paris
+    groups:
+      player-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: nuget
+    directory: /services/catalog
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:57'
+      timezone: Europe/Paris
+    groups:
+      catalog-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: nuget
+    directory: /packages/shared-building-blocks
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:07'
+      timezone: Europe/Paris
+    groups:
+      shared-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker
+    directory: /services/game-engine
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: '05:17'
+      timezone: Europe/Paris
+
+  - package-ecosystem: docker
+    directory: /services/player
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: '05:27'
+      timezone: Europe/Paris
+
+  - package-ecosystem: docker
+    directory: /services/catalog
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: '05:37'
+      timezone: Europe/Paris
+
+  - package-ecosystem: docker
+    directory: /apps/game-client
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: '05:47'
+      timezone: Europe/Paris

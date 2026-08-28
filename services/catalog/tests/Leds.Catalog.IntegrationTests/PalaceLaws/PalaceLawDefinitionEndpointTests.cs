@@ -1,17 +1,16 @@
 ﻿using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using System.Numerics;
 
 namespace Leds.Catalog.IntegrationTests.PalaceLaws;
 
+[Collection("CatalogApi")]
 public sealed class PalaceLawDefinitionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public PalaceLawDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    public PalaceLawDefinitionEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

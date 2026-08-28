@@ -1,12 +1,13 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Application.Runs.ProgressRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase
 {
     public RoomBossProgressionEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
@@ -14,84 +15,114 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, I
     }
 
     [Fact]
-    public async Task RoomProgression_ShouldEventuallyReachRoomBoss_AndCompleteRoom_WhenBossIsResolved()
+    public async Task RoomProgression_ShouldRemainPlayable_WithoutAuthoredHallBoss()
     {
         var startRunResponse = await StartRunAsync();
 
         var runId = startRunResponse.Run.Id;
-        var currentRoom = startRunResponse.Run.CurrentRoom;
+        var room = startRunResponse.Run.CurrentRoom;
+        room.BossPreview.Should().BeNull(
+            because: "the authored Hall is a free-exploration social room, not a forced boss room");
 
-        while (currentRoom.CurrentNodeDepth < currentRoom.MaxNodeDepth)
+        var candidates = room.Nodes
+            .Where(node => node.State == "Available" && node.Type is not "Exit")
+            .Where(node => node.Type is "Item" or "Combat" or "Elite" or "Rare")
+            .Where(node => HasSafePath(room, node))
+            .OrderBy(node => node.IsInitial ? 0 : 1)
+            .ThenBy(node => node.ContactBehavior == "None" ? 0 : 1)
+            .ToArray();
+
+        candidates.Should().NotBeEmpty(
+            because: "the Hall must expose at least one reachable directly-resolvable encounter before progression");
+
+        var encounter = candidates[0];
+        if (encounter.ContactBehavior == "None")
         {
-            var nodeToChoose = currentRoom.AvailableNodes.First();
-
-            var chooseResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
-                content: null);
-
-            var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
-
-            chooseResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: chooseBody);
-
-            var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
-
-            resolvedPayload.Run.Status.Should().Be("Active");
-            resolvedPayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
-
-            var progressResponse = await Client.PostAsync(
-                $"/api/v2/runs/{runId}/progress",
-                content: null);
-
-            var progressBody = await progressResponse.Content.ReadAsStringAsync();
-
-            progressResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: progressBody);
-
-            var progressPayload = await progressResponse.Content
-                .ReadFromJsonAsync<ProgressRunResponse>();
-
-            progressPayload.Should().NotBeNull();
-
-            currentRoom = progressPayload!.Run.CurrentRoom;
-
-            currentRoom.AvailableNodes.Should().NotBeEmpty();
-            currentRoom.AvailableNodes.Should().OnlyContain(node =>
-                node.Row == currentRoom.CurrentNodeDepth);
+            await MovePartyAndEnterNodeAsync(runId, encounter);
+        }
+        else
+        {
+            await MovePartyToNodeAsync(runId, encounter);
         }
 
-        currentRoom.State.Should().Be("BossReached");
-        currentRoom.CurrentNodeDepth.Should().Be(currentRoom.MaxNodeDepth);
-        currentRoom.AvailableNodes.Should().ContainSingle();
+        var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
+        resolvedPayload.Run.Status.Should().Be("Active");
+        resolvedPayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
 
-        var bossNode = currentRoom.AvailableNodes.Single();
-
-        bossNode.Type.Should().Be("RoomBoss");
-        bossNode.IsBoss.Should().BeTrue();
-        bossNode.State.Should().Be("Available");
-
-        var chooseBossResponse = await Client.PostAsync(
-            $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
+        var progressResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/progress",
             content: null);
+        var progressBody = await progressResponse.Content.ReadAsStringAsync();
+        progressResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: progressBody);
 
-        var chooseBossBody = await chooseBossResponse.Content.ReadAsStringAsync();
+        var progressed = await progressResponse.Content.ReadFromJsonAsync<ProgressRunResponse>();
+        progressed.Should().NotBeNull();
+        progressed!.Run.Status.Should().Be("Active");
+        progressed.Run.CurrentRoom.State.Should().Be("Active");
+        progressed.Run.CurrentRoom.Nodes.Single(node => node.Id == encounter.Id)
+            .State.Should().Be("Resolved");
+    }
 
-        chooseBossResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: chooseBossBody);
+    private static bool HasSafePath(RoomDto room, MapNodeDto target)
+    {
+        var grid = room.Grid!;
+        var start = (X: grid.PartyX, Y: grid.PartyY);
+        var destination = (X: target.Lane, Y: target.Row);
+        if (start == destination)
+        {
+            return false;
+        }
 
-        var finalPayload = await ResolveAndHandleCombatAsync(runId);
+        var obstacles = grid.ObstacleCells
+            .Select(cell => (X: cell[0], Y: cell[1]))
+            .ToHashSet();
+        var triggers = room.Nodes
+            .Where(node =>
+                node.Id != target.Id
+                && node.State == "Available"
+                && node.ContactBehavior is "TriggerOnEnter" or "Blocking")
+            .Select(node => (X: node.Lane, Y: node.Row))
+            .ToHashSet();
 
-        finalPayload.Run.Status.Should().Be("RoomResolved");
-        finalPayload.Run.CurrentRoom.State.Should().Be("Completed");
+        var queue = new Queue<(int X, int Y)>();
+        var visited = new HashSet<(int X, int Y)> { start };
+        queue.Enqueue(start);
 
-        var allNodes = finalPayload.Run.CurrentRoom.Nodes.ToArray();
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current == destination)
+            {
+                return true;
+            }
 
-        allNodes.Single(node => node.Id == bossNode.Id)
-            .State
-            .Should()
-            .Be("Resolved");
+            foreach (var next in new[]
+                     {
+                         (X: current.X + 1, Y: current.Y),
+                         (X: current.X - 1, Y: current.Y),
+                         (X: current.X, Y: current.Y + 1),
+                         (X: current.X, Y: current.Y - 1)
+                     })
+            {
+                if (next.X < 0 || next.X >= grid.Width
+                    || next.Y < 0 || next.Y >= grid.Height)
+                {
+                    continue;
+                }
+
+                var index = (next.Y * grid.Width) + next.X;
+                if (!grid.FloorCells[index]
+                    || obstacles.Contains(next)
+                    || triggers.Contains(next)
+                    || !visited.Add(next))
+                {
+                    continue;
+                }
+
+                queue.Enqueue(next);
+            }
+        }
+
+        return false;
     }
 }

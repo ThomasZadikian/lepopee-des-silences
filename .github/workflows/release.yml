@@ -1,0 +1,185 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - develop
+      - T-RPG
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Resolve tested revision
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    outputs:
+      source-sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Export immutable revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  game-engine:
+    needs: prepare
+    uses: ./.github/workflows/_container.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image-name: game-engine
+      dockerfile: services/game-engine/Dockerfile
+      source-ref: ${{ needs.prepare.outputs.source-sha }}
+
+  player:
+    needs: prepare
+    uses: ./.github/workflows/_container.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image-name: player
+      dockerfile: services/player/Dockerfile
+      source-ref: ${{ needs.prepare.outputs.source-sha }}
+
+  catalog:
+    needs: prepare
+    uses: ./.github/workflows/_container.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image-name: catalog
+      dockerfile: services/catalog/Dockerfile
+      source-ref: ${{ needs.prepare.outputs.source-sha }}
+
+  game-client:
+    needs: prepare
+    uses: ./.github/workflows/_container.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      image-name: game-client
+      dockerfile: apps/game-client/Dockerfile
+      source-ref: ${{ needs.prepare.outputs.source-sha }}
+      build-args: VITE_GAME_ENGINE_API_URL=/game-engine
+
+  migrations:
+    name: Immutable EF migration bundles
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.prepare.outputs.source-sha }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+      - name: Restore local tools
+        run: dotnet tool restore
+      - name: Build migration bundles
+        run: |
+          mkdir -p artifacts/migrations
+          dotnet ef migrations bundle \
+            --project services/game-engine/src/Leds.GameEngine.Infrastructure/Leds.GameEngine.Infrastructure.csproj \
+            --startup-project services/game-engine/src/Leds.GameEngine.Api/Leds.GameEngine.Api.csproj \
+            --context GameEngineDbContext \
+            --configuration Release \
+            --self-contained \
+            --target-runtime linux-x64 \
+            --output artifacts/migrations/game-engine
+          dotnet ef migrations bundle \
+            --project services/player/src/Leds.Player.Infrastructure/Leds.Player.Infrastructure.csproj \
+            --startup-project services/player/src/Leds.Player.Api/Leds.Player.Api.csproj \
+            --context PlayerDbContext \
+            --configuration Release \
+            --self-contained \
+            --target-runtime linux-x64 \
+            --output artifacts/migrations/player
+          dotnet ef migrations bundle \
+            --project services/catalog/src/Leds.Catalog.Infrastructure/Leds.Catalog.Infrastructure.csproj \
+            --startup-project services/catalog/src/Leds.Catalog.Api/Leds.Catalog.Api.csproj \
+            --context CatalogDbContext \
+            --configuration Release \
+            --self-contained \
+            --target-runtime linux-x64 \
+            --output artifacts/migrations/catalog
+      - name: Upload migration bundles
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: migration-bundles
+          path: artifacts/migrations/
+          if-no-files-found: error
+          retention-days: 30
+
+  manifest:
+    name: Release manifest
+    needs:
+      - prepare
+      - game-engine
+      - player
+      - catalog
+      - game-client
+      - migrations
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Create immutable release manifest
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          GAME_ENGINE_DIGEST: ${{ needs.game-engine.outputs.digest }}
+          PLAYER_DIGEST: ${{ needs.player.outputs.digest }}
+          CATALOG_DIGEST: ${{ needs.catalog.outputs.digest }}
+          GAME_CLIENT_DIGEST: ${{ needs.game-client.outputs.digest }}
+        run: |
+          repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          mkdir -p artifacts/release
+          {
+            echo "SOURCE_SHA=$SOURCE_SHA"
+            echo "GAME_ENGINE_IMAGE=ghcr.io/$repository/game-engine@$GAME_ENGINE_DIGEST"
+            echo "PLAYER_IMAGE=ghcr.io/$repository/player@$PLAYER_DIGEST"
+            echo "CATALOG_IMAGE=ghcr.io/$repository/catalog@$CATALOG_DIGEST"
+            echo "GAME_CLIENT_IMAGE=ghcr.io/$repository/game-client@$GAME_CLIENT_DIGEST"
+          } > artifacts/release/release.env
+
+          {
+            echo "## Release $SOURCE_SHA"
+            echo
+            echo "| Component | OCI digest |"
+            echo "| --- | --- |"
+            echo "| game-engine | \`$GAME_ENGINE_DIGEST\` |"
+            echo "| player | \`$PLAYER_DIGEST\` |"
+            echo "| catalog | \`$CATALOG_DIGEST\` |"
+            echo "| game-client | \`$GAME_CLIENT_DIGEST\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload immutable release manifest
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: release-manifest
+          path: artifacts/release/release.env
+          if-no-files-found: error
+          retention-days: 30

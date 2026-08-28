@@ -1,0 +1,187 @@
+name: Reusable Compose deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      source-sha:
+        required: true
+        type: string
+      release-run-id:
+        required: true
+        type: string
+    secrets:
+      DEPLOY_HOST:
+        required: true
+      DEPLOY_USER:
+        required: true
+      DEPLOY_PATH:
+        required: true
+      DEPLOY_SSH_PRIVATE_KEY:
+        required: true
+      DEPLOY_KNOWN_HOSTS:
+        required: true
+      GHCR_READ_TOKEN:
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout deployment descriptor
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.source-sha }}
+
+      - name: Download migration bundles from release
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: migration-bundles
+          path: artifacts/migrations
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.release-run-id }}
+
+      - name: Download immutable release manifest
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: release-manifest
+          path: artifacts/release
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.release-run-id }}
+
+      - name: Configure pinned SSH host
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Stage immutable release
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SOURCE_SHA: ${{ inputs.source-sha }}
+        run: |
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          release_dir="$DEPLOY_PATH/releases/$SOURCE_SHA"
+          ssh "$target" "mkdir -p '$release_dir/migrations' '$DEPLOY_PATH/shared'"
+          scp deploy/compose.yml "$target:$release_dir/compose.yml"
+          scp artifacts/release/release.env "$target:$release_dir/release.env"
+          scp artifacts/migrations/* "$target:$release_dir/migrations/"
+
+      - name: Authenticate deployment host to GHCR
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_READ_TOKEN" |
+            ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+              "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
+
+      - name: Migrate, deploy and smoke-test
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SOURCE_SHA: ${{ inputs.source-sha }}
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash -s -- '$DEPLOY_PATH' '$SOURCE_SHA'" <<'REMOTE'
+          set -euo pipefail
+          deploy_path=$1
+          source_sha=$2
+          release_dir="$deploy_path/releases/$source_sha"
+          shared_env="$deploy_path/shared/.env"
+
+          if [[ ! -f "$shared_env" ]]; then
+            echo "Missing protected deployment configuration: $shared_env" >&2
+            exit 78
+          fi
+
+          cp "$shared_env" "$release_dir/.env"
+          printf '\n' >> "$release_dir/.env"
+          cat "$release_dir/release.env" >> "$release_dir/.env"
+          chmod 600 "$release_dir/.env"
+
+          cd "$release_dir"
+          previous_release=$(readlink -f "$deploy_path/current" 2>/dev/null || true)
+          manifest_sha=$(sed -n 's/^SOURCE_SHA=//p' release.env | tail -n 1)
+          if [[ "$manifest_sha" != "$source_sha" ]]; then
+            echo "Release manifest SHA mismatch: expected $source_sha, got $manifest_sha" >&2
+            exit 65
+          fi
+
+          chmod 700 migrations/*
+          docker compose pull
+          docker compose up -d --wait \
+            game-engine-postgres player-postgres catalog-postgres
+
+          read_env() {
+            sed -n "s/^$1=//p" .env | tail -n 1
+          }
+          game_engine_connection_string=$(read_env GAME_ENGINE_CONNECTION_STRING)
+          player_connection_string=$(read_env PLAYER_CONNECTION_STRING)
+          catalog_connection_string=$(read_env CATALOG_CONNECTION_STRING)
+          http_port=$(read_env HTTP_PORT)
+
+          for value in \
+            "$game_engine_connection_string" \
+            "$player_connection_string" \
+            "$catalog_connection_string"; do
+            if [[ -z "$value" ]]; then
+              echo "A required database connection string is missing." >&2
+              exit 78
+            fi
+          done
+
+          ./migrations/game-engine --connection "$game_engine_connection_string"
+          ./migrations/player --connection "$player_connection_string"
+          ./migrations/catalog --connection "$catalog_connection_string"
+
+          rollback_application() {
+            if [[ -n "$previous_release" && -f "$previous_release/compose.yml" ]]; then
+              echo "Application smoke test failed; restoring previous OCI digests." >&2
+              cd "$previous_release"
+              docker compose up -d --wait
+            fi
+          }
+
+          if ! docker compose up -d --wait; then
+            rollback_application
+            exit 1
+          fi
+          smoke_paths=(
+            /health/live
+            /game-engine/health/live
+            /player/health/live
+            /catalog/health/live
+          )
+          smoke_failed=false
+          for path in "${smoke_paths[@]}"; do
+            if ! curl --fail --silent --show-error \
+              "http://127.0.0.1:${http_port:-8080}$path"; then
+              smoke_failed=true
+            fi
+          done
+          if [[ "$smoke_failed" == true ]]; then
+            rollback_application
+            exit 1
+          fi
+          ln -sfn "$release_dir" "$deploy_path/current"
+          REMOTE

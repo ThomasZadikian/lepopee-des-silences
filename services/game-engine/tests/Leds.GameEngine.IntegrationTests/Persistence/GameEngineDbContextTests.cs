@@ -101,7 +101,8 @@ public sealed class GameEngineDbContextTests : IDisposable
         _context.Runs.Add(entity);
         await _context.SaveChangesAsync();
 
-        entity.Status = "Completed";
+        entity.Status = "Resolved";
+        entity.Outcome = "Success";
         entity.CurrentRoomIndex = 3;
         entity.CurrentHp = 25;
         entity.UpdatedAtUtc = now.AddMinutes(10);
@@ -110,7 +111,8 @@ public sealed class GameEngineDbContextTests : IDisposable
         var loaded = await _context.Runs.FindAsync(runId);
 
         loaded.Should().NotBeNull();
-        loaded!.Status.Should().Be("Completed");
+        loaded!.Status.Should().Be("Resolved");
+        loaded.Outcome.Should().Be("Success");
         loaded.CurrentRoomIndex.Should().Be(3);
         loaded.CurrentHp.Should().Be(25);
     }

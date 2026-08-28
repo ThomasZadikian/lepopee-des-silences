@@ -12,15 +12,19 @@ using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Common;
 
+[CollectionDefinition("GameEngineApi")]
+public sealed class GameEngineApiCollection : ICollectionFixture<GameEngineApiFactory>;
+
 public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public const string DevToolsToken = "integration-devtools-token";
+
     private PostgreSqlContainer? _container;
     private readonly SemaphoreSlim _resetLock = new(1, 1);
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+        _container = new PostgreSqlBuilder("postgres:16")
             .Build();
 
         await _container.StartAsync();
@@ -54,7 +58,9 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
                 ["ConnectionStrings:GameEngineDb"] = GetConnectionString(),
                 ["CatalogGateway:BaseUrl"] = "http://catalog.test",
                 ["PlayerGateway:BaseUrl"] = "http://player.test",
-                ["Outbox:DispatcherEnabled"] = "false"
+                ["Outbox:DispatcherEnabled"] = "false",
+                ["DevTools:Enabled"] = "true",
+                ["DevTools:Token"] = DevToolsToken
             });
         });
 
@@ -80,7 +86,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
         return _container.GetConnectionString();
     }
 
-    private void ResetDatabase()
+    public void ResetDatabase()
     {
         _resetLock.Wait();
 
@@ -126,13 +132,13 @@ public sealed class TestPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                 "character.player.self",
                 "Le Porteur",
                 new PlayerRunSnapshotCharacterStats(
-                    MaxVitality: 100,
-                    AttackPower: 12,
-                    Defense: 6,
+                    MaxVitality: 1000,
+                    AttackPower: 100,
+                    Defense: 100,
                     StartingGuard: 0,
-                    Speed: 10,
-                    Initiative: 10,
-                    Focus: 0,
+                    Speed: 20,
+                    Initiative: 20,
+                    Focus: 10,
                     Mana: 0,
                     Charge: 0),
                 [

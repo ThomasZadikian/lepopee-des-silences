@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { describe, expect, it } from 'vitest';
-import { useCamera } from './useCamera';
+import { EXPLORATION_ZOOM, useCamera } from './useCamera';
 import { DEFAULT_ZOOM } from './useTerrainDrawPlan';
 
 describe('useCamera', () => {
@@ -9,7 +9,11 @@ describe('useCamera', () => {
     const y = ref(4);
     const { camera } = useCamera(x, y);
 
-    expect(camera.value).toEqual({ camX: 3, camY: 4, zoom: DEFAULT_ZOOM });
+    expect(camera.value).toEqual({
+      camX: 3,
+      camY: 4,
+      zoom: DEFAULT_ZOOM * EXPLORATION_ZOOM,
+    });
   });
 
   it('tracks the party refs reactively as they animate', () => {
@@ -20,6 +24,10 @@ describe('useCamera', () => {
     x.value = 5.5; // usePartyTokenPath animates fractionally mid-step
     y.value = 2.25;
 
-    expect(camera.value).toEqual({ camX: 5.5, camY: 2.25, zoom: DEFAULT_ZOOM });
+    expect(camera.value).toEqual({
+      camX: 5.5,
+      camY: 2.25,
+      zoom: DEFAULT_ZOOM * EXPLORATION_ZOOM,
+    });
   });
 });

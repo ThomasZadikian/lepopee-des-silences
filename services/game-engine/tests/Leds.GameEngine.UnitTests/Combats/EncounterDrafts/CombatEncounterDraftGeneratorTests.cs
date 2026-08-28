@@ -22,7 +22,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MaxRiskLevel: 2,
         Tags: new[] { "threshold", "fragile" },
         SkillKeys: new[] { "skill.basic.strike" },
-        Menace: 1);
+        Menace: 1,
+        Registre: "neutral");
 
     private static readonly CatalogEnemyDefinition ResistanceInterieure = new(
         Key: "enemy.threshold.inner-resistance",
@@ -35,7 +36,8 @@ public sealed class CombatEncounterDraftGeneratorTests
         MaxRiskLevel: 3,
         Tags: new[] { "threshold", "guard" },
         SkillKeys: new[] { "skill.basic.strike", "skill.basic.shield" },
-        Menace: 2);
+        Menace: 2,
+        Registre: "neutral");
 
     private static readonly CatalogSkillDefinition SkillStrike = new(
         Key: "skill.basic.strike",
@@ -87,7 +89,21 @@ public sealed class CombatEncounterDraftGeneratorTests
         RoomIndex: 0,
         RiskLevel: 2,
         EncounterType: "Combat",
-        EnemyCount: 1);
+        EnemyCount: 1,
+        PartyAllies:
+        [
+            new CombatEncounterDraftAlly(
+                AllyKey: "player.self",
+                DisplayName: "Protagonist",
+                Role: "Protagonist",
+                Tags: ["player"],
+                EmotionalRegister: "memoire",
+                IsProtagonist: true,
+                MaxVitality: 100,
+                AttackPower: 10,
+                Defense: 10,
+                CharacterInstanceId: Guid.NewGuid())
+        ]);
 
     private static Mock<ICatalogContentGateway> CreateGatewayWithSkills(
         CatalogEnemyDefinition[] enemies)
@@ -371,11 +387,12 @@ public sealed class CombatEncounterDraftGeneratorTests
         var preferred = draft.Enemies.Single(e => e.EnemyKey == preferredEnemy.Key);
         var escort = draft.Enemies.Single(e => e.EnemyKey == escortEnemy.Key);
 
-        // EliteStatMultiplier = 1.5 applied only to the preferred pick: ceil(10 * 1.5) = 15.
-        preferred.AttackPower.Should().Be(15);
-        preferred.Defense.Should().Be(15);
+        // The preferred pick receives both the two-enemy group scaling (0.92) and the
+        // Elite bonus (1.5): ceil(10 * 0.92 * 1.5) = 14.
+        preferred.AttackPower.Should().Be(14);
+        preferred.Defense.Should().Be(14);
 
-        // The escort gets no bonus at all — same base values as authored.
+        // The escort receives group scaling, but no Elite bonus.
         escort.AttackPower.Should().Be(10);
         escort.Defense.Should().Be(10);
     }

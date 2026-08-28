@@ -1,12 +1,12 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.StartRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class StartRunEndpointTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class StartRunEndpointTests
 {
     private readonly HttpClient _client;
 
@@ -39,7 +39,7 @@ public sealed class StartRunEndpointTests : IClassFixture<GameEngineApiFactory>
         payload!.Run.Id.Should().NotBeEmpty();
         payload.Run.PlayerId.Should().Be(playerId);
         payload.Run.Seed.Should().StartWith("seed-");
-        payload.Run.GeneratorVersion.Should().Be("room-map-layout-1.0.0");
+        payload.Run.GeneratorVersion.Should().Be("grid-room-layout-1.0.0");
         payload.Run.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
         payload.Run.Status.Should().Be("Active");
         payload.Run.CurrentDepth.Should().Be(0);
@@ -52,39 +52,22 @@ public sealed class StartRunEndpointTests : IClassFixture<GameEngineApiFactory>
         payload.Run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
         payload.Run.CurrentRoom.MaxNodeDepth.Should().BeGreaterThan(0);
 
-        payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
-        payload.Run.CurrentRoom.BossPreview.BossId.Should().Be("boss.threshold.warden");
-        payload.Run.CurrentRoom.BossPreview.Name.Should().Be("Gardien du Seuil");
-        payload.Run.CurrentRoom.BossPreview.RoomType.Should().Be("Threshold");
-        payload.Run.CurrentRoom.BossPreview.DangerHint.Should().Be("High");
+        payload.Run.CurrentRoom.BossPreview.Should().BeNull(
+            because: "the entrance Hall is a spatial hub, not a mandatory boss room");
 
         var allNodes = payload.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
-        allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeGreaterThan(0,
+            because: "authored rooms may legitimately contain more nodes than procedural rooms");
+        allNodes.Should().NotBeEmpty();
+        allNodes.Count().Should().BeLessThanOrEqualTo(payload.Run.CurrentRoom.TotalNodeCount,
+            because: "fog of war deliberately withholds hidden and unrevealed content");
+        allNodes.Should().OnlyContain(node => node.State == "Available");
+        allNodes.Should().NotContain(node => node.IsBoss);
 
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
-
-        allNodes
-            .Where(node => node.Row == 0)
-            .Should()
-            .OnlyContain(node => node.State == "Available");
-
-        allNodes
-            .Where(node => node.Row > 0)
-            .Should()
-            .OnlyContain(node => node.State == "Planned");
-
-        allNodes.Should().ContainSingle(node => node.IsBoss);
-
-        var bossNode = allNodes.Single(node => node.IsBoss);
-
-        bossNode.State.Should().Be("Planned");
-        bossNode.Type.Should().Be("RoomBoss");
-        bossNode.Row.Should().Be(payload.Run.CurrentRoom.MaxNodeDepth);
+        payload.Run.CurrentRoom.Grid.Should().NotBeNull();
+        payload.Run.CurrentRoom.Grid!.Width.Should().BeGreaterThan(0);
+        payload.Run.CurrentRoom.Grid.Height.Should().BeGreaterThan(0);
     }
 
     [Fact]

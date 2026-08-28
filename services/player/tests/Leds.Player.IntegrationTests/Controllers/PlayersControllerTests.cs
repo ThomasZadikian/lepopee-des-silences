@@ -3,15 +3,15 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.CreatePlayerProfile;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.Player.IntegrationTests.Controllers;
 
-public sealed class PlayersControllerTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("PlayerApi")]
+public sealed class PlayersControllerTests
 {
     private readonly HttpClient _client;
 
-    public PlayersControllerTests(WebApplicationFactory<Program> factory)
+    public PlayersControllerTests(PlayerApiFactory factory)
     {
         _client = factory.CreateClient();
     }

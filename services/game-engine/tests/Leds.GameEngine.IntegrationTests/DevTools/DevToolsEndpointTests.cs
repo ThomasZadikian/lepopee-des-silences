@@ -2,14 +2,14 @@ using FluentAssertions;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.DevTools;
 
-public sealed class DevToolsEndpointTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class DevToolsEndpointTests
 {
     private const string Token = "local-devtools-token";
     private readonly GameEngineApiFactory _factory;
@@ -152,13 +152,16 @@ public sealed class DevToolsEndpointTests : IClassFixture<GameEngineApiFactory>
         var response = await client.PostAsJsonAsync(
             $"/api/dev/v2/runs/{run.Run.Id}/advance-rooms",
             new { Count = 2 });
+        var body = await response.Content.ReadAsStringAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
         var payload = await response.Content.ReadFromJsonAsync<DevToolsRunDebugResult>();
 
         payload.Should().NotBeNull();
         payload!.Run.CurrentDepth.Should().Be(2);
-        payload.Run.Rooms.Should().HaveCount(3);
+        payload.Run.Rooms.Should().ContainSingle()
+            .Which.Id.Should().Be(payload.Run.CurrentRoom.Id,
+                because: "the runtime DTO intentionally exposes only the current spatial room");
         payload.Run.MarkovMatrixVersion.Should().Be(run.Run.MarkovMatrixVersion);
     }
 
@@ -168,6 +171,8 @@ public sealed class DevToolsEndpointTests : IClassFixture<GameEngineApiFactory>
         bool includeToken,
         string? token = null)
     {
+        _factory.ResetDatabase();
+
         var client = _factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);

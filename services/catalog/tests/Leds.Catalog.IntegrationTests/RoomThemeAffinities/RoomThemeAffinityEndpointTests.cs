@@ -1,16 +1,15 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 
 namespace Leds.Catalog.IntegrationTests.RoomThemeAffinities;
 
+[Collection("CatalogApi")]
 public sealed class RoomThemeAffinityEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public RoomThemeAffinityEndpointTests(WebApplicationFactory<Program> factory)
+    public RoomThemeAffinityEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

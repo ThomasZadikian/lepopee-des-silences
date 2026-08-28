@@ -57,7 +57,9 @@ public sealed class RunProgressionModeTests
             gridHeight: 8,
             movementBudget: 0,
             startX: 0,
-            startY: 0);
+            startY: 0,
+            layoutTemplateKey: "test.threshold",
+            layoutTemplateVersion: "1.0");
 
         return Run.StartNew(
             Guid.NewGuid(),

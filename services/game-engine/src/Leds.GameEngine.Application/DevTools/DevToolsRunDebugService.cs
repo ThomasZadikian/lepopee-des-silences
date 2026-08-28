@@ -77,16 +77,19 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             if (IsClosed(run) || run.CurrentDepth >= 10)
                 break;
 
-            // No more Interlude to force through — walk the first exit the current room
-            // actually offers, same path a real player would confirm.
-            var exitNode = run.CurrentRoom.Nodes.FirstOrDefault(n => n.EventType == NodeEventType.Exit);
-            if (exitNode is null)
+            // Advancing rooms is an explicit debug fast-forward: keep the real walkable grid,
+            // destination resolution, room generation and exit confirmation, but deliberately
+            // suppress intermediate content interactions. Otherwise a contact node can stop the
+            // move and make the tool incapable of crossing an authored hub such as the Hall.
+            var exitPlan = FindReachableExit(run.CurrentRoom);
+            if (exitPlan is null)
                 break;
 
+            var (exitNode, path, cost) = exitPlan.Value;
             var grid = run.CurrentRoom.Grid;
             if (grid.PartyX != exitNode.Lane || grid.PartyY != exitNode.Row)
             {
-                run.MoveParty(exitNode.Lane, exitNode.Row);
+                grid.MoveTo(path, cost, [exitNode]);
             }
 
             var destination = await ResolveExitDestinationAsync(exitNode, cancellationToken);
@@ -100,6 +103,30 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         return new DevToolsRunDebugResult(
             advanced == 1 ? "Advanced 1 room." : $"Advanced {advanced} rooms.",
             RunDto.FromDomain(run));
+    }
+
+    private static (MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?
+        FindReachableExit(Room room)
+    {
+        var occupiedDestinations = room.RoomNpcs
+            .Select(npc => (npc.X, npc.Y))
+            .ToHashSet();
+
+        return room.Nodes
+            .Where(node =>
+                node.EventType == NodeEventType.Exit
+                && node.State == NodeState.Available
+                && !occupiedDestinations.Contains((node.Lane, node.Row)))
+            .Select(node =>
+                (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row)))
+            .Where(candidate => candidate.Route is not null)
+            .OrderBy(candidate => candidate.Route!.Value.Cost)
+            .Select(candidate =>
+                ((MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?)(
+                    candidate.Node,
+                    candidate.Route!.Value.Path,
+                    candidate.Route.Value.Cost))
+            .FirstOrDefault();
     }
 
     public async Task<DevToolsRunDebugResult> ForceCurrentRoomPalaceStateAsync(

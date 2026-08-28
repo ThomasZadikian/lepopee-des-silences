@@ -36,8 +36,17 @@ public sealed class ItemDefinitionsController : ControllerBase
         string? key,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return BadRequest(new
+            {
+                title = "Item definition key is required.",
+                status = StatusCodes.Status400BadRequest
+            });
+        }
+
         var response = await _sender.Send(
-            new GetItemDefinitionByKeyQuery(key ?? string.Empty),
+            new GetItemDefinitionByKeyQuery(key),
             cancellationToken);
 
         if (response.Definition is null)

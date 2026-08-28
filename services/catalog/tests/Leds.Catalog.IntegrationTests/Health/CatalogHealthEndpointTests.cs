@@ -1,16 +1,15 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.Catalog.IntegrationTests.Health;
 
+[Collection("CatalogApi")]
 public sealed class CatalogHealthEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public CatalogHealthEndpointTests(WebApplicationFactory<Program> factory)
+    public CatalogHealthEndpointTests(CatalogApiFactory factory)
     {
         _client = factory.CreateClient();
     }

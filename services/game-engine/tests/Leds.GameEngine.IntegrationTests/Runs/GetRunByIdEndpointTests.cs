@@ -2,10 +2,8 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.GetRunById;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -13,15 +11,17 @@ using System.Text.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory>
+[Collection("GameEngineApi")]
+public sealed class GetRunByIdEndpointTests : RunIntegrationTestBase
 {
     private readonly GameEngineApiFactory _factory;
     private readonly HttpClient _client;
 
     public GetRunByIdEndpointTests(GameEngineApiFactory factory)
+        : base(factory.CreateClient())
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = Client;
     }
 
     [Fact]
@@ -41,23 +41,18 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
         payload.Run.Status.Should().Be("Active");
         var allNodes = payload!.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
-        allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
-
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
-        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
-
-        allNodes.Where(node => node.Row > 0)
-            .Should()
-            .OnlyContain(node => node.State == "Planned");
-
-        allNodes.Should().ContainSingle(node => node.IsBoss);
-
-        payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
-        payload.Run.CurrentRoom.BossPreview.Name.Should().NotBeNullOrWhiteSpace();
-        payload.Run.PalaceIndicators.Should().BeEmpty();
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeGreaterThan(0,
+            because: "authored rooms may legitimately contain more nodes than procedural rooms");
+        allNodes.Should().NotBeEmpty();
+        allNodes.Count().Should().BeLessThanOrEqualTo(payload.Run.CurrentRoom.TotalNodeCount,
+            because: "the room DTO applies fog of war");
+        allNodes.Should().OnlyContain(node => node.State == "Available");
+        payload.Run.CurrentRoom.BossPreview.Should().BeNull();
+        payload.Run.CurrentRoom.Grid.Should().NotBeNull();
+        payload.Run.PalaceIndicators.Should().OnlyContain(indicator =>
+            !string.IsNullOrWhiteSpace(indicator.Key)
+            && !string.IsNullOrWhiteSpace(indicator.Label)
+            && !string.IsNullOrWhiteSpace(indicator.Source));
     }
 
     [Fact]
@@ -101,9 +96,11 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
 
         var payload = await response.Content.ReadFromJsonAsync<GetRunByIdResponse>();
         payload.Should().NotBeNull();
-        payload!.Run.PalaceIndicators.Should().ContainSingle();
+        payload!.Run.PalaceIndicators.Should().ContainSingle(indicator =>
+            indicator.Key == "palace.whispers");
 
-        var indicator = payload.Run.PalaceIndicators!.Single();
+        var indicator = payload.Run.PalaceIndicators!.Single(candidate =>
+            candidate.Key == "palace.whispers");
         indicator.Key.Should().Be("palace.whispers");
         indicator.Label.Should().Be("Murmures du Palais");
         indicator.Description.Should().Be("Le Palais observe la travers�e.");
@@ -115,7 +112,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
             .GetProperty("run")
             .GetProperty("palaceIndicators")
             .EnumerateArray()
-            .Single();
+            .Single(candidate => candidate.GetProperty("key").GetString() == "palace.whispers");
 
         var propertyNames = indicatorJson
             .EnumerateObject()
@@ -248,18 +245,11 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
     }
 
     [Fact]
-    public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeChoice()
+    public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeSelection()
     {
-        var startRunResponse = await StartRunAsync();
-        var runId = startRunResponse.Run.Id;
-
-        var firstNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
-
-        var chooseResponse = await _client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/choose",
-            new { });
-
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var (run, combatNode) = await StartRunWithCombatNodeAsync();
+        var runId = run.Id;
+        await MovePartyToNodeAsync(runId, combatNode);
 
         var response = await _client.GetAsync($"/api/v2/runs/{runId}");
 
@@ -282,25 +272,4 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory
         startRunResponse.Run.Party!.Members.Should().NotBeEmpty();
     }
 
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new
-            {
-                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
-            });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
-    }
 }
