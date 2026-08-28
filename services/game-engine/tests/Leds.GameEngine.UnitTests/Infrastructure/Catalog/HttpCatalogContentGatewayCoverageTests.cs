@@ -152,12 +152,13 @@ public sealed class HttpCatalogContentGatewayCoverageTests
                 RewardPowerMultiplier: 1.5));
 
         result.Should().BeEmpty();
-        var uri = handler.Requests.Should().ContainSingle().Subject.RequestUri!.ToString();
-        uri.Should().Contain("sourceType=Combat%20Victory");
-        uri.Should().Contain("depth=4");
-        uri.Should().Contain("combatTier=Sombre%20%2B");
-        uri.Should().Contain("difficultyMultiplier=1.25");
-        uri.Should().Contain("rewardPowerMultiplier=1.5");
+        var requestUri = handler.Requests.Should().ContainSingle().Subject.RequestUri!;
+        var query = Uri.UnescapeDataString(requestUri.Query);
+        query.Should().Contain("sourceType=Combat Victory");
+        query.Should().Contain("depth=4");
+        query.Should().Contain("combatTier=Sombre +");
+        query.Should().Contain("difficultyMultiplier=1.25");
+        query.Should().Contain("rewardPowerMultiplier=1.5");
     }
 
     [Fact]
