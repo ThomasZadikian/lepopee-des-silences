@@ -1,10 +1,12 @@
 using System.Reflection;
 using FluentAssertions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.UnitTests.Combats;
@@ -81,8 +83,7 @@ public sealed class CombatFactoryDeepBranchCoverageTests
     [Fact]
     public void ClimateStatBundle_ShouldCoverNoClimateIgnoredClimateEveryAuthoredBundleAndEmptyRoster()
     {
-        var climateType = typeof(CombatFactory).GetNestedType("RoomClimate", BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("RoomClimate enum was not found.");
+        var climateType = ClimateType();
         var combatant = CombatantWithSpeed("climate", 10);
         Invoke("ApplyClimateStatBundle", null, new[] { combatant });
         Invoke("ApplyClimateStatBundle", Enum.Parse(climateType, "Grey"), new[] { combatant });
@@ -115,6 +116,147 @@ public sealed class CombatFactoryDeepBranchCoverageTests
         ally.StatusEffects.Should().Contain(effect => effect.Stat == CombatStat.FlatManaCostBonus);
     }
 
+    [Fact]
+    public void RemainingScalarHelpers_ShouldCoverPositiveNegativeAndShortCircuitPaths()
+    {
+        ((int)Invoke("ComputeDotDurationExtensionTicks", (object)Array.Empty<RunModifier>())!).Should().Be(0);
+        var dot = Modifier(RunModifierType.DotDurationExtension, 2);
+        ((int)Invoke("ComputeDotDurationExtensionTicks", (object)new[] { dot })!).Should().BeGreaterThan(0);
+        dot.Consume(DateTime.UtcNow);
+        ((int)Invoke("ComputeDotDurationExtensionTicks", (object)new[] { dot })!).Should().Be(0);
+
+        ((bool)Invoke("ComputeDuelDamageAsymmetryEnabled", (object)Array.Empty<RunModifier>())!).Should().BeFalse();
+        var duel = Modifier(RunModifierType.DuelDamageAsymmetry, 1);
+        ((bool)Invoke("ComputeDuelDamageAsymmetryEnabled", (object)new[] { duel })!).Should().BeTrue();
+        duel.Consume(DateTime.UtcNow);
+        ((bool)Invoke("ComputeDuelDamageAsymmetryEnabled", (object)new[] { duel })!).Should().BeFalse();
+
+        Invoke("NormalizeCombatEffectType", "skill.basic.guard", "Damage").Should().Be("Guard");
+        Invoke("NormalizeCombatEffectType", "skill.other", "AddCurrentGuard").Should().Be("Guard");
+        Invoke("NormalizeCombatEffectType", "skill.other", "Damage").Should().Be("Damage");
+
+        ((int)Invoke("ApplySpeedMultiplier", 10, 1.0)!).Should().Be(10);
+        ((int)Invoke("ApplySpeedMultiplier", 10, 1.5)!).Should().Be(15);
+        ((int)Invoke("ApplySpeedMultiplier", 0, 0.5)!).Should().Be(1);
+
+        ((int)Invoke("ScalePlayerSkillPower", "Heal", 12, 2.0)!).Should().Be(12);
+        ((int)Invoke("ScalePlayerSkillPower", "Damage", 12, 2.0)!).Should().Be(24);
+        ((int)Invoke("ScalePlayerSkillPower", "DamageVitality", 12, 2.0)!).Should().Be(24);
+
+        ((int)Invoke("ScaleEnemySkillPower", "Damage", 10, 1.0, PalaceRoomState.Neutral)!).Should().Be(10);
+        ((int)Invoke("ScaleEnemySkillPower", "Damage", 10, 1.0, PalaceRoomState.Painful)!).Should().Be(9);
+        ((int)Invoke("ScaleEnemySkillPower", "Heal", 10, 1.0, PalaceRoomState.Painful)!).Should().Be(10);
+    }
+
+    [Fact]
+    public void EquipmentConditionHelpers_ShouldCoverRoomWeatherNullUnknownAndScalarAggregationPaths()
+    {
+        var climateType = ClimateType();
+        var rain = Enum.Parse(climateType, "Rain");
+
+        ((bool)Invoke("MatchesEquipmentCondition", null, "Montagne", rain)!).Should().BeFalse();
+        ((bool)Invoke("MatchesEquipmentCondition", "room:Montagne", "Montagne", rain)!).Should().BeTrue();
+        ((bool)Invoke("MatchesEquipmentCondition", "room:Montagne", "Jardin", rain)!).Should().BeFalse();
+        ((bool)Invoke("MatchesEquipmentCondition", "weather:Rain", "Montagne", null)!).Should().BeFalse();
+        ((bool)Invoke("MatchesEquipmentCondition", "weather:Rain", "Montagne", rain)!).Should().BeTrue();
+        ((bool)Invoke("MatchesEquipmentCondition", "weather:Hail", "Montagne", rain)!).Should().BeFalse();
+        ((bool)Invoke("MatchesEquipmentCondition", "other:value", "Montagne", rain)!).Should().BeFalse();
+
+        var effects = new CatalogItemEquipmentEffect[]
+        {
+            Effect("StatBonus", "Mana", 5, "room:Montagne"),
+            Effect("StatBonusPercent", "Mana", 50, "room:Montagne"),
+            Effect("StatBonus", "Speed", 99, "room:Montagne"),
+            Effect("StatBonus", "Mana", null, "room:Montagne"),
+            Effect("StatBonus", "Mana", 99, "room:Jardin")
+        };
+        ((int)Invoke("AdjustConditionalScalarStat", 10, "Mana", "Montagne", null, effects, 0)!).Should().Be(20);
+        ((int)Invoke("AdjustConditionalScalarStat", 0, "Mana", "Montagne", null, effects, 3)!).Should().Be(5);
+    }
+
+    [Fact]
+    public void ConditionalEquipmentBundle_ShouldCoverEveryValidationContinueAndApplicationPath()
+    {
+        var actor = CombatantWithSpeed("conditional", 10);
+        Invoke("ApplyConditionalEquipmentStatBundle", null, "Montagne", null, Array.Empty<CatalogItemEquipmentEffect>());
+        Invoke("ApplyConditionalEquipmentStatBundle", actor, "Montagne", null, Array.Empty<CatalogItemEquipmentEffect>());
+
+        var effects = new CatalogItemEquipmentEffect[]
+        {
+            Effect("StatBonus", null, 5, "room:Montagne"),
+            Effect("StatBonus", "Speed", null, "room:Montagne"),
+            Effect("StatBonus", "UnknownStat", 5, "room:Montagne"),
+            Effect("UnknownKind", "Speed", 5, "room:Montagne"),
+            Effect("StatBonus", "Speed", 5, "room:Jardin"),
+            Effect("StatBonusPercent", "Speed", 10, "room:Montagne"),
+            Effect("StatBonus", "Defense", 5, "room:Montagne")
+        };
+
+        Invoke("ApplyConditionalEquipmentStatBundle", actor, "Montagne", null, effects);
+        actor.StatusEffects.Should().Contain(effect => effect.Key.Contains("conditional-equip", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EquipmentAffinityAndRuntimeHelpers_ShouldCoverIgnoredValidAndInvalidPaths()
+    {
+        var actor = CombatantWithSpeed("equipment", 10);
+        Invoke("ApplyEquipmentAffinityModifiers", null, Array.Empty<CatalogItemEquipmentEffect>());
+        Invoke("ApplyEquipmentAffinityModifiers", actor, new[] { Effect("StatBonus", "Speed", 5, "room:Montagne") });
+
+        var outcome = Enum.GetValues<DamageEffectiveness>().First().ToString();
+        Invoke("ApplyEquipmentAffinityModifiers", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "AffinityOutcomeOverride", null, null, null, "Memoire",
+                AffinityOutcome: outcome, Priority: 2, DurationActivations: 1,
+                SourceDefinitionKey: "item.affinity.outcome"),
+            new CatalogItemEquipmentEffect(
+                "AffinityMultiplierPercent", null, 25, null, "Memoire",
+                AffinityOutcome: null, Priority: 1,
+                SourceDefinitionKey: "item.affinity.multiplier")
+        });
+
+        Action invalidOutcome = () => Invoke("ApplyEquipmentAffinityModifiers", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "AffinityOutcomeOverride", null, null, null, "Memoire",
+                AffinityOutcome: "not-an-outcome", SourceDefinitionKey: "item.invalid")
+        });
+        invalidOutcome.Should().Throw<DomainException>();
+
+        Action missingSource = () => Invoke("ApplyEquipmentAffinityModifiers", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "AffinityMultiplierPercent", null, 10, null, "Memoire")
+        });
+        missingSource.Should().Throw<DomainException>();
+
+        Invoke("ApplyEquipmentRuntimeBehaviors", null, Array.Empty<CatalogItemEquipmentEffect>());
+        Invoke("ApplyEquipmentRuntimeBehaviors", actor, new[] { Effect("StatBonus", "Speed", 5, "room:Montagne") });
+        Invoke("ApplyEquipmentRuntimeBehaviors", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "RuntimeBehavior", null, null, null, null,
+                BehaviorCode: "reflect-first-melee-hit", SourceDefinitionKey: "item.runtime")
+        });
+
+        Action missingBehavior = () => Invoke("ApplyEquipmentRuntimeBehaviors", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "RuntimeBehavior", null, null, null, null,
+                SourceDefinitionKey: "item.runtime")
+        });
+        missingBehavior.Should().Throw<DomainException>();
+
+        Action missingRuntimeSource = () => Invoke("ApplyEquipmentRuntimeBehaviors", actor, new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "RuntimeBehavior", null, null, null, null,
+                BehaviorCode: "reflect-first-melee-hit")
+        });
+        missingRuntimeSource.Should().Throw<DomainException>();
+    }
+
     private static object? Invoke(string name, params object?[] arguments)
     {
         var candidates = typeof(CombatFactory).GetMethods(PrivateStatic)
@@ -123,6 +265,13 @@ public sealed class CombatFactoryDeepBranchCoverageTests
         try { return candidates[0].Invoke(null, arguments); }
         catch (TargetInvocationException exception) when (exception.InnerException is not null) { throw exception.InnerException; }
     }
+
+    private static Type ClimateType() =>
+        typeof(CombatFactory).GetNestedType("RoomClimate", BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("RoomClimate enum was not found.");
+
+    private static CatalogItemEquipmentEffect Effect(string kind, string? stat, int? amount, string? condition) =>
+        new(kind, stat, amount, null, null, Condition: condition, SourceDefinitionKey: $"test.{Guid.NewGuid():N}");
 
     private static RunModifier Modifier(RunModifierType type, double value, Guid? roomId = null) =>
         RunModifier.Create(type, value, RunModifierDuration.UntilRoomEnds, "test", $"test.{type}.{Guid.NewGuid():N}", expiresAtRoomId: roomId);
