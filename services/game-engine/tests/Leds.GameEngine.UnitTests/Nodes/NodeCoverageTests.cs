@@ -16,7 +16,7 @@ public sealed class NodeCoverageTests
         AssertInvalid(() => Node.Create(NodeEventType.Item, 10, "reward", nodeDepth: -1), "depth");
         AssertInvalid(() => Node.Create(NodeEventType.Item, 10, "reward", initialState: NodeState.Locked), "Planned or Available");
 
-        AssertInvalid(() => Node.Create(null!, 10, "reward", 0, [], false, NodeState.Available), "events are required");
+        AssertInvalid(() => Node.Create(null!, 10, "reward", 0, Array.Empty<NodeId>(), false, NodeState.Available), "events are required");
         AssertInvalid(() => Node.Create([], 10, "reward", 0, [], false, NodeState.Available), "between 1 and 4 events");
         AssertInvalid(() => Node.Create(
             [NodeEvent.Create(NodeEventType.Item, 1), NodeEvent.Create(NodeEventType.Rest, 1)],
@@ -26,7 +26,14 @@ public sealed class NodeCoverageTests
         resolved.Resolve();
         AssertInvalid(() => Node.Create([resolved], 10, "reward", 0, [], false, NodeState.Available), "must be planned");
 
-        AssertInvalid(() => Node.Create([NodeEvent.Create(NodeEventType.Item, 1)], 10, "reward", 0, null!, false, NodeState.Available), "Parent node ids are required");
+        AssertInvalid(() => Node.Create(
+            [NodeEvent.Create(NodeEventType.Item, 1)],
+            10,
+            "reward",
+            0,
+            (IReadOnlyCollection<NodeId>)null!,
+            false,
+            NodeState.Available), "Parent node ids are required");
         AssertInvalid(() => Node.Create(NodeEventType.Item, 10, "reward", 0, NodeId.New()), "Initial layer nodes cannot have parents");
         AssertInvalid(() => Node.Create([NodeEvent.Create(NodeEventType.Item, 1)], 10, "reward", 1, [], false, NodeState.Available), "must have at least one parent");
         AssertInvalid(() => Node.Create(NodeEventType.Item, 10, "reward", isRoomBossNode: true), "must contain a RoomBoss event");
