@@ -26,13 +26,14 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase
 
         var candidates = room.Nodes
             .Where(node => node.State == "Available" && node.Type is not "Exit")
+            .Where(node => node.Type is "Item" or "Combat" or "Elite" or "Rare")
             .Where(node => HasSafePath(room, node))
             .OrderBy(node => node.IsInitial ? 0 : 1)
             .ThenBy(node => node.ContactBehavior == "None" ? 0 : 1)
             .ToArray();
 
         candidates.Should().NotBeEmpty(
-            because: "the Hall must expose at least one reachable playable encounter before progression");
+            because: "the Hall must expose at least one reachable directly-resolvable encounter before progression");
 
         var encounter = candidates[0];
         if (encounter.ContactBehavior == "None")
