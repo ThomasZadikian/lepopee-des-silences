@@ -1,7 +1,7 @@
 using System.Reflection;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ConfirmRoomExit;
-using Leds.GameEngine.Domain.NodeEvents;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
@@ -28,7 +28,6 @@ public sealed class ConfirmRoomExitBranchCoverageTests
         bool expected)
     {
         var fixture = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(eventType);
-
         HasResolvedCombatNode(fixture.Run.CurrentRoom).Should().Be(expected);
     }
 
@@ -36,7 +35,6 @@ public sealed class ConfirmRoomExitBranchCoverageTests
     public void HasResolvedCombatNode_ShouldIgnoreUnresolvedCombatNodes()
     {
         var run = TestGameEngineFactory.CreateRun();
-
         HasResolvedCombatNode(run.CurrentRoom).Should().BeFalse();
     }
 
