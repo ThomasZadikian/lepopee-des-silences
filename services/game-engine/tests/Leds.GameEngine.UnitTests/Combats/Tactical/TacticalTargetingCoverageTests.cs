@@ -13,9 +13,7 @@ public sealed class TacticalTargetingCoverageTests
     public void CellsInArea_ShouldReturnExpectedCellsAtCenter(TacticalAreaShape shape, int expectedCount)
     {
         var battlefield = FlatBattlefield(5, 5);
-
         var cells = TacticalTargeting.CellsInArea(battlefield, new GridPosition(2, 2), shape);
-
         cells.Should().HaveCount(expectedCount);
         cells.Should().OnlyContain(cell => battlefield.Contains(cell));
     }
@@ -24,7 +22,6 @@ public sealed class TacticalTargetingCoverageTests
     public void CellsInArea_ShouldClipAtBattlefieldEdges()
     {
         var battlefield = FlatBattlefield(3, 3);
-
         TacticalTargeting.CellsInArea(battlefield, new GridPosition(0, 0), TacticalAreaShape.Diamond)
             .Should().HaveCount(6);
     }
@@ -33,17 +30,19 @@ public sealed class TacticalTargetingCoverageTests
     public void CellsInArea_ShouldRejectMapAndUnknownShapes()
     {
         var battlefield = FlatBattlefield(3, 3);
-
-        (() => TacticalTargeting.CellsInArea(battlefield, new GridPosition(1, 1), TacticalAreaShape.Map))
+        FluentActions.Invoking(() => TacticalTargeting.CellsInArea(
+                battlefield, new GridPosition(1, 1), TacticalAreaShape.Map))
             .Should().Throw<DomainException>();
-        (() => TacticalTargeting.CellsInArea(battlefield, new GridPosition(1, 1), (TacticalAreaShape)999))
+        FluentActions.Invoking(() => TacticalTargeting.CellsInArea(
+                battlefield, new GridPosition(1, 1), (TacticalAreaShape)999))
             .Should().Throw<DomainException>();
     }
 
     [Fact]
     public void CellsInArea_ShouldRejectNullBattlefield()
     {
-        (() => TacticalTargeting.CellsInArea(null!, new GridPosition(0, 0), TacticalAreaShape.Single))
+        FluentActions.Invoking(() => TacticalTargeting.CellsInArea(
+                null!, new GridPosition(0, 0), TacticalAreaShape.Single))
             .Should().Throw<ArgumentNullException>();
     }
 
@@ -51,7 +50,6 @@ public sealed class TacticalTargetingCoverageTests
     public void IsInRange_ShouldRejectTargetBeyondRange()
     {
         var battlefield = FlatBattlefield(4, 4);
-
         TacticalTargeting.IsInRange(
             battlefield, new GridPosition(0, 0), new GridPosition(3, 0), 2, false)
             .Should().BeFalse();
@@ -61,32 +59,22 @@ public sealed class TacticalTargetingCoverageTests
     public void IsInRange_ShouldChargeOnlyElevationBeyondFirstStep()
     {
         var battlefield = TacticalBattlefield.Rehydrate(
-            3, 1,
-            elevation: [0, 1, 3],
-            walkable: [true, true, true]);
-
+            3, 1, elevation: [0, 1, 3], walkable: [true, true, true]);
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(1, 0), 1, false)
-            .Should().BeTrue();
+            battlefield, new GridPosition(0, 0), new GridPosition(1, 0), 1, false).Should().BeTrue();
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 3, false)
-            .Should().BeTrue();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 3, false).Should().BeTrue();
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, false)
-            .Should().BeFalse();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, false).Should().BeFalse();
     }
 
     [Fact]
     public void IsInRange_ShouldGiveHigherAttackerPlungingSight()
     {
         var battlefield = TacticalBattlefield.Rehydrate(
-            2, 1,
-            elevation: [2, 0],
-            walkable: [true, true]);
-
+            2, 1, elevation: [2, 0], walkable: [true, true]);
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(1, 0), 2, true)
-            .Should().BeTrue();
+            battlefield, new GridPosition(0, 0), new GridPosition(1, 0), 2, true).Should().BeTrue();
     }
 
     [Fact]
@@ -97,13 +85,10 @@ public sealed class TacticalTargetingCoverageTests
             elevation: [0, 0, 0],
             walkable: [true, false, true],
             isFloor: [true, true, true]);
-
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, false)
-            .Should().BeTrue();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, false).Should().BeTrue();
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, true)
-            .Should().BeFalse();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, true).Should().BeFalse();
     }
 
     [Theory]
@@ -120,7 +105,7 @@ public sealed class TacticalTargetingCoverageTests
     [Fact]
     public void ShapeForCatalogTargeting_ShouldRejectUnknownMode()
     {
-        (() => TacticalTargeting.ShapeForCatalogTargeting("Unknown"))
+        FluentActions.Invoking(() => TacticalTargeting.ShapeForCatalogTargeting("Unknown"))
             .Should().Throw<DomainException>();
     }
 
@@ -138,7 +123,7 @@ public sealed class TacticalTargetingCoverageTests
     [Fact]
     public void IsHostile_ShouldRejectUnknownMode()
     {
-        (() => TacticalTargeting.IsHostile("Unknown"))
+        FluentActions.Invoking(() => TacticalTargeting.IsHostile("Unknown"))
             .Should().Throw<DomainException>();
     }
 
