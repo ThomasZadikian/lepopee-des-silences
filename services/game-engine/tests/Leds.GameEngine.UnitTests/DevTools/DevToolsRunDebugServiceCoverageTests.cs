@@ -45,8 +45,7 @@ public sealed class DevToolsRunDebugServiceCoverageTests
         effect.ExpiresAtTick.Should().Be(2050);
         if (expectedStat is not null)
         {
-            effect.Stat.Should().NotBeNull();
-            effect.Stat!.Value.ToString().Should().Be(expectedStat);
+            effect.Stat.ToString().Should().Be(expectedStat);
         }
     }
 
