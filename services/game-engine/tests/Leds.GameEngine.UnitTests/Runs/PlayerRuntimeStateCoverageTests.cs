@@ -21,23 +21,25 @@ public sealed class PlayerRuntimeStateCoverageTests
     [InlineData(-1)]
     public void Create_ShouldRejectNonPositiveMaxVitality(int maxVitality)
     {
-        var action = () => PlayerRuntimeState.Create(maxVitality, [Skill()]);
-        action.Should().Throw<DomainException>();
+        FluentActions.Invoking(() => PlayerRuntimeState.Create(maxVitality, [Skill()]))
+            .Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Create_ShouldRejectNullOrEmptySkills()
     {
-        (() => PlayerRuntimeState.Create(100, null!)).Should().Throw<DomainException>();
-        (() => PlayerRuntimeState.Create(100, [])).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => PlayerRuntimeState.Create(100, null!))
+            .Should().Throw<DomainException>();
+        FluentActions.Invoking(() => PlayerRuntimeState.Create(100, []))
+            .Should().Throw<DomainException>();
     }
 
     [Fact]
     public void Create_ShouldRejectVitalityOrManaBeyondCaps()
     {
-        (() => PlayerRuntimeState.Create(100, [Skill()], currentVitality: 101))
+        FluentActions.Invoking(() => PlayerRuntimeState.Create(100, [Skill()], currentVitality: 101))
             .Should().Throw<DomainException>();
-        (() => PlayerRuntimeState.Create(100, [Skill()], mana: 11, maxMana: 10))
+        FluentActions.Invoking(() => PlayerRuntimeState.Create(100, [Skill()], mana: 11, maxMana: 10))
             .Should().Throw<DomainException>();
     }
 
@@ -59,12 +61,12 @@ public sealed class PlayerRuntimeStateCoverageTests
     public void TakeDamage_ShouldClampAtZeroAndRejectInvalidOrDefeatedUse()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()]);
-        (() => state.TakeDamage(0)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.TakeDamage(0)).Should().Throw<DomainException>();
 
         state.TakeDamage(150);
         state.CurrentVitality.Should().Be(0);
         state.IsDefeated.Should().BeTrue();
-        (() => state.TakeDamage(1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.TakeDamage(1)).Should().Throw<DomainException>();
     }
 
     [Fact]
@@ -84,36 +86,36 @@ public sealed class PlayerRuntimeStateCoverageTests
     public void Heal_ShouldClampAndRejectInvalidOrDefeatedUse()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()], currentVitality: 50);
-        (() => state.Heal(0)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.Heal(0)).Should().Throw<DomainException>();
         state.Heal(75);
         state.CurrentVitality.Should().Be(100);
 
         var defeated = PlayerRuntimeState.Rehydrate(100, 0, 0, 0, 0, [Skill()]);
-        (() => defeated.Heal(1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => defeated.Heal(1)).Should().Throw<DomainException>();
     }
 
     [Fact]
     public void GainGuard_ShouldValidateAndAccumulate()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()]);
-        (() => state.GainGuard(0)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.GainGuard(0)).Should().Throw<DomainException>();
         state.GainGuard(12);
         state.Guard.Should().Be(12);
 
         var defeated = PlayerRuntimeState.Rehydrate(100, 0, 0, 0, 0, [Skill()]);
-        (() => defeated.GainGuard(1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => defeated.GainGuard(1)).Should().Throw<DomainException>();
     }
 
     [Fact]
     public void ManaOperations_ShouldValidateBoundsAndClampGain()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()], mana: 5, maxMana: 10);
-        (() => state.SpendMana(-1)).Should().Throw<DomainException>();
-        (() => state.SpendMana(6)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.SpendMana(-1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.SpendMana(6)).Should().Throw<DomainException>();
         state.SpendMana(3);
         state.Mana.Should().Be(2);
 
-        (() => state.GainMana(-1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.GainMana(-1)).Should().Throw<DomainException>();
         state.GainMana(100);
         state.Mana.Should().Be(10);
     }
@@ -122,12 +124,12 @@ public sealed class PlayerRuntimeStateCoverageTests
     public void ChargeOperations_ShouldValidateAndAccumulate()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()], charge: 2);
-        (() => state.SpendCharge(-1)).Should().Throw<DomainException>();
-        (() => state.SpendCharge(3)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.SpendCharge(-1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.SpendCharge(3)).Should().Throw<DomainException>();
         state.SpendCharge(1);
         state.Charge.Should().Be(1);
 
-        (() => state.GainCharge(-1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.GainCharge(-1)).Should().Throw<DomainException>();
         state.GainCharge(4);
         state.Charge.Should().Be(5);
     }
@@ -154,8 +156,8 @@ public sealed class PlayerRuntimeStateCoverageTests
     public void ReplaceSkills_ShouldValidateAndReplace()
     {
         var state = PlayerRuntimeState.Create(100, [Skill("skill.one")]);
-        (() => state.ReplaceSkills(null!)).Should().Throw<DomainException>();
-        (() => state.ReplaceSkills([])).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.ReplaceSkills(null!)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.ReplaceSkills([])).Should().Throw<DomainException>();
 
         state.ReplaceSkills([Skill("skill.two")]);
         state.Skills.Should().ContainSingle().Which.Key.Should().Be("skill.two");
@@ -165,7 +167,7 @@ public sealed class PlayerRuntimeStateCoverageTests
     public void ReplaceEffectiveStats_ShouldValidateAndTopUpResources()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()], currentVitality: 20, mana: 5, maxMana: 10);
-        (() => state.ReplaceEffectiveStats(0, 10, 1)).Should().Throw<DomainException>();
+        FluentActions.Invoking(() => state.ReplaceEffectiveStats(0, 10, 1)).Should().Throw<DomainException>();
 
         state.ReplaceEffectiveStats(120, 30, 4);
         state.MaxVitality.Should().Be(120);
