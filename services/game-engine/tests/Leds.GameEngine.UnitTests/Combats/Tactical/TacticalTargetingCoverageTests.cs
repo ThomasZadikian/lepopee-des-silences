@@ -63,9 +63,9 @@ public sealed class TacticalTargetingCoverageTests
         TacticalTargeting.IsInRange(
             battlefield, new GridPosition(0, 0), new GridPosition(1, 0), 1, false).Should().BeTrue();
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 3, false).Should().BeTrue();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 4, false).Should().BeTrue();
         TacticalTargeting.IsInRange(
-            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 2, false).Should().BeFalse();
+            battlefield, new GridPosition(0, 0), new GridPosition(2, 0), 3, false).Should().BeFalse();
     }
 
     [Fact]
