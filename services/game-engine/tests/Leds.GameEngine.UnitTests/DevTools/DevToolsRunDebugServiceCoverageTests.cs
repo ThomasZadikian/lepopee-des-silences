@@ -68,22 +68,23 @@ public sealed class DevToolsRunDebugServiceCoverageTests
     }
 
     [Theory]
-    [InlineData(null, null)]
     [InlineData("none", null)]
     [InlineData(" NONE ", null)]
     [InlineData("grey", 1d)]
     [InlineData("rain", 2d)]
     [InlineData("heatwave", 3d)]
     [InlineData("hail", 4d)]
-    public void MapClimate_ShouldMapEverySupportedClimate(string? climate, double? expected)
+    public void MapClimate_ShouldMapEverySupportedClimate(string climate, double? expected)
     {
         InvokeMapClimate(climate).Should().Be(expected);
     }
 
-    [Fact]
-    public void MapClimate_ShouldRejectUnknownClimate()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("snow")]
+    public void MapClimate_ShouldRejectUnsupportedClimate(string? climate)
     {
-        var action = () => InvokeMapClimate("snow");
+        var action = () => InvokeMapClimate(climate);
 
         action.Should().Throw<DomainException>()
             .WithMessage("*Unsupported room climate*");
