@@ -25,7 +25,7 @@ public sealed class ListActiveSkillDefinitionsQueryHandlerCoverageTests
 
         gateway.Setup(g => g.ListCharacterCombatDefinitionsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([
-                new CatalogCharacterCombatDefinition("char.adaptive", "Hero", "Adaptive", "Mémoire"),
+                new CatalogCharacterCombatDefinition("char.adaptive", "Hero", "Adaptive", "Memoire"),
                 new CatalogCharacterCombatDefinition("char.fighter", "Hero", "Fighter", "Rupture"),
                 new CatalogCharacterCombatDefinition("char.mage", "Hero", "Mage", "Folie")
             ]);
@@ -103,7 +103,7 @@ public sealed class ListActiveSkillDefinitionsQueryHandlerCoverageTests
         IReadOnlyCollection<string>? allowed = null,
         IReadOnlyCollection<CatalogSkillEffectSpec>? effects = null) =>
         new(key, key, "description", "Active", "SingleEnemy", "Damage", 1, 0, 10, [],
-            "Mémoire", effects, Audience: audience, AllowedArchetypes: allowed);
+            "Memoire", effects, Audience: audience, AllowedArchetypes: allowed);
 
     private static CatalogNpcDefinition Npc(
         string key,
