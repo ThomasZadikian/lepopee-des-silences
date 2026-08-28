@@ -202,7 +202,12 @@ public sealed class NpcEventChoiceResolverRequirementCoverageTests
                 mana: 0,
                 charge: 0);
             return RunCharacterSnapshot.Create(
-                Guid.NewGuid(), key, $"Character {index}", stats, [], "Neutral");
+                characterId: Guid.NewGuid(),
+                definitionKey: key,
+                displayName: $"Character {index}",
+                statBlock: stats,
+                skills: [],
+                emotionalRegisterCode: "Neutral");
         }).ToArray();
 
         run.AttachPlayerSnapshot(RunPlayerSnapshot.Create(
