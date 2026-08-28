@@ -205,7 +205,8 @@ public sealed class TacticalCombatDeepBranchCoverageTests
         TacticalCombat.Rehydrate(
             combat.Id, combat.RunId, combat.RoomId, combat.NodeId, combat.Battlefield,
             combat.Allies, combat.Enemies, combat.Positions,
-            combat.AllCombatants.ToDictionary(c => c.Id.Value, c => combat.TurnStateOf(c.Id.Value)),
+            combat.Allies.Concat(combat.Enemies)
+                .ToDictionary(c => c.Id.Value, c => combat.TurnStateOf(c.Id.Value)),
             combat.InitiativeOrder, 0, combat.RoundNumber, status ?? combat.Status, combat.CreatedAtUtc,
             escapePosition: combat.EscapePosition,
             cannotRevive: cannotRevive,
