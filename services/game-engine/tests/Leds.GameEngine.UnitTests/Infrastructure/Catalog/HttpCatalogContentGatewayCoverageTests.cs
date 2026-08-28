@@ -179,6 +179,158 @@ public sealed class HttpCatalogContentGatewayCoverageTests
         uri.Should().NotContain("rewardPowerMultiplier=");
     }
 
+    [Theory]
+    [InlineData("null", "no item type catalog")]
+    [InlineData("{}", "incomplete item type catalog")]
+    [InlineData("{\"version\":\"1\",\"definitions\":[]}", "incomplete item type catalog")]
+    public async Task ItemTypeCatalog_ShouldRejectMissingOrIncompletePayloads(string json, string message)
+    {
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        var act = () => sut.GetItemTypeCatalogAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{message}*");
+    }
+
+    [Theory]
+    [InlineData("", "item type code")]
+    [InlineData("common", "display name")]
+    public async Task ItemTypeCatalog_ShouldRejectRequiredDefinitionFields(string code, string expected)
+    {
+        var display = code.Length == 0 ? "Common" : "";
+        var json = $$"""{"version":"1","definitions":[{"code":"{{code}}","displayName":"{{display}}","glyph":"x","color":"#fff"}]}""";
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        var act = () => sut.GetItemTypeCatalogAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{expected}*");
+    }
+
+    [Fact]
+    public async Task ItemTypeCatalog_ShouldRejectDuplicateAndMapValidDefinitions()
+    {
+        var duplicate = "{\"version\":\"1\",\"definitions\":[{\"code\":\"A\",\"displayName\":\"A\",\"glyph\":\"a\",\"color\":\"x\"},{\"code\":\"a\",\"displayName\":\"B\",\"glyph\":\"b\",\"color\":\"y\"}]}";
+        var dup = CreateGateway(new RecordingHandler(_ => Json(duplicate)));
+        await FluentActions.Invoking(() => dup.GetItemTypeCatalogAsync()).Should()
+            .ThrowAsync<InvalidOperationException>().WithMessage("*duplicate*");
+
+        var valid = CreateGateway(new RecordingHandler(_ => Json("{\"version\":\" 1 \",\"definitions\":[{\"code\":\" Equipment \",\"displayName\":\" Equipement \",\"glyph\":\" E \",\"color\":\" blue \"}]}")));
+        var result = await valid.GetItemTypeCatalogAsync();
+        result.Version.Should().Be("1");
+        result.Definitions.Single().Code.Should().Be("equipment");
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"version\":\"1\",\"definitions\":[]}")]
+    public async Task ItemRarityCatalog_ShouldRejectMissingOrIncompletePayloads(string json)
+    {
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        await FluentActions.Invoking(() => sut.GetItemRarityCatalogAsync()).Should()
+            .ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ItemRarityCatalog_ShouldRejectDuplicateAndMapValidDefinitions()
+    {
+        var duplicate = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Rare\",\"displayName\":\"Rare\",\"glyph\":\"r\",\"color\":\"x\"},{\"code\":\"rare\",\"displayName\":\"Rare2\",\"glyph\":\"q\",\"color\":\"y\"}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(duplicate))).GetItemRarityCatalogAsync()).Should()
+            .ThrowAsync<InvalidOperationException>().WithMessage("*duplicate*");
+
+        var valid = CreateGateway(new RecordingHandler(_ => Json("{\"version\":\"1\",\"definitions\":[{\"code\":\" Rare \",\"displayName\":\" Rare \",\"glyph\":\"R\",\"color\":\"violet\",\"palaceShardCost\":2,\"himLitShardCost\":1}]}")));
+        var result = await valid.GetItemRarityCatalogAsync();
+        result.Definitions.Single().Code.Should().Be("rare");
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"version\":\"1\",\"definitions\":[]}")]
+    public async Task EmotionalRegisterCatalog_ShouldRejectMissingOrIncompletePayloads(string json)
+    {
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        await FluentActions.Invoking(() => sut.GetEmotionalRegisterCatalogAsync()).Should()
+            .ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task EmotionalRegisterCatalog_ShouldCoverMetadataAffinityAndDuplicateValidation()
+    {
+        var missingMetadata = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\"\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":[]}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(missingMetadata))).GetEmotionalRegisterCatalogAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var noAffinities = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\"Neutral\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":null}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(noAffinities))).GetEmotionalRegisterCatalogAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var badOutcome = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\"Neutral\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":[{\"incomingRegister\":\"Neutral\",\"outcome\":\"wat\",\"multiplier\":1}]}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(badOutcome))).GetEmotionalRegisterCatalogAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var duplicate = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\"N\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":[{\"incomingRegister\":\"Neutral\",\"outcome\":\"Neutral\",\"multiplier\":1}]},{\"code\":\"neutral\",\"displayName\":\"N2\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":[{\"incomingRegister\":\"Neutral\",\"outcome\":\"Neutral\",\"multiplier\":1}]}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(duplicate))).GetEmotionalRegisterCatalogAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var invalidProfile = "{\"version\":\"1\",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\"N\",\"glyph\":\"N\",\"color\":\"x\",\"incomingAffinities\":[{\"incomingRegister\":\"Neutral\",\"outcome\":\"Neutral\",\"multiplier\":-1}]}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(invalidProfile))).GetEmotionalRegisterCatalogAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var valid = "{\"version\":\" 1 \",\"definitions\":[{\"code\":\"Neutral\",\"displayName\":\" Neutral \",\"glyph\":\"N\",\"color\":\" gray \",\"incomingAffinities\":[{\"incomingRegister\":\"Neutral\",\"outcome\":\"Neutral\",\"multiplier\":1}]}]}";
+        (await CreateGateway(new RecordingHandler(_ => Json(valid))).GetEmotionalRegisterCatalogAsync()).Definitions.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"version\":\"1\",\"rules\":null}")]
+    public async Task AffinityMatrix_ShouldRejectMissingPayloads(string json)
+    {
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        await FluentActions.Invoking(() => sut.GetEmotionalAffinityMatrixAsync()).Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task AffinityMatrix_ShouldMapValidPayload()
+    {
+        var json = "{\"version\":\"1\",\"rules\":[{\"attackingRegister\":\"Neutral\",\"defendingRegister\":\"Neutral\",\"outcome\":\"Neutral\",\"multiplier\":1}]}";
+        var result = await CreateGateway(new RecordingHandler(_ => Json(json))).GetEmotionalAffinityMatrixAsync();
+        result.Rules.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"definitions\":[]}")]
+    public async Task CharacterCombatDefinitions_ShouldRejectMissingEmptyPayloads(string json)
+    {
+        var sut = CreateGateway(new RecordingHandler(_ => Json(json)));
+        await FluentActions.Invoking(() => sut.ListCharacterCombatDefinitionsAsync()).Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task CharacterCombatDefinitions_ShouldRejectDuplicateAndMapValidPayload()
+    {
+        var duplicate = "{\"definitions\":[{\"definitionKey\":\"hero\",\"kind\":\"Hero\",\"combatArchetypeCode\":\"Adaptive\",\"emotionalRegister\":\"Neutral\"},{\"definitionKey\":\"HERO\",\"kind\":\"Hero\",\"combatArchetypeCode\":\"Mage\",\"emotionalRegister\":\"Neutral\"}]}";
+        await FluentActions.Invoking(() => CreateGateway(new RecordingHandler(_ => Json(duplicate))).ListCharacterCombatDefinitionsAsync()).Should().ThrowAsync<InvalidOperationException>();
+
+        var valid = "{\"definitions\":[{\"definitionKey\":\" hero \",\"kind\":\" Hero \",\"combatArchetypeCode\":\" Adaptive \",\"emotionalRegister\":\"Neutral\"}]}";
+        var result = await CreateGateway(new RecordingHandler(_ => Json(valid))).ListCharacterCombatDefinitionsAsync();
+        result.Single().DefinitionKey.Should().Be("hero");
+    }
+
+    [Fact]
+    public async Task GenericCatalogReads_ShouldCoverNullWrappersMalformedJsonAndHttpFailure()
+    {
+        var nullSut = CreateGateway(new RecordingHandler(_ => Json("null")));
+        (await nullSut.ListActivePalaceLawDefinitionsAsync()).Should().BeEmpty();
+        (await nullSut.ListAvailableCurseDefinitionsAsync()).Should().BeEmpty();
+        (await nullSut.ListActiveEnemyDefinitionsAsync()).Should().BeEmpty();
+        (await nullSut.ListActiveSkillDefinitionsAsync()).Should().BeEmpty();
+        (await nullSut.ListActiveItemDefinitionsAsync()).Should().BeEmpty();
+
+        var malformed = CreateGateway(new RecordingHandler(_ => Json("{bad")));
+        await FluentActions.Invoking(() => malformed.GetItemTypeCatalogAsync()).Should().ThrowAsync<CatalogGatewayException>();
+
+        var failure = CreateGateway(new RecordingHandler(_ => Response(HttpStatusCode.ServiceUnavailable, "down")));
+        await FluentActions.Invoking(() => failure.GetItemTypeCatalogAsync()).Should().ThrowAsync<CatalogGatewayException>();
+
+        var network = CreateGateway(new ThrowingHandler(new InvalidOperationException("offline")));
+        await FluentActions.Invoking(() => network.GetItemTypeCatalogAsync()).Should().ThrowAsync<CatalogGatewayException>();
+    }
+
     private static HttpCatalogContentGateway CreateGateway(HttpMessageHandler handler) =>
         new(new HttpClient(handler)
         {
@@ -215,5 +367,11 @@ public sealed class HttpCatalogContentGatewayCoverageTests
             Requests.Add(request);
             return Task.FromResult(_responder(request));
         }
+    }
+
+    private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(exception);
     }
 }
