@@ -25,15 +25,16 @@ public sealed class PlayerRoster
         if (_characters.Any(c => c.Id == character.Id))
             throw new DomainException($"Character with id '{character.Id}' already exists in the roster.");
 
-        if (_characters.Any(c => c.DefinitionKey == character.DefinitionKey))
-            throw new DomainException($"Character with definition key '{character.DefinitionKey}' already exists in the roster.");
-
+        // DefinitionKey identifies the underlying canonical character, not a unique account slot.
+        // Several playable Characters may therefore share character.player.self while differing by
+        // immutable archetype and display name. Companion deduplication remains enforced by the
+        // recruitment use case before it reaches the roster.
         _characters.Add(character);
     }
 
     public IReadOnlyCollection<PlayerCharacter> GetAvailableCharacters()
     {
-        return _characters.AsReadOnly();
+        return _characters.Where(c => !c.IsArchived).ToList().AsReadOnly();
     }
 
     public PlayerCharacter? FindById(PlayerCharacterId id)
