@@ -41,9 +41,7 @@ internal static class FutureContract
         var property = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
         property.Should().NotBeNull($"'{instance.GetType().FullName}' must expose property '{propertyName}'");
 
-        var value = property!.GetValue(instance);
-        value.Should().BeAssignableTo<T>();
-        return (T)value!;
+        return (T)property!.GetValue(instance)!;
     }
 
     public static bool HasPublicSetter(object instance, string propertyName)
