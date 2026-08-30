@@ -59,6 +59,23 @@ public sealed class PlayerProfile
             MainStoryProgress.CreateDefault());
     }
 
+    public PlayerCharacter CreatePlayableCharacter(
+        string displayName,
+        string archetypeKey,
+        DateTimeOffset now)
+    {
+        var character = PlayerCharacter.CreatePlayable(
+            "character.player.self",
+            displayName,
+            archetypeKey,
+            PlayerCharacterStatBlock.CreateDefaultPorteur(),
+            [PlayerCharacterSkill.Create("skill.basic.guard", now, "archetype", isEquipped: true)]);
+
+        Roster.AddCharacter(character);
+        Touch(now);
+        return character;
+    }
+
     /// <summary>
     /// Irreversibly replaces the account-facing alias with an anonymous identifier while
     /// retaining non-identifying progression required for referential and gameplay integrity.
@@ -76,9 +93,6 @@ public sealed class PlayerProfile
     public bool HasPermanentUnlock(string unlockKey) =>
         _permanentUnlocks.Any(u => string.Equals(u.UnlockKey, unlockKey, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// Grants a permanent, lifetime unlock. No-op if already granted.
-    /// </summary>
     public void GrantPermanentUnlock(string unlockKey, string unlockType, Guid? sourceRunId, DateTimeOffset now)
     {
         if (HasPermanentUnlock(unlockKey))
