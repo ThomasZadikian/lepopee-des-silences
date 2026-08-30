@@ -213,9 +213,7 @@ public sealed class PlayerApplicationCoverageTests
         var repository = MissingProfileRepository();
         var handler = new UnlockDifficultyLevelCommandHandler(repository.Object, new FixedTimeProvider(Now));
 
-        var act = () => handler.Handle(
-            new UnlockDifficultyLevelCommand(Guid.NewGuid(), 1),
-            CancellationToken.None);
+        var act = () => handler.Handle(new UnlockDifficultyLevelCommand(Guid.NewGuid(), 1), CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -247,8 +245,7 @@ public sealed class PlayerApplicationCoverageTests
         var handler = new UpsertNpcReputationScoresCommandHandler(repository.Object, new FixedTimeProvider(Now));
 
         var act = () => handler.Handle(
-            new UpsertNpcReputationScoresCommand(Guid.NewGuid(), Guid.NewGuid(), []),
-            CancellationToken.None);
+            new UpsertNpcReputationScoresCommand(Guid.NewGuid(), Guid.NewGuid(), []), CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -283,6 +280,7 @@ public sealed class PlayerApplicationCoverageTests
     private static (PlayerProfile Profile, Mock<IPlayerProfileRepository> Repository) CreateProfileFixture()
     {
         var profile = PlayerProfile.Create("Coverage Player", Now.AddHours(-1));
+        profile.CreatePlayableCharacter("L'Aventurier", "archetype.porteur", Now.AddHours(-1));
         var repository = new Mock<IPlayerProfileRepository>();
         repository
             .Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
