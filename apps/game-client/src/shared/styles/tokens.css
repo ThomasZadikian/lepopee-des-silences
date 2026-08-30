@@ -1,0 +1,107 @@
+:root {
+  color-scheme: dark;
+
+  /* ── "Le Palais respire" — direction unique, voir docs/design/direction-visuelle-palais-respire.md ──
+     Noir froid + un seul accent pastel (mint). Remplace l'ancien système multi-teintes
+     (or/givre/sang/sève, PalaceAtmosphere) sur tous les écrans migrés. */
+  --void: #0c0d12;
+  --bg: #0c0d12;
+  --bg-2: #0e0f14;
+  --panel: #15171a;
+  --panel-2: #1c1f24;
+  --raise: #23262b;
+
+  /* ── Ink / Text ── */
+  --ink: #f2f1ee;
+  --ink-2: #d6d3cc;
+  --ink-3: #a6a39c;
+  --ink-4: #726f6a;
+  --ink-5: #4a4744;
+
+  /* ── Accent unique — jamais en décor, réservé aux interactions actives / infos positives ── */
+  --mint: #bfe3e0;
+  --mint-dim: #8fc4bf;
+
+  /* ── Alerte / perte — jamais décoratif ── */
+  --danger: #c07268;
+  --danger-dim: #8a4c45;
+
+  /* ── Ton secondaire neutre — ce qui est triste sans être une alerte (ex: perte de réputation) ── */
+  --mauve: #c9c2e8;
+  --mauve-dim: #b6acdc;
+
+  /* ── Legacy — encore utilisé par les écrans pas encore migrés (Combat tactique, Bestiaire,
+     Sorts) ; à supprimer une fois ces écrans repris. Ne pas utiliser sur un nouvel écran. ── */
+  --gold: oklch(0.862 0.098 86);
+  --gold-dim: oklch(0.778 0.094 84);
+  --gold-deep: oklch(0.668 0.084 81);
+  --gold-hi: oklch(0.910 0.080 88);
+  --edge-gold: oklch(0.72 0.09 82 / 0.70);
+  --wash-gold: oklch(0.84 0.14 86 / 0.30);
+  --ember: oklch(0.700 0.150 45);
+  --frost: oklch(0.846 0.100 276);
+  --frost-dim: oklch(0.758 0.096 274);
+  --frost-deep: oklch(0.648 0.082 271);
+  --edge-frost: oklch(0.72 0.10 268 / 0.74);
+  --wash-frost: oklch(0.82 0.15 276 / 0.34);
+  --card-sel-frost: oklch(0.50 0.09 268 / 0.22);
+  --blood: oklch(0.812 0.110 13);
+  --blood-dim: oklch(0.726 0.104 13);
+  --wash-blood: oklch(0.81 0.15 13 / 0.28);
+  --sap: oklch(0.840 0.092 162);
+  --wash-sap: oklch(0.83 0.14 162 / 0.26);
+
+  /* ── Lines / Borders ── */
+  --line: rgba(190, 190, 190, .24);
+  --line-soft: rgba(190, 190, 190, .14);
+  --line-strong: rgba(190, 190, 190, .38);
+  --edge-dim: oklch(0.72 0.04 280 / 0.26);
+
+  /* ── Card ── */
+  --card-soft: oklch(0.30 0.030 268 / 0.55);
+
+  /* ── Typography ── */
+  --font-display: 'Newsreader', Georgia, serif;
+  --font: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-caps: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* ── Spacing ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* ── Radii ── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* ── Shadows ── */
+  --shadow-panel: 0 0 0 1px var(--line), 0 24px 80px oklch(0.10 0.03 272 / 0.35);
+  --shadow-deep: 0 30px 66px -30px oklch(0.10 0.03 272 / 0.7),
+    0 12px 30px -18px oklch(0.10 0.03 272 / 0.5);
+
+  /* ── Z-index layers ── */
+  --z-base: 1;
+  --z-panel: 10;
+  --z-drawer: 20;
+  --z-popover: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+
+    /* aliases courts pour le design nocturne */
+  --display: var(--font-display);
+  --caps:    var(--font-caps);
+  --mono:    var(--font-mono);
+
+  /* réglages Tweaks (grain, bloom, gilt — pilotés par le panneau UI) */
+  --tw-grain: 0.55;
+  --tw-bloom: 1.15;
+  --tw-gilt:  1;
+
+  /* Legacy — encore utilisé par le brouillard de guerre de la carte d'exploration (moteur
+     tilecraft, non migré). */
+  --map-fog: linear-gradient(90deg, transparent, oklch(0.20 0.026 270 / 0.55) 38%, oklch(0.17 0.024 270 / 0.84));
+}

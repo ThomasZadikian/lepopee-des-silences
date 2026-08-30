@@ -1,0 +1,63 @@
+using Leds.Catalog.Application.Items.Definitions.GetItemDefinitionByKey;
+using Leds.Catalog.Application.Items.Definitions.ListActiveItemDefinitions;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Leds.Catalog.Api.Controllers;
+
+[ApiController]
+[Route("api/v2/catalog/item-definitions")]
+public sealed class ItemDefinitionsController : ControllerBase
+{
+    private readonly ISender _sender;
+
+    public ItemDefinitionsController(ISender sender)
+    {
+        _sender = sender;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(ListActiveItemDefinitionsResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ListActiveItemDefinitionsResponse>> ListActive(
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new ListActiveItemDefinitionsQuery(),
+            cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{key}")]
+    [ProducesResponseType(typeof(GetItemDefinitionByKeyResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetItemDefinitionByKeyResponse>> GetByKey(
+        string? key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return BadRequest(new
+            {
+                title = "Item definition key is required.",
+                status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var response = await _sender.Send(
+            new GetItemDefinitionByKeyQuery(key),
+            cancellationToken);
+
+        if (response.Definition is null)
+        {
+            return NotFound(new
+            {
+                title = "Item definition not found.",
+                status = StatusCodes.Status404NotFound
+            });
+        }
+
+        return Ok(response);
+    }
+}

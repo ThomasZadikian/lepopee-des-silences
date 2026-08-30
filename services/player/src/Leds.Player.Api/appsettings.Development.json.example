@@ -1,0 +1,11 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "PlayerDb": "Host=localhost;Port=5433;Database=leds_player;Username=postgres;Password=postgres"
+  }
+}

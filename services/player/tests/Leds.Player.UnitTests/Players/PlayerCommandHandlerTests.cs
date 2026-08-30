@@ -1,0 +1,361 @@
+using FluentAssertions;
+using Leds.Player.Application.Abstractions;
+using Leds.Player.Application.Players;
+using Leds.Player.Application.Players.AddPermanentItems;
+using Leds.Player.Application.Players.ClaimNpcOffering;
+using Leds.Player.Application.Players.ClearPermanentItemContent;
+using Leds.Player.Application.Players.CreatePlayerProfile;
+using Leds.Player.Application.Players.EquipItem;
+using Leds.Player.Application.Players.GrantNpcReputationMilestone;
+using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.RecruitCompanion;
+using Leds.Player.Application.Players.SetPermanentItemContent;
+using Leds.Player.Application.Players.SpendCurrency;
+using Leds.Player.Application.Players.SpendHimLitCurrency;
+using Leds.Player.Application.Players.UnequipItem;
+using Leds.Player.Domain.Players;
+using Moq;
+
+namespace Leds.Player.UnitTests.Players;
+
+public sealed class PlayerCommandHandlerTests
+{
+    [Fact]
+    public async Task CreatePlayerProfile_ShouldPersistProfile()
+    {
+        var repository = new Mock<IPlayerProfileRepository>();
+        var handler = new CreatePlayerProfileCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new CreatePlayerProfileCommand("Test Player"),
+            CancellationToken.None);
+
+        response.Profile.DisplayName.Should().Be("Test Player");
+        response.Profile.Characters.Should().HaveCount(1);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPlayerProfileById_ShouldReturnProfile_WhenExists()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new GetPlayerProfileByIdQueryHandler(repository.Object);
+        var result = await handler.Handle(
+            new GetPlayerProfileByIdQuery(profile.Id.Value),
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.DisplayName.Should().Be("Test");
+    }
+
+    [Fact]
+    public async Task GetPlayerProfileById_ShouldReturnNull_WhenMissing()
+    {
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(It.IsAny<PlayerId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PlayerProfile?)null);
+
+        var handler = new GetPlayerProfileByIdQueryHandler(repository.Object);
+        var result = await handler.Handle(
+            new GetPlayerProfileByIdQuery(Guid.NewGuid()),
+            CancellationToken.None);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetPlayerRunSnapshot_ShouldReturnAvailableCharacters()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new GetPlayerRunSnapshotQueryHandler(repository.Object);
+        var result = await handler.Handle(
+            new GetPlayerRunSnapshotQuery(profile.Id.Value),
+            CancellationToken.None);
+
+        result.Characters.Should().HaveCount(1);
+        result.Characters.Single().SkillKeys.Should().Contain("skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task ClaimNpcOffering_ShouldGrantPermanentUnlockAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new ClaimNpcOfferingCommandHandler(repository.Object, TimeProvider.System);
+        var sourceRunId = Guid.NewGuid();
+
+        var response = await handler.Handle(
+            new ClaimNpcOfferingCommand(profile.Id.Value, "npc.hitomi", "offer.skill", sourceRunId),
+            CancellationToken.None);
+
+        response.PermanentUnlocks.Should().ContainSingle(u => u.UnlockKey == "npc.hitomi:offer.skill" && u.UnlockType == "npc-offering");
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GrantNpcReputationMilestone_ShouldGrantPermanentUnlockAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new GrantNpcReputationMilestoneCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new GrantNpcReputationMilestoneCommand(profile.Id.Value, "npc.hitomi", "trust-earned", null),
+            CancellationToken.None);
+
+        response.PermanentUnlocks.Should().ContainSingle(
+            u => u.UnlockKey == "npc.hitomi:trust-earned" && u.UnlockType == "npc-reputation-milestone");
+    }
+
+    [Fact]
+    public async Task HasClaimedNpcOffering_ShouldReturnFalse_WhenNeverClaimed()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new HasClaimedNpcOfferingQueryHandler(repository.Object);
+
+        var result = await handler.Handle(
+            new HasClaimedNpcOfferingQuery(profile.Id.Value, "npc.hitomi", "offer.skill"),
+            CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HasClaimedNpcOffering_ShouldReturnTrue_AfterClaiming()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", null, DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new HasClaimedNpcOfferingQueryHandler(repository.Object);
+
+        var result = await handler.Handle(
+            new HasClaimedNpcOfferingQuery(profile.Id.Value, "npc.hitomi", "offer.skill"),
+            CancellationToken.None);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddPermanentItems_ShouldAddItemsAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new AddPermanentItemsCommandHandler(repository.Object, TimeProvider.System);
+        var sourceRunId = Guid.NewGuid();
+
+        var response = await handler.Handle(
+            new AddPermanentItemsCommand(profile.Id.Value, ["item.sac-a-dos", "item.amulette"], sourceRunId),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().HaveCount(2);
+        response.PermanentItems.Should().Contain(i => i.ItemDefinitionKey == "item.sac-a-dos" && i.SourceRunId == sourceRunId);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RecruitCompanion_ShouldAddCompanionToRosterAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new RecruitCompanionCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new RecruitCompanionCommand(
+                profile.Id.Value, "character.thomas", "Thomas",
+                MaxVitality: 100, AttackPower: 12, Defense: 6, StartingGuard: 0,
+                Speed: 10, Initiative: 10,Focus: 0, Mana: 0, Charge: 0,
+                SkillKeys: ["skill.basic.guard"]),
+            CancellationToken.None);
+
+        response.Characters.Should().HaveCount(2);
+        response.Characters.Should().Contain(c => c.DefinitionKey == "character.thomas" && c.DisplayName == "Thomas");
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EquipItem_ShouldEquipOwnedItemAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+        var characterId = profile.Roster.Characters.Single().Id.Value;
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new EquipItemCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new EquipItemCommand(profile.Id.Value, characterId, "item.sac-a-dos"),
+            CancellationToken.None);
+
+        response.Characters.Single().ItemKeys.Should().Contain("item.sac-a-dos");
+        response.Characters.Single().Items.Should().ContainSingle(i => i.ItemKey == "item.sac-a-dos" && i.IsEquipped);
+    }
+
+    [Fact]
+    public async Task UnequipItem_ShouldUnequipItemAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        profile.EquipItem(character.Id, "item.sac-a-dos", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new UnequipItemCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new UnequipItemCommand(profile.Id.Value, character.Id.Value, "item.sac-a-dos"),
+            CancellationToken.None);
+
+        response.Characters.Single().Items.Should().ContainSingle(i => i.ItemKey == "item.sac-a-dos" && !i.IsEquipped);
+    }
+
+    [Fact]
+    public async Task SetPermanentItemContent_ShouldFillContainerAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.fiole-cristal"], null, DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SetPermanentItemContentCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SetPermanentItemContentCommand(profile.Id.Value, "item.fiole-cristal", "item.larme-de-racine"),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().ContainSingle(i =>
+            i.ItemDefinitionKey == "item.fiole-cristal" && i.ContainedLiquidDefinitionKey == "item.larme-de-racine");
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClearPermanentItemContent_ShouldEmptyContainerAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.fiole-cristal"], null, DateTimeOffset.UtcNow);
+        profile.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new ClearPermanentItemContentCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new ClearPermanentItemContentCommand(profile.Id.Value, "item.fiole-cristal"),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().ContainSingle(i =>
+            i.ItemDefinitionKey == "item.fiole-cristal" && i.ContainedLiquidDefinitionKey == null);
+    }
+
+    [Fact]
+    public async Task SpendCurrency_ShouldDecrementAndPersist_WhenAffordable()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardCurrency(DateTimeOffset.UtcNow, 100);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeTrue();
+        response.Profile.Progression.PalaceShardCount.Should().Be(70);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SpendCurrency_ShouldReturnFailureAndNotPersist_WhenInsufficientFunds()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardCurrency(DateTimeOffset.UtcNow, 10);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeFalse();
+        response.Profile.Progression.PalaceShardCount.Should().Be(10);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SpendHimLitCurrency_ShouldDecrementAndPersist_WhenAffordable()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 100);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendHimLitCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendHimLitCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeTrue();
+        response.Profile.Progression.HimLitShardCount.Should().Be(70);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SpendHimLitCurrency_ShouldReturnFailureAndNotPersist_WhenInsufficientFunds()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 10);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendHimLitCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendHimLitCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeFalse();
+        response.Profile.Progression.HimLitShardCount.Should().Be(10);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+}

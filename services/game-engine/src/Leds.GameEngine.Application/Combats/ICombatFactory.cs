@@ -1,0 +1,43 @@
+using Leds.GameEngine.Application.Catalog.Contracts;
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
+
+namespace Leds.GameEngine.Application.Combats;
+
+public interface ICombatFactory
+{
+    /// <summary>
+    /// Constitue les deux camps avant leur placement sur la grille tactique.
+    /// </summary>
+    CombatRoster BuildRoster(
+        CombatId combatId,
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0,
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0,
+        bool himLitProtectionEnabled = false,
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0,
+        string? forgottenSkillKey = null,
+        string? roomTheme = null,
+        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<CatalogItemEquipmentEffect>>? equipmentEffectsByCharacterId = null);
+}

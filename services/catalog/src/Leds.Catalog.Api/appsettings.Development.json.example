@@ -1,0 +1,14 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "CatalogDb": "Host=localhost;Port=5434;Database=leds_catalog;Username=postgres;Password=postgres"
+  },
+  "CatalogSeed": {
+    "ApplyOnStartup": true
+  }
+}

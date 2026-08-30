@@ -160,6 +160,10 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
+/apps/game-client/coverage/
+/artifacts/coverage/
+playwright-report/
+test-results/
 
 # Visual Studio code coverage results
 *.coverage
@@ -215,6 +219,19 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+
+# Monorepo shared source packages
+!packages/shared-building-blocks/
+!packages/shared-building-blocks/**
+
+# Do not version .NET build outputs inside shared packages
+packages/shared-building-blocks/**/bin/
+packages/shared-building-blocks/**/obj/
+packages/shared-building-blocks/**/*.dll
+packages/shared-building-blocks/**/*.pdb
+packages/shared-building-blocks/**/*.deps.json
+packages/shared-building-blocks/**/*.runtimeconfig.json
+
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
@@ -431,6 +448,12 @@ UserSettings/
 AssetImportState
 /Assets/Plugins/Editor/JetBrains*
 
+# --- Playwright E2E ---
+apps/game-client/e2e/
+apps/game-client/playwright.config.ts
+apps/game-client/test-results/
+apps/game-client/playwright-report/
+
 # --- Frontend (Node/Vite/Vue) ---
 node_modules/
 dist/
@@ -444,12 +467,27 @@ dist-ssr/
 # Frontend — garder .env de base mais ignorer les .env locaux sensibles
 .env
 frontend/.env
+*.patch
+*.gz
+*.zip
 
 #backend
 **/appsettings.json
 **/appsettings.*.json
 
 # Coverage
-coverage/
+/apps/game-client/coverage/
+/artifacts/coverage/
 TestResults/
 *.cobertura.xml
+
+# Visual Studio local workspace files
+.vs/
+**/.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vsidx
+*.dtbcache.*
+*.futdcache.*

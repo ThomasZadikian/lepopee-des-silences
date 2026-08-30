@@ -1,0 +1,75 @@
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Infrastructure.Persistence.Entities;
+using System.Text.Json;
+
+namespace Leds.GameEngine.Infrastructure.Persistence.Outbox;
+
+public sealed class EfOutboxWriter : IEfOutboxWriter, IOutboxWriter
+{
+    private readonly GameEngineDbContext _context;
+
+    public EfOutboxWriter(GameEngineDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task AddAsync<TEvent>(
+        TEvent integrationEvent,
+        string type,
+        string eventVersion,
+        string destination,
+        DateTime occurredAtUtc,
+        Guid? correlationId,
+        Guid? causationId,
+        CancellationToken cancellationToken)
+    {
+        var entity = new OutboxMessageEntity
+        {
+            Id = Guid.NewGuid(),
+            Type = type,
+            EventVersion = eventVersion,
+            PayloadJson = JsonSerializer.Serialize(integrationEvent),
+            OccurredAtUtc = occurredAtUtc,
+            CreatedAtUtc = DateTime.UtcNow,
+            RetryCount = 0,
+            Destination = destination,
+            CorrelationId = correlationId,
+            CausationId = causationId
+        };
+
+        _context.OutboxMessages.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task WriteAsync<T>(T integrationEvent, CancellationToken cancellationToken)
+    {
+        var typeName = typeof(T).Name;
+        var entity = new OutboxMessageEntity
+        {
+            Id = Guid.NewGuid(),
+            Type = typeName,
+            EventVersion = "v1",
+            Destination = "player-service",
+            PayloadJson = JsonSerializer.Serialize(integrationEvent, integrationEvent!.GetType()),
+            OccurredAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+            RetryCount = 0
+        };
+
+        _context.OutboxMessages.Add(entity);
+        return Task.CompletedTask;
+    }
+}
+
+public interface IEfOutboxWriter
+{
+    Task AddAsync<TEvent>(
+        TEvent integrationEvent,
+        string type,
+        string eventVersion,
+        string destination,
+        DateTime occurredAtUtc,
+        Guid? correlationId,
+        Guid? causationId,
+        CancellationToken cancellationToken);
+}

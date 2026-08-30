@@ -1,0 +1,139 @@
+key,name,skill_type,targeting,effect_type,mana,power,category,line,proposed_range,proposed_shape,proposed_los,cooldown,is_ultimate,emotional_register,authoring_status
+skill.basic.strike,Frappe,Damage,SingleEnemy,Damage,0,10,Physical,2545,1,Single,false,,,,derived-review
+canon.skill.flamme-froide,Flamme froide,Damage,SingleEnemy,Damage,8,22,Magic,2550,3,Cross,true,,,,handoff-authored
+canon.skill.priere-aspiration,Prière,Drain,SingleEnemy,Debuff,4,12,Magic,2555,4,Single,true,,,,derived-review
+canon.skill.transmutation,Transmutation,Buff,Self,Buff,6,0,Magic,2561,0,Single,false,,,,derived-review
+canon.skill.brume,Brume,Debuff,AllEnemies,Debuff,7,0,Magic,2567,3,Diamond,true,,,,derived-review
+canon.skill.flamme-seraphine,Flamme Séraphine,Damage,SingleEnemy,Damage,12,34,Magic,2573,4,Single,true,,,,derived-review
+canon.skill.se-taire,Se taire,Silence,AllEnemies,Status,0,0,Magic,2578,3,Diamond,true,,,,handoff-authored
+canon.skill.construction-perpetuelle,Construction perpétuelle,Buff,Self,Buff,14,0,Magic,2587,0,Single,false,,,,derived-review
+canon.skill.liberte-retrouvee,La liberté retrouvée,Damage,SingleEnemy,Damage,20,14,Physical,2603,1,Single,false,,,,derived-review
+canon.skill.connaissance-academique,Connaissance académique,Buff,AllAllies,Buff,22,0,Magic,2621,3,Diamond,true,,,,derived-review
+canon.skill.regard-infantile,Regard infantile,Debuff,SingleEnemy,Debuff,18,0,Magic,2635,4,Single,true,,,,handoff-authored
+canon.skill.frayeur-organique,Frayeur organique,Damage,SingleEnemy,Damage,14,16,Magic,2648,4,Single,true,,,,derived-review
+canon.skill.clairvoyance,Clairvoyance,Debuff,AllEnemies,Debuff,16,0,Magic,2656,3,Diamond,true,,,,derived-review
+canon.skill.impulsivite,Impulsivité,Buff,Self,Buff,12,0,Physical,2670,1,Single,false,,,,handoff-authored
+canon.skill.favorite-de-elise,Favorite de Elise,Buff,Self,Heal,24,15,Magic,2689,0,Single,false,,,,derived-review
+canon.skill.creation,Création,Buff,SingleEnemy,CopySkills,20,10,Magic,2707,4,Single,true,,,,derived-review
+canon.skill.ecriture-continuelle,Écriture continuelle,Debuff,SingleEnemy,ExtendDotDuration,16,25,Magic,2718,4,Single,true,,,,derived-review
+canon.skill.larme-des-enfers,Larme des enfers,Damage,SingleEnemy,Damage,14,10,Magic,2723,4,Single,true,,,,derived-review
+canon.skill.souffle-de-la-forge,Souffle de la forge,Damage,SingleEnemy,Damage,16,10,Physical,2729,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.contemplation-infinie,Contemplation infinie,Debuff,SingleEnemy,Debuff,18,0,Magic,2737,4,Single,true,,,,derived-review
+canon.skill.silence,Silence,Debuff,SingleEnemy,Debuff,14,0,Magic,2750,4,Single,true,,,,derived-review
+canon.skill.sursaut-memoriel,Sursaut mémoriel,Damage,SingleEnemy,Damage,20,12,Magic,2757,4,Single,true,,,,derived-review
+canon.skill.larme-elise,Larme d'Elise,Buff,Self,Heal,18,5,Magic,2763,4,Single,true,,,,handoff-authored
+canon.skill.caresse-de-mane,Caresse de Mané,Buff,Self,Heal,16,15,Magic,2774,0,Single,false,,,,derived-review
+canon.skill.anagramme,Anagramme,Damage,SingleEnemy,Damage,14,17,Magic,2781,4,Single,true,,,,derived-review
+canon.skill.lecture-des-silences,Lecture des silences,Damage,SingleEnemy,Damage,14,15,Magic,2787,4,Single,true,,,,derived-review
+canon.skill.nevrose,Névrose,Damage,SingleEnemy,Damage,16,10,Magic,2793,4,Single,true,,,,derived-review
+canon.skill.plongee-dans-la-folie,Plongée dans la folie,Damage,SingleEnemy,Damage,24,20,Magic,2803,4,Single,true,,,,derived-review
+canon.skill.egide,Égide,Buff,Self,Guard,10,15,Magic,2815,0,Single,false,,,,derived-review
+canon.skill.rempart,Rempart,Buff,AllAllies,Guard,16,7,Physical,2820,2,Cross,true,,,,handoff-authored
+canon.skill.symphonie-des-enfers,Symphonie des enfers,Damage,AllEnemies,Damage,26,6,Magic,2825,3,Diamond,true,,,,derived-review
+canon.skill.deluge-du-styx,Déluge du Styx,Debuff,AllEnemies,Debuff,22,0,Magic,2831,3,Diamond,true,,,,derived-review
+canon.skill.destinee-cruelle,Une destinée cruelle,Buff,Self,Buff,30,0,Magic,2842,0,Single,false,,,,derived-review
+canon.skill.fondations-de-thomas,Fondations,Buff,SingleAlly,Guard,14,15,Physical,2862,1,Single,false,,,,handoff-authored
+canon.skill.veillee-de-mina,Veillée,Buff,SingleAlly,Buff,18,0,Magic,2874,3,Single,true,,,,derived-review
+canon.skill.baiser-delise,Baiser d'Elise,Heal,SingleAlly,Heal,16,20,Magic,2885,3,Single,true,,,,derived-review
+canon.skill.vol-a-la-tire,Vol à la tire,Damage,SingleEnemy,Damage,10,16,Physical,2895,1,Single,false,,,,handoff-authored
+canon.skill.pli-du-tapis,Pli du tapis,Damage,SingleEnemy,Damage,0,9,Physical,2928,1,Single,false,,,,derived-review
+canon.skill.etouffement-feutre,Étouffement feutré,Debuff,SingleEnemy,Debuff,8,0,Magic,2934,4,Single,true,,,,derived-review
+canon.skill.seuil-souille,Seuil souillé,Damage,SingleEnemy,Damage,12,14,Magic,2947,4,Single,true,,,,derived-review
+canon.skill.service-du-the,Service du thé,Heal,SingleAlly,Heal,10,12,Magic,2953,3,Single,true,,,,derived-review
+canon.skill.tasse-retournee,Tasse retournée,Debuff,SingleEnemy,Debuff,12,0,Magic,2959,4,Single,true,,,,derived-review
+canon.skill.etiquette,Étiquette,Buff,AllAllies,Buff,8,0,Magic,2969,3,Diamond,true,,,,derived-review
+canon.skill.formule-creuse,Formule creuse,Damage,SingleEnemy,Damage,9,13,Magic,2976,4,Single,true,,,,derived-review
+canon.skill.courbette-inversee,Courbette inversée,Buff,Self,Buff,11,0,Magic,2985,0,Single,false,,,,derived-review
+canon.skill.chute-de-marbre,Chute de marbre,Damage,SingleEnemy,Damage,6,18,Physical,2998,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.socle,Socle,Buff,Self,Guard,10,15,Physical,3004,0,Single,false,,,,derived-review
+canon.skill.verdict-du-seuil,Verdict du seuil,Damage,SingleEnemy,Damage,16,28,Magic,3012,4,Single,true,,,,derived-review
+canon.skill.dictee,Dictée,Debuff,SingleEnemy,Debuff,10,0,Magic,3091,4,Single,true,,,,handoff-authored
+canon.skill.plume-seche,Plume sèche,Damage,SingleEnemy,Damage,0,8,Physical,3101,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.encre-vive,Encre vive,Debuff,SingleEnemy,Debuff,10,0,Magic,3107,4,Single,true,,,,derived-review
+canon.skill.recharge,Recharge,Buff,SingleAlly,RestoreMana,0,8,Magic,3119,3,Single,true,,,,derived-review
+canon.skill.eclaboussure,Éclaboussure,Damage,AllEnemies,Damage,12,10,Magic,3125,3,Diamond,true,,,,derived-review
+canon.skill.corps-de-verre,Corps de verre,Buff,Self,Guard,8,10,Physical,3132,0,Single,false,,,,derived-review
+canon.skill.phrase-inachevee,Phrase inachevée,Damage,SingleEnemy,Damage,10,12,Magic,3142,4,Single,true,,,,derived-review
+canon.skill.marge-blanche,Marge blanche,Debuff,SingleEnemy,Debuff,8,0,Magic,3151,4,Single,true,,,,derived-review
+canon.skill.repli-de-papier,Repli de papier,Buff,Self,Guard,0,8,Physical,3161,0,Single,false,,,,derived-review
+canon.skill.couture,Couture,Damage,SingleEnemy,Damage,8,16,Physical,3170,1,Single,false,,,,derived-review
+canon.skill.reliure-de-chair,Reliure de chair,Debuff,SingleEnemy,Debuff,14,0,Magic,3181,4,Single,true,,,,derived-review
+canon.skill.noeud-final,Nœud final,Damage,SingleEnemy,Damage,20,24,Magic,3194,4,Single,true,,,,derived-review
+canon.skill.griffe-dos,Griffe d'os,Damage,SingleEnemy,Damage,0,10,Physical,3273,1,Single,false,,,,derived-review
+canon.skill.fragment-grave,Fragment gravé,Damage,SingleEnemy,Damage,6,8,Magic,3278,4,Single,true,,,,derived-review
+canon.skill.etreinte-creuse,Étreinte creuse,Damage,SingleEnemy,Damage,4,6,Physical,3284,1,Single,false,,,,derived-review
+canon.skill.effondrement,Effondrement,Damage,AllEnemies,Damage,0,6,Physical,3293,3,Diamond,true,,,,derived-review
+canon.skill.braise-memorielle,Braise mémorielle,Buff,Self,Guard,8,6,Magic,3298,0,Single,false,,,,derived-review
+canon.skill.jet-de-cendre,Jet de cendre,Damage,SingleEnemy,Damage,7,9,Magic,3303,4,Single,true,,,,derived-review
+canon.skill.fardeau-partage,Fardeau partagé,Heal,SingleAlly,Heal,10,8,Magic,3313,3,Single,true,,,,derived-review
+canon.skill.berceuse-inversee,Berceuse inversée,Debuff,AllEnemies,Debuff,12,0,Magic,3323,3,Diamond,true,,,,handoff-authored
+canon.skill.note-tenue,Note tenue,Damage,SingleEnemy,Damage,18,20,Magic,3335,4,Single,true,,,,derived-review
+canon.skill.morsure-composite,Morsure composite,Damage,SingleEnemy,Damage,0,13,Physical,3399,1,Single,false,,,,derived-review
+canon.skill.bond-de-flanc,Bond de flanc,Damage,SingleEnemy,Damage,6,10,Physical,3408,1,Single,false,,,,derived-review
+canon.skill.curee,Curée,Damage,SingleEnemy,Damage,8,16,Physical,3417,1,Single,false,,,,handoff-authored
+canon.skill.guet,Guet,Buff,Self,Guard,0,6,Physical,3430,0,Single,false,,,,derived-review
+canon.skill.designation,Désignation,Debuff,SingleEnemy,Debuff,6,0,Magic,3439,4,Single,true,,,,derived-review
+canon.skill.houlette,Houlette,Damage,SingleEnemy,Damage,0,11,Physical,3448,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.ration,Ration,Buff,AllAllies,Heal,10,10,Magic,3455,3,Diamond,true,,,,derived-review
+canon.skill.brout,Brout,Buff,Self,Guard,0,8,Physical,3460,0,Single,false,,,,derived-review
+canon.skill.regard-fixe,Regard fixe,Debuff,SingleEnemy,Debuff,6,0,Magic,3468,4,Single,true,,,,derived-review
+canon.skill.belement-a-lenvers,Bêlement à l'envers,Damage,SingleEnemy,Damage,10,12,Magic,3474,4,Single,true,,,,derived-review
+canon.skill.detente,Détente,Damage,AllEnemies,Damage,0,26,Magic,3483,3,Diamond,true,,,,derived-review
+canon.skill.coup-de-plaque,Coup de plaque,Damage,SingleEnemy,Damage,0,12,Physical,3547,1,Single,false,,,,derived-review
+canon.skill.foyer-ouvert,Foyer ouvert,Debuff,SingleEnemy,Debuff,8,0,Magic,3558,4,Single,true,,,,derived-review
+canon.skill.redressement,Redressement,Buff,Self,Buff,6,0,Physical,3564,0,Single,false,,,,derived-review
+canon.skill.frappe-denclume,Frappe d'enclume,Damage,SingleEnemy,Damage,0,14,Physical,3574,1,Cross,false,,,,handoff-authored
+canon.skill.cadence,Cadence,Buff,Self,Buff,8,0,Physical,3579,0,Single,false,,,,derived-review
+canon.skill.coup-de-grace-forgeron,Coup de grâce du forgeron,Damage,SingleEnemy,Damage,14,22,Physical,3589,1,Single,false,,,,derived-review
+canon.skill.transmutation-alliee,Transmutation,Buff,SingleAlly,Buff,6,0,Magic,3594,3,Single,true,,,,derived-review
+canon.skill.litanie,Litanie,Buff,AllAllies,Buff,10,0,Magic,3604,3,Diamond,true,,,,derived-review
+canon.skill.scorie,Scorie,Damage,SingleEnemy,Damage,8,11,Magic,3614,4,Single,true,,,,derived-review
+canon.skill.fonte,Fonte,Buff,Self,Buff,12,0,Magic,3620,0,Single,false,,,,derived-review
+canon.skill.contact,Contact,Damage,SingleEnemy,Damage,0,8,Physical,3630,1,Single,false,,,,derived-review
+canon.skill.laitier-ardent,Laitier ardent,Debuff,SingleEnemy,ExtendDotDuration,8,40,Magic,3639,4,Single,true,,,,derived-review
+canon.skill.eclat-vitrifie,Éclat vitrifié,Damage,SingleEnemy,Damage,5,9,Physical,3648,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.reformation,Reformation,Buff,Self,Heal,6,15,Magic,3658,0,Single,false,,,,derived-review
+canon.skill.placebo,Placebo,Buff,Self,Guard,10,10,Magic,3737,0,Single,false,,,,derived-review
+canon.skill.bordage,Bordage,Debuff,SingleEnemy,Debuff,12,0,Magic,3742,4,Single,true,,,,derived-review
+canon.skill.injection-blanche,Injection blanche,Damage,SingleEnemy,Damage,8,10,Magic,3755,3,Single,true,,,,handoff-authored
+canon.skill.drap-tendu,Drap tendu,Debuff,SingleEnemy,Debuff,6,0,Physical,3760,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.sonnette,Sonnette,Buff,Self,Guard,8,5,Magic,3770,0,Single,false,,,,derived-review
+canon.skill.visite,Visite,Damage,SingleEnemy,Damage,12,14,Magic,3778,4,Single,true,,,,derived-review
+canon.skill.tour-de-clef,Tour de clef,Debuff,SingleEnemy,Debuff,14,0,Magic,3787,4,Single,true,,,,derived-review
+canon.skill.trousseau,Trousseau,Damage,SingleEnemy,Damage,0,13,Physical,3796,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.extinction-des-feux,Extinction des feux,Damage,SingleEnemy,Damage,20,24,Magic,3801,4,Single,true,,,,derived-review
+canon.skill.baton-de-marche,Bâton de marche,Damage,SingleEnemy,Damage,0,9,Physical,3863,1,Single,false,,,,derived-review
+canon.skill.chapelet-de-dents,Chapelet de dents,Damage,SingleEnemy,Damage,8,11,Magic,3868,4,Single,true,,,,derived-review
+canon.skill.repentir,Repentir,Buff,Self,Buff,6,0,Magic,3876,0,Single,false,,,,derived-review
+canon.skill.encens-inverse,Encens inversé,Debuff,AllEnemies,Debuff,10,0,Magic,3882,3,Diamond,true,,,,derived-review
+canon.skill.oraison-cousue,Oraison cousue,Damage,SingleEnemy,Damage,14,18,Magic,3894,4,Single,true,,,,derived-review
+canon.skill.derniere-priere,Dernière prière,Drain,SingleEnemy,Debuff,20,18,Magic,3908,4,Single,true,,,,derived-review
+canon.skill.posture-finale,Posture finale,Debuff,SingleEnemy,Debuff,10,0,Magic,3917,4,Single,true,,,,derived-review
+canon.skill.griffe-de-recul,Griffe de recul,Damage,SingleEnemy,Damage,0,14,Physical,3930,1,Single,false,,,,derived-review
+canon.skill.salut-de-chapeau,Salut de chapeau,Damage,SingleEnemy,Damage,0,10,Physical,3991,1,Single,false,,,,derived-review
+canon.skill.conversation-tranquille,Conversation tranquille,Debuff,SingleEnemy,Debuff,8,0,Magic,3996,4,Single,true,,,,derived-review
+canon.skill.pas-de-promenade,Pas de promenade,Buff,Self,Guard,4,6,Physical,4005,0,Single,false,,,,derived-review
+canon.skill.sifflotement,Sifflotement,Damage,AllEnemies,Damage,6,8,Magic,4010,3,Diamond,true,,,,derived-review
+canon.skill.secateur,Sécateur,Damage,SingleEnemy,Damage,0,13,Physical,4015,1,Single,false,,,,derived-review
+canon.skill.emondage,Émondage,Damage,SingleEnemy,Damage,10,11,Physical,4023,1,Single,false,,,,derived-review
+canon.skill.greffe,Greffe,Buff,SingleAlly,Buff,12,0,Magic,4032,3,Single,true,,,,derived-review
+canon.skill.paillage,Paillage,Buff,SingleAlly,Guard,8,8,Magic,4040,3,Single,true,,,,derived-review
+canon.skill.poing-de-crystal,Poing de crystal,Damage,SingleEnemy,Damage,0,17,Physical,4086,1,Single,false,,,,derived-review
+canon.skill.refraction,Réfraction,Damage,SingleEnemy,Damage,12,15,Magic,4091,4,Single,true,,,,derived-review
+canon.skill.stase,Stase,Debuff,SingleEnemy,Debuff,18,0,Magic,4096,4,Single,true,,,,derived-review
+canon.skill.facette,Facette,Buff,Self,Buff,8,0,Magic,4106,0,Single,false,,,,derived-review
+canon.skill.pulsation,Pulsation,Damage,SingleEnemy,Damage,10,12,Magic,4112,4,Single,true,,,,derived-review
+canon.skill.prisme,Prisme,Buff,Self,Guard,14,12,Magic,4122,0,Single,false,,,,derived-review
+canon.skill.eclat-echo-colere,Éclat,Damage,SingleEnemy,Damage,0,12,Physical,4173,4,Single,true,,,,ambiguous-ranged-physical
+canon.skill.constat-sec,Constat sec,Debuff,SingleEnemy,Debuff,8,0,Magic,4182,4,Single,true,,,,derived-review
+canon.skill.montee,Montée,Buff,Self,Buff,6,0,Physical,4188,0,Single,false,,,,derived-review
+canon.skill.explosion,Explosion,Damage,AllEnemies,Damage,16,20,Magic,4194,3,Diamond,true,,,,derived-review
+canon.skill.frisson,Frisson,Damage,SingleEnemy,Damage,6,9,Magic,4199,4,Single,true,,,,derived-review
+canon.skill.porte-fermee,Porte fermée,Debuff,SingleEnemy,Debuff,10,0,Magic,4207,4,Single,true,,,,derived-review
+canon.skill.saccade,Saccade,Buff,Self,Guard,4,6,Physical,4215,0,Single,false,,,,derived-review
+canon.skill.poids,Poids,Debuff,SingleEnemy,Debuff,8,0,Magic,4220,4,Single,true,,,,derived-review
+canon.skill.constat-tardif,Constat tardif,Damage,SingleEnemy,Damage,10,16,Magic,4230,4,Single,true,,,,derived-review
+canon.skill.silence-partage,Silence partagé,Damage,AllEnemies,Damage,12,8,Magic,4235,Map,Map,false,,,,handoff-authored
+canon.skill.maree-montante,Marée montante,Debuff,AllEnemies,Debuff,14,0,Magic,4291,3,Diamond,true,,,,derived-review
+canon.skill.lame-de-fond,Lame de fond,Damage,SingleEnemy,Damage,18,26,Physical,4297,1,Single,false,,,,derived-review
+canon.skill.lame-de-fond-renforcee,Lame de fond (renforcée),Damage,SingleEnemy,Damage,18,39,Physical,4308,1,Single,false,,,,derived-review

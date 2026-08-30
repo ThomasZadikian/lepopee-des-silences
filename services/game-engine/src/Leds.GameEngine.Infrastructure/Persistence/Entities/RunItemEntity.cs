@@ -1,0 +1,38 @@
+namespace Leds.GameEngine.Infrastructure.Persistence.Entities;
+
+public sealed class RunItemEntity
+{
+    public Guid Id { get; set; }
+    public Guid RunId { get; set; }
+    public string DefinitionKey { get; set; } = string.Empty;
+    public string? DefinitionVersion { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? NarrativeText { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string Rarity { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public int Quantity { get; set; }
+    public int? MaxStack { get; set; }
+    public string? UsageMode { get; set; }
+    public string? Lifecycle { get; set; }
+    public string EffectType { get; set; } = string.Empty;
+    public int EffectAmount { get; set; }
+    public string? EffectSummary { get; set; }
+    public bool? IsUsableInCombat { get; set; }
+    public bool? IsUsableOutsideCombat { get; set; }
+    public Guid? SourceRewardOptionId { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public bool IsContainer { get; set; }
+    public int? ContainerCapacity { get; set; }
+    public bool IsLiquid { get; set; }
+    public string? ContainedLiquidDefinitionKey { get; set; }
+    public int TacticalRange { get; set; } = 1;
+    public string TacticalAreaShape { get; set; } = "Single";
+    public bool RequiresLineOfSight { get; set; }
+    public Guid? GroundRoomId { get; set; }
+    public int? GroundX { get; set; }
+    public int? GroundY { get; set; }
+
+    public RunEntity? Run { get; set; }
+}

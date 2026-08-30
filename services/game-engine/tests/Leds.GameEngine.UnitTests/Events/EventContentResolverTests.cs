@@ -1,0 +1,258 @@
+﻿using FluentAssertions;
+using Leds.GameEngine.Application.Events.Contracts;
+using Leds.GameEngine.Application.Events.Npcs;
+using Leds.GameEngine.Application.Events.Ports;
+using Leds.GameEngine.Application.Events.Resolution;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Events.Resolution;
+using Leds.GameEngine.UnitTests.Common;
+
+namespace Leds.GameEngine.UnitTests.Events;
+
+public sealed class EventContentResolverTests
+{
+    private readonly IEventContentResolver _resolver;
+
+    public EventContentResolverTests()
+    {
+        var catalogGateway = new StubCatalogContentGateway();
+
+        _resolver = new EventContentResolver(
+            new IEventContentResolutionStrategy[]
+            {
+                new CombatEventContentResolutionStrategy(),
+                new RoomBossEventContentResolutionStrategy(new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver(catalogGateway)),
+                new ItemEventContentResolutionStrategy(catalogGateway),
+                new PalaceLawEventContentResolutionStrategy(catalogGateway),
+                new NpcEventContentResolutionStrategy(catalogGateway, new NpcEncounterSelector()),
+                new RestEventContentResolutionStrategy(catalogGateway),
+                new MerchantEventContentResolutionStrategy(catalogGateway),
+                new RareEventContentResolutionStrategy()
+            });
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveCombatContent_WhenEventTypeIsCombat()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Combat));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedCombatEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.Combat);
+        content.EnemyTemplateKey.Should().Be("enemy-shadow-v1");
+        content.RiskLevel.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveEliteContent_WhenEventTypeIsElite()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Elite));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedEliteEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.Elite);
+        content.EnemyTemplateKey.Should().Be("enemy-shadow-v1");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveItemContent_WhenEventTypeIsItem()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Item));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedItemEventContent>()
+            .Subject;
+
+        content.ItemTemplateKey.Should().Be("canon.item.lanterne");
+        content.RewardProfile.Should().Be("standard");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldFilterAlreadyActivePalaceLaws_ForCurseEvents()
+    {
+        // NodeEventType.Law is no longer a selectable map node (ambient promulgation
+        // replaced it), but PalaceLawEventContentResolutionStrategy still shares its
+        // catalog-law pool and eligibility filtering with NodeEventType.Curse.
+        var context = CreateContext(NodeEventType.Curse) with
+        {
+            ActivePalaceLawKeys =
+            [
+                "law-silence-v1",
+                "law-siege-v1",
+                "law-carnage-v1",
+                "law-tempest-v1",
+                "law-hail-v1",
+                "law-drought-v1",
+                "law-grey-v1"
+            ]
+        };
+
+        var result = await _resolver.ResolveAsync(context);
+
+        result.IsSuccess.Should().BeTrue();
+        var content = result.Value.Should()
+            .BeOfType<ResolvedCurseEventContent>()
+            .Subject;
+
+        content.PalaceLawDefinitionKey.Should().Be("law-aegis-v1");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveCurseContent_WhenEventTypeIsCurse()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Curse));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedCurseEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.Curse);
+        content.PalaceLawDefinitionKey.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveNpcContent_WhenEventTypeIsNpc()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Npc));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedNpcEventContent>()
+            .Subject;
+
+        content.NpcProfileKey.Should().Be("npc-neutral-traveler");
+        content.NpcDisplayName.Should().Be("Voyageur Neutre");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveRestContent_WhenEventTypeIsRest()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Rest));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedRestEventContent>()
+            .Subject;
+
+        content.RecoveryRatio.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveMerchantContent_WhenEventTypeIsMerchant()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Merchant));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedMerchantEventContent>()
+            .Subject;
+
+        content.MerchantProfileKey.Should().Be("merchant-placeholder-v1");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveRareContent_WhenEventTypeIsRare()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Rare));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedRareCombatEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.RareCombat);
+        content.EnemyTemplateKey.Should().Be("enemy-rare-v1");
+        content.RiskLevel.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldRejectMemoryContent()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Memory));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("event_content.unsupported_standard_pipeline_event_type");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveRoomBossContent()
+    {
+        var result = await _resolver.ResolveAsync(
+            CreateContext(NodeEventType.RoomBoss) with { RoomType = RoomType.Threshold });
+
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedRoomBossEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.Boss);
+        content.EnemyTemplateKey.Should().Be("boss.threshold.warden-v1");
+        content.RiskLevel.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldRejectFinalBossContent()
+    {
+        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.FinalBoss));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("event_content.unsupported_standard_pipeline_event_type");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldReturnFailure_WhenSeedIsBlank()
+    {
+        var result = await _resolver.ResolveAsync(
+            CreateContext(NodeEventType.Combat) with
+            {
+                Seed = " "
+            });
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("event_content.seed_required");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldReturnFailure_WhenRewardProfileIsBlank()
+    {
+        var result = await _resolver.ResolveAsync(
+            CreateContext(NodeEventType.Item) with
+            {
+                RewardProfile = " "
+            });
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("event_content.reward_profile_required");
+    }
+
+    private static EventContentResolutionContext CreateContext(NodeEventType eventType)
+    {
+        return new EventContentResolutionContext(
+            Seed: "seed-event-content-tests",
+            RoomType: RoomType.Forest,
+            RoomDepth: 1,
+            NodeDepth: 2,
+            EventOrder: 1,
+            EventType: eventType,
+            RiskLevel: 25,
+            RewardProfile: "standard");
+    }
+}

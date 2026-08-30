@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Leds.GameEngine.Api/Leds.GameEngine.Api.csproj" />
+    <Project Path="src/Leds.GameEngine.Application/Leds.GameEngine.Application.csproj" />
+    <Project Path="src/Leds.GameEngine.Domain/Leds.GameEngine.Domain.csproj" />
+    <Project Path="src/Leds.GameEngine.Infrastructure/Leds.GameEngine.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Leds.GameEngine.IntegrationTests/Leds.GameEngine.IntegrationTests.csproj" />
+    <Project Path="tests/Leds.GameEngine.UnitTests/Leds.GameEngine.UnitTests.csproj" />
+  </Folder>
+  <Project Path="../../packages/shared-building-blocks/src/Leds.SharedBuildingBlocks/Leds.SharedBuildingBlocks.csproj" />
+</Solution>

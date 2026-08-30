@@ -1,0 +1,195 @@
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Combats.EncounterComposition;
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
+
+namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
+
+public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerator
+{
+    // BALANCE KNOB — stat bonus applied ONLY to the Elite/Rare "preferred" enemy pick
+    // (EncounterCompositionResult.PreferredEnemyKey), multiplicatively on top of the base
+    // per-tier DifficultyMultiplier every enemy already gets. An Elite's escort (if any) —
+    // always a strictly weaker enemy, see EncounterCompositionPolicy.SelectEliteEnemies —
+    // never receives this bonus, only the preferred pick does.
+    private const double EliteStatMultiplier = 1.5;
+    private const double RareStatMultiplier = 1.25;
+
+    // BALANCE KNOB — diversifier la composition des combats (plan d'intégration Claude Design,
+    // Chantier 6) : à effectif égal augmenté (voir EncounterCompositionPolicy), chaque ennemi
+    // individuel est affaibli en proportion, pour que « plus d'ennemis » ne se traduise pas en
+    // « combat plus dur » mais en « combat plus varié ». Solo (le cas le plus fréquent — la
+    // plupart des combats à faible risque, tout Elite/Rare/Boss) n'est jamais affecté : le
+    // multiplicateur ne s'active qu'à partir de deux ennemis engagés ensemble.
+    private static readonly IReadOnlyDictionary<int, double> GroupSizeStatMultiplierByCount =
+        new Dictionary<int, double>
+        {
+            [1] = 1.00,
+            [2] = 0.92,
+            [3] = 0.85,
+            [4] = 0.78,
+            [5] = 0.72,
+            [6] = 0.67,
+            [7] = 0.62,
+        };
+
+    private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly IEncounterCompositionPolicy _compositionPolicy;
+    private readonly ICombatRiskProfileResolver _riskProfileResolver;
+
+    public CombatEncounterDraftGenerator(
+        ICatalogContentGateway catalogContentGateway,
+        IEncounterCompositionPolicy compositionPolicy,
+        ICombatRiskProfileResolver riskProfileResolver)
+    {
+        _catalogContentGateway = catalogContentGateway;
+        _compositionPolicy = compositionPolicy;
+        _riskProfileResolver = riskProfileResolver;
+    }
+
+    public async Task<CombatEncounterDraft> GenerateAsync(
+        CombatEncounterDraftContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var compatibleEnemies = await _catalogContentGateway
+            .ListCompatibleEnemyDefinitionsAsync(
+                context.RoomType,
+                context.RiskLevel,
+                cancellationToken);
+
+        var compositionContext = new EncounterCompositionContext(
+            RoomType: context.RoomType,
+            RoomIndex: context.RoomIndex,
+            RiskLevel: context.RiskLevel,
+            EncounterType: context.EncounterType,
+            AvailableEnemies: compatibleEnemies,
+            NodeDepth: context.NodeDepth,
+            ActivePalaceLaws: context.ActivePalaceLaws,
+            PalaceRoomState: context.PalaceRoomState,
+            RoomClimate: context.RoomClimate,
+            RoomKey: context.RoomKey);
+
+        var compositionResult = _compositionPolicy.Compose(compositionContext);
+
+        var selected = compositionResult.SelectedEnemies;
+
+        var skillKeys = selected
+            .SelectMany(e => e.SkillKeys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var skillDefinitions = await _catalogContentGateway
+            .ListSkillDefinitionsByKeysAsync(skillKeys, cancellationToken);
+
+        var skillLookup = skillDefinitions
+            .ToDictionary(s => s.Key, StringComparer.OrdinalIgnoreCase);
+
+        var missingKeys = skillKeys
+            .Where(k => !skillLookup.ContainsKey(k))
+            .ToArray();
+
+        if (missingKeys.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Missing skill definitions for keys: {string.Join(", ", missingKeys)}");
+        }
+
+        var groupSizeMultiplier = GroupSizeStatMultiplierByCount.GetValueOrDefault(
+            Math.Clamp(selected.Count, 1, 7), 0.62);
+
+        var enemies = selected
+            .Select(e =>
+            {
+                // Only the Elite/Rare "preferred" pick gets a stat bonus — never its escort.
+                var preferredBonus = e.Key == compositionResult.PreferredEnemyKey
+                    ? context.EncounterType switch
+                    {
+                        "Elite" => EliteStatMultiplier,
+                        "Rare" => RareStatMultiplier,
+                        _ => 1.0,
+                    }
+                    : 1.0;
+
+                var statMultiplier = preferredBonus * groupSizeMultiplier;
+
+                return new CombatEncounterDraftEnemy(
+                    EnemyKey: e.Key,
+                    DisplayName: e.DisplayName,
+                    Description: e.Description,
+                    Archetype: e.Archetype,
+                    BaseDifficulty: e.BaseDifficulty,
+                    MinRiskLevel: e.MinRiskLevel,
+                    MaxRiskLevel: e.MaxRiskLevel,
+                    Tags: e.Tags,
+                    SkillKeys: e.SkillKeys,
+                    AttackPower: ScaleStat(e.AttackPower, statMultiplier),
+                    Defense: ScaleStat(e.Defense, statMultiplier),
+                    Speed: e.Speed,
+                    Focus: e.Focus,
+                    MagicAttack: ScaleStat(e.MagicAttack, statMultiplier),
+                    MagicDefense: ScaleStat(e.MagicDefense, statMultiplier),
+                    Mana: e.Mana,
+                    Movement: e.Movement,
+                    EmotionalRegister: EmotionalTypeCode.NormalizeRequired(
+                        e.Registre,
+                        $"Enemy '{e.Key}' Registre"),
+                    Skills: e.SkillKeys
+                        .Select(sk => skillLookup.GetValueOrDefault(sk))
+                        .Where(s => s is not null)
+                        .Select(s => new CombatEncounterDraftSkill(
+                            Key: s!.Key,
+                            DisplayName: s.DisplayName,
+                            Description: s.Description,
+                            SkillType: s.SkillType,
+                            TargetingType: s.TargetingType,
+                            EffectType: s.EffectType,
+                            ManaCost: s.ManaCost,
+                            ChargeCost: s.ChargeCost,
+                            BasePower: s.BasePower,
+                            Tags: s.Tags,
+                            Category: s.Category,
+                            BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                            TacticalRange: s.TacticalRange,
+                            TacticalAreaShape: s.TacticalAreaShape,
+                            RequiresLineOfSight: s.RequiresLineOfSight,
+                            Cooldown: s.Cooldown,
+                            IsUltimate: s.IsUltimate,
+                            EmotionalRegister: s.EmotionalRegister))
+                        .ToArray());
+            })
+            .ToArray();
+
+        if (context.PartyAllies is not { Count: > 0 })
+        {
+            throw new InvalidOperationException(
+                "Combat draft context must contain the run's snapshotted party.");
+        }
+
+        var allies = context.PartyAllies.ToArray();
+
+        var riskProfile = _riskProfileResolver.Resolve(
+            Enum.Parse<Leds.GameEngine.Domain.Nodes.NodeEventType>(context.EncounterType),
+            context.RiskLevel);
+
+        var draft = new CombatEncounterDraft(
+            RunId: context.RunId,
+            RoomId: context.RoomId,
+            NodeId: context.NodeId,
+            RoomType: context.RoomType,
+            RoomIndex: context.RoomIndex,
+            RiskLevel: context.RiskLevel,
+            EncounterType: context.EncounterType,
+            Enemies: enemies,
+            Allies: allies,
+            DifficultyMultiplier: riskProfile.DifficultyMultiplier,
+            RoomKey: context.RoomKey);
+
+        CombatEncounterDraftValidator.Validate(draft);
+        return draft;
+    }
+
+    private static int ScaleStat(int baseValue, double multiplier) =>
+        multiplier == 1.0 ? baseValue : (int)Math.Ceiling(baseValue * multiplier);
+}

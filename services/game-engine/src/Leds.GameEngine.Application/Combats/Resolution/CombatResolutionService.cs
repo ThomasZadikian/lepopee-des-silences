@@ -1,0 +1,203 @@
+﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.IntegrationEvents;
+using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+using Leds.GameEngine.Application.Runs;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
+using Microsoft.Extensions.Logging;
+
+namespace Leds.GameEngine.Application.Combats.Resolution;
+
+public interface ICombatResolutionService
+{
+    /// <summary>
+    /// Applique LA conséquence métier d'une fin de combat (victoire ou défaite),
+    /// quel que soit le point d'entrée. Source unique de vérité.
+    /// </summary>
+    /// <summary>
+    /// Applique l'issue d'un combat à la run. Prend un <see cref="ICombatContext"/> et non un
+    /// <see cref="Combat"/> : la clôture ne lit que le statut, les ennemis et l'identifiant —
+    /// trois choses que les deux systèmes de combat exposent à l'identique.
+    /// </summary>
+    Task<RewardOffer?> ApplyOutcomeAsync(Run run, ICombatContext combat, DateTimeOffset now, CancellationToken cancellationToken = default);
+}
+
+public sealed class CombatResolutionService : ICombatResolutionService
+{
+    private readonly RewardOfferFactory _rewardOfferFactory;
+    private readonly GroundLootBuilder _groundLootBuilder;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
+    private readonly IOutboxWriter _outboxWriter;
+    private readonly ILogger<CombatResolutionService> _logger;
+
+    public CombatResolutionService(
+        RewardOfferFactory rewardOfferFactory,
+        GroundLootBuilder groundLootBuilder,
+        IPlayerProfileGateway playerProfileGateway,
+        IOutboxWriter outboxWriter,
+        ILogger<CombatResolutionService> logger)
+    {
+        _rewardOfferFactory = rewardOfferFactory;
+        _groundLootBuilder = groundLootBuilder;
+        _playerProfileGateway = playerProfileGateway;
+        _outboxWriter = outboxWriter;
+        _logger = logger;
+    }
+
+    public async Task<RewardOffer?> ApplyOutcomeAsync(
+        Run run,
+        ICombatContext combat,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        if (combat.Status is CombatStatus.Completed or CombatStatus.Failed)
+        {
+            run.CapturePartyResources(combat.Allies);
+        }
+
+        switch (combat.Status)
+        {
+            case CombatStatus.Completed:
+                // Doit être lu AVANT de compléter (l'état du nœud peut changer).
+                var combatNode = run.CurrentRoom.CurrentSelectedNode;
+
+                run.CompleteActiveCombat();
+                run.ConsumeNextCombatModifiers();
+                run.AppendJournalEntry(RunJournalNarrator.DescribeCombatVictory(
+                    combat.Enemies.Select(e => e.DisplayName).ToArray()));
+
+                var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
+                run.SetPendingRewardOffer(rewardOffer.Id);
+                await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
+                await AwardHimLitShardsAsync(run, combat, combatNode, cancellationToken);
+                await DropCombatLootOnGroundAsync(run, combat, combatNode, cancellationToken);
+                return rewardOffer;
+
+            case CombatStatus.Failed:
+                run.FailActiveCombat(now);
+                run.AppendJournalEntry(RunJournalNarrator.DescribeCombatDefeat(
+                    combat.Enemies.Select(e => e.DisplayName).ToArray()));
+
+                var failEvt = RunIntegrationEventFactory.CreateFailed(run, "CombatDefeat", now.UtcDateTime);
+                await _outboxWriter.WriteAsync(failEvt, cancellationToken);
+
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    private async Task<RewardOffer> CreateRewardOfferAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
+    {
+        var source = combatNode?.EventType switch
+        {
+            NodeEventType.Rare => RewardSource.Rare,
+            NodeEventType.Elite => RewardSource.Elite,
+            NodeEventType.RoomBoss => RewardSource.RoomBoss,
+            NodeEventType.FinalBoss => RewardSource.RoomBoss,
+            _ => RewardSource.Combat
+        };
+
+        return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
+            source,
+            combatNode?.EventType ?? NodeEventType.Combat,
+            (int)(combatNode?.CombatRiskTier ?? RiskTier.Tendu),
+            combat.Enemies,
+            run.Seed,
+            run.Id.Value,
+            combat.Id.Value,
+            cancellationToken,
+            run.RunModifiers);
+    }
+
+    // Must never block or fail combat resolution: the reward offer always ships
+    // even if the Player Service is unreachable.
+    private async Task AwardCombatEclatsAsync(Run run, RewardOffer rewardOffer, CancellationToken cancellationToken)
+    {
+        var amount = rewardOffer.CombatScaling?.EclatsBaseAmount ?? 0;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, amount, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award combat Éclats for player {PlayerId}", run.PlayerId);
+        }
+    }
+
+    /// <summary>
+    /// "Éclats de Him'Lit": a combat at the Périlleux or Fatal danger tier grants 1 or 2
+    /// shards per enemy defeated. combat.Enemies.Count is the enemy headcount for the
+    /// fight — safe here since this only runs on CombatStatus.Completed (victory), so
+    /// every enemy in the roster is, by definition, defeated. Must never block or fail
+    /// combat resolution: mirrors AwardCombatEclatsAsync's non-blocking try/catch.
+    /// </summary>
+    private async Task AwardHimLitShardsAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
+    {
+        var riskTier = combatNode?.CombatRiskTier ?? RiskTier.Tendu;
+        var shardsPerEnemy = riskTier switch
+        {
+            RiskTier.Perilleux => 1,
+            RiskTier.Fatal => 2,
+            _ => 0
+        };
+
+        if (shardsPerEnemy <= 0)
+        {
+            return;
+        }
+
+        var amount = shardsPerEnemy * combat.Enemies.Count;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playerProfileGateway.AwardHimLitCurrencyAsync(run.PlayerId, amount, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award combat Éclats de Him'Lit for player {PlayerId}", run.PlayerId);
+        }
+    }
+
+    /// <summary>
+    /// Modèle Hadès (ambiance) : un petit butin secondaire tombe visiblement au sol à
+    /// l'endroit du combat, en plus de l'offre de récompense à choix — jamais à sa place (voir
+    /// GroundLootBuilder, qui tire d'un pool distinct et n'écrit jamais dans RewardOffer). Sans
+    /// combatNode (legacy save/import path where no physical node can be resolved),
+    /// il n'y a pas de cellule sensée où déposer quoi que ce soit — le butin secondaire est
+    /// simplement omis, la récompense principale reste inchangée. Ne doit jamais bloquer ni
+    /// faire échouer la résolution du combat : même posture non-bloquante que
+    /// AwardCombatEclatsAsync/AwardHimLitShardsAsync.
+    /// </summary>
+    private async Task DropCombatLootOnGroundAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
+    {
+        if (combatNode is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var items = await _groundLootBuilder.BuildAsync(run.Seed, run.Id.Value, combat.Id.Value, cancellationToken);
+            run.DropCombatLootOnGround(items, combatNode.Lane, combatNode.Row);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to drop ground loot for player {PlayerId}", run.PlayerId);
+        }
+    }
+}

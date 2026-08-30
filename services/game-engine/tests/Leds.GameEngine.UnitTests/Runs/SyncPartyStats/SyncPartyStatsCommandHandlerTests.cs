@@ -1,0 +1,168 @@
+using FluentAssertions;
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players;
+using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Runs.SyncPartyStats;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
+using Moq;
+
+namespace Leds.GameEngine.UnitTests.Runs.SyncPartyStats;
+
+/// <summary>
+/// Equipment mid-run resync — re-reads the freshest effective stat
+/// allocation from player-service and re-applies it to both the protagonist
+/// (<see cref="Run.PlayerState"/> + <see cref="Run.Attack"/>/etc) and every
+/// companion's <see cref="RunCharacterSnapshot"/>.
+/// </summary>
+public sealed class SyncPartyStatsCommandHandlerTests
+{
+    private static PlayerRunSnapshot CreateFreshSnapshot(Guid playerId, Guid protagonistId, Guid companionId) =>
+        new(playerId, "Test Player",
+        [
+            new PlayerRunSnapshotCharacter(
+                protagonistId,
+                "character.player.self",
+                "Le Porteur",
+                Stats: new PlayerRunSnapshotCharacterStats(
+                    MaxVitality: 150, AttackPower: 20, Defense: 9, StartingGuard: 0,
+                    Speed: 14, Initiative: 10,Focus: 3, Mana: 25, Charge: 4),
+                Skills: []),
+            new PlayerRunSnapshotCharacter(
+                companionId,
+                "character.mane",
+                "Mané",
+                Stats: new PlayerRunSnapshotCharacterStats(
+                    MaxVitality: 95, AttackPower: 16, Defense: 5, StartingGuard: 2,
+                    Speed: 9, Initiative: 8,Focus: 1, Mana: 5, Charge: 1),
+                Skills: [])
+        ]);
+
+    private static Run CreateRunWithProtagonistAndCompanion(out Guid protagonistId, out Guid companionId)
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        protagonistId = Guid.NewGuid();
+        companionId = Guid.NewGuid();
+
+        // Each character needs its own RunCharacterStatSnapshot instance — it's a mutable
+        // object with private setters (see ReplaceStats), and RunCharacterSnapshot.Create
+        // stores the reference as-is without copying. Sharing one instance between the
+        // protagonist and the companion would make a later ReplaceStats call for one
+        // silently overwrite the other's stats too, since they'd be the same object.
+        var protagonistStatBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
+        var companionStatBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
+
+        var skills = new[]
+        {
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage", basePower: 10,
+                emotionalRegister: "Neutral")
+        };
+
+        var protagonist = RunCharacterSnapshot.Create(
+            characterId: protagonistId, definitionKey: "character.player.self", displayName: "Le Porteur",
+            statBlock: protagonistStatBlock, skills: skills, emotionalRegisterCode: "Neutral");
+        var companion = RunCharacterSnapshot.Create(
+            characterId: companionId, definitionKey: "character.mane", displayName: "Mané",
+            statBlock: companionStatBlock, skills: skills, emotionalRegisterCode: "Memoire");
+
+        var snapshot = RunPlayerSnapshot.Create(
+            playerId: run.PlayerId, displayName: "Joueur",
+            characters: [protagonist, companion], createdAtUtc: DateTimeOffset.UtcNow);
+
+        run.AttachPlayerSnapshot(snapshot);
+        return run;
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReplaceProtagonistAndCompanionStats_AndPersistTheRun()
+    {
+        var run = CreateRunWithProtagonistAndCompanion(out var protagonistId, out var companionId);
+
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(run.PlayerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateFreshSnapshot(run.PlayerId, protagonistId, companionId));
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        var skillMerger = new PlayerSkillMerger(catalogGateway.Object);
+        var statMerger = new PlayerStatMerger();
+
+        var handler = new SyncPartyStatsCommandHandler(repo.Object, playerGateway.Object, skillMerger, statMerger);
+
+        await handler.Handle(new SyncPartyStatsCommand(run.Id.Value), CancellationToken.None);
+
+        run.Attack.Should().Be(20);
+        run.Defense.Should().Be(9);
+        run.Speed.Should().Be(14);
+        run.Focus.Should().Be(3);
+        run.MaxHp.Should().Be(150);
+        run.PlayerState.MaxVitality.Should().Be(150);
+        run.PlayerState.MaxMana.Should().Be(25);
+        run.PlayerState.Charge.Should().Be(4);
+
+        run.PlayerSnapshot!.Characters.First(c => c.CharacterId == protagonistId).StatBlock.AttackPower
+            .Should().Be(20);
+        run.PlayerSnapshot!.Characters.First(c => c.CharacterId == companionId).StatBlock.AttackPower
+            .Should().Be(16);
+        run.PlayerSnapshot!.Characters.First(c => c.CharacterId == companionId).StatBlock.StartingGuard
+            .Should().Be(2);
+
+        repo.Verify(r => r.UpdateAsync(run, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowNotFoundException_WhenRunDoesNotExist()
+    {
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(It.IsAny<RunId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Run?)null);
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        var skillMerger = new PlayerSkillMerger(new Mock<ICatalogContentGateway>().Object);
+        var statMerger = new PlayerStatMerger();
+        var handler = new SyncPartyStatsCommandHandler(repo.Object, playerGateway.Object, skillMerger, statMerger);
+
+        var act = () => handler.Handle(new SyncPartyStatsCommand(Guid.NewGuid()), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowDomainException_WhenCombatIsActive()
+    {
+        var run = CreateRunWithProtagonistAndCompanion(out _, out _);
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.AvailableNodes.First());
+        var ally = Combatant.CreateAlly("p", "Player", "Fighter", 40);
+        var enemy = Combatant.CreateEnemy("e", "Enemy", "Guard", 30);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
+
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        var skillMerger = new PlayerSkillMerger(new Mock<ICatalogContentGateway>().Object);
+        var statMerger = new PlayerStatMerger();
+        var handler = new SyncPartyStatsCommandHandler(repo.Object, playerGateway.Object, skillMerger, statMerger);
+
+        var act = () => handler.Handle(new SyncPartyStatsCommand(run.Id.Value), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("Cannot sync party stats while a combat is active.");
+    }
+}

@@ -1,0 +1,6 @@
+@Leds.Catalog.Api_HostAddress = http://localhost:5193
+
+GET {{Leds.Catalog.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

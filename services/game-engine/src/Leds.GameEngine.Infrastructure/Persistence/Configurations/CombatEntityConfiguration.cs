@@ -1,0 +1,69 @@
+using Leds.GameEngine.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Leds.GameEngine.Infrastructure.Persistence.Configurations;
+
+public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatEntity>
+{
+    public void Configure(EntityTypeBuilder<CombatEntity> builder)
+    {
+        builder.ToTable("run_active_combats");
+
+        builder.HasKey(c => c.Id);
+
+        builder.Property(c => c.Id).HasColumnName("id");
+        builder.Property(c => c.RunId).HasColumnName("run_id");
+        builder.Property(c => c.RoomId).HasColumnName("room_id");
+        builder.Property(c => c.NodeId).HasColumnName("node_id");
+        builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(64).IsRequired();
+        builder.Property(c => c.TurnNumber).HasColumnName("turn_number");
+        builder.Property(c => c.CurrentTick).HasColumnName("current_tick");
+        builder.Property(c => c.HitCounter).HasColumnName("hit_counter");
+        builder.Property(c => c.HitCounterDoubleDamageEnabled).HasColumnName("hit_counter_double_damage_enabled");
+        builder.Property(c => c.FirstHitCriticalEnabled).HasColumnName("first_hit_critical_enabled");
+        builder.Property(c => c.HasFirstHitLanded).HasColumnName("has_first_hit_landed");
+        builder.Property(c => c.LowHpDamageAmplificationEnabled).HasColumnName("low_hp_damage_amplification_enabled");
+        builder.Property(c => c.DotDurationExtensionTicks).HasColumnName("dot_duration_extension_ticks");
+        builder.Property(c => c.DuelDamageAsymmetryEnabled).HasColumnName("duel_damage_asymmetry_enabled");
+        builder.Property(c => c.DotMagnitudeBonus).HasColumnName("dot_magnitude_bonus");
+        builder.Property(c => c.HealingBlocked).HasColumnName("healing_blocked");
+        builder.Property(c => c.FalaiseWindEnabled).HasColumnName("falaise_wind_enabled").HasDefaultValue(false);
+        builder.Property(c => c.PostDeathBasicAttackOnlyEnabled).HasColumnName("post_death_basic_attack_only_enabled").HasDefaultValue(false);
+        builder.Property(c => c.NextActionRestrictedToBasicAttack).HasColumnName("next_action_restricted_to_basic_attack").HasDefaultValue(false);
+        builder.Property(c => c.TapisPropreEnabled).HasColumnName("tapis_propre_enabled").HasDefaultValue(false);
+        builder.Property(c => c.ThirdCupHealCorruptionEnabled).HasColumnName("third_cup_heal_corruption_enabled").HasDefaultValue(false);
+        builder.Property(c => c.PresentationsEnabled).HasColumnName("presentations_enabled").HasDefaultValue(false);
+        builder.Property(c => c.MiroirEnabled).HasColumnName("miroir_enabled").HasDefaultValue(false);
+        builder.Property(c => c.HasMirrorTriggered).HasColumnName("has_mirror_triggered").HasDefaultValue(false);
+        builder.Property(c => c.ForgottenSkillKey).HasColumnName("forgotten_skill_key").HasMaxLength(256);
+        builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
+        builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");
+
+        builder.Property(c => c.TacticalWidth).HasColumnName("tactical_width");
+        builder.Property(c => c.TacticalHeight).HasColumnName("tactical_height");
+        builder.Property(c => c.TacticalOriginX).HasColumnName("tactical_origin_x").HasDefaultValue(0);
+        builder.Property(c => c.TacticalOriginY).HasColumnName("tactical_origin_y").HasDefaultValue(0);
+        builder.Property(c => c.TacticalElevationCsv).HasColumnName("tactical_elevation_csv");
+        builder.Property(c => c.TacticalWalkableCsv).HasColumnName("tactical_walkable_csv");
+        builder.Property(c => c.TacticalFloorCsv).HasColumnName("tactical_floor_csv");
+        builder.Property(c => c.TacticalRoundNumber).HasColumnName("tactical_round_number");
+        builder.Property(c => c.TacticalActiveIndex).HasColumnName("tactical_active_index");
+        builder.Property(c => c.TacticalInitiativeOrderCsv).HasColumnName("tactical_initiative_order_csv");
+        builder.Property(c => c.TacticalPositionsCsv).HasColumnName("tactical_positions_csv");
+        builder.Property(c => c.TacticalTurnStatesCsv).HasColumnName("tactical_turn_states_csv");
+        builder.Property(c => c.TacticalUsedOnceSkillKeysCsv).HasColumnName("tactical_used_once_skill_keys_csv");
+        builder.Property(c => c.TacticalSkillCooldownsCsv).HasColumnName("tactical_skill_cooldowns_csv");
+        builder.Property(c => c.TacticalEscapeX).HasColumnName("tactical_escape_x");
+        builder.Property(c => c.TacticalEscapeY).HasColumnName("tactical_escape_y");
+        builder.Property(c => c.TacticalRiskTier).HasColumnName("tactical_risk_tier").HasMaxLength(32);
+        builder.Property(c => c.TacticalEquippedItemsCsv).HasColumnName("tactical_equipped_items_csv");
+        builder.Property(c => c.TacticalActivationCountsCsv).HasColumnName("tactical_activation_counts_csv");
+        builder.Property(c => c.TacticalLastMagicCsv).HasColumnName("tactical_last_magic_csv");
+        builder.Property(c => c.TacticalCannotReviveCsv).HasColumnName("tactical_cannot_revive_csv");
+
+        builder.HasIndex(c => c.RunId);
+        builder.HasIndex(c => c.Status);
+    }
+}

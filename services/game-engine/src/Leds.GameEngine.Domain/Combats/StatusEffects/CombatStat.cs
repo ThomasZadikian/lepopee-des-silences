@@ -1,0 +1,47 @@
+﻿namespace Leds.GameEngine.Domain.Combats.StatusEffects;
+
+public enum CombatStat
+{
+    None,
+    AttackPower,
+    Defense,
+    Speed,
+    Movement,
+    Focus,
+    // Flat percentage points subtracted from attacks aimed at this combatant.
+    Evasion,
+    // Authored base stats (mirror AttackPower/Defense) driving the Magic-category
+    // damage ratio in CombatSkillEffectResolver.StatModifierDamageMultiplier —
+    // symmetric to how AttackPower/Defense drive the Physical-category ratio.
+    MagicAttack,
+    MagicDefense,
+    // Virtual stats (no authored base value — base is always 0, so only flat
+    // StatModifier contributions matter): percentage points added to / subtracted
+    // from Magic-category skill damage (see CombatSkillEffectResolver).
+    MagicDamageBonus,
+    MagicDamageReduction,
+    CriticalChanceBonus,
+    // Percentage points added to the caster's DamageOverTime damage dealt (see
+    // Combatant.EffectiveDotDamageBonusPercent) — l'Écrivain's "Plume d'écrivain".
+    DotDamageBonus,
+    // Percentage points subtracted from a Player-side skill's mana/charge cost at cast
+    // time (see CombatSkillEffectResolver.ConsumeResources) — e.g. Mina's "Protection
+    // de Him'Lit" reduces cost by 5%. Negative-only in practice; a positive magnitude
+    // would raise costs.
+    SkillCostReductionPercent,
+    // Percentage points added to all healing this combatant applies (skills and items —
+    // see Combatant.EffectiveHealingBonusPercent), on top of the permanent equipment
+    // component — e.g. Majordome's legendary "La tasse du majordome": +15%.
+    HealingBonus,
+    // Percentage points added to Physical-category skill damage — symmetric counterpart
+    // to MagicDamageBonus (see CombatSkillEffectResolver.PhysicalCategoryDamageMultiplier).
+    // "Loi du Silence Dû" (law.silence-du) is its only source today.
+    PhysicalDamageBonus,
+    // Percentage points added to skills authored as fire attacks.
+    FireDamageBonus,
+    // Flat (not percentage) mana cost added to every Player-side skill cast, on top of
+    // SkillCostReductionPercent's percentage reduction — see
+    // Combatant.EffectiveFlatManaCostBonus / CombatSkillEffectResolver.ConsumeResources.
+    // "Loi du Silence Dû" (law.silence-du) is its only source today.
+    FlatManaCostBonus
+}

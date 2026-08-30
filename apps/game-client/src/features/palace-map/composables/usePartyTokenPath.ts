@@ -1,0 +1,150 @@
+import { onBeforeUnmount, ref, watch, type ComputedRef } from 'vue';
+import type { RoomDto, RoomGridDto } from '../../runs/types/runTypes';
+
+/** Matches the CSS transition duration on .tgrid__party (one cell-to-cell glide per step). */
+export const PARTY_STEP_MS = 150;
+
+/** Same media query the composable applies, exposed so callers outside a component setup —
+ * the run store, which has to decide whether to wait for a walk — can honour it too. */
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+}
+
+/**
+ * How long the token needs to walk between two cells, at one step per axis-aligned cell —
+ * the same X-then-Y sequence `animatePartyTo` plays.
+ *
+ * The store needs this because a move that ends on a contact node resolves the event straight
+ * away, which swaps the whole board out for the event screen. Without waiting, the walk never
+ * gets a single frame and the party appears to teleport onto the thing that ambushed it — the
+ * one moment where seeing the approach is the entire point.
+ */
+export function partyWalkDurationMs(
+  fromX: number, fromY: number, toX: number, toY: number,
+): number {
+  if (prefersReducedMotion()) return 0;
+  return (Math.abs(toX - fromX) + Math.abs(toY - fromY)) * PARTY_STEP_MS;
+}
+
+/**
+ * Party token animation: step through the path cell-by-cell instead of a single glide straight
+ * from the old grid.partyX/Y to the new one, which cut a diagonal shortcut through untraveled
+ * ground and read as a teleport for any move longer than one cell.
+ *
+ * The route is supplied by the caller (`planRoute`), because the only correct one is the one
+ * the pathfinder chose. The old X-then-Y reconstruction was right back when movement was plain
+ * Manhattan; once walls and holes existed it started walking the token straight THROUGH them —
+ * the party visibly crossed a wall it had in fact gone around. When no route was recorded (a
+ * move the board did not originate, a rehydrate), it still falls back to X-then-Y: a rough
+ * walk beats a jump.
+ */
+export function usePartyTokenPath(
+  room: ComputedRef<RoomDto>,
+  grid: ComputedRef<RoomGridDto | null>,
+) {
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
+  const displayPartyX = ref(grid.value?.partyX ?? 0);
+  const displayPartyY = ref(grid.value?.partyY ?? 0);
+  let partyAnimationTimer: ReturnType<typeof setInterval> | null = null;
+  let lastAnimatedRoomId: string | null = null;
+  /** The route the board last asked for, consumed by the next position change. */
+  let plannedRoute: ReadonlyArray<{ x: number; y: number }> | null = null;
+
+  function stopPartyAnimation() {
+    if (partyAnimationTimer !== null) {
+      clearInterval(partyAnimationTimer);
+      partyAnimationTimer = null;
+    }
+  }
+
+  function snapPartyTo(x: number, y: number) {
+    stopPartyAnimation();
+    displayPartyX.value = x;
+    displayPartyY.value = y;
+  }
+
+  /**
+   * Records the exact cells the party is about to walk. Called when the board dispatches a
+   * move, since by the time the new position arrives the pathfinder has been rebuilt around
+   * it and can no longer say how the party got there.
+   */
+  function planRoute(route: ReadonlyArray<{ x: number; y: number }> | null) {
+    plannedRoute = route && route.length > 0 ? route : null;
+  }
+
+  function animatePartyTo(targetX: number, targetY: number) {
+    stopPartyAnimation();
+
+    const steps: Array<[number, number]> = [];
+    const planned = plannedRoute;
+    plannedRoute = null;
+
+    const endsOnTarget = planned
+      && planned[planned.length - 1].x === targetX
+      && planned[planned.length - 1].y === targetY;
+
+    if (planned && endsOnTarget) {
+      for (const cell of planned) steps.push([cell.x, cell.y]);
+    } else {
+      let x = displayPartyX.value;
+      let y = displayPartyY.value;
+      const stepX = Math.sign(targetX - x);
+      while (x !== targetX) {
+        x += stepX;
+        steps.push([x, y]);
+      }
+      const stepY = Math.sign(targetY - y);
+      while (y !== targetY) {
+        y += stepY;
+        steps.push([x, y]);
+      }
+    }
+    if (steps.length === 0) return;
+
+    let stepIndex = 0;
+    partyAnimationTimer = setInterval(() => {
+      const step = steps[stepIndex];
+      if (!step) {
+        stopPartyAnimation();
+        return;
+      }
+      [displayPartyX.value, displayPartyY.value] = step;
+      stepIndex += 1;
+      if (stepIndex >= steps.length) stopPartyAnimation();
+    }, PARTY_STEP_MS);
+  }
+
+  watch(
+    () => (grid.value ? ([room.value.id, grid.value.partyX, grid.value.partyY] as const) : null),
+    (next) => {
+      if (!next) return;
+      const [roomId, x, y] = next;
+      const isNewRoom = roomId !== lastAnimatedRoomId;
+      lastAnimatedRoomId = roomId;
+      if (isNewRoom || prefersReducedMotion) {
+        snapPartyTo(x, y);
+      } else {
+        animatePartyTo(x, y);
+      }
+    },
+    { immediate: true },
+  );
+
+  onBeforeUnmount(() => stopPartyAnimation());
+
+  return {
+    prefersReducedMotion,
+    displayPartyX,
+    displayPartyY,
+    animatePartyTo,
+    planRoute,
+    snapPartyTo,
+    stopPartyAnimation,
+  };
+}

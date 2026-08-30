@@ -1,0 +1,82 @@
+﻿using FluentAssertions;
+using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Domain.Nodes;
+
+namespace Leds.GameEngine.UnitTests.Events.ChooseEventOption;
+
+public sealed class CurrentEventChoiceRequirementResolverTests
+{
+    [Fact]
+    public void RequiresChoice_ShouldReturnTrue_WhenResolverExistsForNodeEventType()
+    {
+        // Arrange
+        var node = MapNode.Create(
+            NodeEventType.Npc,
+            riskLevel: 10,
+            rewardProfile: "narrative-choice",
+            row: 0,
+            lane: 0,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
+            initialState: NodeState.Available);
+
+        var sut = new CurrentEventChoiceRequirementResolver(
+            new ICurrentEventChoiceResolver[]
+            {
+                new StubChoiceResolver(NodeEventType.Npc)
+            });
+
+        // Act
+        var result = sut.RequiresChoice(node);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RequiresChoice_ShouldReturnFalse_WhenNoResolverExistsForNodeEventType()
+    {
+        // Arrange
+        var node = MapNode.Create(
+            NodeEventType.Combat,
+            riskLevel: 20,
+            rewardProfile: "combat-common",
+            row: 0,
+            lane: 0,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
+            initialState: NodeState.Available);
+
+        var sut = new CurrentEventChoiceRequirementResolver(
+            new ICurrentEventChoiceResolver[]
+            {
+                new StubChoiceResolver(NodeEventType.Npc)
+            });
+
+        // Act
+        var result = sut.RequiresChoice(node);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    private sealed class StubChoiceResolver : ICurrentEventChoiceResolver
+    {
+        public StubChoiceResolver(NodeEventType eventType)
+        {
+            EventType = eventType;
+        }
+
+        public NodeEventType EventType { get; }
+
+        public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+            CurrentEventChoiceResolutionContext context,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(CurrentEventChoiceResolutionResult.Create(
+                context.ChoiceId,
+                accepted: true,
+                "Choice resolved."));
+        }
+    }
+}

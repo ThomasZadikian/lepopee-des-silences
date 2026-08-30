@@ -1,0 +1,5 @@
+using Leds.Catalog.Application.NpcReputationAffinities.Dtos;
+
+namespace Leds.Catalog.Application.NpcReputationAffinities.ListNpcReputationAffinities;
+
+public sealed record ListNpcReputationAffinitiesResponse(IReadOnlyCollection<NpcReputationAffinityDto> Affinities);

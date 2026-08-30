@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Leds.Player.Api/Leds.Player.Api.csproj" />
+    <Project Path="src/Leds.Player.Application/Leds.Player.Application.csproj" />
+    <Project Path="src/Leds.Player.Domain/Leds.Player.Domain.csproj" />
+    <Project Path="src/Leds.Player.Infrastructure/Leds.Player.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Leds.Player.IntegrationTests/Leds.Player.IntegrationTests.csproj" />
+    <Project Path="tests/Leds.Player.UnitTests/Leds.Player.UnitTests.csproj" />
+  </Folder>
+</Solution>

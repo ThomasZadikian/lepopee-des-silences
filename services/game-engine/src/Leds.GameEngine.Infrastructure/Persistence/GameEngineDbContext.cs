@@ -1,0 +1,48 @@
+using Leds.GameEngine.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace Leds.GameEngine.Infrastructure.Persistence;
+
+public sealed class GameEngineDbContext : DbContext
+{
+    public GameEngineDbContext(DbContextOptions<GameEngineDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<RunEntity> Runs => Set<RunEntity>();
+    public DbSet<RoomEntity> Rooms => Set<RoomEntity>();
+    public DbSet<MapNodeEntity> MapNodes => Set<MapNodeEntity>();
+    public DbSet<MapNodeParentNodeEntity> MapNodeParentNodes => Set<MapNodeParentNodeEntity>();
+    public DbSet<RoomNpcEntity> RoomNpcs => Set<RoomNpcEntity>();
+    public DbSet<LocalRuleStateEntity> LocalRuleStates => Set<LocalRuleStateEntity>();
+    public DbSet<RunMemoryFragmentEntity> RunMemoryFragments => Set<RunMemoryFragmentEntity>();
+    public DbSet<RunJournalEntryEntity> RunJournalEntries => Set<RunJournalEntryEntity>();
+    public DbSet<RunActivePalaceLawEntity> RunActivePalaceLaws => Set<RunActivePalaceLawEntity>();
+    public DbSet<ActiveCurseEntity> ActiveCurses => Set<ActiveCurseEntity>();
+    public DbSet<RunItemEntity> RunItems => Set<RunItemEntity>();
+    public DbSet<RunModifierEntity> RunModifiers => Set<RunModifierEntity>();
+    public DbSet<CombatEntity> Combats => Set<CombatEntity>();
+    public DbSet<CombatantEntity> Combatants => Set<CombatantEntity>();
+    public DbSet<CombatantSkillEntity> CombatantSkills => Set<CombatantSkillEntity>();
+    public DbSet<PlayerRuntimeStateEntity> PlayerRuntimeStates => Set<PlayerRuntimeStateEntity>();
+    public DbSet<PlayerRuntimeSkillEntity> PlayerRuntimeSkills => Set<PlayerRuntimeSkillEntity>();
+    public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
+    public DbSet<RunPlayerSnapshotEntity> RunPlayerSnapshots => Set<RunPlayerSnapshotEntity>();
+    public DbSet<RunCharacterSnapshotEntity> RunCharacterSnapshots => Set<RunCharacterSnapshotEntity>();
+    public DbSet<RunCharacterStatSnapshotEntity> RunCharacterStatSnapshots => Set<RunCharacterStatSnapshotEntity>();
+    public DbSet<RunCharacterSkillSnapshotEntity> RunCharacterSkillSnapshots => Set<RunCharacterSkillSnapshotEntity>();
+    public DbSet<CombatantBaseStatSnapshotEntity> CombatantBaseStatSnapshots => Set<CombatantBaseStatSnapshotEntity>();
+    public DbSet<CombatantRuntimeStateEntity> CombatantRuntimeStates => Set<CombatantRuntimeStateEntity>();
+    public DbSet<CombatActionRecordEntity> CombatActionRecords => Set<CombatActionRecordEntity>();
+    public DbSet<RewardOfferEntity> RewardOffers => Set<RewardOfferEntity>();
+    public DbSet<RewardOptionEntity> RewardOptions => Set<RewardOptionEntity>();
+    public DbSet<SelectionDecisionEntity> SelectionDecisions => Set<SelectionDecisionEntity>();
+    public DbSet<AdaptiveInfluenceEntity> AdaptiveInfluences => Set<AdaptiveInfluenceEntity>();
+    public DbSet<PalaceIndicatorEntity> PalaceIndicators => Set<PalaceIndicatorEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(GameEngineDbContext).Assembly);
+    }
+}

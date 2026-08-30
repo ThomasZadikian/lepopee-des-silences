@@ -1,0 +1,23 @@
+:8080 {
+  encode zstd gzip
+
+  respond /health/live 200
+
+  handle_path /game-engine/* {
+    reverse_proxy game-engine:8080
+  }
+
+  handle_path /player/* {
+    reverse_proxy player:8080
+  }
+
+  handle_path /catalog/* {
+    reverse_proxy catalog:8080
+  }
+
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+  }
+}

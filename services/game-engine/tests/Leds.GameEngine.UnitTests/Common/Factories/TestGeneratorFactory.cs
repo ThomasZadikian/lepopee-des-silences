@@ -1,0 +1,46 @@
+﻿using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Infrastructure.Generation;
+using Leds.GameEngine.Infrastructure.Generation.Psyche;
+using Leds.GameEngine.Infrastructure.Generation.Randomness;
+using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Reachability;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
+using Leds.GameEngine.Infrastructure.Markov;
+using Leds.GameEngine.UnitTests.Common;
+
+namespace Leds.GameEngine.UnitTests.Common.Factories;
+
+public static class TestGeneratorFactory
+{
+    public static DeterministicRunGenerator CreateDeterministicRunGenerator(
+        StubCatalogContentGateway? catalogContentGateway = null)
+    {
+        var gridRoomGenerator = new GridRoomGenerator(
+            new GridRoomLayoutTemplateProvider(),
+            new RoomThemeResolver(),
+            new RoomBossProfileResolver(new StubCatalogContentGateway()),
+            new HardcodedRoomTypeGenerationProfileProvider(),
+            new HardcodedRoomStructuralProfileProvider(),
+            new HardcodedLocalRuleProvider());
+
+        var traceSink = new NullMarkovTransitionTraceSink();
+        var calibration = new EmotionalCalibration();
+
+        var stateResolver = new MarkovPalaceRoomStateResolver(
+            new MarkovTransitionResolver(new DeterministicMarkovSampler()),
+            traceSink,
+            calibration);
+
+        return new DeterministicRunGenerator(
+            new SeededRandomFactory(),
+            new CatalogMarkovRoomTypeResolver(new StubCatalogContentGateway()),
+            new RoomReachabilitySelector(),
+            stateResolver,
+            gridRoomGenerator,
+            new RunPsycheEvolver(calibration),
+            catalogContentGateway ?? new StubCatalogContentGateway());
+    }
+}

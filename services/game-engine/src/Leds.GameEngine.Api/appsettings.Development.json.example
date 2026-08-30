@@ -1,0 +1,20 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Information"
+    }
+  },
+  "ConnectionStrings": {
+    "GameEngineDb": "Host=localhost;Port=5432;Database=leds_game_engine;Username=postgres;Password=postgres"
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:5173"
+    ]
+  },
+  "DevTools": {
+    "Enabled": true,
+    "Token": "devtools"
+  }
+}
