@@ -89,7 +89,7 @@ public sealed class AccountRegistrationRedTests
             .ToString().Should().Be("Player");
     }
 
-    private static object CreateRegisteredIdentity()
+    internal static object CreateRegisteredIdentity()
     {
         var emailType = FutureIdentityContract.RequireDomainType("Leds.Player.Domain.Identity.EmailAddress");
         var email = FutureIdentityContract.InvokeStatic(emailType, "Create", "player@example.com");
@@ -117,25 +117,16 @@ internal static class FutureIdentityContract
 
     public static object InvokeStatic(Type type, string methodName, params object?[] arguments)
     {
-        var candidates = type
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(method => method.Name == methodName)
-            .Where(method => method.GetParameters().Length == arguments.Length)
-            .ToArray();
+        var method = RequireMethod(type, methodName, isStatic: true, arguments.Length);
+        return Invoke(method, null, type.FullName ?? type.Name, arguments)
+            ?? throw new InvalidOperationException($"{type.FullName}.{methodName} returned null.");
+    }
 
-        candidates.Should().ContainSingle(
-            $"'{type.FullName}.{methodName}' must expose one public static overload with {arguments.Length} parameter(s)");
-
-        try
-        {
-            return candidates.Single().Invoke(null, arguments)
-                ?? throw new InvalidOperationException($"{type.FullName}.{methodName} returned null.");
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-            throw;
-        }
+    public static object? InvokeInstance(object instance, string methodName, params object?[] arguments)
+    {
+        var type = instance.GetType();
+        var method = RequireMethod(type, methodName, isStatic: false, arguments.Length);
+        return Invoke(method, instance, type.FullName ?? type.Name, arguments);
     }
 
     public static T Read<T>(object instance, string propertyName)
@@ -146,5 +137,36 @@ internal static class FutureIdentityContract
         var value = property!.GetValue(instance);
         value.Should().BeAssignableTo<T>();
         return (T)value!;
+    }
+
+    private static MethodInfo RequireMethod(Type type, string methodName, bool isStatic, int argumentCount)
+    {
+        var flags = BindingFlags.Public | (isStatic ? BindingFlags.Static : BindingFlags.Instance);
+        var candidates = type
+            .GetMethods(flags)
+            .Where(method => method.Name == methodName)
+            .Where(method => method.GetParameters().Length == argumentCount)
+            .ToArray();
+
+        candidates.Should().ContainSingle(
+            $"'{type.FullName}.{methodName}' must expose one public {(isStatic ? "static" : "instance")} overload with {argumentCount} parameter(s)");
+        return candidates.Single();
+    }
+
+    private static object? Invoke(
+        MethodInfo method,
+        object? target,
+        string typeName,
+        params object?[] arguments)
+    {
+        try
+        {
+            return method.Invoke(target, arguments);
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+            throw new InvalidOperationException($"Unable to invoke {typeName}.{method.Name}.");
+        }
     }
 }
