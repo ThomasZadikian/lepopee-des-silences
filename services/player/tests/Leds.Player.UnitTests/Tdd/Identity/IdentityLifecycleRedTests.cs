@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.Player.Domain.Common;
+using Leds.Player.Domain.Identity;
 using Leds.Player.UnitTests.Tdd;
 
 namespace Leds.Player.UnitTests.Tdd.Identity;
@@ -70,32 +71,20 @@ public sealed class IdentityLifecycleRedTests
     [Fact]
     public void RecoveryCode_ShouldBeConsumableOnlyOnce()
     {
-        var recoveryType = FutureContract.RequireDomainType("Leds.Player.Domain.Identity.RecoveryCodeSet");
-        var recoveryCodes = FutureContract.InvokeStatic(
-            recoveryType,
-            "Create",
-            new[] { "hash-a", "hash-b", "hash-c" });
+        var recoveryCodes = RecoveryCodeSet.Create(["hash-a", "hash-b", "hash-c"]);
 
-        var firstUse = FutureContract.InvokeInstance(recoveryCodes, "TryConsume", "hash-b");
-        var secondUse = FutureContract.InvokeInstance(recoveryCodes, "TryConsume", "hash-b");
-
-        firstUse.Should().Be(true);
-        secondUse.Should().Be(false);
+        recoveryCodes.TryConsume("hash-b").Should().BeTrue();
+        recoveryCodes.TryConsume("hash-b").Should().BeFalse();
+        recoveryCodes.RemainingCount.Should().Be(2);
     }
 
     [Fact]
     public void UnknownRecoveryCode_ShouldNotConsumeAnyValidCode()
     {
-        var recoveryType = FutureContract.RequireDomainType("Leds.Player.Domain.Identity.RecoveryCodeSet");
-        var recoveryCodes = FutureContract.InvokeStatic(
-            recoveryType,
-            "Create",
-            new[] { "hash-a", "hash-b" });
+        var recoveryCodes = RecoveryCodeSet.Create(["hash-a", "hash-b"]);
 
-        var unknown = FutureContract.InvokeInstance(recoveryCodes, "TryConsume", "hash-unknown");
-        var valid = FutureContract.InvokeInstance(recoveryCodes, "TryConsume", "hash-a");
-
-        unknown.Should().Be(false);
-        valid.Should().Be(true);
+        recoveryCodes.TryConsume("hash-unknown").Should().BeFalse();
+        recoveryCodes.TryConsume("hash-a").Should().BeTrue();
+        recoveryCodes.RemainingCount.Should().Be(1);
     }
 }
