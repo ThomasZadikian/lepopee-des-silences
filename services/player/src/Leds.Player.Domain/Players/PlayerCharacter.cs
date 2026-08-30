@@ -36,7 +36,9 @@ public sealed class PlayerCharacter
         PlayerCharacterStatBlock statBlock,
         IReadOnlyCollection<PlayerCharacterSkill> skills,
         IReadOnlyCollection<PlayerCharacterItem>? items = null,
-        int statPointsInvested = 0)
+        int statPointsInvested = 0,
+        string? archetypeKey = null,
+        DateTimeOffset? archivedAtUtc = null)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -47,6 +49,8 @@ public sealed class PlayerCharacter
         _skills = skills.ToList();
         _items = items?.ToList() ?? [];
         StatPointsInvested = statPointsInvested;
+        ArchetypeKey = archetypeKey;
+        ArchivedAtUtc = archivedAtUtc;
     }
 
     public PlayerCharacterId Id { get; }
@@ -54,6 +58,9 @@ public sealed class PlayerCharacter
     public string DisplayName { get; }
     public string CharacterType { get; }
     public string Status { get; }
+    public string? ArchetypeKey { get; }
+    public DateTimeOffset? ArchivedAtUtc { get; private set; }
+    public bool IsArchived => ArchivedAtUtc.HasValue;
     public PlayerCharacterStatBlock StatBlock { get; private set; }
 
     /// <summary>Historical value retained only to rehydrate pre-baseline saves. No current
@@ -105,8 +112,6 @@ public sealed class PlayerCharacter
             focus: 0,
             mana: baseMana,
             charge: baseCharge,
-            // Same baseline as CreateDefaultPorteur() — recruited companions used to
-            // start with Magic Attack/Defense at 0 since these params were omitted here.
             magicAttack: 6,
             magicDefense: 3);
 
@@ -140,6 +145,52 @@ public sealed class PlayerCharacter
         string characterType = "Standard",
         string status = "Active")
     {
+        ValidateCreation(definitionKey, displayName, statBlock, skills);
+
+        return new PlayerCharacter(
+            PlayerCharacterId.New(),
+            definitionKey.Trim(),
+            displayName.Trim(),
+            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType.Trim(),
+            string.IsNullOrWhiteSpace(status) ? "Active" : status.Trim(),
+            statBlock,
+            skills);
+    }
+
+    /// <summary>
+    /// Creates the Account-owned playable character selected during onboarding.
+    /// The canonical DefinitionKey may be shared by several characters; ArchetypeKey
+    /// captures the immutable gameplay archetype chosen by the player.
+    /// </summary>
+    public static PlayerCharacter CreatePlayable(
+        string definitionKey,
+        string displayName,
+        string archetypeKey,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<PlayerCharacterSkill> skills)
+    {
+        ValidateCreation(definitionKey, displayName, statBlock, skills);
+
+        if (string.IsNullOrWhiteSpace(archetypeKey))
+            throw new DomainException("Character archetype key is required.");
+
+        return new PlayerCharacter(
+            PlayerCharacterId.New(),
+            definitionKey.Trim(),
+            displayName.Trim(),
+            "Player",
+            "Active",
+            statBlock,
+            skills,
+            archetypeKey: archetypeKey.Trim());
+    }
+
+    private static void ValidateCreation(
+        string definitionKey,
+        string displayName,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<PlayerCharacterSkill> skills)
+    {
         if (string.IsNullOrWhiteSpace(definitionKey))
             throw new DomainException("Character definition key is required.");
 
@@ -153,15 +204,14 @@ public sealed class PlayerCharacter
 
         if (skills.Select(s => s.SkillDefinitionKey).Distinct(StringComparer.OrdinalIgnoreCase).Count() != skills.Count)
             throw new DomainException("Character cannot contain duplicate skills.");
+    }
 
-        return new PlayerCharacter(
-            PlayerCharacterId.New(),
-            definitionKey.Trim(),
-            displayName.Trim(),
-            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType.Trim(),
-            string.IsNullOrWhiteSpace(status) ? "Active" : status.Trim(),
-            statBlock,
-            skills);
+    public void Archive(DateTimeOffset archivedAtUtc)
+    {
+        if (ArchivedAtUtc.HasValue)
+            return;
+
+        ArchivedAtUtc = archivedAtUtc;
     }
 
     public void AddSkill(PlayerCharacterSkill skill)
@@ -294,7 +344,9 @@ public sealed class PlayerCharacter
         PlayerCharacterStatBlock statBlock,
         IReadOnlyCollection<PlayerCharacterSkill> skills,
         IReadOnlyCollection<PlayerCharacterItem>? items = null,
-        int statPointsInvested = 0)
+        int statPointsInvested = 0,
+        string? archetypeKey = null,
+        DateTimeOffset? archivedAtUtc = null)
     {
         return new PlayerCharacter(
             id,
@@ -305,7 +357,8 @@ public sealed class PlayerCharacter
             statBlock,
             skills,
             items,
-            statPointsInvested);
+            statPointsInvested,
+            archetypeKey,
+            archivedAtUtc);
     }
-
 }
