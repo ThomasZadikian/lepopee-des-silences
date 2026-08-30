@@ -55,7 +55,9 @@ jobs:
     uses: ./.github/workflows/_migration-consistency.yml
 
   required:
-    name: Required quality gate
+    # Keep the check context named "build" for compatibility with the existing
+    # develop branch protection rule. This job remains the aggregate quality gate.
+    name: build
     if: always()
     needs:
       - game-engine
