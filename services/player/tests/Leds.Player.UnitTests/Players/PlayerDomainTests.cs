@@ -7,13 +7,11 @@ namespace Leds.Player.UnitTests.Players;
 public sealed class PlayerProfileTests
 {
     [Fact]
-    public void Create_ShouldCreateDefaultCharacter()
+    public void Create_ShouldStartWithoutCharacterBeforeArchetypeSelection()
     {
         var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
 
-        profile.Roster.Characters.Should().HaveCount(1);
-        profile.Roster.Characters.Single().DefinitionKey.Should().Be("character.player.self");
-        profile.Roster.Characters.Single().DisplayName.Should().Be("L'Aventurier");
+        profile.Roster.Characters.Should().BeEmpty();
     }
 
     [Fact]
@@ -35,12 +33,13 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
-    public void Create_ShouldStartDefaultCharacterWithStarterSkillsEquipped()
+    public void CreatePlayableCharacter_ShouldStartWithStarterSkillsEquipped()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
-        var character = profile.Roster.Characters.Single();
+        var character = profile.CreatePlayableCharacter("L'Aventurier", "archetype.porteur", DateTimeOffset.UtcNow);
 
         character.EquippedSkillKeys.Should().BeEquivalentTo(["skill.basic.strike", "skill.basic.guard"]);
+        character.ArchetypeKey.Should().Be("archetype.porteur");
     }
 
     [Fact]
@@ -190,7 +189,7 @@ public sealed class PlayerProfileTests
     [Fact]
     public void LearnSkill_ShouldAddTheSkillToTheCharacterWithTheGivenSource()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var character = profile.Roster.Characters.Single();
         var now = DateTimeOffset.UtcNow;
 
@@ -215,7 +214,7 @@ public sealed class PlayerProfileTests
     [Fact]
     public void EquipSkill_ShouldDelegateToTheCharacter()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var character = profile.Roster.Characters.Single();
         character.LearnSkill(PlayerCharacterSkill.Create("skill.new", DateTimeOffset.UtcNow));
 
@@ -276,11 +275,11 @@ public sealed class PlayerProfileTests
     [Fact]
     public void RecruitCompanion_ShouldAddCharacterToRoster_WhenNotAlreadyRecruited()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10, focus: 0, mana: 0, charge: 0);
 
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
 
@@ -294,11 +293,11 @@ public sealed class PlayerProfileTests
     [Fact]
     public void RecruitCompanion_ShouldBeIdempotent_WhenCalledTwiceWithSameKey()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10, focus: 0, mana: 0, charge: 0);
 
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
@@ -313,7 +312,7 @@ public sealed class PlayerProfileTests
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
-            speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
+            speed: 13, initiative: 12, focus: 3, mana: 15, charge: 0);
 
         profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
@@ -338,7 +337,7 @@ public sealed class PlayerProfileTests
     [Fact]
     public void EquipItem_ShouldAddItemToCharacterAndEquipIt_WhenOwnedInPermanentBackpack()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var character = profile.Roster.Characters.Single();
         var now = DateTimeOffset.UtcNow;
         profile.AddPermanentItems(["item.sac-a-dos"], sourceRunId: null, now);
@@ -351,7 +350,7 @@ public sealed class PlayerProfileTests
     [Fact]
     public void EquipItem_ShouldReject_WhenItemNotInPermanentBackpack()
     {
-        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var profile = CreateProfileWithCharacter();
         var character = profile.Roster.Characters.Single();
 
         var act = () => profile.EquipItem(character.Id, "item.never-owned", DateTimeOffset.UtcNow);
@@ -405,6 +404,14 @@ public sealed class PlayerProfileTests
         profile.ClearPermanentItemContent("item.fiole-cristal", now);
 
         profile.PermanentItems.Single().ContainedLiquidDefinitionKey.Should().BeNull();
+    }
+
+    private static PlayerProfile CreateProfileWithCharacter()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", now);
+        profile.CreatePlayableCharacter("L'Aventurier", "archetype.porteur", now);
+        return profile;
     }
 }
 
@@ -611,8 +618,7 @@ public sealed class PlayerCharacterTests
 
         var act = () => character.EquipItem("weapon.b", EquipmentSlotKind.Weapon);
 
-        act.Should().Throw<DomainException>()
-            .WithMessage("*slot Weapon*");
+        act.Should().Throw<DomainException>().WithMessage("*slot Weapon*");
     }
 
     [Fact]
@@ -640,7 +646,7 @@ public sealed class PlayerRosterTests
     }
 
     [Fact]
-    public void AddCharacter_ShouldRejectDuplicateDefinitionKey()
+    public void AddCharacter_ShouldAllowDuplicateDefinitionKeyForDistinctCharacters()
     {
         var roster = PlayerRoster.Create();
         var character1 = PlayerCharacter.Create("key", "Name1", 100, 0, 0, ["skill"]);
@@ -648,7 +654,8 @@ public sealed class PlayerRosterTests
         roster.AddCharacter(character1);
         var act = () => roster.AddCharacter(character2);
 
-        act.Should().Throw<DomainException>().WithMessage("*definition key*");
+        act.Should().NotThrow();
+        roster.Characters.Should().HaveCount(2);
     }
 }
 
@@ -665,7 +672,6 @@ public sealed class PlayerProgressionTests
         progression.UnspentStatPoints.Should().Be(0);
         progression.TotalStatPointsEarned.Should().Be(0);
     }
-
 }
 
 public sealed class PlayerProfileRehydrateTests
