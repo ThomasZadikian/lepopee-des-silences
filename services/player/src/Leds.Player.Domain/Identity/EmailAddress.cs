@@ -23,8 +23,8 @@ public readonly record struct EmailAddress
         {
             var parsed = new MailAddress(normalized);
             if (!string.Equals(parsed.Address, normalized, StringComparison.Ordinal)
-                || !normalized.Contains('@', StringComparison.Ordinal)
-                || normalized.EndsWith('@'))
+                || !normalized.Contains("@", StringComparison.Ordinal)
+                || normalized.EndsWith("@", StringComparison.Ordinal))
             {
                 throw new DomainException("Email address is invalid.");
             }
