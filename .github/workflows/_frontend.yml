@@ -35,7 +35,7 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Unit and component tests with 85% coverage
+      - name: Unit and component tests with 80% CI coverage gate
         run: npm run test:coverage
 
       - name: Production build
