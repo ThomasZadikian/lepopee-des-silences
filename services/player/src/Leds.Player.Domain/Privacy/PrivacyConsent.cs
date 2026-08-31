@@ -4,11 +4,16 @@ namespace Leds.Player.Domain.Privacy;
 
 public sealed class PrivacyConsent
 {
-    private PrivacyConsent(string purposeKey, string policyVersion, DateTimeOffset grantedAtUtc)
+    private PrivacyConsent(
+        string purposeKey,
+        string policyVersion,
+        DateTimeOffset grantedAtUtc,
+        DateTimeOffset? revokedAtUtc = null)
     {
         PurposeKey = purposeKey;
         PolicyVersion = policyVersion;
         GrantedAtUtc = grantedAtUtc;
+        RevokedAtUtc = revokedAtUtc;
     }
 
     public string PurposeKey { get; }
@@ -19,14 +24,21 @@ public sealed class PrivacyConsent
 
     public static PrivacyConsent Grant(string purposeKey, string policyVersion, DateTimeOffset grantedAtUtc)
     {
-        if (string.IsNullOrWhiteSpace(purposeKey))
-            throw new DomainException("Consent purpose is required.");
-        if (string.IsNullOrWhiteSpace(policyVersion))
-            throw new DomainException("Privacy policy version is required.");
-        if (purposeKey.StartsWith("necessary.", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Necessary processing cannot be represented as optional consent.");
-
+        Validate(purposeKey, policyVersion);
         return new PrivacyConsent(purposeKey.Trim(), policyVersion.Trim(), grantedAtUtc);
+    }
+
+    public static PrivacyConsent Rehydrate(
+        string purposeKey,
+        string policyVersion,
+        DateTimeOffset grantedAtUtc,
+        DateTimeOffset? revokedAtUtc)
+    {
+        Validate(purposeKey, policyVersion);
+        if (revokedAtUtc.HasValue && revokedAtUtc.Value < grantedAtUtc)
+            throw new DomainException("Consent cannot be revoked before it was granted.");
+
+        return new PrivacyConsent(purposeKey.Trim(), policyVersion.Trim(), grantedAtUtc, revokedAtUtc);
     }
 
     public void Revoke(DateTimeOffset revokedAtUtc)
@@ -37,5 +49,15 @@ public sealed class PrivacyConsent
             throw new DomainException("Consent cannot be revoked before it was granted.");
 
         RevokedAtUtc = revokedAtUtc;
+    }
+
+    private static void Validate(string purposeKey, string policyVersion)
+    {
+        if (string.IsNullOrWhiteSpace(purposeKey))
+            throw new DomainException("Consent purpose is required.");
+        if (string.IsNullOrWhiteSpace(policyVersion))
+            throw new DomainException("Privacy policy version is required.");
+        if (purposeKey.StartsWith("necessary.", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Necessary processing cannot be represented as optional consent.");
     }
 }
