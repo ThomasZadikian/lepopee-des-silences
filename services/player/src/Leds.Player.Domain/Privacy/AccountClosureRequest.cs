@@ -4,11 +4,16 @@ namespace Leds.Player.Domain.Privacy;
 
 public sealed class AccountClosureRequest
 {
-    private AccountClosureRequest(Guid accountId, DateTimeOffset requestedAtUtc, DateTimeOffset executeAfterUtc)
+    private AccountClosureRequest(
+        Guid accountId,
+        DateTimeOffset requestedAtUtc,
+        DateTimeOffset executeAfterUtc,
+        DateTimeOffset? cancelledAtUtc = null)
     {
         AccountId = accountId;
         RequestedAtUtc = requestedAtUtc;
         ExecuteAfterUtc = executeAfterUtc;
+        CancelledAtUtc = cancelledAtUtc;
     }
 
     public Guid AccountId { get; }
@@ -25,6 +30,20 @@ public sealed class AccountClosureRequest
             throw new DomainException("Account closure grace period must be positive.");
 
         return new AccountClosureRequest(accountId, requestedAtUtc, requestedAtUtc.Add(gracePeriod));
+    }
+
+    public static AccountClosureRequest Rehydrate(
+        Guid accountId,
+        DateTimeOffset requestedAtUtc,
+        DateTimeOffset executeAfterUtc,
+        DateTimeOffset? cancelledAtUtc)
+    {
+        if (accountId == Guid.Empty)
+            throw new DomainException("Account id is required for closure.");
+        if (executeAfterUtc <= requestedAtUtc)
+            throw new DomainException("Account closure execution must follow its request.");
+
+        return new AccountClosureRequest(accountId, requestedAtUtc, executeAfterUtc, cancelledAtUtc);
     }
 
     public bool CanExecute(DateTimeOffset now) => !IsCancelled && now >= ExecuteAfterUtc;
