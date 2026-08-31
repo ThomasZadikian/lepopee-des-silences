@@ -3,7 +3,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Domain.Combats;
 
-namespace Leds.GameEngine.UnitTests.Runs.TacticalCombat;
+namespace Leds.GameEngine.UnitTests.Runs.TacticalCombatCoverage;
 
 public sealed class TacticalChargeRulesCoverageTests
 {
