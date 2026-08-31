@@ -56,12 +56,10 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
 
         if (string.Equals(mode, "Log", StringComparison.OrdinalIgnoreCase))
         {
-            // Authentication links are bearer credentials. Even in Development they must
-            // never enter application logs, traces or centralized observability systems.
+            // Authentication links and recipient addresses are private data. Development
+            // mode deliberately logs neither the address nor the bearer credential.
             _logger.LogInformation(
-                "Development account email suppressed for {Recipient}: {Subject}. Configure SMTP to receive the one-time link.",
-                recipient.Value,
-                subject);
+                "Development account email suppressed. Configure SMTP to receive one-time account links.");
             return;
         }
 
