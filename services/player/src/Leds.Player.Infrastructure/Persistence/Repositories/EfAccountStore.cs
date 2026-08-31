@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Leds.Player.Application.Abstractions;
+using Leds.Player.Domain.Common;
 using Leds.Player.Domain.Identity;
 using Leds.Player.Domain.Players;
 using Leds.Player.Domain.Privacy;
@@ -308,6 +309,76 @@ public sealed class EfAccountStore : IAccountStore
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<GameLeaseClaimResult> ClaimGameLeaseAsync(
+        Guid accountId,
+        Guid sessionId,
+        DateTimeOffset now,
+        TimeSpan leaseDuration,
+        bool allowTransfer,
+        CancellationToken cancellationToken)
+    {
+        if (accountId == Guid.Empty || sessionId == Guid.Empty)
+            throw new DomainException("Account and session ids are required for a game-session lease.");
+        if (leaseDuration <= TimeSpan.Zero)
+            throw new DomainException("Game-session lease duration must be positive.");
+
+        var expiresAt = now.Add(leaseDuration);
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO active_game_session_leases (account_id, owner_session_id, acquired_at_utc, expires_at_utc)
+            VALUES ({accountId}, {sessionId}, {now}, {expiresAt})
+            ON CONFLICT (account_id) DO UPDATE
+            SET owner_session_id = EXCLUDED.owner_session_id,
+                acquired_at_utc = CASE
+                    WHEN active_game_session_leases.owner_session_id <> EXCLUDED.owner_session_id
+                        THEN EXCLUDED.acquired_at_utc
+                    ELSE active_game_session_leases.acquired_at_utc
+                END,
+                expires_at_utc = EXCLUDED.expires_at_utc
+            WHERE active_game_session_leases.owner_session_id = EXCLUDED.owner_session_id
+               OR active_game_session_leases.expires_at_utc <= {now}
+               OR {allowTransfer};
+            """, cancellationToken);
+
+        var lease = await GetGameLeaseAsync(accountId, cancellationToken)
+            ?? throw new InvalidOperationException("The active game-session lease could not be loaded after claim.");
+        var acquired = affected > 0 && lease.OwnerSessionId == sessionId;
+        var transferRequired = !acquired && !lease.IsExpired(now) && lease.OwnerSessionId != sessionId;
+        return new GameLeaseClaimResult(lease, acquired, transferRequired);
+    }
+
+    public async Task<bool> HeartbeatGameLeaseAsync(
+        Guid accountId,
+        Guid sessionId,
+        DateTimeOffset now,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken)
+    {
+        if (leaseDuration <= TimeSpan.Zero)
+            throw new DomainException("Game-session lease duration must be positive.");
+
+        var expiresAt = now.Add(leaseDuration);
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE active_game_session_leases
+            SET expires_at_utc = {expiresAt}
+            WHERE account_id = {accountId}
+              AND owner_session_id = {sessionId}
+              AND expires_at_utc > {now};
+            """, cancellationToken);
+        return affected == 1;
+    }
+
+    public async Task ReleaseGameLeaseAsync(
+        Guid accountId,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($"""
+            DELETE FROM active_game_session_leases
+            WHERE account_id = {accountId}
+              AND owner_session_id = {sessionId};
+            """, cancellationToken);
     }
 
     private static AccountIdentityEntity ToEntity(UserIdentity identity) => new()
