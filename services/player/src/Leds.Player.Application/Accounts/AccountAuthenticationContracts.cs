@@ -31,12 +31,27 @@ public sealed record MfaEnrollmentResponse(
 
 public sealed record ConfirmMfaEnrollmentCommand(
     string ChallengeToken,
-    string ProtectedSecret,
-    string Code) : IRequest<AuthenticatedSessionResponse>;
+    string Code) : IRequest<AuthenticatedSessionResponse>
+{
+    internal string? LegacyProtectedSecret { get; init; }
+
+    [Obsolete("The protected TOTP secret is server-side state and must not cross the HTTP boundary.")]
+    public ConfirmMfaEnrollmentCommand(
+        string challengeToken,
+        string protectedSecret,
+        string code) : this(challengeToken, code)
+    {
+        LegacyProtectedSecret = protectedSecret;
+    }
+}
 
 public sealed record CompleteMfaChallengeCommand(
     string ChallengeToken,
     string Code) : IRequest<AuthenticatedSessionResponse>;
+
+public sealed record CompleteMfaRecoveryCodeCommand(
+    string ChallengeToken,
+    string RecoveryCode) : IRequest<AuthenticatedSessionResponse>;
 
 public sealed record RefreshSessionCommand(
     Guid SessionId,
@@ -53,4 +68,5 @@ public sealed record AuthenticatedSessionResponse(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAtUtc,
     string RefreshToken,
-    DateTimeOffset RefreshTokenExpiresAtUtc);
+    DateTimeOffset RefreshTokenExpiresAtUtc,
+    IReadOnlyCollection<string>? RecoveryCodes = null);
