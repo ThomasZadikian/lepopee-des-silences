@@ -8,6 +8,8 @@ public sealed class PlayerCharacterEntity
     public string DisplayName { get; set; } = string.Empty;
     public string CharacterType { get; set; } = "Standard";
     public string Status { get; set; } = "Active";
+    public string? ArchetypeKey { get; set; }
+    public DateTimeOffset? ArchivedAtUtc { get; set; }
     public int MaxVitality { get; set; }
     public int BaseMana { get; set; }
     public int BaseCharge { get; set; }
