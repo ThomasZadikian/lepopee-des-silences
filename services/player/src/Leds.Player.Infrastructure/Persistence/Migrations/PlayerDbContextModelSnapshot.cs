@@ -22,12 +22,160 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.AccountIdentityEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTimeOffset?>("ClosureCancelledAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closure_cancelled_at_utc");
+
+                    b.Property<DateTimeOffset?>("ClosureExecuteAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closure_execute_after_utc");
+
+                    b.Property<DateTimeOffset?>("ClosureRequestedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closure_requested_at_utc");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset?>("EmailVerifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verified_at_utc");
+
+                    b.Property<DateTimeOffset?>("MfaConfiguredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("mfa_configured_at_utc");
+
+                    b.Property<string>("MfaSecretProtected")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("mfa_secret_protected");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("RecoveryCodeHashesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("recovery_code_hashes_json");
+
+                    b.Property<int>("Role")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("role");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .IsUnique();
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("account_identities", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.AccountSessionEntity", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("refresh_token_hash");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.Property<DateTimeOffset?>("RotatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rotated_at_utc");
+
+                    b.HasKey("SessionId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("account_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.ActiveGameSessionLeaseEntity", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTimeOffset>("AcquiredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acquired_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<Guid>("OwnerSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_session_id");
+
+                    b.HasKey("AccountId");
+
+                    b.ToTable("active_game_session_leases", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("ArchetypeKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("archetype_key");
+
+                    b.Property<DateTimeOffset?>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at_utc");
 
                     b.Property<int>("BaseCharge")
                         .HasColumnType("integer")
@@ -100,8 +248,7 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PlayerProfileId");
 
-                    b.HasIndex("PlayerProfileId", "DefinitionKey")
-                        .IsUnique();
+                    b.HasIndex("PlayerProfileId", "DefinitionKey");
 
                     b.ToTable("player_characters", (string)null);
                 });
@@ -434,17 +581,17 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("display_name");
 
-                    b.Property<int>("HimLitShardCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("him_lit_shard_count");
-
                     b.Property<int>("HighestDifficultyLevelUnlocked")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("highest_difficulty_level_unlocked");
+
+                    b.Property<int>("HimLitShardCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("him_lit_shard_count");
 
                     b.Property<string>("MainStoryCheckpointKey")
                         .HasMaxLength(160)
@@ -642,6 +789,44 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                     b.ToTable("player_run_statistics", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PrivacyConsentEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTimeOffset>("GrantedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at_utc");
+
+                    b.Property<string>("PolicyVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("policy_version");
+
+                    b.Property<string>("PurposeKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("purpose_key");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId", "PurposeKey", "GrantedAtUtc");
+
+                    b.ToTable("account_privacy_consents", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.ProcessedIntegrationEventEntity", b =>
                 {
                     b.Property<Guid>("EventId")
@@ -664,6 +849,78 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProcessedAtUtc");
 
                     b.ToTable("player_processed_integration_events", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.SecurityTokenEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<DateTimeOffset>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at_utc");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("Purpose", "TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("account_security_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.AccountIdentityEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", null)
+                        .WithOne()
+                        .HasForeignKey("Leds.Player.Infrastructure.Persistence.Entities.AccountIdentityEntity", "AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.AccountSessionEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.ActiveGameSessionLeaseEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", null)
+                        .WithOne()
+                        .HasForeignKey("Leds.Player.Infrastructure.Persistence.Entities.ActiveGameSessionLeaseEntity", "AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", b =>
@@ -752,6 +1009,24 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("PlayerProfile");
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PrivacyConsentEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.SecurityTokenEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", b =>
