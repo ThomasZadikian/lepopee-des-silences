@@ -80,6 +80,7 @@ public sealed class ExternalCatalogContentSeederCoverageTests
         var seeder = CreateSeeder(context, directory.Path);
 
         await seeder.ApplyAsync();
+        context.ChangeTracker.Clear();
         var firstNpcUpdated = (await context.NpcDefinitions.SingleAsync()).UpdatedAtUtc;
         var firstPoolUpdated = (await context.RewardCursePools.SingleAsync()).UpdatedAtUtc;
 
@@ -145,7 +146,9 @@ public sealed class ExternalCatalogContentSeederCoverageTests
         var roomTypes = explicitValues ? "[\"Npc\"]" : "null";
         var roomStates = explicitValues ? "[\"Freed\"]" : "null";
         var climates = explicitValues ? "[\"Calm\"]" : "null";
-        var persona = explicitValues ? "{\"summary\":\"quiet\"}" : "null";
+        var persona = explicitValues
+            ? "{\"tone\":\"Quiet\",\"register\":\"Silence\",\"needs\":[],\"offerings\":[]}"
+            : "null";
         var wounds = explicitValues ? "[]" : "null";
         var encounters = explicitValues ? "[\"encounter-a\"]" : "null";
         var poolDescription = explicitValues ? "\"Updated pool\"" : "null";
