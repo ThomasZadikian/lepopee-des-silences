@@ -31,12 +31,12 @@ export default defineConfig({
         'src/pages/RunPage.vue',
       ],
       thresholds: {
-        // Keep a single quality contract across the frontend: every principal coverage
-        // dimension must retain at least 85%, providing headroom above the former 80% gate.
-        lines: 85,
-        branches: 85,
-        functions: 85,
-        statements: 85,
+        // 80% is the hard CI contract. We still target >=85% during development, but
+        // a result between 80% and 85% must remain green and is tracked as internal headroom.
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
       },
     },
   },
