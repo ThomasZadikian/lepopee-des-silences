@@ -178,21 +178,19 @@ describe('useSortEffects coverage margin', () => {
       { ...cameraProjection, zoom: Number.NaN },
     ] as any[];
 
-    for (const projection of invalidProjections) {
-      await effects.launchSort(
-        'known',
-        0,
-        0,
-        { width: 1, height: 1, elevation: [0] },
-        projection,
-      );
-    }
+    const invalidRuns = invalidProjections.map((projection) => effects.launchSort(
+      'known',
+      0,
+      0,
+      { width: 1, height: 1, elevation: [0] },
+      projection,
+    ));
 
     expect(mocks.isoUnit).toHaveBeenCalled();
     expect(mocks.projectToScreen).toHaveBeenCalled();
 
     effects.clearSorts();
-    await cameraRunning;
+    await Promise.all([cameraRunning, ...invalidRuns]);
   });
 
   it('reprojects active effects during rendering and supports the stored projection fallback', async () => {
