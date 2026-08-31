@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Domain.Identity;
 using Leds.Player.Domain.Players;
@@ -75,6 +76,7 @@ public sealed class EfAccountStore : IAccountStore
         entity.EmailVerifiedAtUtc = identity.EmailVerifiedAtUtc;
         entity.MfaSecretProtected = identity.MfaSecretProtected;
         entity.MfaConfiguredAtUtc = identity.MfaConfiguredAtUtc;
+        entity.RecoveryCodeHashesJson = JsonSerializer.Serialize(identity.RecoveryCodeHashes);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -318,7 +320,8 @@ public sealed class EfAccountStore : IAccountStore
         CreatedAtUtc = identity.CreatedAtUtc,
         EmailVerifiedAtUtc = identity.EmailVerifiedAtUtc,
         MfaSecretProtected = identity.MfaSecretProtected,
-        MfaConfiguredAtUtc = identity.MfaConfiguredAtUtc
+        MfaConfiguredAtUtc = identity.MfaConfiguredAtUtc,
+        RecoveryCodeHashesJson = JsonSerializer.Serialize(identity.RecoveryCodeHashes)
     };
 
     private static UserIdentity ToDomain(AccountIdentityEntity entity) =>
@@ -331,7 +334,8 @@ public sealed class EfAccountStore : IAccountStore
             entity.CreatedAtUtc,
             entity.EmailVerifiedAtUtc,
             entity.MfaSecretProtected,
-            entity.MfaConfiguredAtUtc);
+            entity.MfaConfiguredAtUtc,
+            JsonSerializer.Deserialize<string[]>(entity.RecoveryCodeHashesJson) ?? []);
 
     private static AccountSessionEntity ToEntity(AccountSession session) => new()
     {
