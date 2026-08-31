@@ -3,11 +3,14 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AccountAccessShell from '../features/account/components/AccountAccessShell.vue';
+import { getAccessToken } from '../features/account/authSession';
+import { playerApi } from '../shared/api/playerApi';
 
 const router = useRouter();
 const characterName = ref('');
 const selectedArchetype = ref('archetype.porteur');
 const error = ref<string | null>(null);
+const busy = ref(false);
 
 const archetypes = [
   {
@@ -46,8 +49,26 @@ async function continueToPalace() {
     return;
   }
 
-  // La commande CreateCharacter sera branchée sur l'API Player dans la verticale Application/API.
-  await router.push({ name: 'threshold' });
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    error.value = 'Votre session a expiré. Reconnectez-vous avant de créer un personnage.';
+    return;
+  }
+
+  try {
+    busy.value = true;
+    await playerApi.createCharacter(accessToken, {
+      displayName: characterName.value.trim(),
+      archetypeKey: selected.value.key,
+    });
+    await router.push({ name: 'threshold' });
+  } catch (cause) {
+    error.value = cause instanceof Error
+      ? cause.message
+      : 'Impossible de créer ce personnage pour le moment.';
+  } finally {
+    busy.value = false;
+  }
 }
 </script>
 
@@ -73,7 +94,7 @@ async function continueToPalace() {
             'archetype-card--selected': selectedArchetype === archetype.key,
             'archetype-card--locked': !archetype.available,
           }"
-          :disabled="!archetype.available"
+          :disabled="!archetype.available || busy"
           @click="selectedArchetype = archetype.key"
         >
           <span class="archetype-card__glyph">{{ archetype.glyph }}</span>
@@ -91,9 +112,9 @@ async function continueToPalace() {
 
       <p v-if="error" class="character-selection__error" role="alert">{{ error }}</p>
 
-      <button class="character-selection__submit" type="submit">
+      <button class="character-selection__submit" type="submit" :disabled="busy">
         <span>◈</span>
-        <span>Entrer dans le Palais</span>
+        <span>{{ busy ? 'Création…' : 'Entrer dans le Palais' }}</span>
       </button>
     </form>
   </AccountAccessShell>
@@ -205,6 +226,8 @@ async function continueToPalace() {
   text-transform: uppercase;
   cursor: pointer;
 }
+
+.character-selection__submit:disabled { opacity: .55; cursor: wait; }
 
 @media (max-width: 760px) {
   .archetype-grid { grid-template-columns: 1fr; }
