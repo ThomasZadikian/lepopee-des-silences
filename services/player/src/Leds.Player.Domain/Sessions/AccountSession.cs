@@ -11,13 +11,17 @@ public sealed class AccountSession
         Guid sessionId,
         string refreshTokenHash,
         DateTimeOffset createdAtUtc,
-        DateTimeOffset expiresAtUtc)
+        DateTimeOffset expiresAtUtc,
+        DateTimeOffset? rotatedAtUtc = null,
+        DateTimeOffset? revokedAtUtc = null)
     {
         AccountId = accountId;
         SessionId = sessionId;
         RefreshTokenHash = refreshTokenHash;
         CreatedAtUtc = createdAtUtc;
         ExpiresAtUtc = expiresAtUtc;
+        RotatedAtUtc = rotatedAtUtc;
+        RevokedAtUtc = revokedAtUtc;
     }
 
     public Guid AccountId { get; }
@@ -36,16 +40,28 @@ public sealed class AccountSession
         DateTimeOffset createdAtUtc,
         DateTimeOffset expiresAtUtc)
     {
-        if (accountId == Guid.Empty)
-            throw new DomainException("Account id is required.");
-        if (sessionId == Guid.Empty)
-            throw new DomainException("Session id is required.");
-        if (string.IsNullOrWhiteSpace(refreshTokenHash))
-            throw new DomainException("Refresh-token hash is required.");
-        if (expiresAtUtc <= createdAtUtc)
-            throw new DomainException("Session expiration must be after creation.");
-
+        Validate(accountId, sessionId, refreshTokenHash, createdAtUtc, expiresAtUtc);
         return new AccountSession(accountId, sessionId, refreshTokenHash, createdAtUtc, expiresAtUtc);
+    }
+
+    public static AccountSession Rehydrate(
+        Guid accountId,
+        Guid sessionId,
+        string refreshTokenHash,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset expiresAtUtc,
+        DateTimeOffset? rotatedAtUtc,
+        DateTimeOffset? revokedAtUtc)
+    {
+        Validate(accountId, sessionId, refreshTokenHash, createdAtUtc, expiresAtUtc);
+        return new AccountSession(
+            accountId,
+            sessionId,
+            refreshTokenHash,
+            createdAtUtc,
+            expiresAtUtc,
+            rotatedAtUtc,
+            revokedAtUtc);
     }
 
     public void RotateRefreshToken(
@@ -83,5 +99,22 @@ public sealed class AccountSession
             return;
 
         RevokedAtUtc = revokedAtUtc;
+    }
+
+    private static void Validate(
+        Guid accountId,
+        Guid sessionId,
+        string refreshTokenHash,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset expiresAtUtc)
+    {
+        if (accountId == Guid.Empty)
+            throw new DomainException("Account id is required.");
+        if (sessionId == Guid.Empty)
+            throw new DomainException("Session id is required.");
+        if (string.IsNullOrWhiteSpace(refreshTokenHash))
+            throw new DomainException("Refresh-token hash is required.");
+        if (expiresAtUtc <= createdAtUtc)
+            throw new DomainException("Session expiration must be after creation.");
     }
 }
