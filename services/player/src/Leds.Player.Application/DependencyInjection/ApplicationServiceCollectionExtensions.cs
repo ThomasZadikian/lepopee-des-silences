@@ -1,4 +1,6 @@
 using FluentValidation;
+using Leds.Player.Application.Abstractions;
+using Leds.Player.Application.Accounts;
 using Leds.Player.Application.Common.Behaviors;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +16,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddSingleton<IRecoveryCodeService, DefaultRecoveryCodeService>();
         services.AddSingleton(TimeProvider.System);
 
         return services;
