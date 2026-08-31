@@ -95,6 +95,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
                 CharacterType = c.CharacterType,
                 Status = c.Status,
+                ArchetypeKey = c.ArchetypeKey,
+                ArchivedAtUtc = c.ArchivedAtUtc,
                 CreatedAtUtc = profile.CreatedAtUtc,
                 UpdatedAtUtc = profile.UpdatedAtUtc,
                 StatBlock = ToStatBlockEntity(c),
@@ -149,6 +151,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys),
                     CharacterType = character.CharacterType,
                     Status = character.Status,
+                    ArchetypeKey = character.ArchetypeKey,
+                    ArchivedAtUtc = character.ArchivedAtUtc,
                     CreatedAtUtc = incoming.CreatedAtUtc,
                     UpdatedAtUtc = incoming.UpdatedAtUtc,
                     StatBlock = ToStatBlockEntity(character),
@@ -169,6 +173,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingCharacter.SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys);
             existingCharacter.CharacterType = character.CharacterType;
             existingCharacter.Status = character.Status;
+            existingCharacter.ArchetypeKey = character.ArchetypeKey;
+            existingCharacter.ArchivedAtUtc = character.ArchivedAtUtc;
             existingCharacter.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
             UpdateStatBlock(existingCharacter, character);
@@ -181,8 +187,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         UpdateNpcReputationScores(existing, incoming);
     }
 
-    // Append-only: permanent unlocks are never modified or removed once granted (they're
-    // lifetime, not run-scoped) — only append entries not already present by UnlockKey.
     private void UpdatePermanentUnlocks(PlayerProfileEntity existing, PlayerProfile incoming)
     {
         var existingKeys = existing.PermanentUnlocks
@@ -200,9 +204,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         }
     }
 
-    // Append-only for the item itself (never removed once owned), same reasoning as
-    // UpdatePermanentUnlocks — but ContainedLiquidDefinitionKey is a mutable field on an
-    // already-owned container (SFD container/liquid extension) and must be synced in place.
     private void UpdatePermanentItems(PlayerProfileEntity existing, PlayerProfile incoming)
     {
         var existingByKey = existing.PermanentItems
@@ -268,6 +269,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingItem.AcquiredAtUtc = item.AcquiredAtUtc;
             existingItem.Source = item.Source;
             existingItem.IsEquipped = item.IsEquipped;
+            existingItem.EquipmentSlot = item.Slot.ToString();
         }
     }
 
@@ -381,7 +383,9 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 statBlock,
                 skills,
                 items,
-                c.StatPointsInvested);
+                c.StatPointsInvested,
+                c.ArchetypeKey,
+                c.ArchivedAtUtc);
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);
