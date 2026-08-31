@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Leds.Player.Domain\Leds.Player.Domain.csproj" />
     <ProjectReference Include="..\..\src\Leds.Player.Application\Leds.Player.Application.csproj" />
+    <ProjectReference Include="..\..\src\Leds.Player.Infrastructure\Leds.Player.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
