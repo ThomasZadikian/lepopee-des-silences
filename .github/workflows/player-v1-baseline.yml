@@ -69,6 +69,9 @@ jobs:
             --context PlayerDbContext \
             --configuration Release
 
+      - name: Rebuild Player with generated migration
+        run: dotnet build services/player/Leds.Player.slnx --configuration Release --no-restore
+
       - name: Verify Player test suite
         run: dotnet test services/player/Leds.Player.slnx --configuration Release --no-build
 
