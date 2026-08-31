@@ -6,19 +6,31 @@ public sealed class UserIdentity
 {
     private UserIdentity(
         Guid id,
+        Guid accountId,
         EmailAddress email,
         string passwordHash,
         AccountRole role,
-        DateTimeOffset createdAtUtc)
+        DateTimeOffset createdAtUtc,
+        bool isEmailVerified = false,
+        DateTimeOffset? emailVerifiedAtUtc = null,
+        string? mfaSecretProtected = null,
+        DateTimeOffset? mfaConfiguredAtUtc = null)
     {
         Id = id;
+        AccountId = accountId;
         Email = email;
         PasswordHash = passwordHash;
         Role = role;
         CreatedAtUtc = createdAtUtc;
+        IsEmailVerified = isEmailVerified;
+        EmailVerifiedAtUtc = emailVerifiedAtUtc;
+        MfaSecretProtected = mfaSecretProtected;
+        MfaConfiguredAtUtc = mfaConfiguredAtUtc;
+        IsMfaConfigured = !string.IsNullOrWhiteSpace(mfaSecretProtected) && mfaConfiguredAtUtc.HasValue;
     }
 
     public Guid Id { get; }
+    public Guid AccountId { get; }
     public EmailAddress Email { get; private set; }
     public string PasswordHash { get; private set; }
     public AccountRole Role { get; private set; }
@@ -28,9 +40,37 @@ public sealed class UserIdentity
     public bool IsMfaConfigured { get; private set; }
     public DateTimeOffset? MfaConfiguredAtUtc { get; private set; }
 
-    private string? MfaSecretProtected { get; set; }
+    /// <summary>
+    /// Encrypted/protected TOTP material. This value is safe to persist but must never be
+    /// returned by an HTTP contract or logged. Only the authentication infrastructure may
+    /// unprotect it when validating a TOTP code.
+    /// </summary>
+    public string? MfaSecretProtected { get; private set; }
 
     public static UserIdentity Register(
+        EmailAddress email,
+        string passwordHash,
+        DateTimeOffset createdAtUtc)
+    {
+        var id = Guid.NewGuid();
+        return RegisterCore(id, id, email, passwordHash, createdAtUtc);
+    }
+
+    public static UserIdentity RegisterForAccount(
+        Guid accountId,
+        EmailAddress email,
+        string passwordHash,
+        DateTimeOffset createdAtUtc)
+    {
+        if (accountId == Guid.Empty)
+            throw new DomainException("Account id is required.");
+
+        return RegisterCore(Guid.NewGuid(), accountId, email, passwordHash, createdAtUtc);
+    }
+
+    private static UserIdentity RegisterCore(
+        Guid id,
+        Guid accountId,
         EmailAddress email,
         string passwordHash,
         DateTimeOffset createdAtUtc)
@@ -39,7 +79,8 @@ public sealed class UserIdentity
             throw new DomainException("Password hash is required.");
 
         return new UserIdentity(
-            Guid.NewGuid(),
+            id,
+            accountId,
             email,
             passwordHash.Trim(),
             AccountRole.Player,
@@ -73,5 +114,40 @@ public sealed class UserIdentity
         Email = newEmail;
         IsEmailVerified = false;
         EmailVerifiedAtUtc = null;
+    }
+
+    public void ChangePasswordHash(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new DomainException("Password hash is required.");
+
+        PasswordHash = passwordHash.Trim();
+    }
+
+    public static UserIdentity Rehydrate(
+        Guid id,
+        Guid accountId,
+        EmailAddress email,
+        string passwordHash,
+        AccountRole role,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset? emailVerifiedAtUtc,
+        string? mfaSecretProtected,
+        DateTimeOffset? mfaConfiguredAtUtc)
+    {
+        if (id == Guid.Empty || accountId == Guid.Empty)
+            throw new DomainException("Identity and account ids are required.");
+
+        return new UserIdentity(
+            id,
+            accountId,
+            email,
+            passwordHash,
+            role,
+            createdAtUtc,
+            emailVerifiedAtUtc.HasValue,
+            emailVerifiedAtUtc,
+            mfaSecretProtected,
+            mfaConfiguredAtUtc);
     }
 }
