@@ -56,11 +56,12 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
 
         if (string.Equals(mode, "Log", StringComparison.OrdinalIgnoreCase))
         {
+            // Authentication links are bearer credentials. Even in Development they must
+            // never enter application logs, traces or centralized observability systems.
             _logger.LogInformation(
-                "Development account email to {Recipient}: {Subject}. Action URL: {ActionUrl}",
+                "Development account email suppressed for {Recipient}: {Subject}. Configure SMTP to receive the one-time link.",
                 recipient.Value,
-                subject,
-                actionUrl);
+                subject);
             return;
         }
 
