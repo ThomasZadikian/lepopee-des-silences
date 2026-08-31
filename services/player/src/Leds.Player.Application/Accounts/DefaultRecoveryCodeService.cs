@@ -34,17 +34,13 @@ public sealed class DefaultRecoveryCodeService : IRecoveryCodeService
 
     private static string CreateCode()
     {
-        Span<byte> random = stackalloc byte[16];
+        Span<byte> random = stackalloc byte[20];
         RandomNumberGenerator.Fill(random);
         Span<char> characters = stackalloc char[20];
         for (var i = 0; i < characters.Length; i++)
-            characters[i] = Alphabet[random[i % random.Length] % Alphabet.Length];
+            characters[i] = Alphabet[random[i] % Alphabet.Length];
 
-        return string.Concat(
-            characters[..5], "-",
-            characters.Slice(5, 5), "-",
-            characters.Slice(10, 5), "-",
-            characters.Slice(15, 5));
+        return $"{new string(characters[..5])}-{new string(characters.Slice(5, 5))}-{new string(characters.Slice(10, 5))}-{new string(characters.Slice(15, 5))}";
     }
 
     private static string Normalize(string rawCode)
