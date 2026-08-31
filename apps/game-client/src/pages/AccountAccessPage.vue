@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { computed, onMounted, ref } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import AccountAccessShell from '../features/account/components/AccountAccessShell.vue';
+import {
+  getChallengeToken,
+  setAuthenticatedSession,
+  setChallengeToken,
+} from '../features/account/authSession';
+import { playerApi, type MfaEnrollmentResponse } from '../shared/api/playerApi';
 
 type AccountAccessMode =
   | 'login'
@@ -15,6 +21,7 @@ type AccountAccessMode =
 
 const props = defineProps<{ mode: AccountAccessMode }>();
 const router = useRouter();
+const route = useRoute();
 
 const email = ref('');
 const displayName = ref('');
@@ -23,7 +30,9 @@ const passwordConfirmation = ref('');
 const totpCode = ref('');
 const ageConfirmed = ref(false);
 const submitted = ref(false);
+const busy = ref(false);
 const error = ref<string | null>(null);
+const mfaEnrollment = ref<MfaEnrollmentResponse | null>(null);
 
 const content = computed(() => {
   switch (props.mode) {
@@ -38,14 +47,14 @@ const content = computed(() => {
       return {
         kicker: 'Vérification',
         title: 'Confirmer votre adresse',
-        subtitle: 'Un lien à usage unique vous a été envoyé. La traversée reste fermée tant que l’adresse n’est pas confirmée.',
-        action: 'Mon adresse est confirmée',
+        subtitle: 'Ouvrez le lien à usage unique reçu par e-mail pour confirmer votre adresse.',
+        action: 'Confirmer mon adresse',
       };
     case 'mfa-setup':
       return {
         kicker: 'Sécurité obligatoire',
-        title: 'Lier Google Authenticator',
-        subtitle: 'Scannez le QR code avec votre application TOTP puis saisissez le code à six chiffres.',
+        title: 'Lier votre application TOTP',
+        subtitle: 'Ajoutez la clé à Google Authenticator ou à toute application TOTP compatible, puis saisissez le code à six chiffres.',
         action: 'Activer la double authentification',
       };
     case 'mfa-challenge':
@@ -82,9 +91,43 @@ const content = computed(() => {
 const needsEmail = computed(() => ['login', 'register', 'password-recovery'].includes(props.mode));
 const needsPassword = computed(() => ['login', 'register', 'password-reset'].includes(props.mode));
 const needsTotp = computed(() => ['mfa-setup', 'mfa-challenge'].includes(props.mode));
+const verifiedMessage = computed(() => props.mode === 'login' && route.query.verified === '1');
+
+function queryToken(name: string): string | null {
+  const value = route.query[name];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error
+    ? cause.message
+    : 'Une erreur inattendue empêche de poursuivre. Réessayez.';
+}
+
+async function loadMfaEnrollment() {
+  if (props.mode !== 'mfa-setup') return;
+
+  const challengeToken = getChallengeToken();
+  if (!challengeToken) {
+    error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
+    return;
+  }
+
+  try {
+    busy.value = true;
+    mfaEnrollment.value = await playerApi.beginMfaEnrollment(challengeToken);
+  } catch (cause) {
+    error.value = errorMessage(cause);
+  } finally {
+    busy.value = false;
+  }
+}
+
+onMounted(loadMfaEnrollment);
 
 async function submit() {
   error.value = null;
+  submitted.value = false;
 
   if (needsEmail.value && !email.value.trim()) {
     error.value = 'Une adresse e-mail est requise.';
@@ -111,28 +154,100 @@ async function submit() {
     return;
   }
 
-  // Les appels API seront branchés sur les handlers Account/Auth du service Player.
-  // Cette navigation matérialise déjà le parcours SFD et garde l'UI testable indépendamment.
-  switch (props.mode) {
-    case 'register':
-      await router.push({ name: 'verify-email' });
-      break;
-    case 'verify-email':
-      await router.push({ name: 'mfa-setup' });
-      break;
-    case 'mfa-setup':
-    case 'mfa-challenge':
-      await router.push({ name: 'character-selection' });
-      break;
-    case 'password-recovery':
-      submitted.value = true;
-      break;
-    case 'password-reset':
-      await router.push({ name: 'login' });
-      break;
-    default:
-      await router.push({ name: 'mfa-challenge' });
-      break;
+  try {
+    busy.value = true;
+
+    switch (props.mode) {
+      case 'register':
+        await playerApi.registerAccount({
+          displayName: displayName.value.trim(),
+          email: email.value.trim(),
+          password: password.value,
+          ageConfirmed: ageConfirmed.value,
+        });
+        await router.push({ name: 'verify-email' });
+        break;
+
+      case 'verify-email': {
+        const token = queryToken('token');
+        if (!token) {
+          error.value = 'Le lien de vérification est incomplet ou a expiré.';
+          return;
+        }
+        await playerApi.verifyEmail(token);
+        await router.push({ name: 'login', query: { verified: '1' } });
+        break;
+      }
+
+      case 'login': {
+        const response = await playerApi.beginLogin(email.value.trim(), password.value);
+        if (response.status === 'email-verification-required') {
+          error.value = 'Votre adresse e-mail doit être vérifiée avant la connexion.';
+          return;
+        }
+        if (!response.challengeToken) {
+          error.value = 'Le serveur n’a pas fourni de défi d’authentification valide.';
+          return;
+        }
+        setChallengeToken(response.challengeToken);
+        if (response.status === 'mfa-setup-required') {
+          await router.push({ name: 'mfa-setup' });
+          return;
+        }
+        if (response.status === 'mfa-required') {
+          await router.push({ name: 'mfa-challenge' });
+          return;
+        }
+        error.value = 'État d’authentification inattendu. Recommencez la connexion.';
+        break;
+      }
+
+      case 'mfa-setup': {
+        const challengeToken = getChallengeToken();
+        if (!challengeToken) {
+          error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
+          return;
+        }
+        const session = await playerApi.confirmMfaEnrollment(challengeToken, totpCode.value);
+        setAuthenticatedSession(session);
+        setChallengeToken(null);
+        await router.push({ name: 'character-selection' });
+        break;
+      }
+
+      case 'mfa-challenge': {
+        const challengeToken = getChallengeToken();
+        if (!challengeToken) {
+          error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
+          return;
+        }
+        const session = await playerApi.completeMfaChallenge(challengeToken, totpCode.value);
+        setAuthenticatedSession(session);
+        setChallengeToken(null);
+        await router.push({ name: 'character-selection' });
+        break;
+      }
+
+      case 'password-recovery':
+        await playerApi.requestPasswordReset(email.value.trim());
+        submitted.value = true;
+        break;
+
+      case 'password-reset': {
+        const token = queryToken('token');
+        if (!token) {
+          error.value = 'Le lien de réinitialisation est incomplet ou a expiré.';
+          return;
+        }
+        await playerApi.resetPassword(token, password.value);
+        await router.push({ name: 'login' });
+        break;
+      }
+    }
+  } catch (cause) {
+    error.value = errorMessage(cause);
+  } finally {
+    busy.value = false;
   }
 }
 </script>
@@ -141,14 +256,21 @@ async function submit() {
   <AccountAccessShell :kicker="content.kicker" :title="content.title" :subtitle="content.subtitle" narrow>
     <form class="access-form" @submit.prevent="submit">
       <div v-if="mode === 'mfa-setup'" class="mfa-enrolment">
-        <div class="mfa-enrolment__qr" aria-label="Emplacement du QR code Google Authenticator">
+        <div class="mfa-enrolment__qr" aria-label="Configuration TOTP sécurisée">
           <span class="mfa-enrolment__mark">◇</span>
-          <span>QR sécurisé</span>
+          <span>TOTP sécurisé</span>
         </div>
-        <p class="mfa-enrolment__hint">
-          Le secret TOTP sera fourni par le serveur et ne sera jamais journalisé côté client.
+        <p v-if="mfaEnrollment" class="mfa-enrolment__hint">
+          Clé manuelle : <strong>{{ mfaEnrollment.manualEntryKey }}</strong>
+        </p>
+        <p v-else class="mfa-enrolment__hint">
+          La clé TOTP est générée et protégée côté serveur ; elle n’est jamais journalisée dans le navigateur.
         </p>
       </div>
+
+      <p v-if="verifiedMessage" class="access-success">
+        Adresse confirmée. Connectez-vous pour terminer la configuration de sécurité.
+      </p>
 
       <label v-if="needsEmail" class="access-field">
         <span class="access-field__label">Adresse e-mail</span>
@@ -171,7 +293,7 @@ async function submit() {
       </label>
 
       <label v-if="needsTotp" class="access-field">
-        <span class="access-field__label">Code Google Authenticator</span>
+        <span class="access-field__label">Code d’authentification TOTP</span>
         <input v-model="totpCode" class="access-field__input access-field__input--code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
       </label>
 
@@ -181,7 +303,7 @@ async function submit() {
       </label>
 
       <p v-if="mode === 'verify-email'" class="access-note">
-        Vous pouvez fermer cet écran : la validation est liée au token reçu par e-mail, pas à cette session de navigateur.
+        La validation dépend du token reçu par e-mail. Si vous avez ouvert ce lien dans un autre onglet, vous pouvez poursuivre ici.
       </p>
 
       <p v-if="submitted" class="access-success">
@@ -189,9 +311,9 @@ async function submit() {
       </p>
       <p v-if="error" class="access-error" role="alert">{{ error }}</p>
 
-      <button class="access-submit" type="submit">
+      <button class="access-submit" type="submit" :disabled="busy">
         <span class="access-submit__glyph">◈</span>
-        <span>{{ content.action }}</span>
+        <span>{{ busy ? 'Traitement…' : content.action }}</span>
       </button>
     </form>
 
@@ -278,11 +400,12 @@ async function submit() {
   transition: background .3s, color .3s;
 }
 
-.access-submit:hover {
+.access-submit:hover:not(:disabled) {
   background: color-mix(in srgb, var(--mint) 11%, transparent);
   color: var(--ink);
 }
 
+.access-submit:disabled { opacity: .55; cursor: wait; }
 .access-submit__glyph { font-size: 12px; }
 
 .access-note,
@@ -290,6 +413,12 @@ async function submit() {
   color: var(--ink-4);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.mfa-enrolment__hint strong {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
 }
 
 .access-error { color: var(--danger); font-size: 12px; }
