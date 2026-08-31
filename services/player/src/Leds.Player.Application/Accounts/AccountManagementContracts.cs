@@ -15,6 +15,19 @@ public sealed record AccountOverviewResponse(
     IReadOnlyCollection<PlayerCharacterDto> Characters,
     MainStoryProgressDto MainStory);
 
+public sealed record UpdateAccountProfileCommand(Guid AccountId, string DisplayName)
+    : IRequest<AccountOverviewResponse>;
+
+public sealed record ChangeAccountEmailCommand(Guid AccountId, string NewEmail)
+    : IRequest<AccountEmailChangeResponse>;
+
+public sealed record AccountEmailChangeResponse(string Email, bool VerificationRequired);
+
+public sealed record ChangeAccountPasswordCommand(
+    Guid AccountId,
+    string CurrentPassword,
+    string NewPassword) : IRequest;
+
 public sealed record ListAccountSessionsQuery(
     Guid AccountId,
     Guid CurrentSessionId) : IRequest<IReadOnlyCollection<AccountSessionResponse>>;
@@ -58,3 +71,57 @@ public sealed record GameSessionLeaseResponse(
     string Status,
     Guid OwnerSessionId,
     DateTimeOffset ExpiresAtUtc);
+
+public sealed record GetPrivacyStateQuery(Guid AccountId) : IRequest<AccountPrivacyResponse>;
+
+public sealed record PrivacyConsentResponse(
+    string PurposeKey,
+    string PolicyVersion,
+    DateTimeOffset GrantedAtUtc,
+    DateTimeOffset? RevokedAtUtc,
+    bool IsGranted);
+
+public sealed record AccountClosureResponse(
+    DateTimeOffset RequestedAtUtc,
+    DateTimeOffset ExecuteAfterUtc,
+    DateTimeOffset? CancelledAtUtc,
+    bool IsCancelled);
+
+public sealed record AccountPrivacyResponse(
+    IReadOnlyCollection<PrivacyConsentResponse> Consents,
+    AccountClosureResponse? Closure);
+
+public sealed record SetPrivacyConsentCommand(
+    Guid AccountId,
+    string PurposeKey,
+    string PolicyVersion,
+    bool Granted) : IRequest<PrivacyConsentResponse>;
+
+public sealed record RequestAccountClosureCommand(Guid AccountId) : IRequest<AccountClosureResponse>;
+public sealed record CancelAccountClosureCommand(Guid AccountId) : IRequest<AccountClosureResponse>;
+
+public sealed record GetAccountDataExportQuery(Guid AccountId) : IRequest<AccountDataExportResponse>;
+
+public sealed record AccountExportIdentity(
+    Guid AccountId,
+    string DisplayName,
+    string Email,
+    string Role,
+    DateTimeOffset AccountCreatedAtUtc,
+    DateTimeOffset AccountUpdatedAtUtc,
+    DateTimeOffset IdentityCreatedAtUtc,
+    bool EmailVerified,
+    bool MfaConfigured);
+
+public sealed record AccountDataExportResponse(
+    string Format,
+    DateTimeOffset GeneratedAtUtc,
+    AccountExportIdentity Identity,
+    IReadOnlyCollection<PlayerCharacterDto> Characters,
+    MainStoryProgressDto MainStory,
+    IReadOnlyCollection<PrivacyConsentResponse> Consents,
+    AccountClosureResponse? Closure,
+    IReadOnlyCollection<AccountSessionResponse> Sessions);
+
+/// <summary>Internal maintenance command. It anonymises every closure request whose grace period elapsed.</summary>
+public sealed record ExecuteDueAccountClosuresCommand : IRequest<int>;
