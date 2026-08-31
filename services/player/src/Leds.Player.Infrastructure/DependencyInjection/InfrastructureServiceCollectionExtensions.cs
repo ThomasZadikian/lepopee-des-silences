@@ -1,6 +1,7 @@
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Infrastructure.Persistence;
 using Leds.Player.Infrastructure.Persistence.Repositories;
+using Leds.Player.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,10 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IPlayerProfileRepository, EfPlayerProfileRepository>();
         services.AddScoped<IProcessedIntegrationEventRepository, EfProcessedIntegrationEventRepository>();
+        services.AddScoped<IAccountStore, EfAccountStore>();
+        services.AddSingleton<IAuthenticationSecurity, AuthenticationSecurity>();
+        services.AddSingleton<IAccessTokenIssuer, HmacAccessTokenIssuer>();
+        services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
         services.AddScoped<PlayerSeedRunner>();
 
         return services;
