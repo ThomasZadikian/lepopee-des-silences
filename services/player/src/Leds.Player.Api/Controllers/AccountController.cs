@@ -62,13 +62,19 @@ public sealed class AccountController : ControllerBase
     [HttpPost("mfa/enrollment")]
     [EnableRateLimiting("auth")]
     [AllowAnonymous]
-    public async Task<ActionResult<MfaEnrollmentResponse>> BeginMfaEnrollment(
+    public async Task<ActionResult<MfaEnrollmentHttpResponse>> BeginMfaEnrollment(
         MfaChallengeRequest request,
         CancellationToken cancellationToken)
     {
-        return Ok(await _sender.Send(
+        var response = await _sender.Send(
             new BeginMfaEnrollmentCommand(request.ChallengeToken),
-            cancellationToken));
+            cancellationToken);
+
+        // The protected TOTP secret is persisted server-side and intentionally never crosses HTTP.
+        return Ok(new MfaEnrollmentHttpResponse(
+            response.ChallengeToken,
+            response.OtpAuthUri,
+            response.ManualEntryKey));
     }
 
     [HttpPost("mfa/confirm")]
@@ -79,10 +85,7 @@ public sealed class AccountController : ControllerBase
         CancellationToken cancellationToken)
     {
         var response = await _sender.Send(
-            new ConfirmMfaEnrollmentCommand(
-                request.ChallengeToken,
-                request.ProtectedSecret,
-                request.Code),
+            new ConfirmMfaEnrollmentCommand(request.ChallengeToken, request.Code),
             cancellationToken);
         return Ok(ToHttpSession(response));
     }
@@ -96,6 +99,19 @@ public sealed class AccountController : ControllerBase
     {
         var response = await _sender.Send(
             new CompleteMfaChallengeCommand(request.ChallengeToken, request.Code),
+            cancellationToken);
+        return Ok(ToHttpSession(response));
+    }
+
+    [HttpPost("mfa/recovery")]
+    [EnableRateLimiting("auth")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthenticatedSessionHttpResponse>> CompleteMfaRecovery(
+        CompleteMfaRecoveryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new CompleteMfaRecoveryCodeCommand(request.ChallengeToken, request.RecoveryCode),
             cancellationToken);
         return Ok(ToHttpSession(response));
     }
@@ -122,7 +138,7 @@ public sealed class AccountController : ControllerBase
         var accountId = GetRequiredGuidClaim("sub");
         var sessionId = GetRequiredGuidClaim("sid");
         await _sender.Send(new LogoutSessionCommand(accountId, sessionId), cancellationToken);
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/v2/account" });
+        DeleteRefreshCookie();
         return NoContent();
     }
 
@@ -148,7 +164,7 @@ public sealed class AccountController : ControllerBase
         await _sender.Send(
             new ResetPasswordCommand(request.Token, request.NewPassword),
             cancellationToken);
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/v2/account" });
+        DeleteRefreshCookie();
         return NoContent();
     }
 
@@ -161,7 +177,9 @@ public sealed class AccountController : ControllerBase
             new CookieOptions
             {
                 HttpOnly = true,
-                Secure = Request.IsHttps,
+                Secure = !HttpContext.RequestServices
+                    .GetRequiredService<IWebHostEnvironment>()
+                    .IsDevelopment() || Request.IsHttps,
                 SameSite = SameSiteMode.Strict,
                 Path = "/api/v2/account",
                 Expires = response.RefreshTokenExpiresAtUtc
@@ -171,8 +189,22 @@ public sealed class AccountController : ControllerBase
             response.AccountId,
             response.SessionId,
             response.AccessToken,
-            response.AccessTokenExpiresAtUtc);
+            response.AccessTokenExpiresAtUtc,
+            response.RecoveryCodes);
     }
+
+    private void DeleteRefreshCookie() =>
+        Response.Cookies.Delete(
+            RefreshCookieName,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !HttpContext.RequestServices
+                    .GetRequiredService<IWebHostEnvironment>()
+                    .IsDevelopment() || Request.IsHttps,
+                SameSite = SameSiteMode.Strict,
+                Path = "/api/v2/account"
+            });
 
     private bool TryReadRefreshCookie(out Guid sessionId, out string rawToken)
     {
@@ -212,12 +244,18 @@ public sealed record RegisterAccountRequest(
 public sealed record VerifyEmailRequest(string Token);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record MfaChallengeRequest(string ChallengeToken);
-public sealed record ConfirmMfaEnrollmentRequest(string ChallengeToken, string ProtectedSecret, string Code);
+public sealed record MfaEnrollmentHttpResponse(
+    string ChallengeToken,
+    string OtpAuthUri,
+    string ManualEntryKey);
+public sealed record ConfirmMfaEnrollmentRequest(string ChallengeToken, string Code);
 public sealed record CompleteMfaChallengeRequest(string ChallengeToken, string Code);
+public sealed record CompleteMfaRecoveryRequest(string ChallengeToken, string RecoveryCode);
 public sealed record PasswordRecoveryRequest(string Email);
 public sealed record PasswordResetRequest(string Token, string NewPassword);
 public sealed record AuthenticatedSessionHttpResponse(
     Guid AccountId,
     Guid SessionId,
     string AccessToken,
-    DateTimeOffset AccessTokenExpiresAtUtc);
+    DateTimeOffset AccessTokenExpiresAtUtc,
+    IReadOnlyCollection<string>? RecoveryCodes = null);
