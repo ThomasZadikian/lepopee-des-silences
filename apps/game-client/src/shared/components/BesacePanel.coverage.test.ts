@@ -179,7 +179,7 @@ describe('BesacePanel coverage margin', () => {
 
   it('uses consumables successfully and exposes both error families', async () => {
     const usable = item({ id: 'use', definitionKey: 'use', displayName: 'Potion', type: 'Consumable', isUsable: true });
-    const wrapper = mountPanel([usable], undefined);
+    const wrapper = mountPanel([usable], null);
     await flushPromises();
     expect(wrapper.text()).not.toContain('/ 10');
 
