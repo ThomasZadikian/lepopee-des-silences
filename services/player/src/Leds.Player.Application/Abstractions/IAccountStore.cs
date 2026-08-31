@@ -63,6 +63,13 @@ public interface IAccountStore
 
     Task<AccountClosureRequest?> GetClosureRequestAsync(Guid accountId, CancellationToken cancellationToken);
     Task SaveClosureRequestAsync(AccountClosureRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Guid>> ListExecutableClosureAccountIdsAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+    Task PurgeAuthenticationMaterialAsync(
+        Guid accountId,
+        DateTimeOffset revokedAtUtc,
+        CancellationToken cancellationToken);
 
     Task<ActiveGameSessionLease?> GetGameLeaseAsync(Guid accountId, CancellationToken cancellationToken);
     Task SaveGameLeaseAsync(ActiveGameSessionLease lease, CancellationToken cancellationToken);
