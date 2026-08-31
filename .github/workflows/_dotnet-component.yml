@@ -39,7 +39,7 @@ jobs:
       - name: Verify test hygiene
         run: ./scripts/ci/verify-test-hygiene.sh
 
-      - name: Build, test and enforce 85% coverage
+      - name: Build, test and enforce 80% coverage
         run: >-
           ./scripts/ci/test-dotnet-component.sh
           '${{ inputs.component }}'
