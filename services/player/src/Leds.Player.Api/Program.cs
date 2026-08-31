@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 using Leds.Player.Api.Middleware;
@@ -23,7 +24,7 @@ if (string.IsNullOrWhiteSpace(signingKey))
 {
     if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
     {
-        signingKey = "development-only-jwt-signing-key-change-before-production-2026";
+        signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
         builder.Configuration["Authentication:Jwt:SigningKey"] = signingKey;
     }
     else
@@ -36,7 +37,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Authentication:MfaProtectio
     && (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")))
 {
     builder.Configuration["Authentication:MfaProtectionKey"] = Convert.ToBase64String(
-        Encoding.UTF8.GetBytes("development-mfa-key-32-bytes!!xx"));
+        RandomNumberGenerator.GetBytes(32));
 }
 
 if (builder.Environment.IsDevelopment()
