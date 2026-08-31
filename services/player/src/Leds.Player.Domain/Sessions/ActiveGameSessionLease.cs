@@ -31,6 +31,20 @@ public sealed class ActiveGameSessionLease
         return new ActiveGameSessionLease(accountId, ownerSessionId, now, now.Add(leaseDuration));
     }
 
+    public static ActiveGameSessionLease Rehydrate(
+        Guid accountId,
+        Guid ownerSessionId,
+        DateTimeOffset acquiredAtUtc,
+        DateTimeOffset expiresAtUtc)
+    {
+        if (accountId == Guid.Empty || ownerSessionId == Guid.Empty)
+            throw new DomainException("Account and game-session owner ids are required.");
+        if (expiresAtUtc <= acquiredAtUtc)
+            throw new DomainException("Game-session lease expiration must follow acquisition.");
+
+        return new ActiveGameSessionLease(accountId, ownerSessionId, acquiredAtUtc, expiresAtUtc);
+    }
+
     public bool IsExpired(DateTimeOffset now) => now >= ExpiresAtUtc;
 
     public void Heartbeat(Guid sessionId, DateTimeOffset now, TimeSpan leaseDuration)
