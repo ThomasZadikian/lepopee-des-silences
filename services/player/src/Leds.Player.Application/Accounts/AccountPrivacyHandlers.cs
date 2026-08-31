@@ -189,10 +189,7 @@ public sealed class GetPrivacyStateQueryHandler : IRequestHandler<GetPrivacyStat
 {
     private readonly IAccountStore _store;
 
-    public GetPrivacyStateQueryHandler(IAccountStore store)
-    {
-        _store = store;
-    }
+    public GetPrivacyStateQueryHandler(IAccountStore store) => _store = store;
 
     public async Task<AccountPrivacyResponse> Handle(
         GetPrivacyStateQuery request,
@@ -392,18 +389,18 @@ public sealed class GetAccountDataExportQueryHandler
 public sealed class ExecuteDueAccountClosuresCommandHandler
     : IRequestHandler<ExecuteDueAccountClosuresCommand, int>
 {
-    private readonly IAccountStore _store;
+    private readonly IAccountPrivacyMaintenanceStore _maintenance;
     private readonly IAccountProfileMaintenance _profiles;
     private readonly TimeProvider _timeProvider;
     private readonly IAccountAuditLog _audit;
 
     public ExecuteDueAccountClosuresCommandHandler(
-        IAccountStore store,
+        IAccountPrivacyMaintenanceStore maintenance,
         IAccountProfileMaintenance profiles,
         TimeProvider timeProvider,
         IAccountAuditLog? audit = null)
     {
-        _store = store;
+        _maintenance = maintenance;
         _profiles = profiles;
         _timeProvider = timeProvider;
         _audit = audit ?? new NullAccountAuditLog();
@@ -414,12 +411,12 @@ public sealed class ExecuteDueAccountClosuresCommandHandler
         CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
-        var accounts = await _store.ListExecutableClosureAccountIdsAsync(now, cancellationToken);
+        var accounts = await _maintenance.ListExecutableClosureAccountIdsAsync(now, cancellationToken);
         var processed = 0;
         foreach (var accountId in accounts)
         {
             await _profiles.AnonymizeAsync(new PlayerId(accountId), now, cancellationToken);
-            await _store.PurgeAuthenticationMaterialAsync(accountId, now, cancellationToken);
+            await _maintenance.PurgeAuthenticationMaterialAsync(accountId, now, cancellationToken);
             await _audit.WriteAsync(accountId, "privacy.account.anonymised", now, cancellationToken);
             processed++;
         }
