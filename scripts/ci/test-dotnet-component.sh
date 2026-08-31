@@ -13,7 +13,7 @@ repo_root=$(git rev-parse --show-toplevel)
 results_dir="$repo_root/artifacts/test-results/$component_name"
 coverage_dir="$repo_root/artifacts/coverage/$component_name"
 runsettings="$repo_root/eng/coverage/coverage.runsettings"
-coverage_threshold=80
+coverage_threshold=85
 
 if [[ ! -f "$repo_root/$solution_path" ]]; then
   echo "Unknown solution: $solution_path" >&2
