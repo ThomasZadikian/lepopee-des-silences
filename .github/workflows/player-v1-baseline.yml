@@ -53,6 +53,14 @@ jobs:
             --configuration Release \
             --output services/player/database/player-db-v1.0.0.sql
 
+      - name: Verify V1 baseline shape
+        run: |
+          migration_count=$(find services/player/src/Leds.Player.Infrastructure/Persistence/Migrations -maxdepth 1 -type f -name '*_InitialV1_0_0.cs' | wc -l)
+          test "$migration_count" -eq 1
+          test -f services/player/src/Leds.Player.Infrastructure/Persistence/Migrations/PlayerDbContextModelSnapshot.cs
+          test -s services/player/database/player-db-v1.0.0.sql
+          grep -q 'InitialV1_0_0' services/player/database/player-db-v1.0.0.sql
+
       - name: Verify EF model is fully baselined
         run: |
           dotnet ef migrations has-pending-model-changes \
