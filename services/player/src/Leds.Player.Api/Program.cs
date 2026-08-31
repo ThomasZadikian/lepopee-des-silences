@@ -98,7 +98,7 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 
     var seedRunner = scope.ServiceProvider.GetRequiredService<PlayerSeedRunner>();
-    await seedRunner.SeedDemoProfileAsync();
+    await seedRunner.ApplyDemoPlayerSeedAsync();
 }
 
 app.UseHttpsRedirection();
