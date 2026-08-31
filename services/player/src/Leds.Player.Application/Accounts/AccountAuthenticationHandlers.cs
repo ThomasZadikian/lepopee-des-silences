@@ -214,6 +214,9 @@ public sealed class BeginMfaEnrollmentCommandHandler
             throw new ConflictException("MFA is already configured for this account.");
 
         var enrollment = _security.CreateMfaEnrollment(identity.Email);
+        identity.StageMfaSecret(enrollment.ProtectedSecret);
+        await _store.SaveIdentityAsync(identity, cancellationToken);
+
         return new MfaEnrollmentResponse(
             request.ChallengeToken,
             enrollment.ProtectedSecret,
@@ -246,17 +249,20 @@ public sealed class ConfirmMfaEnrollmentCommandHandler
     private readonly IAuthenticationSecurity _security;
     private readonly IAccessTokenIssuer _accessTokenIssuer;
     private readonly TimeProvider _timeProvider;
+    private readonly IRecoveryCodeService _recoveryCodes;
 
     public ConfirmMfaEnrollmentCommandHandler(
         IAccountStore store,
         IAuthenticationSecurity security,
         IAccessTokenIssuer accessTokenIssuer,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IRecoveryCodeService? recoveryCodes = null)
     {
         _store = store;
         _security = security;
         _accessTokenIssuer = accessTokenIssuer;
         _timeProvider = timeProvider;
+        _recoveryCodes = recoveryCodes ?? new DefaultRecoveryCodeService();
     }
 
     public async Task<AuthenticatedSessionResponse> Handle(
@@ -274,20 +280,26 @@ public sealed class ConfirmMfaEnrollmentCommandHandler
         var identity = await _store.FindIdentityByAccountIdAsync(challenge.AccountId, cancellationToken)
             ?? throw new NotFoundException("Account identity", challenge.AccountId);
 
-        if (!_security.VerifyTotp(request.ProtectedSecret, request.Code, now))
+        var protectedSecret = identity.MfaSecretProtected ?? request.LegacyProtectedSecret;
+        if (string.IsNullOrWhiteSpace(protectedSecret)
+            || !_security.VerifyTotp(protectedSecret, request.Code, now))
+        {
             throw new UnauthorizedException("Invalid authentication code.");
+        }
 
-        identity.ConfigureMfa(request.ProtectedSecret, now);
+        var recoveryCodes = _recoveryCodes.Generate();
+        identity.ConfigureMfa(protectedSecret, now, recoveryCodes.Hashes);
         await _store.SaveIdentityAsync(identity, cancellationToken);
         await _store.ConsumeSecurityTokenAsync(challenge.Id, now, cancellationToken);
 
-        return await CreateSessionAsync(
+        var session = await CreateSessionAsync(
             _store,
             _security,
             _accessTokenIssuer,
             identity,
             now,
             cancellationToken);
+        return session with { RecoveryCodes = recoveryCodes.RawCodes };
     }
 
     internal static async Task<AuthenticatedSessionResponse> CreateSessionAsync(
@@ -377,6 +389,75 @@ public sealed class CompleteMfaChallengeCommandHandler
             now,
             cancellationToken);
     }
+}
+
+public sealed class CompleteMfaRecoveryCodeCommandHandler
+    : IRequestHandler<CompleteMfaRecoveryCodeCommand, AuthenticatedSessionResponse>
+{
+    private readonly IAccountStore _store;
+    private readonly IAuthenticationSecurity _security;
+    private readonly IAccessTokenIssuer _accessTokenIssuer;
+    private readonly IRecoveryCodeService _recoveryCodes;
+    private readonly TimeProvider _timeProvider;
+
+    public CompleteMfaRecoveryCodeCommandHandler(
+        IAccountStore store,
+        IAuthenticationSecurity security,
+        IAccessTokenIssuer accessTokenIssuer,
+        IRecoveryCodeService recoveryCodes,
+        TimeProvider timeProvider)
+    {
+        _store = store;
+        _security = security;
+        _accessTokenIssuer = accessTokenIssuer;
+        _recoveryCodes = recoveryCodes;
+        _timeProvider = timeProvider;
+    }
+
+    public async Task<AuthenticatedSessionResponse> Handle(
+        CompleteMfaRecoveryCodeCommand request,
+        CancellationToken cancellationToken)
+    {
+        var now = _timeProvider.GetUtcNow();
+        var challenge = await BeginMfaEnrollmentCommandHandler.GetValidChallengeAsync(
+            _store,
+            _security,
+            request.ChallengeToken,
+            AccountSecurityPurposes.MfaChallenge,
+            now,
+            cancellationToken);
+        var identity = await _store.FindIdentityByAccountIdAsync(challenge.AccountId, cancellationToken)
+            ?? throw new NotFoundException("Account identity", challenge.AccountId);
+
+        string recoveryHash;
+        try
+        {
+            recoveryHash = _recoveryCodes.Hash(request.RecoveryCode);
+        }
+        catch (DomainException)
+        {
+            throw new UnauthorizedException("Invalid recovery code.");
+        }
+
+        if (!identity.TryConsumeRecoveryCodeHash(recoveryHash))
+            throw new UnauthorizedException("Invalid recovery code.");
+
+        await _store.SaveIdentityAsync(identity, cancellationToken);
+        await _store.ConsumeSecurityTokenAsync(challenge.Id, now, cancellationToken);
+        return await CreateSessionAsync(identity, now, cancellationToken);
+    }
+
+    private Task<AuthenticatedSessionResponse> CreateSessionAsync(
+        UserIdentity identity,
+        DateTimeOffset now,
+        CancellationToken cancellationToken) =>
+        ConfirmMfaEnrollmentCommandHandler.CreateSessionAsync(
+            _store,
+            _security,
+            _accessTokenIssuer,
+            identity,
+            now,
+            cancellationToken);
 }
 
 public sealed class RefreshSessionCommandHandler
