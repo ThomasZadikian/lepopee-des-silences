@@ -1,0 +1,114 @@
+name: Reusable SonarCloud quality
+
+on:
+  workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    name: SonarCloud / analysis and quality gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: apps/game-client/package-lock.json
+
+      - name: Restore pinned .NET tools
+        run: dotnet tool restore
+
+      - name: Restore backend dependencies
+        run: |
+          dotnet restore services/game-engine/Leds.GameEngine.slnx
+          dotnet restore services/player/Leds.Player.slnx
+
+      - name: Restore frontend dependencies for semantic analysis
+        working-directory: apps/game-client
+        run: npm ci --ignore-scripts
+
+      - name: Download Game Engine reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: quality-game-engine
+          path: sonar-artifacts/game-engine
+
+      - name: Download Player reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: quality-player
+          path: sonar-artifacts/player
+
+      - name: Download Catalog reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: quality-catalog
+          path: sonar-artifacts/catalog
+
+      - name: Download shared building blocks reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: quality-shared-building-blocks
+          path: sonar-artifacts/shared-building-blocks
+
+      - name: Download frontend reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: quality-game-client
+          path: sonar-artifacts/game-client
+
+      - name: Begin SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet tool run dotnet-sonarscanner begin \
+            /k:"ThomasZadikian_rpg_esi07" \
+            /o:"thomaszadikian" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.sourceEncoding="UTF-8" \
+            /d:sonar.scanner.scanAll="true" \
+            /d:sonar.qualitygate.wait="true" \
+            /d:sonar.qualitygate.timeout="300" \
+            /d:sonar.cs.vstest.reportsPaths="sonar-artifacts/**/*.trx" \
+            /d:sonar.cs.opencover.reportsPaths="sonar-artifacts/**/coverage.opencover.xml" \
+            /d:sonar.javascript.lcov.reportPaths="sonar-artifacts/game-client/coverage/lcov.info" \
+            /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,**/dist/**,**/coverage/**,**/artifacts/**,**/sonar-artifacts/**,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**" \
+            /d:sonar.coverage.exclusions="**/Migrations/**,**/*.Designer.cs,apps/game-client/src/**/*.d.ts,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**,apps/game-client/src/main.ts,apps/game-client/src/features/combat/components/TacticalCombatScene.vue,apps/game-client/src/features/palace-map/TacticalGridMap.vue,apps/game-client/src/features/palace-map/composables/sorts.ts,apps/game-client/src/pages/RunPage.vue"
+
+      - name: Build backend under SonarScanner
+        run: |
+          dotnet build services/game-engine/Leds.GameEngine.slnx \
+            --configuration Release \
+            --no-restore \
+            --no-incremental \
+            -p:ContinuousIntegrationBuild=true \
+            -p:Deterministic=true
+          dotnet build services/player/Leds.Player.slnx \
+            --configuration Release \
+            --no-restore \
+            --no-incremental \
+            -p:ContinuousIntegrationBuild=true \
+            -p:Deterministic=true
+
+      - name: Complete SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
