@@ -63,7 +63,6 @@ public sealed class ExceptionHandlingMiddleware
         IDictionary<string, object>? extensions = null)
     {
         context.Response.StatusCode = status;
-        context.Response.ContentType = "application/problem+json";
 
         var problem = new ProblemDetails
         {
@@ -78,6 +77,10 @@ public sealed class ExceptionHandlingMiddleware
                 problem.Extensions[key] = value;
         }
 
-        await context.Response.WriteAsJsonAsync(problem);
+        await context.Response.WriteAsJsonAsync(
+            problem,
+            options: null,
+            contentType: "application/problem+json",
+            cancellationToken: context.RequestAborted);
     }
 }
