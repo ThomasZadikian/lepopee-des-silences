@@ -31,13 +31,12 @@ export default defineConfig({
         'src/pages/RunPage.vue',
       ],
       thresholds: {
-        lines: 80,
-        // The beta gate defines "80% code coverage" as line and statement coverage.
-        // Decision/function coverage remains blocking at an explicit baseline and can be
-        // raised independently without disguising the principal 80% commitment.
-        branches: 70,
-        functions: 75,
-        statements: 80,
+        // Keep a single quality contract across the frontend: every principal coverage
+        // dimension must retain at least 85%, providing headroom above the former 80% gate.
+        lines: 85,
+        branches: 85,
+        functions: 85,
+        statements: 85,
       },
     },
   },
