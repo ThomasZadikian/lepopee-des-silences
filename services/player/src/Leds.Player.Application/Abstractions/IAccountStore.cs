@@ -17,6 +17,11 @@ public sealed record SecurityTokenState(
     public bool CanConsume(DateTimeOffset now) => !ConsumedAtUtc.HasValue && now < ExpiresAtUtc;
 }
 
+public sealed record GameLeaseClaimResult(
+    ActiveGameSessionLease Lease,
+    bool Acquired,
+    bool TransferRequired);
+
 public interface IAccountStore
 {
     Task<bool> EmailExistsAsync(EmailAddress email, CancellationToken cancellationToken);
@@ -61,4 +66,18 @@ public interface IAccountStore
 
     Task<ActiveGameSessionLease?> GetGameLeaseAsync(Guid accountId, CancellationToken cancellationToken);
     Task SaveGameLeaseAsync(ActiveGameSessionLease lease, CancellationToken cancellationToken);
+    Task<GameLeaseClaimResult> ClaimGameLeaseAsync(
+        Guid accountId,
+        Guid sessionId,
+        DateTimeOffset now,
+        TimeSpan leaseDuration,
+        bool allowTransfer,
+        CancellationToken cancellationToken);
+    Task<bool> HeartbeatGameLeaseAsync(
+        Guid accountId,
+        Guid sessionId,
+        DateTimeOffset now,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken);
+    Task ReleaseGameLeaseAsync(Guid accountId, Guid sessionId, CancellationToken cancellationToken);
 }
