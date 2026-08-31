@@ -25,7 +25,7 @@ public sealed class CreatePlayableCharacterCommandHandler
     {
         var playerId = new PlayerId(request.PlayerId);
         var profile = await _repository.GetByIdAsync(playerId, cancellationToken)
-            ?? throw new NotFoundException($"Player '{request.PlayerId}' was not found.");
+            ?? throw new NotFoundException("Player", request.PlayerId);
 
         profile.CreatePlayableCharacter(request.DisplayName, request.ArchetypeKey, _timeProvider.GetUtcNow());
         await _repository.SaveAsync(profile, cancellationToken);
