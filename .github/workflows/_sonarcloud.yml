@@ -78,20 +78,38 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          dotnet tool run dotnet-sonarscanner begin \
-            /k:"ThomasZadikian_rpg_esi07" \
-            /o:"thomaszadikian" \
-            /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.token="$SONAR_TOKEN" \
-            /d:sonar.sourceEncoding="UTF-8" \
-            /d:sonar.scanner.scanAll="true" \
-            /d:sonar.qualitygate.wait="true" \
-            /d:sonar.qualitygate.timeout="300" \
-            /d:sonar.cs.vstest.reportsPaths="sonar-artifacts/**/*.trx" \
-            /d:sonar.cs.opencover.reportsPaths="sonar-artifacts/**/coverage.opencover.xml" \
-            /d:sonar.javascript.lcov.reportPaths="sonar-artifacts/game-client/coverage/lcov.info" \
-            /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,**/dist/**,**/coverage/**,**/artifacts/**,**/sonar-artifacts/**,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**" \
-            /d:sonar.coverage.exclusions="**/Migrations/**,**/*.Designer.cs,apps/game-client/src/**/*.d.ts,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**,apps/game-client/src/main.ts,apps/game-client/src/features/combat/components/TacticalCombatScene.vue,apps/game-client/src/features/palace-map/TacticalGridMap.vue,apps/game-client/src/features/palace-map/composables/sorts.ts,apps/game-client/src/pages/RunPage.vue"
+          set -euo pipefail
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            echo "::error::SONAR_TOKEN is not configured."
+            exit 1
+          fi
+
+          sonar_begin() {
+            dotnet tool run dotnet-sonarscanner begin \
+              /k:"ThomasZadikian_rpg_esi07" \
+              /o:"thomaszadikian" \
+              /d:sonar.token="$SONAR_TOKEN" \
+              /d:sonar.sourceEncoding="UTF-8" \
+              /d:sonar.scanner.scanAll="true" \
+              /d:sonar.qualitygate.wait="true" \
+              /d:sonar.qualitygate.timeout="300" \
+              /d:sonar.cs.vstest.reportsPaths="sonar-artifacts/**/*.trx" \
+              /d:sonar.cs.opencover.reportsPaths="sonar-artifacts/**/coverage.opencover.xml" \
+              /d:sonar.javascript.lcov.reportPaths="sonar-artifacts/game-client/coverage/lcov.info" \
+              /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**,**/dist/**,**/coverage/**,**/artifacts/**,**/sonar-artifacts/**,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**" \
+              /d:sonar.coverage.exclusions="**/Migrations/**,**/*.Designer.cs,apps/game-client/src/**/*.d.ts,apps/game-client/src/**/*.test.ts,apps/game-client/src/**/testFixtures.ts,apps/game-client/src/tests/**,apps/game-client/src/main.ts,apps/game-client/src/features/combat/components/TacticalCombatScene.vue,apps/game-client/src/features/palace-map/TacticalGridMap.vue,apps/game-client/src/features/palace-map/composables/sorts.ts,apps/game-client/src/pages/RunPage.vue" \
+              "$@"
+          }
+
+          # SonarQube Cloud has EU and US instances. Newer scanners use the EU
+          # instance by default; projects hosted in the US require sonar.region=us.
+          # Trying both makes the repository configuration portable without storing
+          # a second infrastructure secret or hard-coding an account-specific region.
+          if ! sonar_begin; then
+            rm -rf .sonarqube
+            echo "::notice::Default SonarQube Cloud region rejected the analysis; retrying the US region."
+            sonar_begin /d:sonar.region=us
+          fi
 
       - name: Build backend under SonarScanner
         run: |
