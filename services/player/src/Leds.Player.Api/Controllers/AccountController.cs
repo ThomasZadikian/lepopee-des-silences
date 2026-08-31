@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Leds.Player.Application.Accounts;
+using Leds.Player.Application.Players;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,7 +71,6 @@ public sealed class AccountController : ControllerBase
             new BeginMfaEnrollmentCommand(request.ChallengeToken),
             cancellationToken);
 
-        // The protected TOTP secret is persisted server-side and intentionally never crosses HTTP.
         return Ok(new MfaEnrollmentHttpResponse(
             response.ChallengeToken,
             response.OtpAuthUri,
@@ -135,8 +135,8 @@ public sealed class AccountController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        var accountId = GetRequiredGuidClaim("sub");
-        var sessionId = GetRequiredGuidClaim("sid");
+        var (accountId, sessionId) = GetAuthenticatedIds();
+        await _sender.Send(new ReleaseGameSessionCommand(accountId, sessionId), cancellationToken);
         await _sender.Send(new LogoutSessionCommand(accountId, sessionId), cancellationToken);
         DeleteRefreshCookie();
         return NoContent();
@@ -165,6 +165,102 @@ public sealed class AccountController : ControllerBase
             new ResetPasswordCommand(request.Token, request.NewPassword),
             cancellationToken);
         DeleteRefreshCookie();
+        return NoContent();
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<AccountOverviewResponse>> Me(CancellationToken cancellationToken)
+    {
+        var accountId = GetRequiredGuidClaim("sub");
+        return Ok(await _sender.Send(new GetAccountOverviewQuery(accountId), cancellationToken));
+    }
+
+    [HttpGet("sessions")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyCollection<AccountSessionResponse>>> Sessions(
+        CancellationToken cancellationToken)
+    {
+        var (accountId, sessionId) = GetAuthenticatedIds();
+        return Ok(await _sender.Send(
+            new ListAccountSessionsQuery(accountId, sessionId),
+            cancellationToken));
+    }
+
+    [HttpDelete("sessions/{targetSessionId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> RevokeSession(
+        Guid targetSessionId,
+        CancellationToken cancellationToken)
+    {
+        var accountId = GetRequiredGuidClaim("sub");
+        await _sender.Send(
+            new RevokeAccountSessionCommand(accountId, targetSessionId),
+            cancellationToken);
+
+        if (targetSessionId == GetRequiredGuidClaim("sid"))
+            DeleteRefreshCookie();
+        return NoContent();
+    }
+
+    [HttpPost("characters")]
+    [Authorize]
+    public async Task<ActionResult<PlayerProfileDto>> CreateCharacter(
+        CreateAccountCharacterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var accountId = GetRequiredGuidClaim("sub");
+        var profile = await _sender.Send(
+            new CreateAccountCharacterCommand(accountId, request.DisplayName, request.ArchetypeKey),
+            cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, profile);
+    }
+
+    [HttpDelete("characters/{characterId:guid}")]
+    [Authorize]
+    public async Task<ActionResult<PlayerProfileDto>> ArchiveCharacter(
+        Guid characterId,
+        CancellationToken cancellationToken)
+    {
+        var accountId = GetRequiredGuidClaim("sub");
+        return Ok(await _sender.Send(
+            new ArchiveAccountCharacterCommand(accountId, characterId),
+            cancellationToken));
+    }
+
+    [HttpPost("game-session")]
+    [Authorize]
+    public async Task<ActionResult<GameSessionLeaseResponse>> ClaimGameSession(
+        ClaimGameSessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (accountId, sessionId) = GetAuthenticatedIds();
+        var result = await _sender.Send(
+            new ClaimGameSessionCommand(accountId, sessionId, request.ConfirmTransfer),
+            cancellationToken);
+
+        if (result.Status == "transfer-required")
+            return Conflict(result);
+        return Ok(result);
+    }
+
+    [HttpPost("game-session/heartbeat")]
+    [Authorize]
+    public async Task<ActionResult<GameSessionLeaseResponse>> HeartbeatGameSession(
+        CancellationToken cancellationToken)
+    {
+        var (accountId, sessionId) = GetAuthenticatedIds();
+        return Ok(await _sender.Send(
+            new HeartbeatGameSessionCommand(accountId, sessionId),
+            cancellationToken));
+    }
+
+    [HttpDelete("game-session")]
+    [Authorize]
+    public async Task<IActionResult> ReleaseGameSession(CancellationToken cancellationToken)
+    {
+        var (accountId, sessionId) = GetAuthenticatedIds();
+        await _sender.Send(new ReleaseGameSessionCommand(accountId, sessionId), cancellationToken);
         return NoContent();
     }
 
@@ -227,6 +323,9 @@ public sealed class AccountController : ControllerBase
         return rawToken.Length >= 20;
     }
 
+    private (Guid AccountId, Guid SessionId) GetAuthenticatedIds() =>
+        (GetRequiredGuidClaim("sub"), GetRequiredGuidClaim("sid"));
+
     private Guid GetRequiredGuidClaim(string claimType)
     {
         var value = User.FindFirstValue(claimType);
@@ -253,6 +352,8 @@ public sealed record CompleteMfaChallengeRequest(string ChallengeToken, string C
 public sealed record CompleteMfaRecoveryRequest(string ChallengeToken, string RecoveryCode);
 public sealed record PasswordRecoveryRequest(string Email);
 public sealed record PasswordResetRequest(string Token, string NewPassword);
+public sealed record CreateAccountCharacterRequest(string DisplayName, string ArchetypeKey);
+public sealed record ClaimGameSessionRequest(bool ConfirmTransfer = false);
 public sealed record AuthenticatedSessionHttpResponse(
     Guid AccountId,
     Guid SessionId,
