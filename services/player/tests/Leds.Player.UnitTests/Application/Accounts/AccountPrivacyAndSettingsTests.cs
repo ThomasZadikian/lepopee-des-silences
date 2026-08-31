@@ -18,15 +18,44 @@ public sealed class AccountPrivacyAndSettingsTests
     {
         var profile = PlayerProfile.Create("Avant", Now.AddDays(-1));
         profile.AdvanceMainStory("main", "1", "step-2", null, ["hall"], ["hall"], false, Now.AddHours(-2));
+        var renamedProfile = PlayerProfile.Rehydrate(
+            profile.Id,
+            "Après",
+            profile.Roster,
+            profile.Progression,
+            profile.CreatedAtUtc,
+            Now,
+            profile.MainStoryProgress,
+            profile.PermanentUnlocks,
+            profile.PermanentItems,
+            profile.NpcReputationScores);
+        var identity = UserIdentity.RegisterForAccount(
+            profile.Id.Value,
+            EmailAddress.Create("player@example.com"),
+            "hash",
+            Now.AddDays(-1));
+        var maintenance = new Mock<IAccountProfileMaintenance>();
+        var store = new Mock<IAccountStore>();
         var profiles = new Mock<IPlayerProfileRepository>();
-        profiles.Setup(x => x.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
+        store.Setup(x => x.FindIdentityByAccountIdAsync(profile.Id.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(identity);
+        profiles.Setup(x => x.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(renamedProfile);
 
-        var result = await new UpdateAccountProfileCommandHandler(profiles.Object, Time())
+        var result = await new UpdateAccountProfileCommandHandler(
+            maintenance.Object,
+            store.Object,
+            profiles.Object,
+            Time())
             .Handle(new UpdateAccountProfileCommand(profile.Id.Value, "Après"), CancellationToken.None);
 
         result.DisplayName.Should().Be("Après");
-        profile.MainStoryProgress.CurrentStepKey.Should().Be("step-2");
-        profiles.Verify(x => x.SaveAsync(profile, It.IsAny<CancellationToken>()), Times.Once);
+        renamedProfile.MainStoryProgress.StepKey.Should().Be("step-2");
+        maintenance.Verify(x => x.RenameAsync(
+            profile.Id,
+            "Après",
+            Now,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -137,37 +166,29 @@ public sealed class AccountPrivacyAndSettingsTests
     }
 
     [Fact]
-    public async Task DueClosure_ShouldAnonymiseIdentityProfileCharactersAndAuthenticationMaterial()
+    public async Task DueClosure_ShouldAnonymiseProfileAndPurgeAuthenticationMaterial()
     {
-        var profile = PlayerProfile.Create("Personal Name", Now.AddDays(-60));
-        var character = profile.CreatePlayableCharacter("Personal Hero", "Porteur", Now.AddDays(-50));
-        var identity = UserIdentity.RegisterForAccount(
-            profile.Id.Value,
-            EmailAddress.Create("personal@example.com"),
-            "hash",
-            Now.AddDays(-60));
-        identity.VerifyEmail(Now.AddDays(-59));
-        var store = new Mock<IAccountStore>();
-        var profiles = new Mock<IPlayerProfileRepository>();
-        store.Setup(x => x.ListExecutableClosureAccountIdsAsync(Now, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([profile.Id.Value]);
-        store.Setup(x => x.FindIdentityByAccountIdAsync(profile.Id.Value, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(identity);
-        profiles.Setup(x => x.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
+        var accountId = Guid.NewGuid();
+        var maintenance = new Mock<IAccountPrivacyMaintenanceStore>();
+        var profiles = new Mock<IAccountProfileMaintenance>();
+        maintenance.Setup(x => x.ListExecutableClosureAccountIdsAsync(Now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([accountId]);
 
         var processed = await new ExecuteDueAccountClosuresCommandHandler(
-            store.Object,
+            maintenance.Object,
             profiles.Object,
-            Mock.Of<IAuthenticationSecurity>(),
             Time())
             .Handle(new ExecuteDueAccountClosuresCommand(), CancellationToken.None);
 
         processed.Should().Be(1);
-        identity.Email.Value.Should().EndWith("@deleted.invalid");
-        identity.IsEmailVerified.Should().BeFalse();
-        profile.DisplayName.Should().Be("Compte anonymisé");
-        character.DisplayName.Should().StartWith("Personnage anonymisé");
-        store.Verify(x => x.PurgeAuthenticationMaterialAsync(profile.Id.Value, Now, It.IsAny<CancellationToken>()), Times.Once);
+        profiles.Verify(x => x.AnonymizeAsync(
+            new PlayerId(accountId),
+            Now,
+            It.IsAny<CancellationToken>()), Times.Once);
+        maintenance.Verify(x => x.PurgeAuthenticationMaterialAsync(
+            accountId,
+            Now,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static UserIdentity Identity()
