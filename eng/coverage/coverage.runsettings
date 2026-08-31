@@ -13,7 +13,7 @@
           <SingleHit>false</SingleHit>
           <UseSourceLink>false</UseSourceLink>
           <SkipAutoProps>true</SkipAutoProps>
-          <DeterministicReport>true</DeterministicReport>
+          <DeterministicReport>false</DeterministicReport>
         </Configuration>
       </DataCollector>
     </DataCollectors>
