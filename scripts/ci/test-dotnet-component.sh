@@ -14,6 +14,7 @@ results_dir="$repo_root/artifacts/test-results/$component_name"
 coverage_dir="$repo_root/artifacts/coverage/$component_name"
 runsettings="$repo_root/eng/coverage/coverage.runsettings"
 coverage_threshold=80
+internal_target=85
 
 if [[ ! -f "$repo_root/$solution_path" ]]; then
   echo "Unknown solution: $solution_path" >&2
@@ -64,13 +65,14 @@ if [[ ! -f "$summary_json" ]]; then
   exit 1
 fi
 
-python3 - "$component_name" "$summary_json" "$coverage_threshold" <<'PY'
+python3 - "$component_name" "$summary_json" "$coverage_threshold" "$internal_target" <<'PY'
 import json
 import math
 import sys
 
-component, summary_path, threshold_text = sys.argv[1:]
+component, summary_path, threshold_text, target_text = sys.argv[1:]
 threshold = float(threshold_text)
+internal_target = float(target_text)
 
 with open(summary_path, encoding="utf-8") as stream:
     summary = json.load(stream)["summary"]
@@ -82,14 +84,18 @@ metrics = (
 )
 
 failures = []
+below_internal_target = []
 print(f"Coverage quality gate for {component}: required >= {threshold:.0f}% for lines, branches and methods.")
+print(f"Internal quality target: >= {internal_target:.0f}% (advisory only; does not fail CI).")
 
 for label, covered, total in metrics:
     ratio = 100.0 if total == 0 else (covered / total) * 100.0
     required = 0 if total == 0 else math.ceil(total * threshold / 100.0)
-    print(f"  {label:8}: {ratio:6.2f}% ({covered}/{total}; minimum covered: {required})")
+    print(f"  {label:8}: {ratio:6.2f}% ({covered}/{total}; CI minimum covered: {required})")
     if ratio + 1e-12 < threshold:
         failures.append((label, ratio, required - covered))
+    elif ratio + 1e-12 < internal_target:
+        below_internal_target.append((label, ratio))
 
 if failures:
     print("Coverage gate failed:", file=sys.stderr)
@@ -100,6 +106,11 @@ if failures:
             file=sys.stderr,
         )
     sys.exit(1)
+
+if below_internal_target:
+    print("Internal coverage target not yet reached (CI remains green):")
+    for label, ratio in below_internal_target:
+        print(f"  - {label}: {ratio:.2f}% < {internal_target:.0f}%")
 
 print("Coverage gate passed.")
 PY

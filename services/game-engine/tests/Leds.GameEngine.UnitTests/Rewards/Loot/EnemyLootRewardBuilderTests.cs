@@ -187,23 +187,21 @@ public sealed class EnemyLootRewardBuilderTests
     public async Task BuildAsync_ShouldCapEffectiveDropChance_AtOneHundredPercent()
     {
         var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
-        const int trials = 50;
-        var hits = 0;
+        var runId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var combatId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-        for (var i = 0; i < trials; i++)
+        foreach (var i in Enumerable.Range(0, 50))
         {
             var choices = await CreateBuilder().BuildAsync(
-                $"seed-invitation-cap-{i}", Guid.NewGuid(), Guid.NewGuid(), [enemy], lootChanceBonusPercent: 1000);
+                $"seed-invitation-cap-{i}", runId, combatId, [enemy], lootChanceBonusPercent: 1000);
 
-            if (choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) hits++;
+            // Every positive table percentage clamps to a guaranteed hit at 100%; the
+            // only remaining selection is the deterministic MaxPerEnemy trim from 4 to 3.
+            // Assert the invariant directly instead of statistically sampling one item,
+            // which made this deterministic system look flaky whenever new GUIDs changed
+            // the sampler input between CI runs.
+            choices.Where(c => c.SourceEnemyKey == enemy.SourceKey)
+                .Should().HaveCount(3);
         }
-
-        // An enormous bonus clamps every entry's effective drop chance at 100% (never
-        // silently exceeds 100% and throws or behaves oddly) — this enemy's table has 4
-        // entries, so all 4 hit. But the per-enemy loot cap (MaxPerEnemy = 3) then trims
-        // those 4 hits down to 3 via a uniform random shuffle, so no single item is
-        // guaranteed on any one seed; across many trials it should still survive the trim
-        // (3-in-4 chance) the overwhelming majority of the time.
-        hits.Should().BeGreaterThan(trials / 2);
     }
 }

@@ -31,12 +31,11 @@ export default defineConfig({
         'src/pages/RunPage.vue',
       ],
       thresholds: {
+        // 80% is the hard CI contract. We still target >=85% during development, but
+        // a result between 80% and 85% must remain green and is tracked as internal headroom.
         lines: 80,
-        // The beta gate defines "80% code coverage" as line and statement coverage.
-        // Decision/function coverage remains blocking at an explicit baseline and can be
-        // raised independently without disguising the principal 80% commitment.
-        branches: 70,
-        functions: 75,
+        branches: 80,
+        functions: 80,
         statements: 80,
       },
     },

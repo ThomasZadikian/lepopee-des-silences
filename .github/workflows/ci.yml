@@ -2,14 +2,19 @@ name: CI
 
 on:
   workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        required: false
   workflow_dispatch:
   pull_request:
     branches:
       - develop
+      - main
       - T-RPG
   push:
     branches:
       - develop
+      - main
       - T-RPG
 
 concurrency:
@@ -54,6 +59,18 @@ jobs:
   migration-consistency:
     uses: ./.github/workflows/_migration-consistency.yml
 
+  sonarcloud:
+    needs:
+      - game-engine
+      - player
+      - catalog
+      - shared-building-blocks
+      - game-client
+      - migration-consistency
+    uses: ./.github/workflows/_sonarcloud.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   required:
     # Keep the check context named "build" for compatibility with the existing
     # develop branch protection rule. This job remains the aggregate quality gate.
@@ -66,6 +83,7 @@ jobs:
       - shared-building-blocks
       - game-client
       - migration-consistency
+      - sonarcloud
     runs-on: ubuntu-24.04
     steps:
       - name: Require every component to pass

@@ -74,6 +74,9 @@ public sealed record PlayerCharacterDto(
     string DefinitionKey,
     string DisplayName,
     string CharacterType,
+    string? ArchetypeKey,
+    bool IsArchived,
+    DateTimeOffset? ArchivedAtUtc,
     int MaxVitality,
     int BaseMana,
     int BaseCharge,
@@ -87,8 +90,6 @@ public sealed record PlayerCharacterDto(
 {
     public static PlayerCharacterDto FromDomain(PlayerCharacter character)
     {
-        // skill.basic.strike is never shown as a manageable loadout entry —
-        // it's always usable regardless of equip state (PlayerCharacter.BasicSkillKey).
         var manageableSkills = character.Skills
             .Where(s => !string.Equals(s.SkillDefinitionKey, PlayerCharacter.BasicSkillKey, StringComparison.OrdinalIgnoreCase))
             .ToArray();
@@ -98,6 +99,9 @@ public sealed record PlayerCharacterDto(
             character.DefinitionKey,
             character.DisplayName,
             character.CharacterType,
+            character.ArchetypeKey,
+            character.IsArchived,
+            character.ArchivedAtUtc,
             character.MaxVitality,
             character.BaseMana,
             character.BaseCharge,

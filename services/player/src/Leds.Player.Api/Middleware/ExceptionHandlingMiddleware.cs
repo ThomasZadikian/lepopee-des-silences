@@ -34,6 +34,11 @@ public sealed class ExceptionHandlingMiddleware
             _logger.LogWarning(ex, "Domain rule violated");
             await WriteProblemDetails(context, 400, ex.Message);
         }
+        catch (UnauthorizedException ex)
+        {
+            _logger.LogWarning(ex, "Authentication rejected");
+            await WriteProblemDetails(context, 401, ex.Message);
+        }
         catch (NotFoundException ex)
         {
             _logger.LogWarning(ex, "Resource not found");
@@ -58,7 +63,6 @@ public sealed class ExceptionHandlingMiddleware
         IDictionary<string, object>? extensions = null)
     {
         context.Response.StatusCode = status;
-        context.Response.ContentType = "application/problem+json";
 
         var problem = new ProblemDetails
         {
@@ -70,11 +74,13 @@ public sealed class ExceptionHandlingMiddleware
         if (extensions is not null)
         {
             foreach (var (key, value) in extensions)
-            {
                 problem.Extensions[key] = value;
-            }
         }
 
-        await context.Response.WriteAsJsonAsync(problem);
+        await context.Response.WriteAsJsonAsync(
+            problem,
+            options: null,
+            contentType: "application/problem+json",
+            cancellationToken: context.RequestAborted);
     }
 }

@@ -21,6 +21,12 @@ public sealed class PlayerDbContext : DbContext
     public DbSet<PlayerNpcReputationScoreEntity> PlayerNpcReputationScores => Set<PlayerNpcReputationScoreEntity>();
     public DbSet<ProcessedIntegrationEventEntity> ProcessedIntegrationEvents => Set<ProcessedIntegrationEventEntity>();
 
+    public DbSet<AccountIdentityEntity> AccountIdentities => Set<AccountIdentityEntity>();
+    public DbSet<AccountSessionEntity> AccountSessions => Set<AccountSessionEntity>();
+    public DbSet<SecurityTokenEntity> AccountSecurityTokens => Set<SecurityTokenEntity>();
+    public DbSet<PrivacyConsentEntity> AccountPrivacyConsents => Set<PrivacyConsentEntity>();
+    public DbSet<ActiveGameSessionLeaseEntity> ActiveGameSessionLeases => Set<ActiveGameSessionLeaseEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlayerDbContext).Assembly);

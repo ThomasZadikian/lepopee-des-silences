@@ -5,7 +5,9 @@ COPY apps/game-client/package.json apps/game-client/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY apps/game-client/ ./
 ARG VITE_GAME_ENGINE_API_URL=/game-engine
+ARG VITE_PLAYER_API_URL=/player
 ENV VITE_GAME_ENGINE_API_URL=$VITE_GAME_ENGINE_API_URL
+ENV VITE_PLAYER_API_URL=$VITE_PLAYER_API_URL
 RUN npm run build
 
 FROM caddy:2.10.2-alpine AS runtime

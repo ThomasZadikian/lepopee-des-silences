@@ -21,11 +21,9 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     public async Task Handle_ShouldReturnProfile_WhenPlayerExists()
     {
         var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(profile.Id.Value);
@@ -35,41 +33,34 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnNull_WhenPlayerDoesNotExist()
     {
-        var playerId = Guid.NewGuid();
         _repository.Setup(r => r.GetByIdAsync(It.IsAny<PlayerId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PlayerProfile?)null);
 
-        var query = new GetPlayerProfileByIdQuery(playerId);
-        var result = await _handler.Handle(query, CancellationToken.None);
-
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(Guid.NewGuid()), CancellationToken.None);
         result.Should().BeNull();
     }
 
     [Fact]
     public async Task Handle_ShouldMapCharactersCorrectly()
     {
-        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        var profile = CreateProfileWithPlayableCharacter();
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.Characters.Should().HaveCount(1);
-        result.Characters.Single().DefinitionKey.Should().Be("character.player.self");
-        result.Characters.Single().DisplayName.Should().Be("L'Aventurier");
+        var character = result!.Characters.Should().ContainSingle().Subject;
+        character.DefinitionKey.Should().Be("character.player.self");
+        character.DisplayName.Should().Be("L'Aventurier");
     }
 
     [Fact]
     public async Task Handle_ShouldMapProgressionCorrectly()
     {
         var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Progression.TotalRunsStarted.Should().Be(0);
@@ -83,11 +74,9 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     {
         var now = DateTimeOffset.UtcNow;
         var profile = PlayerProfile.Create("Test Player", now);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.CreatedAtUtc.Should().Be(now);
@@ -100,16 +89,12 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
         var id = PlayerId.New();
         var character = PlayerCharacter.Rehydrate(
             PlayerCharacterId.New(), "custom.key", "Custom Character", 150, 10, 5, ["skill.custom"]);
-        var roster = PlayerRoster.Rehydrate([character]);
-        var progression = PlayerProgression.Rehydrate(10, 5, 3, 2);
         var now = DateTimeOffset.UtcNow;
-        var profile = PlayerProfile.Rehydrate(id, "Rehydrated Player", roster, progression, now, now);
+        var profile = PlayerProfile.Rehydrate(
+            id, "Rehydrated Player", PlayerRoster.Rehydrate([character]), PlayerProgression.Rehydrate(10, 5, 3, 2), now, now);
+        _repository.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        _repository.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
-
-        var query = new GetPlayerProfileByIdQuery(id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(id.Value);
@@ -125,12 +110,10 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     [Fact]
     public async Task Handle_ShouldMapCharacterSkillKeys()
     {
-        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        var profile = CreateProfileWithPlayableCharacter();
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Characters.Single().SkillKeys.Should().Contain("skill.basic.guard");
@@ -140,12 +123,10 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     [Fact]
     public async Task Handle_ShouldMapCharacterStats()
     {
-        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
-        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        var profile = CreateProfileWithPlayableCharacter();
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var query = new GetPlayerProfileByIdQuery(profile.Id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(profile.Id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Characters.Single().MaxVitality.Should().Be(100);
@@ -160,8 +141,7 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
         _repository.Setup(r => r.GetByIdAsync(It.IsAny<PlayerId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PlayerProfile?)null);
 
-        var query = new GetPlayerProfileByIdQuery(playerId);
-        await _handler.Handle(query, CancellationToken.None);
+        await _handler.Handle(new GetPlayerProfileByIdQuery(playerId), CancellationToken.None);
 
         _repository.Verify(r => r.GetByIdAsync(
             It.Is<PlayerId>(id => id.Value == playerId),
@@ -172,18 +152,22 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
     public async Task Handle_ShouldReturnEmptyCharacters_WhenRosterIsEmpty()
     {
         var id = PlayerId.New();
-        var roster = PlayerRoster.Rehydrate([]);
-        var progression = PlayerProgression.CreateDefault();
         var now = DateTimeOffset.UtcNow;
-        var profile = PlayerProfile.Rehydrate(id, "Empty Roster Player", roster, progression, now, now);
+        var profile = PlayerProfile.Rehydrate(
+            id, "Empty Roster Player", PlayerRoster.Rehydrate([]), PlayerProgression.CreateDefault(), now, now);
+        _repository.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        _repository.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
-
-        var query = new GetPlayerProfileByIdQuery(id.Value);
-        var result = await _handler.Handle(query, CancellationToken.None);
+        var result = await _handler.Handle(new GetPlayerProfileByIdQuery(id.Value), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Characters.Should().BeEmpty();
+    }
+
+    private static PlayerProfile CreateProfileWithPlayableCharacter()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test Player", now);
+        profile.CreatePlayableCharacter("L'Aventurier", "archetype.porteur", now);
+        return profile;
     }
 }

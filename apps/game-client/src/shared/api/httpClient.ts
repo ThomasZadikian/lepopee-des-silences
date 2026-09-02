@@ -22,9 +22,6 @@ function getErrorMessage(body: unknown, fallback: string): string {
     return body.message;
   }
 
-  // ASP.NET's ProblemDetails puts the actual domain/validation error text in the
-  // `errors` extension array — `title`/`detail` are generic ("Domain rule violated.")
-  // and would otherwise mask the specific message (e.g. "Le sac est plein…").
   if (
     typeof body === 'object' &&
     body !== null &&
@@ -76,11 +73,13 @@ async function parseResponseBody(response: Response): Promise<unknown> {
   return response.text();
 }
 
-export async function httpRequest<TResponse>(
+export async function httpRequestTo<TResponse>(
+  baseUrl: string,
   path: string,
   options: RequestInit = {},
+  apiName = 'API',
 ): Promise<TResponse> {
-  const response = await fetch(`${environment.gameEngineApiUrl}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       Accept: 'application/json',
@@ -95,7 +94,7 @@ export async function httpRequest<TResponse>(
     throw new HttpError(
       getErrorMessage(
         body,
-        `Game Engine API request failed with status ${response.status}.`,
+        `${apiName} request failed with status ${response.status}.`,
       ),
       response.status,
       body,
@@ -103,4 +102,16 @@ export async function httpRequest<TResponse>(
   }
 
   return body as TResponse;
+}
+
+export async function httpRequest<TResponse>(
+  path: string,
+  options: RequestInit = {},
+): Promise<TResponse> {
+  return httpRequestTo<TResponse>(
+    environment.gameEngineApiUrl,
+    path,
+    options,
+    'Game Engine API',
+  );
 }

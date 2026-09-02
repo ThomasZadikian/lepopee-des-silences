@@ -18,6 +18,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     public async Task<PlayerProfile?> GetByIdAsync(PlayerId id, CancellationToken cancellationToken)
     {
         var entity = await _context.PlayerProfiles
+            .AsSplitQuery()
             .Include(p => p.Characters)
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
@@ -35,6 +36,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     public async Task SaveAsync(PlayerProfile profile, CancellationToken cancellationToken)
     {
         var existing = await _context.PlayerProfiles
+            .AsSplitQuery()
             .Include(p => p.Characters)
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
@@ -95,6 +97,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
                 CharacterType = c.CharacterType,
                 Status = c.Status,
+                ArchetypeKey = c.ArchetypeKey,
+                ArchivedAtUtc = c.ArchivedAtUtc,
                 CreatedAtUtc = profile.CreatedAtUtc,
                 UpdatedAtUtc = profile.UpdatedAtUtc,
                 StatBlock = ToStatBlockEntity(c),
@@ -149,6 +153,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys),
                     CharacterType = character.CharacterType,
                     Status = character.Status,
+                    ArchetypeKey = character.ArchetypeKey,
+                    ArchivedAtUtc = character.ArchivedAtUtc,
                     CreatedAtUtc = incoming.CreatedAtUtc,
                     UpdatedAtUtc = incoming.UpdatedAtUtc,
                     StatBlock = ToStatBlockEntity(character),
@@ -169,6 +175,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingCharacter.SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys);
             existingCharacter.CharacterType = character.CharacterType;
             existingCharacter.Status = character.Status;
+            existingCharacter.ArchetypeKey = character.ArchetypeKey;
+            existingCharacter.ArchivedAtUtc = character.ArchivedAtUtc;
             existingCharacter.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
             UpdateStatBlock(existingCharacter, character);
@@ -181,8 +189,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         UpdateNpcReputationScores(existing, incoming);
     }
 
-    // Append-only: permanent unlocks are never modified or removed once granted (they're
-    // lifetime, not run-scoped) — only append entries not already present by UnlockKey.
     private void UpdatePermanentUnlocks(PlayerProfileEntity existing, PlayerProfile incoming)
     {
         var existingKeys = existing.PermanentUnlocks
@@ -200,9 +206,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         }
     }
 
-    // Append-only for the item itself (never removed once owned), same reasoning as
-    // UpdatePermanentUnlocks — but ContainedLiquidDefinitionKey is a mutable field on an
-    // already-owned container (SFD container/liquid extension) and must be synced in place.
     private void UpdatePermanentItems(PlayerProfileEntity existing, PlayerProfile incoming)
     {
         var existingByKey = existing.PermanentItems
@@ -268,6 +271,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingItem.AcquiredAtUtc = item.AcquiredAtUtc;
             existingItem.Source = item.Source;
             existingItem.IsEquipped = item.IsEquipped;
+            existingItem.EquipmentSlot = item.Slot.ToString();
         }
     }
 
@@ -372,16 +376,20 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                         : EquipmentSlotKind.Relic))
                 .ToArray();
 
-            return PlayerCharacter.Rehydrate(
-                new PlayerCharacterId(c.Id),
-                c.DefinitionKey,
-                c.DisplayName,
-                c.CharacterType,
-                c.Status,
-                statBlock,
-                skills,
-                items,
-                c.StatPointsInvested);
+            return PlayerCharacter.Rehydrate(new PlayerCharacterSnapshot
+            {
+                Id = new PlayerCharacterId(c.Id),
+                DefinitionKey = c.DefinitionKey,
+                DisplayName = c.DisplayName,
+                CharacterType = c.CharacterType,
+                Status = c.Status,
+                StatBlock = statBlock,
+                Skills = skills,
+                Items = items,
+                StatPointsInvested = c.StatPointsInvested,
+                ArchetypeKey = c.ArchetypeKey,
+                ArchivedAtUtc = c.ArchivedAtUtc
+            });
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);
@@ -420,20 +428,22 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 s.NpcKey, s.Score, s.TimesMet, s.CurrentDialogueNodeKey, s.UpdatedAtUtc))
             .ToList();
 
-        return PlayerProfile.Rehydrate(
-            new PlayerId(entity.Id),
-            entity.DisplayName,
-            roster,
-            progression,
-            entity.CreatedAtUtc,
-            entity.UpdatedAtUtc,
-            mainStoryProgress,
-            permanentUnlocks,
-            permanentItems,
-            npcReputationScores);
+        return PlayerProfile.Rehydrate(new PlayerProfileSnapshot
+        {
+            Id = new PlayerId(entity.Id),
+            DisplayName = entity.DisplayName,
+            Roster = roster,
+            Progression = progression,
+            CreatedAtUtc = entity.CreatedAtUtc,
+            UpdatedAtUtc = entity.UpdatedAtUtc,
+            MainStoryProgress = mainStoryProgress,
+            PermanentUnlocks = permanentUnlocks,
+            PermanentItems = permanentItems,
+            NpcReputationScores = npcReputationScores
+        });
     }
 
-    private static IReadOnlyCollection<string> DeserializeKeys(string? json) =>
+    private static string[] DeserializeKeys(string? json) =>
         string.IsNullOrWhiteSpace(json)
             ? []
             : JsonSerializer.Deserialize<string[]>(json) ?? [];

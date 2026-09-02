@@ -46,10 +46,6 @@ public sealed class PlayerProfileRepositoryTests
         var repository = new EfPlayerProfileRepository(context);
         await repository.SaveAsync(profile, CancellationToken.None);
 
-        // Reload through a fresh context (separate change tracker) to simulate a second,
-        // independent request granting the same offering — GrantPermanentUnlock is a
-        // domain no-op here, but the repository's append-only reconciliation must also
-        // never duplicate the row if it were ever called with an untracked duplicate.
         await using var secondContext = _fixture.CreateContext(connectionString);
         var secondRepository = new EfPlayerProfileRepository(secondContext);
         var reloaded = await secondRepository.GetByIdAsync(profile.Id, CancellationToken.None);
@@ -71,8 +67,8 @@ public sealed class PlayerProfileRepositoryTests
         var repository = new EfPlayerProfileRepository(context);
 
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
-        var character = profile.Roster.Characters.Single();
         var now = DateTimeOffset.UtcNow;
+        var character = profile.CreatePlayableCharacter("Aster", "archetype.porteur", now);
         profile.AddPermanentItems(["item.sac-a-dos"], null, now);
         profile.EquipItem(character.Id, "item.sac-a-dos", now);
         await repository.SaveAsync(profile, CancellationToken.None);
@@ -83,6 +79,7 @@ public sealed class PlayerProfileRepositoryTests
         reloaded!.PermanentItems.Should().ContainSingle(i => i.ItemDefinitionKey == "item.sac-a-dos");
         var reloadedCharacter = reloaded.Roster.Characters.Single();
         reloadedCharacter.EquippedItemKeys.Should().Contain("item.sac-a-dos");
+        reloadedCharacter.ArchetypeKey.Should().Be("archetype.porteur");
     }
 
     [Fact]
@@ -144,15 +141,17 @@ public sealed class PlayerProfileRepositoryTests
         var (context, connectionString) = _fixture.CreateContext();
         await using var _ = context;
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
-        profile.AdvanceMainStory(
-            "story.main",
-            "1.0",
-            "step.hall",
-            "checkpoint.hall",
-            ["room.hall"],
-            ["room.hall", "room.threshold"],
-            complete: false,
-            DateTimeOffset.UtcNow);
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "story.main",
+            SequenceVersion = "1.0",
+            StepKey = "step.hall",
+            CheckpointKey = "checkpoint.hall",
+            UnlockedRoomKeys = ["room.hall"],
+            VisibleRoomKeys = ["room.hall", "room.threshold"],
+            Complete = false,
+            Now = DateTimeOffset.UtcNow
+        });
         await new EfPlayerProfileRepository(context).SaveAsync(profile, CancellationToken.None);
 
         await using var reloadContext = _fixture.CreateContext(connectionString);

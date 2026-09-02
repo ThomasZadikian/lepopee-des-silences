@@ -4,16 +4,16 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <Format>cobertura</Format>
+          <Format>cobertura,opencover</Format>
           <Include>[Leds.*]*</Include>
           <Exclude>[*.UnitTests]*,[*.IntegrationTests]*,[xunit.*]*</Exclude>
           <ExcludeByFile>**/Migrations/**/*.cs,**/*.Designer.cs,**/obj/**/*.cs</ExcludeByFile>
           <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
           <IncludeTestAssembly>false</IncludeTestAssembly>
           <SingleHit>false</SingleHit>
-          <UseSourceLink>true</UseSourceLink>
+          <UseSourceLink>false</UseSourceLink>
           <SkipAutoProps>true</SkipAutoProps>
-          <DeterministicReport>true</DeterministicReport>
+          <DeterministicReport>false</DeterministicReport>
         </Configuration>
       </DataCollector>
     </DataCollectors>

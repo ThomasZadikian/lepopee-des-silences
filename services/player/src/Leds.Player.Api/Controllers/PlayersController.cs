@@ -1,4 +1,5 @@
 using Leds.Player.Application.Players;
+using Leds.Player.Application.Players.CreatePlayableCharacter;
 using Leds.Player.Application.Players.CreatePlayerProfile;
 using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.EquipSkill;
@@ -28,13 +29,31 @@ public sealed class PlayersController : ControllerBase
         [FromBody] CreatePlayerProfileRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new CreatePlayerProfileCommand(request.DisplayName);
-        var response = await _sender.Send(command, cancellationToken);
+        var response = await _sender.Send(new CreatePlayerProfileCommand(request.DisplayName), cancellationToken);
 
         return CreatedAtAction(
             nameof(GetPlayerProfile),
             new { playerId = response.Profile.Id },
             response);
+    }
+
+    [HttpPost("{playerId:guid}/characters")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> CreatePlayableCharacter(
+        Guid playerId,
+        [FromBody] CreatePlayableCharacterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var profile = await _sender.Send(
+            new CreatePlayableCharacterCommand(playerId, request.DisplayName, request.ArchetypeKey),
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetPlayerProfile),
+            new { playerId },
+            profile);
     }
 
     [HttpGet("{playerId:guid}")]
@@ -44,9 +63,7 @@ public sealed class PlayersController : ControllerBase
         Guid playerId,
         CancellationToken cancellationToken)
     {
-        var query = new GetPlayerProfileByIdQuery(playerId);
-        var profile = await _sender.Send(query, cancellationToken);
-
+        var profile = await _sender.Send(new GetPlayerProfileByIdQuery(playerId), cancellationToken);
         return profile is null ? NotFound() : Ok(profile);
     }
 
@@ -69,9 +86,7 @@ public sealed class PlayersController : ControllerBase
         Guid playerId,
         CancellationToken cancellationToken)
     {
-        var query = new GetPlayerRunSnapshotQuery(playerId);
-        var response = await _sender.Send(query, cancellationToken);
-
+        var response = await _sender.Send(new GetPlayerRunSnapshotQuery(playerId), cancellationToken);
         return Ok(response);
     }
 
@@ -85,9 +100,7 @@ public sealed class PlayersController : ControllerBase
         string skillKey,
         CancellationToken cancellationToken)
     {
-        var command = new EquipSkillCommand(playerId, characterId, skillKey);
-        var response = await _sender.Send(command, cancellationToken);
-
+        var response = await _sender.Send(new EquipSkillCommand(playerId, characterId, skillKey), cancellationToken);
         return Ok(response);
     }
 
@@ -101,9 +114,7 @@ public sealed class PlayersController : ControllerBase
         string skillKey,
         CancellationToken cancellationToken)
     {
-        var command = new UnequipSkillCommand(playerId, characterId, skillKey);
-        var response = await _sender.Send(command, cancellationToken);
-
+        var response = await _sender.Send(new UnequipSkillCommand(playerId, characterId, skillKey), cancellationToken);
         return Ok(response);
     }
 
@@ -118,9 +129,7 @@ public sealed class PlayersController : ControllerBase
         [FromQuery] EquipmentSlotKind slot,
         CancellationToken cancellationToken)
     {
-        var command = new EquipItemCommand(playerId, characterId, itemKey, slot);
-        var response = await _sender.Send(command, cancellationToken);
-
+        var response = await _sender.Send(new EquipItemCommand(playerId, characterId, itemKey, slot), cancellationToken);
         return Ok(response);
     }
 
@@ -134,12 +143,10 @@ public sealed class PlayersController : ControllerBase
         string itemKey,
         CancellationToken cancellationToken)
     {
-        var command = new UnequipItemCommand(playerId, characterId, itemKey);
-        var response = await _sender.Send(command, cancellationToken);
-
+        var response = await _sender.Send(new UnequipItemCommand(playerId, characterId, itemKey), cancellationToken);
         return Ok(response);
     }
-
 }
 
 public sealed record CreatePlayerProfileRequest(string DisplayName);
+public sealed record CreatePlayableCharacterRequest(string DisplayName, string ArchetypeKey);
