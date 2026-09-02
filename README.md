@@ -461,6 +461,25 @@ dans un ordre calendaire.
 .\scripts\dev\start-dev.ps1
 ```
 
+### Comptes de test locaux
+
+Au démarrage du Player Service sous l’environnement `Development`, le seeder crée les comptes
+suivants s’ils n’existent pas encore :
+
+| Rôle | Adresse électronique | Mot de passe | Profil initial |
+|------|-----------------------|--------------|----------------|
+| Administrateur | `admin@leds.test` | `local-development-only` | Administrateur Test |
+| Développeur | `developer@leds.test` | `local-development-only` | Développeur Test |
+| Joueur | `player@leds.test` | `local-development-only` | Voyageur et L’Aventurier |
+
+Ces identifiants sont publics et exclusivement destinés aux bases locales jetables. Les adresses
+sont considérées comme déjà validées pour ne pas dépendre d’un serveur SMTP local. La configuration
+du MFA reste obligatoire lors de la première connexion de chaque compte.
+
+Le seeder n’est pas exécuté dans les autres environnements. Ces comptes et leur mot de passe partagé
+doivent être supprimés avant toute mise en production ; ils ne constituent en aucun cas des valeurs
+de secours ou des identifiants d’exploitation.
+
 ### Bases de données locales
 
 `docker-compose.dev.yml` (et `docker-compose.yml`) provisionnent les trois bases Postgres :

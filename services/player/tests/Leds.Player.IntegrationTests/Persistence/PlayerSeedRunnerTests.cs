@@ -20,14 +20,14 @@ public sealed class PlayerSeedRunnerTests
     }
 
     [Fact]
-    public async Task ApplyDemoPlayerSeedAsync_ShouldCreateVerifiedDevelopmentAccountsForEveryRole()
+    public async Task ApplyDevelopmentSeedAsync_ShouldCreateVerifiedDevelopmentAccountsForEveryRole()
     {
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var security = CreateSecurity();
-        var sut = new PlayerSeedRunner(context, NullLogger<PlayerSeedRunner>.Instance);
+        var sut = new PlayerSeedRunner(context, security, NullLogger<PlayerSeedRunner>.Instance);
 
-        await sut.ApplyDemoPlayerSeedAsync();
+        await sut.ApplyDevelopmentSeedAsync();
 
         var accounts = await context.AccountIdentities
             .AsNoTracking()
@@ -51,14 +51,14 @@ public sealed class PlayerSeedRunnerTests
     }
 
     [Fact]
-    public async Task ApplyDemoPlayerSeedAsync_ShouldBeIdempotent()
+    public async Task ApplyDevelopmentSeedAsync_ShouldBeIdempotent()
     {
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
-        var sut = new PlayerSeedRunner(context, NullLogger<PlayerSeedRunner>.Instance);
+        var sut = new PlayerSeedRunner(context, CreateSecurity(), NullLogger<PlayerSeedRunner>.Instance);
 
-        await sut.ApplyDemoPlayerSeedAsync();
-        await sut.ApplyDemoPlayerSeedAsync();
+        await sut.ApplyDevelopmentSeedAsync();
+        await sut.ApplyDevelopmentSeedAsync();
 
         (await context.AccountIdentities.CountAsync()).Should().Be(3);
         (await context.PlayerProfiles.CountAsync()).Should().Be(3);
