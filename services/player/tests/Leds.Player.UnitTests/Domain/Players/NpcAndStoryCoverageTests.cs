@@ -195,10 +195,28 @@ public sealed class NpcAndStoryCoverageTests
     public void PlayerProfile_AdvanceMainStory_ShouldBecomeNoOpAfterCompletion()
     {
         var profile = PlayerProfile.Create("Story Player", Now.AddHours(-1));
-        profile.AdvanceMainStory("story", "1", "end", null, ["room.one"], ["room.one"], true, Now.AddMinutes(-1));
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "story",
+            SequenceVersion = "1",
+            StepKey = "end",
+            UnlockedRoomKeys = ["room.one"],
+            VisibleRoomKeys = ["room.one"],
+            Complete = true,
+            Now = Now.AddMinutes(-1)
+        });
         var completedAt = profile.UpdatedAtUtc;
 
-        profile.AdvanceMainStory("other", "2", "ignored", null, ["room.two"], ["room.two"], false, Now);
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "other",
+            SequenceVersion = "2",
+            StepKey = "ignored",
+            UnlockedRoomKeys = ["room.two"],
+            VisibleRoomKeys = ["room.two"],
+            Complete = false,
+            Now = Now
+        });
 
         profile.MainStoryProgress.SequenceKey.Should().Be("story");
         profile.MainStoryProgress.UnlockedRoomKeys.Should().NotContain("room.two");
@@ -228,7 +246,16 @@ public sealed class NpcAndStoryCoverageTests
     public void PlayerProfile_UnlockDifficultyLevel_ShouldOnlyTouchWhenLevelActuallyUnlocks()
     {
         var profile = PlayerProfile.Create("Difficulty Player", Now.AddHours(-1));
-        profile.AdvanceMainStory("story", "1", "end", null, [], [], true, Now.AddMinutes(-2));
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "story",
+            SequenceVersion = "1",
+            StepKey = "end",
+            UnlockedRoomKeys = [],
+            VisibleRoomKeys = [],
+            Complete = true,
+            Now = Now.AddMinutes(-2)
+        });
         profile.UnlockDifficultyLevel(2, Now.AddMinutes(-1));
         var afterUnlock = profile.UpdatedAtUtc;
 

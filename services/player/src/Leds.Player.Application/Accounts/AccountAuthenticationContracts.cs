@@ -31,19 +31,7 @@ public sealed record MfaEnrollmentResponse(
 
 public sealed record ConfirmMfaEnrollmentCommand(
     string ChallengeToken,
-    string Code) : IRequest<AuthenticatedSessionResponse>
-{
-    internal string? LegacyProtectedSecret { get; init; }
-
-    [Obsolete("The protected TOTP secret is server-side state and must not cross the HTTP boundary.")]
-    public ConfirmMfaEnrollmentCommand(
-        string challengeToken,
-        string protectedSecret,
-        string code) : this(challengeToken, code)
-    {
-        LegacyProtectedSecret = protectedSecret;
-    }
-}
+    string Code) : IRequest<AuthenticatedSessionResponse>;
 
 public sealed record CompleteMfaChallengeCommand(
     string ChallengeToken,

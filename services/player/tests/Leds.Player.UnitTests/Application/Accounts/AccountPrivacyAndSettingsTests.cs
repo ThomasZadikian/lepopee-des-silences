@@ -17,18 +17,29 @@ public sealed class AccountPrivacyAndSettingsTests
     public async Task UpdateProfile_ShouldRenameTheAccountWithoutTouchingProgression()
     {
         var profile = PlayerProfile.Create("Avant", Now.AddDays(-1));
-        profile.AdvanceMainStory("main", "1", "step-2", null, ["hall"], ["hall"], false, Now.AddHours(-2));
-        var renamedProfile = PlayerProfile.Rehydrate(
-            profile.Id,
-            "Après",
-            profile.Roster,
-            profile.Progression,
-            profile.CreatedAtUtc,
-            Now,
-            profile.MainStoryProgress,
-            profile.PermanentUnlocks,
-            profile.PermanentItems,
-            profile.NpcReputationScores);
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "main",
+            SequenceVersion = "1",
+            StepKey = "step-2",
+            UnlockedRoomKeys = ["hall"],
+            VisibleRoomKeys = ["hall"],
+            Complete = false,
+            Now = Now.AddHours(-2)
+        });
+        var renamedProfile = PlayerProfile.Rehydrate(new PlayerProfileSnapshot
+        {
+            Id = profile.Id,
+            DisplayName = "Après",
+            Roster = profile.Roster,
+            Progression = profile.Progression,
+            CreatedAtUtc = profile.CreatedAtUtc,
+            UpdatedAtUtc = Now,
+            MainStoryProgress = profile.MainStoryProgress,
+            PermanentUnlocks = profile.PermanentUnlocks,
+            PermanentItems = profile.PermanentItems,
+            NpcReputationScores = profile.NpcReputationScores
+        });
         var identity = UserIdentity.RegisterForAccount(
             profile.Id.Value,
             EmailAddress.Create("player@example.com"),
@@ -201,7 +212,7 @@ public sealed class AccountPrivacyAndSettingsTests
         return identity;
     }
 
-    private static TimeProvider Time() => new FixedTimeProvider(Now);
+    private static FixedTimeProvider Time() => new(Now);
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {

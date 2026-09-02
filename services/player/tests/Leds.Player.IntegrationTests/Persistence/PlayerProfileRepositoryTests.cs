@@ -141,15 +141,17 @@ public sealed class PlayerProfileRepositoryTests
         var (context, connectionString) = _fixture.CreateContext();
         await using var _ = context;
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
-        profile.AdvanceMainStory(
-            "story.main",
-            "1.0",
-            "step.hall",
-            "checkpoint.hall",
-            ["room.hall"],
-            ["room.hall", "room.threshold"],
-            complete: false,
-            DateTimeOffset.UtcNow);
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "story.main",
+            SequenceVersion = "1.0",
+            StepKey = "step.hall",
+            CheckpointKey = "checkpoint.hall",
+            UnlockedRoomKeys = ["room.hall"],
+            VisibleRoomKeys = ["room.hall", "room.threshold"],
+            Complete = false,
+            Now = DateTimeOffset.UtcNow
+        });
         await new EfPlayerProfileRepository(context).SaveAsync(profile, CancellationToken.None);
 
         await using var reloadContext = _fixture.CreateContext(connectionString);

@@ -4,6 +4,9 @@ namespace Leds.Player.Domain.Players;
 
 public sealed class PlayerCharacter
 {
+    private const string StandardCharacterType = "Standard";
+    private const string ActiveStatus = "Active";
+
     public const int MaxEquippedSkills = 4;
 
     /// <summary>
@@ -27,30 +30,19 @@ public sealed class PlayerCharacter
     private readonly List<PlayerCharacterSkill> _skills;
     private readonly List<PlayerCharacterItem> _items;
 
-    private PlayerCharacter(
-        PlayerCharacterId id,
-        string definitionKey,
-        string displayName,
-        string characterType,
-        string status,
-        PlayerCharacterStatBlock statBlock,
-        IReadOnlyCollection<PlayerCharacterSkill> skills,
-        IReadOnlyCollection<PlayerCharacterItem>? items = null,
-        int statPointsInvested = 0,
-        string? archetypeKey = null,
-        DateTimeOffset? archivedAtUtc = null)
+    private PlayerCharacter(PlayerCharacterSnapshot snapshot)
     {
-        Id = id;
-        DefinitionKey = definitionKey;
-        DisplayName = displayName;
-        CharacterType = characterType;
-        Status = status;
-        StatBlock = statBlock;
-        _skills = skills.ToList();
-        _items = items?.ToList() ?? [];
-        StatPointsInvested = statPointsInvested;
-        ArchetypeKey = archetypeKey;
-        ArchivedAtUtc = archivedAtUtc;
+        Id = snapshot.Id;
+        DefinitionKey = snapshot.DefinitionKey;
+        DisplayName = snapshot.DisplayName;
+        CharacterType = snapshot.CharacterType;
+        Status = snapshot.Status;
+        StatBlock = snapshot.StatBlock;
+        _skills = snapshot.Skills.ToList();
+        _items = snapshot.Items?.ToList() ?? [];
+        StatPointsInvested = snapshot.StatPointsInvested;
+        ArchetypeKey = snapshot.ArchetypeKey;
+        ArchivedAtUtc = snapshot.ArchivedAtUtc;
     }
 
     public PlayerCharacterId Id { get; }
@@ -70,22 +62,20 @@ public sealed class PlayerCharacter
     public int BaseMana => StatBlock.Mana;
     public int BaseCharge => StatBlock.Charge;
     public IReadOnlyCollection<PlayerCharacterSkill> Skills => _skills.AsReadOnly();
-    public IReadOnlyCollection<string> SkillKeys => _skills.Select(s => s.SkillDefinitionKey).ToArray();
-    public IReadOnlyCollection<string> EquippedSkillKeys => _skills
+    public IEnumerable<string> SkillKeys => _skills.Select(s => s.SkillDefinitionKey);
+    public IEnumerable<string> EquippedSkillKeys => _skills
         .Where(s => s.IsEquipped)
         .Select(s => s.SkillDefinitionKey)
         .Append(BasicSkillKey)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
+        .Distinct(StringComparer.OrdinalIgnoreCase);
     public int EquippedCount => _skills.Count(s =>
         s.IsEquipped && !string.Equals(s.SkillDefinitionKey, BasicSkillKey, StringComparison.OrdinalIgnoreCase));
 
     public IReadOnlyCollection<PlayerCharacterItem> Items => _items.AsReadOnly();
-    public IReadOnlyCollection<string> ItemKeys => _items.Select(i => i.ItemDefinitionKey).ToArray();
-    public IReadOnlyCollection<string> EquippedItemKeys => _items
+    public IEnumerable<string> ItemKeys => _items.Select(i => i.ItemDefinitionKey);
+    public IEnumerable<string> EquippedItemKeys => _items
         .Where(i => i.IsEquipped)
-        .Select(i => i.ItemDefinitionKey)
-        .ToArray();
+        .Select(i => i.ItemDefinitionKey);
     public int EquippedItemCount => _items.Count(i => i.IsEquipped);
 
     public static PlayerCharacter Create(
@@ -127,14 +117,16 @@ public sealed class PlayerCharacter
             .Select(key => PlayerCharacterSkill.Create(key, now, "default"))
             .ToArray();
 
-        return new PlayerCharacter(
-            PlayerCharacterId.New(),
-            definitionKey.Trim(),
-            displayName.Trim(),
-            "Standard",
-            "Active",
-            statBlock,
-            skills);
+        return new PlayerCharacter(new PlayerCharacterSnapshot
+        {
+            Id = PlayerCharacterId.New(),
+            DefinitionKey = definitionKey.Trim(),
+            DisplayName = displayName.Trim(),
+            CharacterType = StandardCharacterType,
+            Status = ActiveStatus,
+            StatBlock = statBlock,
+            Skills = skills
+        });
     }
 
     public static PlayerCharacter Create(
@@ -142,19 +134,21 @@ public sealed class PlayerCharacter
         string displayName,
         PlayerCharacterStatBlock statBlock,
         IReadOnlyCollection<PlayerCharacterSkill> skills,
-        string characterType = "Standard",
-        string status = "Active")
+        string characterType = StandardCharacterType,
+        string status = ActiveStatus)
     {
         ValidateCreation(definitionKey, displayName, statBlock, skills);
 
-        return new PlayerCharacter(
-            PlayerCharacterId.New(),
-            definitionKey.Trim(),
-            displayName.Trim(),
-            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType.Trim(),
-            string.IsNullOrWhiteSpace(status) ? "Active" : status.Trim(),
-            statBlock,
-            skills);
+        return new PlayerCharacter(new PlayerCharacterSnapshot
+        {
+            Id = PlayerCharacterId.New(),
+            DefinitionKey = definitionKey.Trim(),
+            DisplayName = displayName.Trim(),
+            CharacterType = string.IsNullOrWhiteSpace(characterType) ? StandardCharacterType : characterType.Trim(),
+            Status = string.IsNullOrWhiteSpace(status) ? ActiveStatus : status.Trim(),
+            StatBlock = statBlock,
+            Skills = skills
+        });
     }
 
     /// <summary>
@@ -174,15 +168,17 @@ public sealed class PlayerCharacter
         if (string.IsNullOrWhiteSpace(archetypeKey))
             throw new DomainException("Character archetype key is required.");
 
-        return new PlayerCharacter(
-            PlayerCharacterId.New(),
-            definitionKey.Trim(),
-            displayName.Trim(),
-            "Player",
-            "Active",
-            statBlock,
-            skills,
-            archetypeKey: archetypeKey.Trim());
+        return new PlayerCharacter(new PlayerCharacterSnapshot
+        {
+            Id = PlayerCharacterId.New(),
+            DefinitionKey = definitionKey.Trim(),
+            DisplayName = displayName.Trim(),
+            CharacterType = "Player",
+            Status = ActiveStatus,
+            StatBlock = statBlock,
+            Skills = skills,
+            ArchetypeKey = archetypeKey.Trim()
+        });
     }
 
     private static void ValidateCreation(
@@ -332,7 +328,7 @@ public sealed class PlayerCharacter
             .Select(key => PlayerCharacterSkill.Create(key, now, "legacy_migration", isEquipped: true))
             .ToArray();
 
-        return Rehydrate(id, definitionKey, displayName, "Standard", "Active", statBlock, skills);
+        return Rehydrate(id, definitionKey, displayName, StandardCharacterType, ActiveStatus, statBlock, skills);
     }
 
     public static PlayerCharacter Rehydrate(
@@ -342,23 +338,46 @@ public sealed class PlayerCharacter
         string characterType,
         string status,
         PlayerCharacterStatBlock statBlock,
-        IReadOnlyCollection<PlayerCharacterSkill> skills,
-        IReadOnlyCollection<PlayerCharacterItem>? items = null,
-        int statPointsInvested = 0,
-        string? archetypeKey = null,
-        DateTimeOffset? archivedAtUtc = null)
+        IReadOnlyCollection<PlayerCharacterSkill> skills)
     {
-        return new PlayerCharacter(
-            id,
-            definitionKey,
-            displayName,
-            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType,
-            string.IsNullOrWhiteSpace(status) ? "Active" : status,
-            statBlock,
-            skills,
-            items,
-            statPointsInvested,
-            archetypeKey,
-            archivedAtUtc);
+        return Rehydrate(new PlayerCharacterSnapshot
+        {
+            Id = id,
+            DefinitionKey = definitionKey,
+            DisplayName = displayName,
+            CharacterType = string.IsNullOrWhiteSpace(characterType) ? StandardCharacterType : characterType,
+            Status = string.IsNullOrWhiteSpace(status) ? ActiveStatus : status,
+            StatBlock = statBlock,
+            Skills = skills
+        });
     }
+
+    public static PlayerCharacter Rehydrate(PlayerCharacterSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return new PlayerCharacter(snapshot with
+        {
+            CharacterType = string.IsNullOrWhiteSpace(snapshot.CharacterType)
+                ? StandardCharacterType
+                : snapshot.CharacterType,
+            Status = string.IsNullOrWhiteSpace(snapshot.Status)
+                ? ActiveStatus
+                : snapshot.Status
+        });
+    }
+}
+
+public sealed record PlayerCharacterSnapshot
+{
+    public required PlayerCharacterId Id { get; init; }
+    public required string DefinitionKey { get; init; }
+    public required string DisplayName { get; init; }
+    public required string CharacterType { get; init; }
+    public required string Status { get; init; }
+    public required PlayerCharacterStatBlock StatBlock { get; init; }
+    public required IReadOnlyCollection<PlayerCharacterSkill> Skills { get; init; }
+    public IReadOnlyCollection<PlayerCharacterItem>? Items { get; init; }
+    public int StatPointsInvested { get; init; }
+    public string? ArchetypeKey { get; init; }
+    public DateTimeOffset? ArchivedAtUtc { get; init; }
 }

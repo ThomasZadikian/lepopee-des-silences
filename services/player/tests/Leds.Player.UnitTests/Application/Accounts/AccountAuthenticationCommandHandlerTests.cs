@@ -228,6 +228,7 @@ public sealed class AccountAuthenticationCommandHandlerTests
         var store = new Mock<IAccountStore>();
         var security = NewSecurity();
         var identity = Identity(emailVerified: true);
+        identity.StageMfaSecret("protected");
         SetupChallenge(store, security, "mfa-setup");
         store.Setup(x => x.FindIdentityByAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(identity);
@@ -305,7 +306,7 @@ public sealed class AccountAuthenticationCommandHandlerTests
         var sut = new ConfirmMfaEnrollmentCommandHandler(store.Object, security.Object, issuer.Object, Time());
 
         var result = await sut.Handle(
-            new ConfirmMfaEnrollmentCommand("challenge", "protected", "123456"),
+            new ConfirmMfaEnrollmentCommand("challenge", "123456"),
             CancellationToken.None);
 
         identity.IsMfaConfigured.Should().BeTrue();
@@ -326,13 +327,14 @@ public sealed class AccountAuthenticationCommandHandlerTests
         var security = NewSecurity();
         SetupChallenge(store, security, "mfa-setup");
         var identity = Identity(emailVerified: true);
+        identity.StageMfaSecret("protected");
         store.Setup(x => x.FindIdentityByAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(identity);
         security.Setup(x => x.VerifyTotp("protected", "000000", Now)).Returns(false);
         var sut = new ConfirmMfaEnrollmentCommandHandler(store.Object, security.Object, NewIssuer().Object, Time());
 
         var act = () => sut.Handle(
-            new ConfirmMfaEnrollmentCommand("challenge", "protected", "000000"),
+            new ConfirmMfaEnrollmentCommand("challenge", "000000"),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>();
@@ -592,7 +594,7 @@ public sealed class AccountAuthenticationCommandHandlerTests
 
     private static Mock<IAuthenticationSecurity> NewSecurity() => new(MockBehavior.Loose);
     private static Mock<IAccessTokenIssuer> NewIssuer() => new(MockBehavior.Loose);
-    private static TimeProvider Time() => new FrozenTimeProvider(Now);
+    private static FrozenTimeProvider Time() => new(Now);
 
     private static UserIdentity Identity(bool emailVerified = false, bool mfaConfigured = false)
     {

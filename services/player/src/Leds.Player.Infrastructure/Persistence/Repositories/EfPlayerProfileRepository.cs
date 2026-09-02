@@ -18,6 +18,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     public async Task<PlayerProfile?> GetByIdAsync(PlayerId id, CancellationToken cancellationToken)
     {
         var entity = await _context.PlayerProfiles
+            .AsSplitQuery()
             .Include(p => p.Characters)
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
@@ -35,6 +36,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     public async Task SaveAsync(PlayerProfile profile, CancellationToken cancellationToken)
     {
         var existing = await _context.PlayerProfiles
+            .AsSplitQuery()
             .Include(p => p.Characters)
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
@@ -374,18 +376,20 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                         : EquipmentSlotKind.Relic))
                 .ToArray();
 
-            return PlayerCharacter.Rehydrate(
-                new PlayerCharacterId(c.Id),
-                c.DefinitionKey,
-                c.DisplayName,
-                c.CharacterType,
-                c.Status,
-                statBlock,
-                skills,
-                items,
-                c.StatPointsInvested,
-                c.ArchetypeKey,
-                c.ArchivedAtUtc);
+            return PlayerCharacter.Rehydrate(new PlayerCharacterSnapshot
+            {
+                Id = new PlayerCharacterId(c.Id),
+                DefinitionKey = c.DefinitionKey,
+                DisplayName = c.DisplayName,
+                CharacterType = c.CharacterType,
+                Status = c.Status,
+                StatBlock = statBlock,
+                Skills = skills,
+                Items = items,
+                StatPointsInvested = c.StatPointsInvested,
+                ArchetypeKey = c.ArchetypeKey,
+                ArchivedAtUtc = c.ArchivedAtUtc
+            });
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);
@@ -424,20 +428,22 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 s.NpcKey, s.Score, s.TimesMet, s.CurrentDialogueNodeKey, s.UpdatedAtUtc))
             .ToList();
 
-        return PlayerProfile.Rehydrate(
-            new PlayerId(entity.Id),
-            entity.DisplayName,
-            roster,
-            progression,
-            entity.CreatedAtUtc,
-            entity.UpdatedAtUtc,
-            mainStoryProgress,
-            permanentUnlocks,
-            permanentItems,
-            npcReputationScores);
+        return PlayerProfile.Rehydrate(new PlayerProfileSnapshot
+        {
+            Id = new PlayerId(entity.Id),
+            DisplayName = entity.DisplayName,
+            Roster = roster,
+            Progression = progression,
+            CreatedAtUtc = entity.CreatedAtUtc,
+            UpdatedAtUtc = entity.UpdatedAtUtc,
+            MainStoryProgress = mainStoryProgress,
+            PermanentUnlocks = permanentUnlocks,
+            PermanentItems = permanentItems,
+            NpcReputationScores = npcReputationScores
+        });
     }
 
-    private static IReadOnlyCollection<string> DeserializeKeys(string? json) =>
+    private static string[] DeserializeKeys(string? json) =>
         string.IsNullOrWhiteSpace(json)
             ? []
             : JsonSerializer.Deserialize<string[]>(json) ?? [];

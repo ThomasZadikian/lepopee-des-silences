@@ -8,29 +8,19 @@ public sealed class PlayerProfile
     private readonly List<PlayerPermanentItem> _permanentItems;
     private readonly List<NpcReputationScore> _npcReputationScores;
 
-    private PlayerProfile(
-        PlayerId id,
-        string displayName,
-        PlayerRoster roster,
-        PlayerProgression progression,
-        DateTimeOffset createdAtUtc,
-        DateTimeOffset updatedAtUtc,
-        MainStoryProgress? mainStoryProgress = null,
-        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
-        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
-        IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
+    private PlayerProfile(PlayerProfileSnapshot snapshot)
     {
-        Id = id;
-        DisplayName = displayName;
-        Roster = roster;
-        Progression = progression;
-        MainStoryProgress = mainStoryProgress
+        Id = snapshot.Id;
+        DisplayName = snapshot.DisplayName;
+        Roster = snapshot.Roster;
+        Progression = snapshot.Progression;
+        MainStoryProgress = snapshot.MainStoryProgress
             ?? global::Leds.Player.Domain.Players.MainStoryProgress.CreateDefault();
-        CreatedAtUtc = createdAtUtc;
-        UpdatedAtUtc = updatedAtUtc;
-        _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
-        _permanentItems = permanentItems?.ToList() ?? [];
-        _npcReputationScores = npcReputationScores?.ToList() ?? [];
+        CreatedAtUtc = snapshot.CreatedAtUtc;
+        UpdatedAtUtc = snapshot.UpdatedAtUtc;
+        _permanentUnlocks = snapshot.PermanentUnlocks?.ToList() ?? [];
+        _permanentItems = snapshot.PermanentItems?.ToList() ?? [];
+        _npcReputationScores = snapshot.NpcReputationScores?.ToList() ?? [];
     }
 
     public PlayerId Id { get; }
@@ -49,14 +39,16 @@ public sealed class PlayerProfile
         if (string.IsNullOrWhiteSpace(displayName))
             throw new DomainException("Player display name is required.");
 
-        return new PlayerProfile(
-            PlayerId.New(),
-            displayName.Trim(),
-            PlayerRoster.Create(),
-            PlayerProgression.CreateDefault(),
-            createdAtUtc,
-            createdAtUtc,
-            MainStoryProgress.CreateDefault());
+        return new PlayerProfile(new PlayerProfileSnapshot
+        {
+            Id = PlayerId.New(),
+            DisplayName = displayName.Trim(),
+            Roster = PlayerRoster.Create(),
+            Progression = PlayerProgression.CreateDefault(),
+            CreatedAtUtc = createdAtUtc,
+            UpdatedAtUtc = createdAtUtc,
+            MainStoryProgress = MainStoryProgress.CreateDefault()
+        });
     }
 
     public PlayerCharacter CreatePlayableCharacter(
@@ -195,27 +187,24 @@ public sealed class PlayerProfile
         UpdatedAtUtc = updatedAtUtc;
     }
 
-    public void AdvanceMainStory(
-        string sequenceKey,
-        string sequenceVersion,
-        string stepKey,
-        string? checkpointKey,
-        IReadOnlyCollection<string> unlockedRoomKeys,
-        IReadOnlyCollection<string> visibleRoomKeys,
-        bool complete,
-        DateTimeOffset now)
+    public void AdvanceMainStory(MainStoryAdvance advance)
     {
+        ArgumentNullException.ThrowIfNull(advance);
         if (MainStoryProgress.IsCompleted)
             return;
 
-        MainStoryProgress.Advance(sequenceKey, sequenceVersion, stepKey, checkpointKey);
-        foreach (var roomKey in unlockedRoomKeys)
+        MainStoryProgress.Advance(
+            advance.SequenceKey,
+            advance.SequenceVersion,
+            advance.StepKey,
+            advance.CheckpointKey);
+        foreach (var roomKey in advance.UnlockedRoomKeys)
             MainStoryProgress.UnlockRoom(roomKey);
-        foreach (var roomKey in visibleRoomKeys)
+        foreach (var roomKey in advance.VisibleRoomKeys)
             MainStoryProgress.RevealRoom(roomKey);
-        if (complete)
+        if (advance.Complete)
             MainStoryProgress.Complete();
-        Touch(now);
+        Touch(advance.Now);
     }
 
     public void UnlockDifficultyLevel(int level, DateTimeOffset now)
@@ -306,22 +295,48 @@ public sealed class PlayerProfile
         PlayerRoster roster,
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
-        DateTimeOffset updatedAtUtc,
-        MainStoryProgress? mainStoryProgress = null,
-        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
-        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
-        IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
+        DateTimeOffset updatedAtUtc)
     {
-        return new PlayerProfile(
-            id,
-            displayName,
-            roster,
-            progression,
-            createdAtUtc,
-            updatedAtUtc,
-            mainStoryProgress,
-            permanentUnlocks,
-            permanentItems,
-            npcReputationScores);
+        return Rehydrate(new PlayerProfileSnapshot
+        {
+            Id = id,
+            DisplayName = displayName,
+            Roster = roster,
+            Progression = progression,
+            CreatedAtUtc = createdAtUtc,
+            UpdatedAtUtc = updatedAtUtc
+        });
     }
+
+    public static PlayerProfile Rehydrate(PlayerProfileSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return new PlayerProfile(snapshot);
+    }
+}
+
+public sealed record MainStoryAdvance
+{
+    public required string SequenceKey { get; init; }
+    public required string SequenceVersion { get; init; }
+    public required string StepKey { get; init; }
+    public string? CheckpointKey { get; init; }
+    public required IReadOnlyCollection<string> UnlockedRoomKeys { get; init; }
+    public required IReadOnlyCollection<string> VisibleRoomKeys { get; init; }
+    public required bool Complete { get; init; }
+    public required DateTimeOffset Now { get; init; }
+}
+
+public sealed record PlayerProfileSnapshot
+{
+    public required PlayerId Id { get; init; }
+    public required string DisplayName { get; init; }
+    public required PlayerRoster Roster { get; init; }
+    public required PlayerProgression Progression { get; init; }
+    public required DateTimeOffset CreatedAtUtc { get; init; }
+    public required DateTimeOffset UpdatedAtUtc { get; init; }
+    public MainStoryProgress? MainStoryProgress { get; init; }
+    public IReadOnlyCollection<PlayerPermanentUnlock>? PermanentUnlocks { get; init; }
+    public IReadOnlyCollection<PlayerPermanentItem>? PermanentItems { get; init; }
+    public IReadOnlyCollection<NpcReputationScore>? NpcReputationScores { get; init; }
 }

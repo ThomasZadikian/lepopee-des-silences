@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Leds.Player.Application.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -19,10 +20,17 @@ public sealed class StructuredAccountAuditLog : IAccountAuditLog
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (!_logger.IsEnabled(LogLevel.Information))
+            return Task.CompletedTask;
+
+        var accountReference = accountId.HasValue
+            ? Convert.ToHexString(SHA256.HashData(accountId.Value.ToByteArray()))[..16]
+            : "anonymous";
         _logger.LogInformation(
-            "Account security event {EventType} for account {AccountId} at {OccurredAtUtc}",
+            "Account security event {EventType} for account reference {AccountReference} at {OccurredAtUtc}",
             eventType,
-            accountId,
+            accountReference,
             occurredAtUtc);
         return Task.CompletedTask;
     }

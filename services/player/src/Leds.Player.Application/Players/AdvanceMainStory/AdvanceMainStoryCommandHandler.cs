@@ -22,15 +22,17 @@ public sealed class AdvanceMainStoryCommandHandler
         var profile = await _repository.GetByIdAsync(new PlayerId(request.PlayerId), cancellationToken)
             ?? throw new NotFoundException("Player", request.PlayerId);
 
-        profile.AdvanceMainStory(
-            request.SequenceKey,
-            request.SequenceVersion,
-            request.StepKey,
-            request.CheckpointKey,
-            request.UnlockedRoomKeys,
-            request.VisibleRoomKeys,
-            request.Complete,
-            _timeProvider.GetUtcNow());
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = request.SequenceKey,
+            SequenceVersion = request.SequenceVersion,
+            StepKey = request.StepKey,
+            CheckpointKey = request.CheckpointKey,
+            UnlockedRoomKeys = request.UnlockedRoomKeys,
+            VisibleRoomKeys = request.VisibleRoomKeys,
+            Complete = request.Complete,
+            Now = _timeProvider.GetUtcNow()
+        });
         await _repository.SaveAsync(profile, cancellationToken);
         return PlayerProfileDto.FromDomain(profile);
     }

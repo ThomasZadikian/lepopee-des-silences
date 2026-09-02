@@ -26,7 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
         services.AddHttpClient<ICompromisedPasswordChecker, HaveIBeenPwnedPasswordChecker>(client =>
         {
-            client.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+            client.BaseAddress = new UriBuilder(Uri.UriSchemeHttps, "api.pwnedpasswords.com").Uri;
             client.Timeout = TimeSpan.FromSeconds(5);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("LEDS/1.0");
         });

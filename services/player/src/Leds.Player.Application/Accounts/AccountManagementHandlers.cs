@@ -195,11 +195,11 @@ public sealed class ClaimGameSessionCommandHandler
             request.ConfirmTransfer,
             cancellationToken);
 
-        var status = claim.TransferRequired
-            ? "transfer-required"
-            : claim.Lease.OwnerSessionId == request.SessionId
-                ? "active"
-                : "unavailable";
+        var status = "unavailable";
+        if (claim.TransferRequired)
+            status = "transfer-required";
+        else if (claim.Lease.OwnerSessionId == request.SessionId)
+            status = "active";
 
         return new GameSessionLeaseResponse(
             status,

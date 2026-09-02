@@ -358,7 +358,7 @@ public sealed class AccountManagementAndRecoveryTests
         return identity;
     }
 
-    private static TimeProvider Time() => new FrozenTimeProvider(Now);
+    private static FrozenTimeProvider Time() => new(Now);
 
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
     {

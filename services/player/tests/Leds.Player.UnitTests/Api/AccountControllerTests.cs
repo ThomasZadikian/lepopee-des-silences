@@ -80,7 +80,7 @@ public sealed class AccountControllerTests
         };
 
         result.Result.Should().BeOfType<OkObjectResult>();
-        var cookie = controller.Response.Headers["Set-Cookie"].ToString();
+        var cookie = controller.Response.Headers.SetCookie.ToString();
         cookie.Should().Contain("leds_refresh=").And.Contain("httponly", Exactly.Once(), "cookie must be inaccessible to JavaScript");
     }
 
@@ -93,7 +93,7 @@ public sealed class AccountControllerTests
 
         await controller.CompleteMfaChallenge(new("challenge", "123456"), CancellationToken.None);
 
-        controller.Response.Headers["Set-Cookie"].ToString().ToLowerInvariant().Should().Contain("secure");
+        controller.Response.Headers.SetCookie.ToString().ToLowerInvariant().Should().Contain("secure");
     }
 
     [Theory]
@@ -186,7 +186,7 @@ public sealed class AccountControllerTests
 
         await controller.RevokeSession(current ? SessionId : OtherSessionId, CancellationToken.None);
 
-        var setCookie = controller.Response.Headers["Set-Cookie"].ToString();
+        var setCookie = controller.Response.Headers.SetCookie.ToString();
         if (current)
             setCookie.Should().Contain("leds_refresh=");
         else

@@ -50,7 +50,6 @@ public sealed class PlayersController : ControllerBase
             new CreatePlayableCharacterCommand(playerId, request.DisplayName, request.ArchetypeKey),
             cancellationToken);
 
-        var character = profile.Characters.Last();
         return CreatedAtAction(
             nameof(GetPlayerProfile),
             new { playerId },

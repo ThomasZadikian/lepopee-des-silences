@@ -125,125 +125,145 @@ async function loadMfaEnrollment() {
 
 onMounted(loadMfaEnrollment);
 
-async function submit() {
-  error.value = null;
-  submitted.value = false;
-
+function validationError(): string | null {
   if (needsEmail.value && !email.value.trim()) {
-    error.value = 'Une adresse e-mail est requise.';
-    return;
+    return 'Une adresse e-mail est requise.';
   }
   if (props.mode === 'register' && !displayName.value.trim()) {
-    error.value = 'Un pseudonyme de compte est requis.';
-    return;
+    return 'Un pseudonyme de compte est requis.';
   }
   if (needsPassword.value && password.value.length < 12) {
-    error.value = 'Le mot de passe doit contenir au moins 12 caractères.';
-    return;
+    return 'Le mot de passe doit contenir au moins 12 caractères.';
   }
   if (['register', 'password-reset'].includes(props.mode) && password.value !== passwordConfirmation.value) {
-    error.value = 'Les mots de passe ne correspondent pas.';
-    return;
+    return 'Les mots de passe ne correspondent pas.';
   }
   if (props.mode === 'register' && !ageConfirmed.value) {
-    error.value = 'Vous devez confirmer avoir au moins 16 ans.';
-    return;
+    return 'Vous devez confirmer avoir au moins 16 ans.';
   }
   if (needsTotp.value && !/^\d{6}$/.test(totpCode.value)) {
-    error.value = 'Le code doit contenir six chiffres.';
+    return 'Le code doit contenir six chiffres.';
+  }
+
+  return null;
+}
+
+function requiredChallengeToken(): string | null {
+  const challengeToken = getChallengeToken();
+  if (!challengeToken) {
+    error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
+  }
+  return challengeToken;
+}
+
+async function submitRegistration() {
+  await playerApi.registerAccount({
+    displayName: displayName.value.trim(),
+    email: email.value.trim(),
+    password: password.value,
+    ageConfirmed: ageConfirmed.value,
+  });
+  await router.push({ name: 'verify-email' });
+}
+
+async function submitEmailVerification() {
+  const token = queryToken('token');
+  if (!token) {
+    error.value = 'Le lien de vérification est incomplet ou a expiré.';
     return;
   }
+  await playerApi.verifyEmail(token);
+  await router.push({ name: 'login', query: { verified: '1' } });
+}
+
+async function submitLogin() {
+  const response = await playerApi.beginLogin(email.value.trim(), password.value);
+  if (response.status === 'email-verification-required') {
+    error.value = 'Votre adresse e-mail doit être vérifiée avant la connexion.';
+    return;
+  }
+  if (!response.challengeToken) {
+    error.value = 'Le serveur n’a pas fourni de défi d’authentification valide.';
+    return;
+  }
+
+  setChallengeToken(response.challengeToken);
+  if (response.status === 'mfa-setup-required') {
+    await router.push({ name: 'mfa-setup' });
+    return;
+  }
+  if (response.status === 'mfa-required') {
+    await router.push({ name: 'mfa-challenge' });
+    return;
+  }
+  error.value = 'État d’authentification inattendu. Recommencez la connexion.';
+}
+
+async function submitMfaEnrollment() {
+  const challengeToken = requiredChallengeToken();
+  if (!challengeToken) return;
+
+  const session = await playerApi.confirmMfaEnrollment(challengeToken, totpCode.value);
+  setAuthenticatedSession(session);
+  setChallengeToken(null);
+  await router.push({ name: 'character-selection' });
+}
+
+async function submitMfaChallenge() {
+  const challengeToken = requiredChallengeToken();
+  if (!challengeToken) return;
+
+  const session = await playerApi.completeMfaChallenge(challengeToken, totpCode.value);
+  setAuthenticatedSession(session);
+  setChallengeToken(null);
+  await router.push({ name: 'character-selection' });
+}
+
+async function submitPasswordReset() {
+  const token = queryToken('token');
+  if (!token) {
+    error.value = 'Le lien de réinitialisation est incomplet ou a expiré.';
+    return;
+  }
+  await playerApi.resetPassword(token, password.value);
+  await router.push({ name: 'login' });
+}
+
+async function submitCurrentMode() {
+  switch (props.mode) {
+    case 'register':
+      await submitRegistration();
+      break;
+    case 'verify-email':
+      await submitEmailVerification();
+      break;
+    case 'login':
+      await submitLogin();
+      break;
+    case 'mfa-setup':
+      await submitMfaEnrollment();
+      break;
+    case 'mfa-challenge':
+      await submitMfaChallenge();
+      break;
+    case 'password-recovery':
+      await playerApi.requestPasswordReset(email.value.trim());
+      submitted.value = true;
+      break;
+    case 'password-reset':
+      await submitPasswordReset();
+      break;
+  }
+}
+
+async function submit() {
+  error.value = validationError();
+  submitted.value = false;
+  if (error.value) return;
 
   try {
     busy.value = true;
-
-    switch (props.mode) {
-      case 'register':
-        await playerApi.registerAccount({
-          displayName: displayName.value.trim(),
-          email: email.value.trim(),
-          password: password.value,
-          ageConfirmed: ageConfirmed.value,
-        });
-        await router.push({ name: 'verify-email' });
-        break;
-
-      case 'verify-email': {
-        const token = queryToken('token');
-        if (!token) {
-          error.value = 'Le lien de vérification est incomplet ou a expiré.';
-          return;
-        }
-        await playerApi.verifyEmail(token);
-        await router.push({ name: 'login', query: { verified: '1' } });
-        break;
-      }
-
-      case 'login': {
-        const response = await playerApi.beginLogin(email.value.trim(), password.value);
-        if (response.status === 'email-verification-required') {
-          error.value = 'Votre adresse e-mail doit être vérifiée avant la connexion.';
-          return;
-        }
-        if (!response.challengeToken) {
-          error.value = 'Le serveur n’a pas fourni de défi d’authentification valide.';
-          return;
-        }
-        setChallengeToken(response.challengeToken);
-        if (response.status === 'mfa-setup-required') {
-          await router.push({ name: 'mfa-setup' });
-          return;
-        }
-        if (response.status === 'mfa-required') {
-          await router.push({ name: 'mfa-challenge' });
-          return;
-        }
-        error.value = 'État d’authentification inattendu. Recommencez la connexion.';
-        break;
-      }
-
-      case 'mfa-setup': {
-        const challengeToken = getChallengeToken();
-        if (!challengeToken) {
-          error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
-          return;
-        }
-        const session = await playerApi.confirmMfaEnrollment(challengeToken, totpCode.value);
-        setAuthenticatedSession(session);
-        setChallengeToken(null);
-        await router.push({ name: 'character-selection' });
-        break;
-      }
-
-      case 'mfa-challenge': {
-        const challengeToken = getChallengeToken();
-        if (!challengeToken) {
-          error.value = 'Le défi d’authentification a expiré. Reconnectez-vous.';
-          return;
-        }
-        const session = await playerApi.completeMfaChallenge(challengeToken, totpCode.value);
-        setAuthenticatedSession(session);
-        setChallengeToken(null);
-        await router.push({ name: 'character-selection' });
-        break;
-      }
-
-      case 'password-recovery':
-        await playerApi.requestPasswordReset(email.value.trim());
-        submitted.value = true;
-        break;
-
-      case 'password-reset': {
-        const token = queryToken('token');
-        if (!token) {
-          error.value = 'Le lien de réinitialisation est incomplet ou a expiré.';
-          return;
-        }
-        await playerApi.resetPassword(token, password.value);
-        await router.push({ name: 'login' });
-        break;
-      }
-    }
+    await submitCurrentMode();
   } catch (cause) {
     error.value = errorMessage(cause);
   } finally {

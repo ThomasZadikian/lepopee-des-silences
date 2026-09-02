@@ -196,7 +196,16 @@ public sealed class PlayerApplicationCoverageTests
     public async Task UnlockDifficultyLevel_ShouldUnlockNextLevelAfterMainStory()
     {
         var (profile, repository) = CreateProfileFixture();
-        profile.AdvanceMainStory("story", "1", "final", null, [], [], true, Now.AddMinutes(-1));
+        profile.AdvanceMainStory(new MainStoryAdvance
+        {
+            SequenceKey = "story",
+            SequenceVersion = "1",
+            StepKey = "final",
+            UnlockedRoomKeys = [],
+            VisibleRoomKeys = [],
+            Complete = true,
+            Now = Now.AddMinutes(-1)
+        });
         var handler = new UnlockDifficultyLevelCommandHandler(repository.Object, new FixedTimeProvider(Now));
 
         var result = await handler.Handle(

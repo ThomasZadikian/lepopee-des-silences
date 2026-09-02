@@ -202,7 +202,9 @@ public sealed class AuthenticationSecurity : IAuthenticationSecurity
             counter >>= 8;
         }
 
+#pragma warning disable S4790 // RFC 6238 interoperability requires HMAC-SHA1 for this TOTP profile.
         using var hmac = new HMACSHA1(secret);
+#pragma warning restore S4790
         var hash = hmac.ComputeHash(counterBytes.ToArray());
         var offset = hash[^1] & 0x0f;
         var binary = ((hash[offset] & 0x7f) << 24)

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using Leds.Player.Application.Accounts;
 using Leds.Player.Application.Players;
 using MediatR;
@@ -273,9 +274,7 @@ public sealed class AccountController : ControllerBase
             new CookieOptions
             {
                 HttpOnly = true,
-                Secure = !HttpContext.RequestServices
-                    .GetRequiredService<IWebHostEnvironment>()
-                    .IsDevelopment() || Request.IsHttps,
+                Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Path = "/api/v2/account",
                 Expires = response.RefreshTokenExpiresAtUtc
@@ -295,9 +294,7 @@ public sealed class AccountController : ControllerBase
             new CookieOptions
             {
                 HttpOnly = true,
-                Secure = !HttpContext.RequestServices
-                    .GetRequiredService<IWebHostEnvironment>()
-                    .IsDevelopment() || Request.IsHttps,
+                Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Path = "/api/v2/account"
             });
@@ -339,7 +336,7 @@ public sealed record RegisterAccountRequest(
     string DisplayName,
     string Email,
     string Password,
-    bool AgeConfirmed);
+    [property: JsonRequired] bool AgeConfirmed);
 public sealed record VerifyEmailRequest(string Token);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record MfaChallengeRequest(string ChallengeToken);

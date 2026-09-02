@@ -279,10 +279,24 @@ public sealed class AccountSecurityBoundaryTests
     public void UserIdentity_Rehydrate_ShouldRejectMissingIdentityOrAccountId()
     {
         var email = EmailAddress.Create("player@example.com");
-        var missingIdentity = () => UserIdentity.Rehydrate(
-            Guid.Empty, AccountId, email, "hash", AccountRole.Player, Now, null, null, null);
-        var missingAccount = () => UserIdentity.Rehydrate(
-            Guid.NewGuid(), Guid.Empty, email, "hash", AccountRole.Player, Now, null, null, null);
+        var missingIdentity = () => UserIdentity.Rehydrate(new UserIdentitySnapshot
+        {
+            Id = Guid.Empty,
+            AccountId = AccountId,
+            Email = email,
+            PasswordHash = "hash",
+            Role = AccountRole.Player,
+            CreatedAtUtc = Now
+        });
+        var missingAccount = () => UserIdentity.Rehydrate(new UserIdentitySnapshot
+        {
+            Id = Guid.NewGuid(),
+            AccountId = Guid.Empty,
+            Email = email,
+            PasswordHash = "hash",
+            Role = AccountRole.Player,
+            CreatedAtUtc = Now
+        });
 
         missingIdentity.Should().Throw<DomainException>();
         missingAccount.Should().Throw<DomainException>();

@@ -395,19 +395,6 @@ public sealed class EfAccountStore : IAccountStore
         RecoveryCodeHashesJson = JsonSerializer.Serialize(identity.RecoveryCodeHashes)
     };
 
-    private static UserIdentity ToDomain(AccountIdentityEntity entity) =>
-        UserIdentity.Rehydrate(
-            entity.Id,
-            entity.AccountId,
-            EmailAddress.Create(entity.Email),
-            entity.PasswordHash,
-            (AccountRole)entity.Role,
-            entity.CreatedAtUtc,
-            entity.EmailVerifiedAtUtc,
-            entity.MfaSecretProtected,
-            entity.MfaConfiguredAtUtc,
-            JsonSerializer.Deserialize<string[]>(entity.RecoveryCodeHashesJson) ?? []);
-
     private static AccountSessionEntity ToEntity(AccountSession session) => new()
     {
         SessionId = session.SessionId,
@@ -418,6 +405,21 @@ public sealed class EfAccountStore : IAccountStore
         RotatedAtUtc = session.RotatedAtUtc,
         RevokedAtUtc = session.RevokedAtUtc
     };
+
+    private static UserIdentity ToDomain(AccountIdentityEntity entity) =>
+        UserIdentity.Rehydrate(new UserIdentitySnapshot
+        {
+            Id = entity.Id,
+            AccountId = entity.AccountId,
+            Email = EmailAddress.Create(entity.Email),
+            PasswordHash = entity.PasswordHash,
+            Role = (AccountRole)entity.Role,
+            CreatedAtUtc = entity.CreatedAtUtc,
+            EmailVerifiedAtUtc = entity.EmailVerifiedAtUtc,
+            MfaSecretProtected = entity.MfaSecretProtected,
+            MfaConfiguredAtUtc = entity.MfaConfiguredAtUtc,
+            RecoveryCodeHashes = JsonSerializer.Deserialize<string[]>(entity.RecoveryCodeHashesJson) ?? []
+        });
 
     private static AccountSession ToDomain(AccountSessionEntity entity) =>
         AccountSession.Rehydrate(

@@ -49,7 +49,8 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
         string rawToken,
         CancellationToken cancellationToken)
     {
-        var baseUrl = (_configuration["Authentication:Email:PublicClientBaseUrl"] ?? "http://localhost:5173")
+        var defaultClientBaseUrl = new UriBuilder(Uri.UriSchemeHttp, "localhost", 5173).Uri.AbsoluteUri;
+        var baseUrl = (_configuration["Authentication:Email:PublicClientBaseUrl"] ?? defaultClientBaseUrl)
             .TrimEnd('/');
         var actionUrl = $"{baseUrl}/{route}?token={Uri.EscapeDataString(rawToken)}";
         var mode = _configuration["Authentication:Email:Mode"] ?? "Smtp";
@@ -69,7 +70,6 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
             throw new InvalidOperationException("SMTP host and Authentication:Email:From must be configured.");
 
         var port = _configuration.GetValue("Authentication:Email:Smtp:Port", 587);
-        var enableSsl = _configuration.GetValue("Authentication:Email:Smtp:EnableSsl", true);
         var username = _configuration["Authentication:Email:Smtp:Username"];
         var password = _configuration["Authentication:Email:Smtp:Password"];
 
@@ -81,7 +81,7 @@ public sealed class SmtpAccountEmailSender : IAccountEmailSender
         };
         using var client = new SmtpClient(host, port)
         {
-            EnableSsl = enableSsl,
+            EnableSsl = true,
             DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = string.IsNullOrWhiteSpace(username)
         };

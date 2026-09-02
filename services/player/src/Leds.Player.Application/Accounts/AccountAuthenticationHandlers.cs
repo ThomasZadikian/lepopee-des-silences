@@ -280,7 +280,7 @@ public sealed class ConfirmMfaEnrollmentCommandHandler
         var identity = await _store.FindIdentityByAccountIdAsync(challenge.AccountId, cancellationToken)
             ?? throw new NotFoundException("Account identity", challenge.AccountId);
 
-        var protectedSecret = identity.MfaSecretProtected ?? request.LegacyProtectedSecret;
+        var protectedSecret = identity.MfaSecretProtected;
         if (string.IsNullOrWhiteSpace(protectedSecret)
             || !_security.VerifyTotp(protectedSecret, request.Code, now))
         {

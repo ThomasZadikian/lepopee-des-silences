@@ -6,32 +6,22 @@ public sealed class UserIdentity
 {
     private readonly HashSet<string> _recoveryCodeHashes;
 
-    private UserIdentity(
-        Guid id,
-        Guid accountId,
-        EmailAddress email,
-        string passwordHash,
-        AccountRole role,
-        DateTimeOffset createdAtUtc,
-        bool isEmailVerified = false,
-        DateTimeOffset? emailVerifiedAtUtc = null,
-        string? mfaSecretProtected = null,
-        DateTimeOffset? mfaConfiguredAtUtc = null,
-        IReadOnlyCollection<string>? recoveryCodeHashes = null)
+    private UserIdentity(UserIdentitySnapshot snapshot)
     {
-        Id = id;
-        AccountId = accountId;
-        Email = email;
-        PasswordHash = passwordHash;
-        Role = role;
-        CreatedAtUtc = createdAtUtc;
-        IsEmailVerified = isEmailVerified;
-        EmailVerifiedAtUtc = emailVerifiedAtUtc;
-        MfaSecretProtected = mfaSecretProtected;
-        MfaConfiguredAtUtc = mfaConfiguredAtUtc;
-        IsMfaConfigured = !string.IsNullOrWhiteSpace(mfaSecretProtected) && mfaConfiguredAtUtc.HasValue;
+        Id = snapshot.Id;
+        AccountId = snapshot.AccountId;
+        Email = snapshot.Email;
+        PasswordHash = snapshot.PasswordHash;
+        Role = snapshot.Role;
+        CreatedAtUtc = snapshot.CreatedAtUtc;
+        IsEmailVerified = snapshot.EmailVerifiedAtUtc.HasValue;
+        EmailVerifiedAtUtc = snapshot.EmailVerifiedAtUtc;
+        MfaSecretProtected = snapshot.MfaSecretProtected;
+        MfaConfiguredAtUtc = snapshot.MfaConfiguredAtUtc;
+        IsMfaConfigured = !string.IsNullOrWhiteSpace(snapshot.MfaSecretProtected)
+            && snapshot.MfaConfiguredAtUtc.HasValue;
         _recoveryCodeHashes = new HashSet<string>(
-            recoveryCodeHashes ?? [],
+            snapshot.RecoveryCodeHashes ?? [],
             StringComparer.Ordinal);
     }
 
@@ -45,7 +35,7 @@ public sealed class UserIdentity
     public DateTimeOffset? EmailVerifiedAtUtc { get; private set; }
     public bool IsMfaConfigured { get; private set; }
     public DateTimeOffset? MfaConfiguredAtUtc { get; private set; }
-    public IReadOnlyCollection<string> RecoveryCodeHashes => _recoveryCodeHashes.ToArray();
+    public IReadOnlySet<string> RecoveryCodeHashes => _recoveryCodeHashes;
 
     /// <summary>
     /// Encrypted/protected TOTP material. This value is safe to persist but must never be
@@ -85,13 +75,15 @@ public sealed class UserIdentity
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new DomainException("Password hash is required.");
 
-        return new UserIdentity(
-            id,
-            accountId,
-            email,
-            passwordHash.Trim(),
-            AccountRole.Player,
-            createdAtUtc);
+        return new UserIdentity(new UserIdentitySnapshot
+        {
+            Id = id,
+            AccountId = accountId,
+            Email = email,
+            PasswordHash = passwordHash.Trim(),
+            Role = AccountRole.Player,
+            CreatedAtUtc = createdAtUtc
+        });
     }
 
     public void VerifyEmail(DateTimeOffset verifiedAtUtc)
@@ -168,32 +160,26 @@ public sealed class UserIdentity
         Role = role;
     }
 
-    public static UserIdentity Rehydrate(
-        Guid id,
-        Guid accountId,
-        EmailAddress email,
-        string passwordHash,
-        AccountRole role,
-        DateTimeOffset createdAtUtc,
-        DateTimeOffset? emailVerifiedAtUtc,
-        string? mfaSecretProtected,
-        DateTimeOffset? mfaConfiguredAtUtc,
-        IReadOnlyCollection<string>? recoveryCodeHashes = null)
+    public static UserIdentity Rehydrate(UserIdentitySnapshot snapshot)
     {
-        if (id == Guid.Empty || accountId == Guid.Empty)
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.Id == Guid.Empty || snapshot.AccountId == Guid.Empty)
             throw new DomainException("Identity and account ids are required.");
 
-        return new UserIdentity(
-            id,
-            accountId,
-            email,
-            passwordHash,
-            role,
-            createdAtUtc,
-            emailVerifiedAtUtc.HasValue,
-            emailVerifiedAtUtc,
-            mfaSecretProtected,
-            mfaConfiguredAtUtc,
-            recoveryCodeHashes);
+        return new UserIdentity(snapshot);
     }
+}
+
+public sealed record UserIdentitySnapshot
+{
+    public required Guid Id { get; init; }
+    public required Guid AccountId { get; init; }
+    public required EmailAddress Email { get; init; }
+    public required string PasswordHash { get; init; }
+    public required AccountRole Role { get; init; }
+    public required DateTimeOffset CreatedAtUtc { get; init; }
+    public DateTimeOffset? EmailVerifiedAtUtc { get; init; }
+    public string? MfaSecretProtected { get; init; }
+    public DateTimeOffset? MfaConfiguredAtUtc { get; init; }
+    public IReadOnlyCollection<string>? RecoveryCodeHashes { get; init; }
 }

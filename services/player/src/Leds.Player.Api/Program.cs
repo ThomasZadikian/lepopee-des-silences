@@ -109,6 +109,4 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-app.Run();
-
-public partial class Program;
+await app.RunAsync();

@@ -20,7 +20,7 @@ export type VerifyEmailResponse = {
 };
 
 export type BeginLoginResponse = {
-  status: 'email-verification-required' | 'mfa-setup-required' | 'mfa-required' | string;
+  status: string;
   challengeToken?: string | null;
   emailVerificationRequired?: boolean;
 };

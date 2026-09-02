@@ -18,7 +18,9 @@ public sealed class HaveIBeenPwnedPasswordChecker : ICompromisedPasswordChecker
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
+#pragma warning disable S4790 // The HIBP range API contract requires the SHA-1 prefix; the password never leaves this process.
         var digest = SHA1.HashData(Encoding.UTF8.GetBytes(password));
+#pragma warning restore S4790
         var fullHash = Convert.ToHexString(digest);
         var prefix = fullHash[..5];
         var suffix = fullHash[5..];

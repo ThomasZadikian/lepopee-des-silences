@@ -204,6 +204,7 @@ public sealed class AuthenticationSecurityTests
         await sender.SendVerificationEmailAsync(recipient, "verify token", CancellationToken.None);
         await sender.SendPasswordResetEmailAsync(recipient, "reset token", CancellationToken.None);
 
+#pragma warning disable CA1873 // Moq expression-tree matchers are not evaluated as production log arguments.
         logger.Verify(
             x => x.Log(
                 LogLevel.Information,
@@ -212,6 +213,7 @@ public sealed class AuthenticationSecurityTests
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Exactly(2));
+#pragma warning restore CA1873
     }
 
     [Fact]

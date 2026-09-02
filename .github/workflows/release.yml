@@ -14,14 +14,17 @@ concurrency:
   group: release-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   prepare:
     name: Resolve tested revision
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       source-sha: ${{ steps.revision.outputs.sha }}
     steps:
@@ -91,8 +94,11 @@ jobs:
   migrations:
     name: Immutable EF migration bundles
     needs: prepare
+    if: github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - name: Checkout tested revision
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6

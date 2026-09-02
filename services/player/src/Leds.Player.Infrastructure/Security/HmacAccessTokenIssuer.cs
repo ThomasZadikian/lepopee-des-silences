@@ -30,8 +30,7 @@ public sealed class HmacAccessTokenIssuer : IAccessTokenIssuer
         DateTimeOffset now,
         TimeSpan lifetime)
     {
-        if (lifetime <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(lifetime));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(lifetime, TimeSpan.Zero);
 
         var expires = now.Add(lifetime);
         var header = JsonSerializer.SerializeToUtf8Bytes(new { alg = "HS256", typ = "JWT" });
