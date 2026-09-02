@@ -228,7 +228,6 @@ public sealed class AccountAuthenticationCommandHandlerTests
         var store = new Mock<IAccountStore>();
         var security = NewSecurity();
         var identity = Identity(emailVerified: true);
-        identity.StageMfaSecret("protected");
         SetupChallenge(store, security, "mfa-setup");
         store.Setup(x => x.FindIdentityByAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(identity);
@@ -296,6 +295,7 @@ public sealed class AccountAuthenticationCommandHandlerTests
         var security = NewSecurity();
         var issuer = NewIssuer();
         var identity = Identity(emailVerified: true);
+        identity.StageMfaSecret("protected");
         SetupChallenge(store, security, "mfa-setup");
         store.Setup(x => x.FindIdentityByAccountIdAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(identity);
