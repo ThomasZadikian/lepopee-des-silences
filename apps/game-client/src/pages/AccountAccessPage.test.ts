@@ -122,6 +122,8 @@ describe('AccountAccessPage', () => {
     await flushPromises();
     expect(api.beginMfaEnrollment).toHaveBeenCalledWith('challenge-token');
     expect(wrapper.text()).toContain('MANUAL-KEY');
+    expect(wrapper.get('img[alt="QR code de configuration de la double authentification"]').attributes('src'))
+      .toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
 
     await wrapper.find('input').setValue('123456');
     await wrapper.find('form').trigger('submit');
