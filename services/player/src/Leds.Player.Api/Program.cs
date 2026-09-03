@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+const string CorsPolicyName = "LedsCorsPolicy";
+const string DefaultDevelopmentClientOrigin = "http://localhost:5173";
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -18,6 +21,32 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddPlayerApplication();
 builder.Services.AddPlayerInfrastructure(builder.Configuration);
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? [];
+
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    allowedOrigins =
+    [
+        builder.Configuration["WEB_CLIENT_URL"]
+        ?? DefaultDevelopmentClientOrigin
+    ];
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 var signingKey = builder.Configuration["Authentication:Jwt:SigningKey"];
 if (string.IsNullOrWhiteSpace(signingKey))
@@ -103,6 +132,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(CorsPolicyName);
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
