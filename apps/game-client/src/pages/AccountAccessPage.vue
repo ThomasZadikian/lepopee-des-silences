@@ -8,6 +8,7 @@ import {
   setAuthenticatedSession,
   setChallengeToken,
 } from '../features/account/authSession';
+import { createTotpQrCodeDataUrl } from '../features/account/totpQrCode';
 import { playerApi, type MfaEnrollmentResponse } from '../shared/api/playerApi';
 
 type AccountAccessMode =
@@ -33,6 +34,8 @@ const submitted = ref(false);
 const busy = ref(false);
 const error = ref<string | null>(null);
 const mfaEnrollment = ref<MfaEnrollmentResponse | null>(null);
+const mfaQrCodeDataUrl = ref<string | null>(null);
+const mfaQrCodeError = ref<string | null>(null);
 
 const content = computed(() => {
   switch (props.mode) {
@@ -115,7 +118,14 @@ async function loadMfaEnrollment() {
 
   try {
     busy.value = true;
-    mfaEnrollment.value = await playerApi.beginMfaEnrollment(challengeToken);
+    const enrollment = await playerApi.beginMfaEnrollment(challengeToken);
+    mfaEnrollment.value = enrollment;
+
+    try {
+      mfaQrCodeDataUrl.value = await createTotpQrCodeDataUrl(enrollment.otpAuthUri);
+    } catch {
+      mfaQrCodeError.value = 'Le QR code n’a pas pu être généré. Utilisez la clé manuelle ci-dessous.';
+    }
   } catch (cause) {
     error.value = errorMessage(cause);
   } finally {
@@ -276,15 +286,28 @@ async function submit() {
   <AccountAccessShell :kicker="content.kicker" :title="content.title" :subtitle="content.subtitle" narrow>
     <form class="access-form" @submit.prevent="submit">
       <div v-if="mode === 'mfa-setup'" class="mfa-enrolment">
-        <div class="mfa-enrolment__qr" aria-label="Configuration TOTP sécurisée">
-          <span class="mfa-enrolment__mark">◇</span>
-          <span>TOTP sécurisé</span>
+        <div class="mfa-enrolment__qr" aria-live="polite">
+          <img
+            v-if="mfaQrCodeDataUrl"
+            class="mfa-enrolment__qr-image"
+            :src="mfaQrCodeDataUrl"
+            alt="QR code de configuration de la double authentification"
+            width="150"
+            height="150"
+          />
+          <template v-else>
+            <span class="mfa-enrolment__mark">◇</span>
+            <span>{{ busy ? 'Génération…' : 'QR indisponible' }}</span>
+          </template>
         </div>
         <p v-if="mfaEnrollment" class="mfa-enrolment__hint">
           Clé manuelle : <strong>{{ mfaEnrollment.manualEntryKey }}</strong>
         </p>
         <p v-else class="mfa-enrolment__hint">
           La clé TOTP est générée et protégée côté serveur ; elle n’est jamais journalisée dans le navigateur.
+        </p>
+        <p v-if="mfaQrCodeError" class="mfa-enrolment__warning" role="alert">
+          {{ mfaQrCodeError }}
         </p>
       </div>
 
@@ -435,6 +458,14 @@ async function submit() {
   line-height: 1.6;
 }
 
+.mfa-enrolment__warning {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .mfa-enrolment__hint strong {
   color: var(--ink-2);
   font-family: var(--font-mono);
@@ -468,6 +499,14 @@ async function submit() {
   font: 10px var(--font-mono);
   text-transform: uppercase;
   letter-spacing: .1em;
+}
+
+.mfa-enrolment__qr-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  object-fit: contain;
 }
 
 .mfa-enrolment__mark { font-size: 26px; color: var(--mint-dim); }
