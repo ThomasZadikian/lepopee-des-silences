@@ -7,6 +7,8 @@ namespace Leds.Player.IntegrationTests;
 
 public sealed class PlayerApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public const string GameClientOrigin = "http://localhost:5173";
+
     private PostgreSqlContainer? _container;
 
     public async Task InitializeAsync()
@@ -34,7 +36,8 @@ public sealed class PlayerApiFactory : WebApplicationFactory<Program>, IAsyncLif
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:PlayerDb"] = GetConnectionString()
+                ["ConnectionStrings:PlayerDb"] = GetConnectionString(),
+                ["Cors:AllowedOrigins:0"] = GameClientOrigin
             });
         });
     }

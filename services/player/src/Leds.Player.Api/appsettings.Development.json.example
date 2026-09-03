@@ -7,5 +7,10 @@
   },
   "ConnectionStrings": {
     "PlayerDb": "Host=localhost;Port=5433;Database=leds_player;Username=postgres;Password=postgres"
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:5173"
+    ]
   }
 }
