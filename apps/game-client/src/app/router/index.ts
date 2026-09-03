@@ -10,13 +10,15 @@ import StatutsPage from '../../pages/StatutsPage.vue';
 import TeamHubPage from '../../pages/TeamHubPage.vue';
 import ThresholdPage from '../../pages/ThresholdPage.vue';
 import TutorialPage from '../../pages/TutorialPage.vue';
+import { restoreAuthenticatedSession } from '../../features/account/authSession';
+import { playerApi } from '../../shared/api/playerApi';
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      redirect: { name: 'login' },
+      redirect: { name: 'character-selection' },
     },
     {
       path: '/connexion',
@@ -64,71 +66,96 @@ export const router = createRouter({
       path: '/personnages',
       name: 'character-selection',
       component: CharacterSelectionPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/compte',
       name: 'account',
       component: AccountPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/palais',
       name: 'threshold',
       component: ThresholdPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/run/:runId?',
       name: 'run',
       component: RunPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/statuts',
       name: 'statuts',
       component: StatutsPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/manifestations',
       name: 'manifestations',
       component: ManifestationsPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/reputation/:runId?',
       name: 'reputation',
       component: ReputationPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/tutoriel',
       name: 'tutoriel',
       component: TutorialPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/equipe',
       name: 'equipe',
       component: TeamHubPage,
       props: { initialTab: 'equipe' },
+      meta: { requiresAuth: true },
     },
     {
       path: '/statistiques',
       name: 'statistiques',
       component: TeamHubPage,
       props: { initialTab: 'statistiques' },
+      meta: { requiresAuth: true },
     },
     {
       path: '/grimoire',
       name: 'grimoire',
       component: TeamHubPage,
       props: { initialTab: 'grimoire' },
+      meta: { requiresAuth: true },
     },
     {
       path: '/equipement',
       name: 'equipement',
       component: TeamHubPage,
       props: { initialTab: 'equipement' },
+      meta: { requiresAuth: true },
     },
     {
       path: '/besace',
       name: 'besace',
       component: TeamHubPage,
       props: { initialTab: 'besace' },
+      meta: { requiresAuth: true },
     },
   ],
+});
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) return true;
+
+  const session = await restoreAuthenticatedSession(playerApi.refreshSession);
+  if (session) return true;
+
+  return {
+    name: 'login',
+    query: to.name === 'character-selection' ? {} : { redirect: to.fullPath },
+  };
 });

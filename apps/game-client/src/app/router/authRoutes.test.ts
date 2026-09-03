@@ -23,8 +23,13 @@ describe('Account/Auth route contract', () => {
     expect(route?.path).toBe(path);
   });
 
-  it('does not make the gameplay threshold the public entry point anymore', () => {
+  it('routes the root through the authenticated character gate', () => {
     const root = router.getRoutes().find((candidate) => candidate.path === '/');
-    expect(root?.redirect).toEqual({ name: 'login' });
+    expect(root?.redirect).toEqual({ name: 'character-selection' });
+  });
+
+  it.each(['character-selection', 'account', 'threshold', 'run'])('protects the %s route', (name) => {
+    const route = router.getRoutes().find((candidate) => candidate.name === name);
+    expect(route?.meta.requiresAuth).toBe(true);
   });
 });

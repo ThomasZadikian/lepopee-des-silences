@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   clearAuthenticatedSession,
+  getAuthenticatedAccountId,
   getAccessToken,
   getChallengeToken,
+  restoreAuthenticatedSession,
   setAuthenticatedSession,
   setChallengeToken,
 } from './authSession';
@@ -49,5 +51,21 @@ describe('authSession', () => {
     });
     clearAuthenticatedSession();
     expect(getAccessToken()).toBeNull();
+  });
+
+  it('restores the in-memory session through the HttpOnly refresh-cookie exchange', async () => {
+    const refresh = async () => ({
+      accountId: 'restored-account',
+      sessionId: 'restored-session',
+      accessToken: 'restored-access-token',
+      accessTokenExpiresAtUtc: '2026-08-31T13:00:00Z',
+      recoveryCodes: null,
+    });
+
+    const restored = await restoreAuthenticatedSession(refresh);
+
+    expect(restored?.accessToken).toBe('restored-access-token');
+    expect(getAccessToken()).toBe('restored-access-token');
+    expect(getAuthenticatedAccountId()).toBe('restored-account');
   });
 });
