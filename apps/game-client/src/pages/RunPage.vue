@@ -97,7 +97,7 @@ const showConfirmAbandon = ref(false);
 
 async function handleSaveAndExit() {
   const ok = await runStore.saveAndExitCurrentRun();
-  if (ok) await router.replace('/');
+  if (ok) await router.replace({ name: 'threshold' });
 }
 
 function requestAbandon() {
@@ -107,18 +107,18 @@ function requestAbandon() {
 async function confirmAbandon() {
   showConfirmAbandon.value = false;
   const ok = await runStore.abandonCurrentRun();
-  if (ok) await router.replace('/');
+  if (ok) await router.replace({ name: 'threshold' });
 }
 
 async function handleExitMidRoom() {
   const ok = await runStore.exitMidRoom();
-  if (ok) await router.replace('/');
+  if (ok) await router.replace({ name: 'threshold' });
 }
 
 async function handleLeaveRun() {
   tacticalCombatStore.clearCombat();
   runStore.clearCurrentRun();
-  await router.replace('/');
+  await router.replace({ name: 'threshold' });
 }
 
 async function startNewRun() {

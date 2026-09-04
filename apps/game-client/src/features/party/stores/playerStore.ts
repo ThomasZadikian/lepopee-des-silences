@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import { demoPlayerId } from '../../runs/stores/runStore';
+import { getActivePlayerId } from '../../runs/stores/runStore';
 import { playerApi } from '../api/playerApi';
 import type { EquipmentChangePlanView, EquipmentPosition, PlayerProfileView } from '../types/playerTypes';
 
@@ -27,7 +27,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  async function loadProfile(playerId: string = demoPlayerId) {
+  async function loadProfile(playerId: string = getActivePlayerId()) {
     await execute(async () => {
       profile.value = await playerApi.getProfile(playerId);
     });
@@ -35,25 +35,25 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function equipSkill(characterId: string, skillKey: string) {
     await execute(async () => {
-      profile.value = await playerApi.equipSkill(demoPlayerId, characterId, skillKey);
+      profile.value = await playerApi.equipSkill(getActivePlayerId(), characterId, skillKey);
     });
   }
 
   async function unequipSkill(characterId: string, skillKey: string) {
     await execute(async () => {
-      profile.value = await playerApi.unequipSkill(demoPlayerId, characterId, skillKey);
+      profile.value = await playerApi.unequipSkill(getActivePlayerId(), characterId, skillKey);
     });
   }
 
   async function equipItem(characterId: string, itemKey: string) {
     await execute(async () => {
-      profile.value = await playerApi.equipItem(demoPlayerId, characterId, itemKey);
+      profile.value = await playerApi.equipItem(getActivePlayerId(), characterId, itemKey);
     });
   }
 
   async function unequipItem(characterId: string, itemKey: string) {
     await execute(async () => {
-      profile.value = await playerApi.unequipItem(demoPlayerId, characterId, itemKey);
+      profile.value = await playerApi.unequipItem(getActivePlayerId(), characterId, itemKey);
     });
   }
 
@@ -64,7 +64,7 @@ export const usePlayerStore = defineStore('player', () => {
     let plan: EquipmentChangePlanView | null = null;
     await execute(async () => {
       plan = await playerApi.previewEquipmentChange(
-        demoPlayerId, characterId, itemInstanceId, position, resources,
+        getActivePlayerId(), characterId, itemInstanceId, position, resources,
       );
     });
     return plan;
@@ -76,14 +76,14 @@ export const usePlayerStore = defineStore('player', () => {
   ) {
     await execute(async () => {
       profile.value = await playerApi.equipItemInstance(
-        demoPlayerId, characterId, itemInstanceId, position, resources,
+        getActivePlayerId(), characterId, itemInstanceId, position, resources,
       );
     });
   }
 
   async function unequipItemInstance(characterId: string, itemInstanceId: string) {
     await execute(async () => {
-      profile.value = await playerApi.unequipItemInstance(demoPlayerId, characterId, itemInstanceId);
+      profile.value = await playerApi.unequipItemInstance(getActivePlayerId(), characterId, itemInstanceId);
     });
   }
 

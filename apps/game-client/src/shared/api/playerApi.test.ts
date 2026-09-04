@@ -94,4 +94,17 @@ describe('playerApi', () => {
     const options = fetchMock.mock.calls.at(-1)?.[1] as RequestInit;
     expect(options.headers).not.toHaveProperty('Authorization');
   });
+
+  it('loads the authenticated account overview with the bearer token', async () => {
+    await playerApi.getAccount('access-token');
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining('/api/v2/account/me'),
+      expect.objectContaining({
+        method: 'GET',
+        credentials: 'include',
+        headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
+      }),
+    );
+  });
 });

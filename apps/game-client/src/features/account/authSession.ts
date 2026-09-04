@@ -27,8 +27,27 @@ export function getAuthenticatedSession(): AuthenticatedSession | null {
   return authenticatedSession;
 }
 
+export function getAuthenticatedAccountId(): string | null {
+  return authenticatedSession?.accountId ?? null;
+}
+
 export function getAccessToken(): string | null {
   return authenticatedSession?.accessToken ?? null;
+}
+
+export async function restoreAuthenticatedSession(
+  refreshSession: () => Promise<AuthenticatedSession>,
+): Promise<AuthenticatedSession | null> {
+  if (authenticatedSession) return authenticatedSession;
+
+  try {
+    const session = await refreshSession();
+    setAuthenticatedSession(session);
+    return session;
+  } catch {
+    clearAuthenticatedSession();
+    return null;
+  }
 }
 
 export function getRecoveryCodes(): readonly string[] {
