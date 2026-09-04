@@ -182,8 +182,8 @@ public sealed class PlayerRuntimeState
     }
 
     /// <summary>
-    /// Equipment resync: replaces the vitality/mana caps with the effective values,
-    /// tops both resources up, and overwrites Charge.
+    /// Equipment resync: replaces vitality/mana caps without granting a free heal or
+    /// refill. Resources are only clamped when a new cap becomes lower.
     /// </summary>
     public void ReplaceEffectiveStats(int maxVitality, int maxMana, int charge)
     {
@@ -191,9 +191,9 @@ public sealed class PlayerRuntimeState
             throw new DomainException("Max vitality must be greater than zero.");
 
         MaxVitality = maxVitality;
-        CurrentVitality = maxVitality;
+        CurrentVitality = Math.Min(CurrentVitality, maxVitality);
         MaxMana = maxMana;
-        Mana = maxMana;
+        Mana = Math.Min(Mana, maxMana);
         Charge = charge;
     }
 

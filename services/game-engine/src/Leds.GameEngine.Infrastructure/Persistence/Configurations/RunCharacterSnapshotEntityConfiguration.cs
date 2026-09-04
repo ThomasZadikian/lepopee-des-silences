@@ -22,6 +22,7 @@ public sealed class RunCharacterSnapshotEntityConfiguration : IEntityTypeConfigu
         builder.Property(e => e.CurrentMana).HasColumnName("current_mana");
         builder.Property(e => e.SnapshotOrder).HasColumnName("snapshot_order").HasDefaultValue(0);
         builder.Property(e => e.EquippedItemKeysCsv).HasColumnName("equipped_item_keys_csv");
+        builder.Property(e => e.EquipmentLoadoutJson).HasColumnName("equipment_loadout_json");
 
         builder.HasIndex(e => e.PlayerSnapshotId);
 

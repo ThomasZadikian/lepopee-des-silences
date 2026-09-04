@@ -137,7 +137,11 @@ public sealed class PlayerProfile
     {
         foreach (var itemDefinitionKey in itemDefinitionKeys)
         {
-            if (HasPermanentItem(itemDefinitionKey))
+            // Delivery retries for the same run remain idempotent, while a later run may
+            // legitimately award another instance of the same definition (for two rings,
+            // consumable containers, etc.).
+            if (_permanentItems.Any(item => item.SourceRunId == sourceRunId
+                && string.Equals(item.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             _permanentItems.Add(PlayerPermanentItem.Create(itemDefinitionKey, sourceRunId, now));

@@ -57,6 +57,10 @@ public sealed class GetPlayerRunSnapshotQueryHandler
                     c.StatBlock.MagicAttack,
                     c.StatBlock.MagicDefense,
                     c.StatBlock.Movement),
-                c.EquippedItemKeys.ToArray())).ToArray());
+                c.EquippedItemKeys.ToArray(),
+                c.Items.Where(item => item.IsEquipped && item.Position.HasValue)
+                    .Select(item => new PlayerRunSnapshotEquipmentResponse(
+                        item.Id.Value, item.ItemDefinitionKey, item.Position!.Value.ToString()))
+                    .ToArray())).ToArray());
     }
 }

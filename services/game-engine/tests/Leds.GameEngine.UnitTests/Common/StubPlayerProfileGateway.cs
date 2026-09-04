@@ -29,6 +29,8 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public List<(Guid PlayerId, string NpcKey, string MilestoneKey, Guid? SourceRunId)> GrantedMilestones { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> EquippedItems { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> UnequippedItems { get; } = [];
+    public List<(Guid PlayerId, Guid CharacterId, Guid ItemInstanceId, string Position)> EquippedItemInstances { get; } = [];
+    public List<(Guid PlayerId, Guid CharacterId, Guid ItemInstanceId)> UnequippedItemInstances { get; } = [];
     public List<(Guid PlayerId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId)> AddedPermanentItems { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey, string LiquidDefinitionKey)> SetPermanentItemContents { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey)> ClearedPermanentItemContents { get; } = [];
@@ -70,6 +72,30 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
     {
         UnequippedItems.Add((playerId, characterId, itemKey));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<EquipmentChangePlanView> PreviewEquipmentChangeAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+        => Task.FromResult(new EquipmentChangePlanView(
+            targetPosition, new EquipmentItemPlanView(itemInstanceId, "item.stub", "Stub"), null,
+            true, [], new EquipmentStatsView(1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
+            new EquipmentStatsView(1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
+            [], [], [], [], [], 1, 1, 0, 0, [], []));
+
+    public Task<PlayerProfileView> EquipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        EquippedItemInstances.Add((playerId, characterId, itemInstanceId, targetPosition));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<PlayerProfileView> UnequipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+    {
+        UnequippedItemInstances.Add((playerId, characterId, itemInstanceId));
         return Task.FromResult(EmptyProfile(playerId));
     }
 

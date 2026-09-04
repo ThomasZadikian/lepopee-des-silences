@@ -1,6 +1,8 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
-import type { PalaceProgressView, PlayerProfileView } from '../types/playerTypes';
+import type {
+  EquipmentChangePlanView, EquipmentPosition, PalaceProgressView, PlayerProfileView,
+} from '../types/playerTypes';
 
 export const playerApi = {
   getProfile(playerId: string) {
@@ -32,6 +34,32 @@ export const playerApi = {
   unequipItem(playerId: string, characterId: string, itemKey: string) {
     return gameEngineApi.post<PlayerProfileView>(
       `/api/v2/players/${playerId}/characters/${characterId}/items/${itemKey}/unequip`,
+    );
+  },
+
+  previewEquipmentChange(
+    playerId: string, characterId: string, itemInstanceId: string, position: EquipmentPosition,
+    resources?: { currentVitality?: number; currentMana?: number },
+  ) {
+    return gameEngineApi.post<EquipmentChangePlanView>(
+      `/api/v2/players/${playerId}/characters/${characterId}/equipment/${position}/preview/${itemInstanceId}`,
+      resources ?? {},
+    );
+  },
+
+  equipItemInstance(
+    playerId: string, characterId: string, itemInstanceId: string, position: EquipmentPosition,
+    resources?: { currentVitality?: number; currentMana?: number },
+  ) {
+    return gameEngineApi.post<PlayerProfileView>(
+      `/api/v2/players/${playerId}/characters/${characterId}/equipment/${position}/equip/${itemInstanceId}`,
+      resources ?? {},
+    );
+  },
+
+  unequipItemInstance(playerId: string, characterId: string, itemInstanceId: string) {
+    return gameEngineApi.post<PlayerProfileView>(
+      `/api/v2/players/${playerId}/characters/${characterId}/equipment/unequip/${itemInstanceId}`,
     );
   },
 

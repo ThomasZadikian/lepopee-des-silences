@@ -103,4 +103,33 @@ public sealed class PlayerProgressionController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/{targetPosition}/preview/{itemInstanceId:guid}")]
+    [ProducesResponseType(typeof(EquipmentChangePlanView), StatusCodes.Status200OK)]
+    public async Task<ActionResult<EquipmentChangePlanView>> PreviewEquipmentChange(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        [FromBody] EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        return Ok(await _sender.Send(new PreviewEquipmentChangeQuery(
+            playerId, characterId, itemInstanceId, targetPosition, resources), cancellationToken));
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/{targetPosition}/equip/{itemInstanceId:guid}")]
+    [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PlayerProfileView>> EquipItemInstance(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        [FromBody] EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        return Ok(await _sender.Send(new EquipItemInstanceCommand(
+            playerId, characterId, itemInstanceId, targetPosition, resources), cancellationToken));
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/unequip/{itemInstanceId:guid}")]
+    [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PlayerProfileView>> UnequipItemInstance(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+    {
+        return Ok(await _sender.Send(new UnequipItemInstanceCommand(
+            playerId, characterId, itemInstanceId), cancellationToken));
+    }
+
 }

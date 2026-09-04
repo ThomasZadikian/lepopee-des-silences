@@ -15,6 +15,9 @@ public sealed class RunReplaceStatsTests
     public void ReplacePlayerStats_ShouldUpdateRunAndPlayerState()
     {
         var run = TestGameEngineFactory.CreateRun();
+        var currentHp = run.CurrentHp;
+        var currentVitality = run.PlayerState.CurrentVitality;
+        var currentMana = run.PlayerState.Mana;
 
         run.ReplacePlayerStats(
             maxVitality: 150, maxMana: 40, charge: 6,
@@ -22,7 +25,7 @@ public sealed class RunReplaceStatsTests
             magicAttack: 8, magicDefense: 7, guardBonusPercent: 12);
 
         run.MaxHp.Should().Be(150);
-        run.CurrentHp.Should().Be(150);
+        run.CurrentHp.Should().Be(currentHp);
         run.Attack.Should().Be(20);
         run.Defense.Should().Be(10);
         run.Speed.Should().Be(15);
@@ -32,9 +35,9 @@ public sealed class RunReplaceStatsTests
         run.GuardBonusPercent.Should().Be(12);
 
         run.PlayerState.MaxVitality.Should().Be(150);
-        run.PlayerState.CurrentVitality.Should().Be(150);
+        run.PlayerState.CurrentVitality.Should().Be(currentVitality);
         run.PlayerState.MaxMana.Should().Be(40);
-        run.PlayerState.Mana.Should().Be(40);
+        run.PlayerState.Mana.Should().Be(currentMana);
         run.PlayerState.Charge.Should().Be(6);
     }
 

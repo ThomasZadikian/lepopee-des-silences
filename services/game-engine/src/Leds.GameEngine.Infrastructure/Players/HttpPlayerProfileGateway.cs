@@ -61,6 +61,41 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<EquipmentChangePlanView> PreviewEquipmentChangeAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/{Uri.EscapeDataString(targetPosition)}/preview/{itemInstanceId}",
+            resources ?? new EquipmentResourceContextView(), cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            throw new NotFoundException("Player or item instance", itemInstanceId);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            throw new DomainException(await response.Content.ReadAsStringAsync(cancellationToken));
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EquipmentChangePlanView>(cancellationToken)
+            ?? throw new InvalidOperationException("Player Service returned an empty equipment plan.");
+    }
+
+    public async Task<PlayerProfileView> EquipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/{Uri.EscapeDataString(targetPosition)}/equip/{itemInstanceId}",
+            resources ?? new EquipmentResourceContextView(), cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> UnequipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/unequip/{itemInstanceId}",
+            content: null, cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     public async Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync(
@@ -314,11 +349,11 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                     MaxEquippedItems: c.MaxEquippedItems,
                     CharacterType: c.CharacterType,
                     ArchetypeKey: c.ArchetypeKey,
-                    BaseStats: new PlayerCharacterStatsView(
-                        c.Stats.MaxVitality, c.Stats.AttackPower, c.Stats.Defense,
-                        c.Stats.StartingGuard, c.Stats.Speed, c.Stats.Initiative,
-                        c.Stats.Focus, c.Stats.Mana, c.Stats.Charge,
-                        c.Stats.MagicAttack, c.Stats.MagicDefense, c.Stats.Movement)))
+                    BaseStats: c.BaseStats is null ? null : new PlayerCharacterStatsView(
+                        c.BaseStats.MaxVitality, c.BaseStats.AttackPower, c.BaseStats.Defense,
+                        c.BaseStats.StartingGuard, c.BaseStats.Speed, c.BaseStats.Initiative,
+                        c.BaseStats.Focus, c.BaseStats.Mana, c.BaseStats.Charge,
+                        c.BaseStats.MagicAttack, c.BaseStats.MagicDefense, c.BaseStats.Movement)))
                 .ToArray(),
             Progression: new PlayerProgressionView(
                 dto.Progression.PalaceShardCount,
@@ -401,7 +436,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         IReadOnlyCollection<PlayerCharacterItemResponse>? Items = null,
         int MaxEquippedItems = 3,
         string CharacterType = "Standard",
-        string? ArchetypeKey = null);
+        string? ArchetypeKey = null,
+        PlayerCharacterStatsResponse? BaseStats = null);
 
     private sealed record PlayerCharacterSkillResponse(
         string SkillKey,

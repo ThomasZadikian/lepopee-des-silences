@@ -11,7 +11,8 @@ public sealed record PlayerRunSnapshotCharacter(
     string DisplayName,
     PlayerRunSnapshotCharacterStats Stats,
     IReadOnlyCollection<PlayerRunSnapshotCharacterSkill> Skills,
-    IReadOnlyCollection<string>? EquippedItemKeys = null)
+    IReadOnlyCollection<string>? EquippedItemKeys = null,
+    IReadOnlyCollection<PlayerRunSnapshotEquipment>? EquipmentLoadout = null)
 {
     public int MaxVitality => Stats.MaxVitality;
     public int BaseMana => Stats.Mana;
@@ -19,6 +20,11 @@ public sealed record PlayerRunSnapshotCharacter(
     public IReadOnlyCollection<string> SkillKeys => Skills.Select(s => s.SkillDefinitionKey).ToArray();
     public IReadOnlyCollection<string> EquippedItems => EquippedItemKeys ?? [];
 }
+
+public sealed record PlayerRunSnapshotEquipment(
+    Guid ItemInstanceId,
+    string ItemDefinitionKey,
+    string Position);
 
 public sealed record PlayerRunSnapshotCharacterStats(
     int MaxVitality,

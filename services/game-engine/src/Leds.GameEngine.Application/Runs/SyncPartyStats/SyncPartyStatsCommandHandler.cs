@@ -93,7 +93,14 @@ public sealed class SyncPartyStatsCommandHandler
                     magicAttack: effectiveStats.MagicAttack,
                     magicDefense: effectiveStats.MagicDefense,
                     movement: effectiveStats.Movement,
-                    equippedItemKeys: character.EquippedItems);
+                    equippedItemKeys: character.EquippedItems,
+                    equipmentLoadout: (character.EquipmentLoadout ?? [])
+                        .Select(item => new RunEquipmentAssignment(
+                            existingSnapshotCharacter.EquipmentLoadout
+                                .FirstOrDefault(current => current.SourceOwnedItemInstanceId == item.ItemInstanceId)
+                                ?.RunItemId ?? Guid.NewGuid(),
+                            item.ItemInstanceId, item.ItemDefinitionKey, item.Position))
+                        .ToArray());
             }
         }
 

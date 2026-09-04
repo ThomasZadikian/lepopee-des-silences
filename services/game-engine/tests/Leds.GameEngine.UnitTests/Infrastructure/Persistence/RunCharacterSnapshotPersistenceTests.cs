@@ -39,4 +39,23 @@ public sealed class RunCharacterSnapshotPersistenceTests
         entity.CurrentVitality.Should().Be(37);
         entity.CurrentMana.Should().Be(0);
     }
+
+    [Fact]
+    public void Instance_equipment_loadout_should_be_serialized_with_positions()
+    {
+        var instanceId = Guid.NewGuid();
+        var snapshot = RunCharacterSnapshot.Create(
+            characterId: Guid.NewGuid(),
+            definitionKey: "character.porteur",
+            displayName: "Porteur",
+            statBlock: RunCharacterStatSnapshot.CreateDefault(),
+            skills: [],
+            emotionalRegisterCode: "silence",
+            equipmentLoadout: [new RunEquipmentAssignment(Guid.NewGuid(), instanceId, "item.ring", "Ring2")]);
+
+        var entity = RunPersistenceMapper.ToCharacterSnapshotEntity(snapshot, order: 0);
+
+        entity.EquipmentLoadoutJson.Should().Contain(instanceId.ToString());
+        entity.EquipmentLoadoutJson.Should().Contain("Ring2");
+    }
 }

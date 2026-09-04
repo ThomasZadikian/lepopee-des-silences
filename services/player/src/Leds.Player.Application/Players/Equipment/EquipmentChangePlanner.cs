@@ -7,7 +7,14 @@ public sealed class EquipmentChangePlanner
 {
     public const int MaxTemporarySkills = 2;
     private readonly IEquipmentDefinitionGateway _catalog;
-    public EquipmentChangePlanner(IEquipmentDefinitionGateway catalog) => _catalog = catalog;
+    private readonly IArchetypeDefinitionGateway _archetypes;
+    public EquipmentChangePlanner(
+        IEquipmentDefinitionGateway catalog,
+        IArchetypeDefinitionGateway archetypes)
+    {
+        _catalog = catalog;
+        _archetypes = archetypes;
+    }
 
     public async Task<EquipmentChangePlan> PlanAsync(
         PlayerProfile profile,
@@ -30,6 +37,17 @@ public sealed class EquipmentChangePlanner
         var blocking = new List<string>();
         if (!candidateDefinition.AllowedSlots.Any(slot => PositionAccepts(targetPosition, slot)))
             blocking.Add("SlotNotAllowed");
+
+        if (candidateDefinition.ProficiencyTags.Count > 0)
+        {
+            var archetype = string.IsNullOrWhiteSpace(character.ArchetypeKey)
+                ? null
+                : await _archetypes.GetByKeyAsync(character.ArchetypeKey, cancellationToken);
+            var proficiencies = archetype?.ProficiencyTags
+                .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            if (candidateDefinition.ProficiencyTags.Any(required => !proficiencies.Contains(required)))
+                blocking.Add("ProficiencyRequirementNotMet");
+        }
 
         var currentlyEquipped = character.Items.FirstOrDefault(item => item.Position == targetPosition);
         var candidateAssignment = character.Items.FirstOrDefault(item => item.Id == candidateId && item.IsEquipped);
