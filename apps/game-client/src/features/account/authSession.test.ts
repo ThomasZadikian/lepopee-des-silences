@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   clearAuthenticatedSession,
@@ -67,5 +67,28 @@ describe('authSession', () => {
     expect(restored?.accessToken).toBe('restored-access-token');
     expect(getAccessToken()).toBe('restored-access-token');
     expect(getAuthenticatedAccountId()).toBe('restored-account');
+  });
+
+  it('reuses an already restored session without another refresh request', async () => {
+    const session = {
+      accountId: 'cached-account',
+      sessionId: 'cached-session',
+      accessToken: 'cached-access-token',
+      accessTokenExpiresAtUtc: '2026-08-31T13:00:00Z',
+      recoveryCodes: null,
+    };
+    setAuthenticatedSession(session);
+    const refresh = vi.fn();
+
+    await expect(restoreAuthenticatedSession(refresh)).resolves.toBe(session);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('clears stale in-memory state when the refresh-cookie exchange fails', async () => {
+    const refresh = vi.fn().mockRejectedValue(new Error('Refresh cookie expired'));
+
+    await expect(restoreAuthenticatedSession(refresh)).resolves.toBeNull();
+    expect(getAccessToken()).toBeNull();
+    expect(getAuthenticatedAccountId()).toBeNull();
   });
 });

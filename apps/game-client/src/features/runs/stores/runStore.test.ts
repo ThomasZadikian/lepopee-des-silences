@@ -260,6 +260,8 @@ describe('useRunStore actions', () => {
     vi.useRealTimers();
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    clearAuthenticatedSession();
+    try { localStorage.clear(); } catch {}
     vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
   });
 
@@ -315,6 +317,35 @@ describe('useRunStore actions', () => {
     expect(store.npcDialogue).toBeNull();
     expect(store.lastChoiceResult).toBeNull();
     expect(store.error).toBeNull();
+  });
+
+  it('clearForLogout removes both active and resumable run state', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+      clear: () => values.clear(),
+    });
+    const store = useRunStore();
+    localStorage.setItem('rpg:suspended_run_id', 'run-1');
+    store.currentRun = { id: 'run-1' } as any;
+    store.resumableRun = {
+      id: 'run-1',
+      seed: 'seed-1',
+      savedAt: '',
+      currentRoomNumber: 2,
+      status: 'Suspended',
+    };
+    store.runActionError = 'stale error';
+
+    store.clearForLogout();
+
+    expect(localStorage.getItem('rpg:suspended_run_id')).toBeNull();
+    expect(store.currentRun).toBeNull();
+    expect(store.resumableRun).toBeNull();
+    expect(store.runActionError).toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it('selectReward surfaces the specific bag-full message when the run bag is full', async () => {

@@ -35,4 +35,40 @@ describe('SessionMenu', () => {
     expect(runStore.clearForLogout).toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledWith({ name: 'login' });
   });
+
+  it('still clears the local session when no access token remains', async () => {
+    auth.getAccessToken.mockReturnValueOnce(null);
+    const wrapper = mount(SessionMenu);
+    await wrapper.get('[aria-label="Ouvrir le menu de session"]').trigger('click');
+    await wrapper.get('.session-menu__logout').trigger('click');
+    await flushPromises();
+
+    expect(api.logout).not.toHaveBeenCalled();
+    expect(auth.clearAuthenticatedSession).toHaveBeenCalled();
+    expect(runStore.clearForLogout).toHaveBeenCalled();
+    expect(router.replace).toHaveBeenCalledWith({ name: 'login' });
+  });
+
+  it('keeps the session available for retry and displays server logout errors', async () => {
+    api.logout.mockRejectedValueOnce(new Error('Service indisponible'));
+    const wrapper = mount(SessionMenu);
+    await wrapper.get('[aria-label="Ouvrir le menu de session"]').trigger('click');
+    await wrapper.get('.session-menu__logout').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Service indisponible');
+    expect(auth.clearAuthenticatedSession).not.toHaveBeenCalled();
+    expect(runStore.clearForLogout).not.toHaveBeenCalled();
+    expect(wrapper.get('.session-menu__logout').attributes('disabled')).toBeUndefined();
+  });
+
+  it('uses the fallback message for non-Error logout failures', async () => {
+    api.logout.mockRejectedValueOnce('network failure');
+    const wrapper = mount(SessionMenu);
+    await wrapper.get('[aria-label="Ouvrir le menu de session"]').trigger('click');
+    await wrapper.get('.session-menu__logout').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('La déconnexion a échoué');
+  });
 });

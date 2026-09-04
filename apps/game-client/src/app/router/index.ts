@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router';
 
 import AccountAccessPage from '../../pages/AccountAccessPage.vue';
 import AccountPage from '../../pages/AccountPage.vue';
@@ -148,7 +148,9 @@ export const router = createRouter({
   ],
 });
 
-router.beforeEach(async (to) => {
+export async function requireAuthenticatedSession(
+  to: Pick<RouteLocationNormalized, 'meta' | 'name' | 'fullPath'>,
+) {
   if (!to.meta.requiresAuth) return true;
 
   const session = await restoreAuthenticatedSession(playerApi.refreshSession);
@@ -158,4 +160,6 @@ router.beforeEach(async (to) => {
     name: 'login',
     query: to.name === 'character-selection' ? {} : { redirect: to.fullPath },
   };
-});
+}
+
+router.beforeEach(requireAuthenticatedSession);
