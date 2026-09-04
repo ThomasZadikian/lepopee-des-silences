@@ -31,7 +31,9 @@ public sealed record PlayerCharacterView(
     int MaxEquippedSkills,
     IReadOnlyCollection<PlayerCharacterItemView>? Items = null,
     int MaxEquippedItems = 3,
-    string CharacterType = "Standard");
+    string CharacterType = "Standard",
+    string? ArchetypeKey = null,
+    PlayerCharacterStatsView? BaseStats = null);
 
 public sealed record PlayerCharacterSkillView(
     string SkillKey,
@@ -44,13 +46,16 @@ public sealed record PlayerCharacterItemView(
     DateTimeOffset AcquiredAtUtc,
     string? Source,
     bool IsEquipped,
-    string Slot = "Relic");
+    string Slot = "Relic",
+    Guid ItemInstanceId = default,
+    string? Position = null);
 
 public sealed record PlayerPermanentItemView(
     string ItemDefinitionKey,
     Guid? SourceRunId,
     DateTimeOffset AcquiredAtUtc,
-    string? ContainedLiquidDefinitionKey = null);
+    string? ContainedLiquidDefinitionKey = null,
+    Guid ItemInstanceId = default);
 
 public sealed record PlayerCharacterStatsView(
     int MaxVitality,

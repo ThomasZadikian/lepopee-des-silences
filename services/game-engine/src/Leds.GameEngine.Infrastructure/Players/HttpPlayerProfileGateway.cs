@@ -307,16 +307,26 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.Movement),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
-                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot))
+                        .Select(i => new PlayerCharacterItemView(
+                            i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot,
+                            i.ItemInstanceId, i.Position))
                         .ToArray(),
                     MaxEquippedItems: c.MaxEquippedItems,
-                    CharacterType: c.CharacterType))
+                    CharacterType: c.CharacterType,
+                    ArchetypeKey: c.ArchetypeKey,
+                    BaseStats: new PlayerCharacterStatsView(
+                        c.Stats.MaxVitality, c.Stats.AttackPower, c.Stats.Defense,
+                        c.Stats.StartingGuard, c.Stats.Speed, c.Stats.Initiative,
+                        c.Stats.Focus, c.Stats.Mana, c.Stats.Charge,
+                        c.Stats.MagicAttack, c.Stats.MagicDefense, c.Stats.Movement)))
                 .ToArray(),
             Progression: new PlayerProgressionView(
                 dto.Progression.PalaceShardCount,
                 dto.Progression.HimLitShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
-                .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
+                .Select(i => new PlayerPermanentItemView(
+                    i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc,
+                    i.ContainedLiquidDefinitionKey, i.ItemInstanceId))
                 .ToArray(),
             MainStory: dto.MainStory is null
                 ? MainStoryProgressView.Incomplete
@@ -390,7 +400,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int MaxEquippedSkills,
         IReadOnlyCollection<PlayerCharacterItemResponse>? Items = null,
         int MaxEquippedItems = 3,
-        string CharacterType = "Standard");
+        string CharacterType = "Standard",
+        string? ArchetypeKey = null);
 
     private sealed record PlayerCharacterSkillResponse(
         string SkillKey,
@@ -403,13 +414,16 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         DateTimeOffset AcquiredAtUtc,
         string? Source,
         bool IsEquipped,
-        string Slot = "Relic");
+        string Slot = "Relic",
+        Guid ItemInstanceId = default,
+        string? Position = null);
 
     private sealed record PlayerPermanentItemResponse(
         string ItemDefinitionKey,
         Guid? SourceRunId,
         DateTimeOffset AcquiredAtUtc,
-        string? ContainedLiquidDefinitionKey = null);
+        string? ContainedLiquidDefinitionKey = null,
+        Guid ItemInstanceId = default);
 
     private sealed record PlayerCharacterStatsResponse(
         int MaxVitality,

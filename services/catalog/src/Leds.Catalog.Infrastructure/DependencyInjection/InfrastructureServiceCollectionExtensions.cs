@@ -1,4 +1,5 @@
 using Leds.Catalog.Application.Enemies.Definitions.Ports;
+using Leds.Catalog.Application.Archetypes;
 using Leds.Catalog.Application.Enemies.Loot.Ports;
 using Leds.Catalog.Application.Rewards.GenericLoot.Ports;
 using Leds.Catalog.Application.Curses.Ports;
@@ -38,6 +39,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
         services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
         services.AddScoped<IItemDefinitionReadStore, EfItemDefinitionReadStore>();
+        services.AddScoped<IArchetypeDefinitionReadStore, EfArchetypeDefinitionReadStore>();
         services.AddScoped<IEffectSetReadStore, EfEffectSetReadStore>();
         services.AddScoped<IRewardTemplateReadStore, EfRewardTemplateReadStore>();
         services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();

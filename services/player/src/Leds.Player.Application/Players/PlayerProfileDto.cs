@@ -63,10 +63,11 @@ public sealed record PlayerPermanentItemDto(
     string ItemDefinitionKey,
     Guid? SourceRunId,
     DateTimeOffset AcquiredAtUtc,
-    string? ContainedLiquidDefinitionKey = null)
+    string? ContainedLiquidDefinitionKey = null,
+    Guid ItemInstanceId = default)
 {
     public static PlayerPermanentItemDto FromDomain(PlayerPermanentItem item) => new(
-        item.ItemDefinitionKey, item.SourceRunId, item.AcquiredAtUtc, item.ContainedLiquidDefinitionKey);
+        item.ItemDefinitionKey, item.SourceRunId, item.AcquiredAtUtc, item.ContainedLiquidDefinitionKey, item.Id.Value);
 }
 
 public sealed record PlayerCharacterDto(
@@ -120,7 +121,9 @@ public sealed record PlayerCharacterItemDto(
     DateTimeOffset AcquiredAtUtc,
     string? Source,
     bool IsEquipped,
-    string Slot)
+    string Slot,
+    Guid ItemInstanceId = default,
+    string? Position = null)
 {
     public static PlayerCharacterItemDto FromDomain(PlayerCharacterItem item)
     {
@@ -129,7 +132,9 @@ public sealed record PlayerCharacterItemDto(
             item.AcquiredAtUtc,
             item.Source,
             item.IsEquipped,
-            item.Slot.ToString());
+            item.Position?.ToString() ?? string.Empty,
+            item.Id.Value,
+            item.Position?.ToString());
     }
 }
 

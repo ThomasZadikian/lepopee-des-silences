@@ -47,13 +47,13 @@ public sealed class PlayerPermanentUnlockEntity
 
 public sealed class PlayerCharacterItemEntity
 {
+    // The row key is the owned item instance identity and must be stable across saves.
     public Guid Id { get; set; }
     public Guid PlayerCharacterId { get; set; }
     public string ItemDefinitionKey { get; set; } = string.Empty;
     public DateTimeOffset AcquiredAtUtc { get; set; }
     public string? Source { get; set; }
-    public bool IsEquipped { get; set; }
-    public string EquipmentSlot { get; set; } = "Relic";
+    public string? EquipmentPosition { get; set; }
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }
