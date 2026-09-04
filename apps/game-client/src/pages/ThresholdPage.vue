@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import LivingWalls from '../shared/components/LivingWalls.vue';
+import SessionMenu from '../features/account/components/SessionMenu.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const router   = useRouter();
@@ -75,6 +76,7 @@ const TOTAL_ROOMS = 27;
 <template>
   <main class="threshold-screen">
     <LivingWalls veins motes />
+    <SessionMenu />
 
     <div class="threshold-content">
       <div class="threshold-title-block">

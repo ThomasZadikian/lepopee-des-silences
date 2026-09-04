@@ -44,6 +44,24 @@ export type CreateCharacterRequest = {
   archetypeKey: string;
 };
 
+export type AccountCharacterResponse = {
+  id: string;
+  definitionKey: string;
+  displayName: string;
+  characterType: string;
+  archetypeKey?: string | null;
+};
+
+export type AccountOverviewResponse = {
+  accountId: string;
+  displayName: string;
+  email: string;
+  role: string;
+  emailVerified: boolean;
+  mfaConfigured: boolean;
+  characters: AccountCharacterResponse[];
+};
+
 export type GameSessionLeaseResponse = {
   status: string;
   sessionId: string;
@@ -108,7 +126,7 @@ export const playerApi = {
     post<unknown>(`${accountRoot}/characters`, body, authorizedHeaders(accessToken)),
 
   getAccount: (accessToken: string) =>
-    request<unknown>(`${accountRoot}/me`, {
+    request<AccountOverviewResponse>(`${accountRoot}/me`, {
       method: 'GET',
       headers: authorizedHeaders(accessToken),
     }),

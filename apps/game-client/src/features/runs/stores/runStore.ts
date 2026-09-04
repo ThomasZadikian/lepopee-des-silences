@@ -14,6 +14,7 @@ import {
   partyWalkDurationMs,
   prefersReducedMotion,
 } from '../../palace-map/composables/usePartyTokenPath';
+import { getAuthenticatedAccountId } from '../../account/authSession';
 import {
   unwrapRunResponse,
   type ActorAdvanceMode,
@@ -34,6 +35,10 @@ import {
 } from '../../events/types/eventTypes';
 
 export const demoPlayerId = '00000000-0000-0000-0000-000000000001';
+
+export function getActivePlayerId(): string {
+  return getAuthenticatedAccountId() ?? demoPlayerId;
+}
 
 // ---------------------------------------------------------------------------
 // localStorage — suspended run persistence
@@ -511,7 +516,7 @@ export const useRunStore = defineStore('run', () => {
       // le composant appelant ne navigue pas vers l'ancienne run.
       currentRun.value = null;
 
-      const response = await runApi.startRun(demoPlayerId);
+      const response = await runApi.startRun(getActivePlayerId());
       const run = unwrapRunResponse(response);
 
       lastChoiceResult.value = null;
@@ -726,7 +731,7 @@ export const useRunStore = defineStore('run', () => {
         try {
           const cachedResponse = await runApi.getRun(cachedRunId);
           const cachedRun = unwrapRunResponse(cachedResponse);
-          if (cachedRun.playerId === demoPlayerId &&
+          if (cachedRun.playerId === getActivePlayerId() &&
               (cachedRun.status === 'Active' || cachedRun.status === 'Suspended')) {
             run = cachedRun;
           }
@@ -736,7 +741,7 @@ export const useRunStore = defineStore('run', () => {
       }
 
       if (!run) {
-        const response = await runApi.getOpenRun(demoPlayerId);
+        const response = await runApi.getOpenRun(getActivePlayerId());
         run = response.run;
       }
 
@@ -878,6 +883,13 @@ export const useRunStore = defineStore('run', () => {
     permanentItemCandidates.value = [];
     isPermanentItemSelectionResolved.value = false;
     reputationEffects.value = [];
+  }
+
+  function clearForLogout() {
+    clearSuspendedRunId();
+    resumableRun.value = null;
+    runActionError.value = null;
+    clearCurrentRun();
   }
 
   // -------------------------------------------------------------------------
@@ -1071,5 +1083,6 @@ export const useRunStore = defineStore('run', () => {
     abandonCurrentRun,
     abandonResumableRun,
     clearCurrentRun,
+    clearForLogout,
   };
 });

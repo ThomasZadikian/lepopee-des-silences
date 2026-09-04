@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AccountAccessShell from '../features/account/components/AccountAccessShell.vue';
@@ -10,7 +10,10 @@ const router = useRouter();
 const characterName = ref('');
 const selectedArchetype = ref('archetype.porteur');
 const error = ref<string | null>(null);
+const accountError = ref<string | null>(null);
 const busy = ref(false);
+const accountLoaded = ref(false);
+const hasExistingCharacter = ref(false);
 
 const archetypes = [
   {
@@ -37,6 +40,32 @@ const archetypes = [
 ] as const;
 
 const selected = computed(() => archetypes.find((item) => item.key === selectedArchetype.value));
+
+async function loadAccountCharacters() {
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    accountError.value = 'Votre session a expiré. Reconnectez-vous.';
+    accountLoaded.value = true;
+    await router.replace({ name: 'login' });
+    return;
+  }
+
+  try {
+    const account = await playerApi.getAccount(accessToken);
+    hasExistingCharacter.value = account.characters.length > 0;
+    if (hasExistingCharacter.value) {
+      await router.replace({ name: 'threshold' });
+    }
+  } catch (cause) {
+    accountError.value = cause instanceof Error
+      ? cause.message
+      : 'Impossible de charger les personnages du compte.';
+  } finally {
+    accountLoaded.value = true;
+  }
+}
+
+onMounted(loadAccountCharacters);
 
 async function continueToPalace() {
   error.value = null;
@@ -78,7 +107,15 @@ async function continueToPalace() {
     title="Choisir un archétype"
     subtitle="Le Palais appartient au compte ; le nom, l’équipement et l’archétype appartiennent au personnage. L’archétype choisi est définitif."
   >
-    <form class="character-selection" @submit.prevent="continueToPalace">
+    <p v-if="!accountLoaded" class="character-selection__loading" role="status">
+      Recherche de votre personnage…
+    </p>
+
+    <p v-else-if="accountError" class="character-selection__account-error" role="alert">
+      {{ accountError }}
+    </p>
+
+    <form v-else-if="!hasExistingCharacter" class="character-selection" @submit.prevent="continueToPalace">
       <label class="character-name">
         <span class="character-name__label">Nom du personnage</span>
         <input v-model="characterName" class="character-name__input" maxlength="40" autocomplete="off" placeholder="Nommer votre personnage" />
@@ -117,6 +154,7 @@ async function continueToPalace() {
         <span>{{ busy ? 'Création…' : 'Entrer dans le Palais' }}</span>
       </button>
     </form>
+
   </AccountAccessShell>
 </template>
 
@@ -212,6 +250,8 @@ async function continueToPalace() {
 
 .character-selection__summary strong { color: var(--ink-2); font-weight: 500; }
 .character-selection__error { color: var(--danger); font-size: 12px; }
+.character-selection__loading { padding: 30px; color: var(--ink-3); font-size: 12px; }
+.character-selection__account-error { padding: 30px; color: var(--danger); font-size: 12px; }
 
 .character-selection__submit {
   justify-self: end;

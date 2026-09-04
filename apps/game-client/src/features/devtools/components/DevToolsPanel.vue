@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 
-import { demoPlayerId, useRunStore } from '../../runs/stores/runStore';
+import { getActivePlayerId, useRunStore } from '../../runs/stores/runStore';
 import { skillsApi } from '../../party/api/skillsApi';
 import { itemsApi } from '../../party/api/itemsApi';
 import { lawsApi } from '../../palace-laws/api/lawsApi';
@@ -169,7 +169,7 @@ function clearCurses() {
 
 function unlockSkill(characterId: string, skillKey: string) {
   void execute(
-    (token) => devToolsApi.unlockSkill(token, demoPlayerId, characterId, skillKey),
+    (token) => devToolsApi.unlockSkill(token, getActivePlayerId(), characterId, skillKey),
     'Sort debloque.',
   );
 }

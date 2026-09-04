@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { router } from './index';
+const auth = vi.hoisted(() => ({ restoreAuthenticatedSession: vi.fn() }));
+const api = vi.hoisted(() => ({ refreshSession: vi.fn() }));
+
+vi.mock('../../features/account/authSession', () => auth);
+vi.mock('../../shared/api/playerApi', () => ({ playerApi: api }));
+
+import { requireAuthenticatedSession, router } from './index';
 
 const expectedRoutes = [
   ['login', '/connexion'],
@@ -16,6 +22,11 @@ const expectedRoutes = [
 ] as const;
 
 describe('Account/Auth route contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    auth.restoreAuthenticatedSession.mockResolvedValue(null);
+  });
+
   it.each(expectedRoutes)('exposes %s at %s', (name, path) => {
     const route = router.getRoutes().find((candidate) => candidate.name === name);
 
@@ -23,8 +34,49 @@ describe('Account/Auth route contract', () => {
     expect(route?.path).toBe(path);
   });
 
-  it('does not make the gameplay threshold the public entry point anymore', () => {
+  it('routes the root through the authenticated character gate', () => {
     const root = router.getRoutes().find((candidate) => candidate.path === '/');
-    expect(root?.redirect).toEqual({ name: 'login' });
+    expect(root?.redirect).toEqual({ name: 'character-selection' });
+  });
+
+  it.each(['character-selection', 'account', 'threshold', 'run'])('protects the %s route', (name) => {
+    const route = router.getRoutes().find((candidate) => candidate.name === name);
+    expect(route?.meta.requiresAuth).toBe(true);
+  });
+
+  it('lets public routes pass without refreshing the session', async () => {
+    await expect(requireAuthenticatedSession({
+      meta: {},
+      name: 'login',
+      fullPath: '/connexion',
+    })).resolves.toBe(true);
+    expect(auth.restoreAuthenticatedSession).not.toHaveBeenCalled();
+  });
+
+  it('lets protected routes pass when the refresh cookie restores the session', async () => {
+    auth.restoreAuthenticatedSession.mockResolvedValueOnce({ accountId: 'account-id' });
+
+    await expect(requireAuthenticatedSession({
+      meta: { requiresAuth: true },
+      name: 'threshold',
+      fullPath: '/palais',
+    })).resolves.toBe(true);
+    expect(auth.restoreAuthenticatedSession).toHaveBeenCalledWith(api.refreshSession);
+  });
+
+  it('redirects an unauthenticated gameplay route back to login with its return path', async () => {
+    await expect(requireAuthenticatedSession({
+      meta: { requiresAuth: true },
+      name: 'threshold',
+      fullPath: '/palais',
+    })).resolves.toEqual({ name: 'login', query: { redirect: '/palais' } });
+  });
+
+  it('redirects the character gate without creating a redirect loop', async () => {
+    await expect(requireAuthenticatedSession({
+      meta: { requiresAuth: true },
+      name: 'character-selection',
+      fullPath: '/personnages',
+    })).resolves.toEqual({ name: 'login', query: {} });
   });
 });
