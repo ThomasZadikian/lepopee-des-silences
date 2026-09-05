@@ -329,4 +329,32 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         {
             var relationship = Domain.Npcs.NpcRelationship.Rehydrate(
                 score.NpcKey,
- 
+                score.Score,
+                woundStates: new Dictionary<string, Domain.Npcs.WoundState>(),
+                flags: [],
+                score.TimesMet,
+                score.CurrentDialogueNodeKey);
+            run.RehydrateNpcRelationship(relationship);
+        }
+
+        await _runRepository.AddAsync(run, cancellationToken);
+
+        return new StartRunResponse(RunDto.FromDomain(run));
+    }
+
+    private static EmotionalAffinityMatrixSnapshot ToDomainMatrix(
+        CatalogEmotionalAffinityMatrixSnapshot source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return EmotionalAffinityMatrixSnapshot.Create(
+            source.Version,
+            source.Rules.Select(rule => new EmotionalAffinityRuleSnapshot(
+                EmotionalTypeCode.ParseRequired(rule.AttackingRegister, "Affinity attacking register"),
+                EmotionalTypeCode.ParseRequired(rule.DefendingRegister, "Affinity defending register"),
+                Enum.TryParse<DamageEffectiveness>(rule.Outcome, true, out var outcome)
+                    ? outcome
+                    : throw new InvalidOperationException(
+                        $"Catalog affinity outcome '{rule.Outcome}' is invalid."),
+                rule.Multiplier)));
+    }
+}

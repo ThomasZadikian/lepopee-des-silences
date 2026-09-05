@@ -447,7 +447,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         return new PlayerCharacterStatBlockEntity
         {
-            Id = item.Id.Value,
+            Id = Guid.NewGuid(),
             PlayerCharacterId = character.Id.Value,
             MaxVitality = character.StatBlock.MaxVitality,
             AttackPower = character.StatBlock.AttackPower,

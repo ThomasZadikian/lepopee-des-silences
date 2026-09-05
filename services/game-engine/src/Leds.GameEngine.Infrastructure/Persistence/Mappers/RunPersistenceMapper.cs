@@ -340,4 +340,921 @@ public static class RunPersistenceMapper
             PlayerId = snapshot.PlayerId,
             DisplayName = snapshot.DisplayName,
             CreatedAtUtc = snapshot.CreatedAtUtc.UtcDateTime,
-       
+            Characters = snapshot.Characters
+                .Select((c, index) => ToCharacterSnapshotEntity(c, index))
+                .ToList()
+        };
+
+        return entity;
+    }
+
+    public static RunCharacterSnapshotEntity ToCharacterSnapshotEntity(RunCharacterSnapshot snapshot, int order)
+    {
+        var entityId = Guid.NewGuid();
+
+        var entity = new RunCharacterSnapshotEntity
+        {
+            Id = entityId,
+            CharacterId = snapshot.CharacterId,
+            DefinitionKey = snapshot.DefinitionKey,
+            DisplayName = snapshot.DisplayName,
+            EmotionalRegisterCode = snapshot.EmotionalRegisterCode,
+            CurrentVitality = snapshot.CurrentVitality,
+            CurrentMana = snapshot.CurrentMana,
+            SnapshotOrder = order,
+            EquippedItemKeysCsv = string.Join(';', snapshot.EquippedItemKeys),
+            EquipmentLoadoutJson = JsonSerializer.Serialize(snapshot.EquipmentLoadout),
+            StatBlock = snapshot.StatBlock is not null
+                ? ToStatSnapshotEntity(snapshot.StatBlock, entityId)
+                : null,
+            Skills = snapshot.Skills.Select(s => ToSkillSnapshotEntity(s, entityId)).ToList()
+        };
+
+        return entity;
+    }
+
+    public static RunCharacterStatSnapshotEntity ToStatSnapshotEntity(RunCharacterStatSnapshot stat, Guid characterSnapshotId)
+    {
+        return new RunCharacterStatSnapshotEntity
+        {
+            Id = Guid.NewGuid(),
+            CharacterSnapshotId = characterSnapshotId,
+            MaxVitality = stat.MaxVitality,
+            AttackPower = stat.AttackPower,
+            Defense = stat.Defense,
+            StartingGuard = stat.StartingGuard,
+            Speed = stat.Speed,
+            Initiative = stat.Initiative,
+            Focus = stat.Focus,
+            Mana = stat.Mana,
+            Charge = stat.Charge,
+            MagicAttack = stat.MagicAttack,
+            MagicDefense = stat.MagicDefense,
+            Movement = stat.Movement
+        };
+    }
+
+    public static RunCharacterSkillSnapshotEntity ToSkillSnapshotEntity(RunCharacterSkillSnapshot skill, Guid characterSnapshotId)
+    {
+        return new RunCharacterSkillSnapshotEntity
+        {
+            Id = Guid.NewGuid(),
+            CharacterSnapshotId = characterSnapshotId,
+            SkillDefinitionKey = skill.SkillDefinitionKey,
+            DisplayName = skill.DisplayName,
+            SkillType = skill.SkillType,
+            TargetingMode = skill.TargetingMode,
+            EffectType = skill.EffectType,
+            ManaCost = skill.ManaCost,
+            ChargeCost = skill.ChargeCost,
+            BasePower = skill.BasePower,
+            Category = skill.Category,
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            TacticalRange = skill.TacticalRange,
+            TacticalAreaShape = skill.TacticalAreaShape,
+            RequiresLineOfSight = skill.RequiresLineOfSight,
+            Cooldown = skill.Cooldown,
+            IsUltimate = skill.IsUltimate,
+            EmotionalRegister = skill.EmotionalRegister,
+            TemporarySlot = skill.TemporarySlot
+        };
+    }
+
+    // -----------------------------------------------------------------------
+    // Entity → Domain
+    // -----------------------------------------------------------------------
+
+    public static Run ToDomain(RunEntity entity)
+    {
+        var rooms = entity.Rooms.Select(ToDomain).ToList();
+        var memoryFragments = entity.MemoryFragments
+            .OrderBy(f => f.Order)
+            .Select(f => f.FragmentKey)
+            .ToList();
+        var journalEntries = entity.JournalEntries
+            .OrderBy(e => e.Order)
+            .Select(e => new RunJournalEntry(e.RoomIndex, e.RoomDisplayName, e.Text))
+            .ToList();
+        var activePalaceLaws = entity.ActivePalaceLaws
+            .Select(ToDomain)
+            .ToList();
+
+        Run.RunSnapshotData? snapshot = null;
+        if (entity.SnapshotCurrentHp.HasValue)
+        {
+            var snapshotMemoryFragments = string.IsNullOrEmpty(entity.SnapshotMemoryFragments)
+                ? []
+                : JsonSerializer.Deserialize<string[]>(entity.SnapshotMemoryFragments) ?? [];
+
+            var snapshotLaws = string.IsNullOrEmpty(entity.SnapshotActivePalaceLaws)
+                ? []
+                : DeserializeSnapshotLaws(entity.SnapshotActivePalaceLaws);
+
+            var snapshotRunItemIds = string.IsNullOrEmpty(entity.SnapshotRunItemIds)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SnapshotRunItemIds);
+
+            var snapshotRunModifierIds = string.IsNullOrEmpty(entity.SnapshotRunModifierIds)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SnapshotRunModifierIds);
+
+            snapshot = new Run.RunSnapshotData(
+                entity.SnapshotCurrentHp.Value,
+                entity.SnapshotAttack ?? 0,
+                entity.SnapshotDefense ?? 0,
+                entity.SnapshotSpeed ?? 0,
+                snapshotMemoryFragments,
+                snapshotLaws,
+                snapshotRunItemIds,
+                snapshotRunModifierIds);
+        }
+
+        var emotionalAffinityMatrix = DeserializeEmotionalAffinityMatrix(entity);
+        var activeTacticalCombat = entity.ActiveCombat is not null
+            ? TacticalCombatPersistenceMapper.ToDomain(entity.ActiveCombat, emotionalAffinityMatrix)
+            : null;
+
+        var playerState = entity.PlayerState is not null
+            ? PlayerRuntimeStatePersistenceMapper.ToDomain(entity.PlayerState)
+            : null;
+
+        var runItems = entity.InventoryItems.Select(item => RunItem.Rehydrate(
+            new RunItemId(item.Id),
+            item.DefinitionKey,
+            item.DisplayName,
+            item.Description,
+            Enum.Parse<RunItemType>(item.Type),
+            Enum.Parse<RunItemRarity>(item.Rarity),
+            item.Quantity,
+            Enum.Parse<RunItemEffectType>(item.EffectType),
+            item.EffectAmount,
+            item.CreatedAtUtc,
+            definitionVersion: item.DefinitionVersion,
+            narrativeText: item.NarrativeText,
+            category: item.Category,
+            usageMode: item.UsageMode,
+            lifecycle: item.Lifecycle,
+            maxStack: item.MaxStack,
+            effectSummary: item.EffectSummary,
+            isUsableInCombat: item.IsUsableInCombat,
+            isUsableOutsideCombat: item.IsUsableOutsideCombat,
+            sourceRewardOptionId: item.SourceRewardOptionId,
+            isContainer: item.IsContainer,
+            containerCapacity: item.ContainerCapacity,
+            isLiquid: item.IsLiquid,
+            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey,
+            tacticalRange: item.TacticalRange,
+            tacticalAreaShape: item.TacticalAreaShape,
+            requiresLineOfSight: item.RequiresLineOfSight,
+            groundRoomId: item.GroundRoomId,
+            groundX: item.GroundX,
+            groundY: item.GroundY)).ToList();
+
+        var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
+            new RunModifierId(m.Id),
+            Enum.Parse<RunModifierType>(m.Type),
+            m.Value,
+            Enum.Parse<RunModifierDuration>(m.Duration),
+            m.SourceType,
+            m.SourceKey,
+            m.CreatedAtUtc,
+            m.ConsumedAtUtc,
+            m.ValueMode ?? "Flat",
+            m.StackPolicy ?? "Additive",
+            m.ExpiresAtRoomId,
+            m.ExpiresAtCombatId)).ToList();
+
+        var playerSnapshot = entity.PlayerSnapshot is not null
+            ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)
+            : null;
+
+        var lifecycle = NormalizeLifecycle(entity.Status, entity.Outcome);
+
+       var run = Run.Rehydrate(
+            new RunId(entity.Id),
+            entity.PlayerId,
+            entity.Seed,
+            entity.GeneratorVersion,
+            entity.MarkovMatrixVersion,
+            lifecycle.Status,
+            new RoomId(entity.CurrentRoomId),
+            entity.ActiveCombatId.HasValue ? new CombatId(entity.ActiveCombatId.Value) : null,
+            entity.PendingRewardOfferId.HasValue ? new RewardOfferId(entity.PendingRewardOfferId.Value) : null,
+            entity.MaxHp,
+            entity.CurrentHp,
+            entity.Attack,
+            entity.Defense,
+            entity.Speed,
+            entity.Focus,
+            new DateTimeOffset(entity.StartedAtUtc, TimeSpan.Zero),
+            entity.EndedAtUtc.HasValue ? new DateTimeOffset(entity.EndedAtUtc.Value, TimeSpan.Zero) : null,
+            entity.SavedAtUtc.HasValue ? new DateTimeOffset(entity.SavedAtUtc.Value, TimeSpan.Zero) : null,
+            entity.CurrentRoomIndex,
+            rooms,
+            memoryFragments,
+            activePalaceLaws,
+            entity.PreSuspendStatus is not null ? Enum.Parse<RunStatus>(entity.PreSuspendStatus) : null,
+            snapshot,
+            playerState,
+            runItems,
+            runModifiers,
+            playerSnapshot: playerSnapshot,
+            activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null,
+            runItemCapacity: entity.RunItemCapacity > 0 ? entity.RunItemCapacity : Run.DefaultRunItemCapacity,
+            typedDamageReductions: string.IsNullOrWhiteSpace(entity.TypedDamageReductionsJson)
+                ? null
+                : JsonSerializer.Deserialize<Dictionary<string, int>>(entity.TypedDamageReductionsJson),
+            hitChanceBonusPercent: entity.HitChanceBonusPercent,
+            dotDurationReductionPercent: entity.DotDurationReductionPercent,
+            dotDamageReductionPercent: entity.DotDamageReductionPercent,
+            magicDamageBonusPercent: entity.MagicDamageBonusPercent,
+            magicDamageReductionPercent: entity.MagicDamageReductionPercent,
+            criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
+            guardBonusPercent: entity.GuardBonusPercent,
+            dotDamageBonusPercent: entity.DotDamageBonusPercent,
+            journalEnabled: entity.JournalEnabled,
+            journalEntries: journalEntries,
+            lawDenialEnabled: entity.LawDenialEnabled,
+            lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
+            lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
+            forgottenSkillKey: entity.ForgottenSkillKey,
+            activeTacticalCombat: activeTacticalCombat,
+            emotionalAffinityMatrix: emotionalAffinityMatrix,
+            suspendedSevereLawModifierIds: string.IsNullOrWhiteSpace(entity.SuspendedSevereLawModifierIdsJson)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SuspendedSevereLawModifierIdsJson),
+            outcome: lifecycle.Outcome,
+            revision: entity.Revision,
+            technicalRecoveryState: Enum.TryParse<TechnicalRecoveryState>(entity.TechnicalRecoveryState, out var recoveryState)
+                ? recoveryState
+                : TechnicalRecoveryState.None,
+            reputationGainBonusPercent: entity.ReputationGainBonusPercent,
+            himLitProtectionEnabled: entity.HimLitProtectionEnabled,
+            healingBonusPercent: entity.HealingBonusPercent,
+            caliceInfiniEnabled: entity.CaliceInfiniEnabled,
+            caliceInfiniLastUsedRoomIndex: entity.CaliceInfiniLastUsedRoomIndex,
+            magicAttack: entity.MagicAttack,
+            magicDefense: entity.MagicDefense);
+
+        RehydrateNpcEncounters(run, entity);
+        run.RestoreProgressionMode(
+            Enum.TryParse<RunProgressionMode>(entity.ProgressionMode, out var progressionMode)
+                ? progressionMode
+                : RunProgressionMode.Standard,
+            Enum.TryParse<StoryDifficulty>(entity.StoryDifficulty, out var storyDifficulty)
+                ? storyDifficulty
+                : null,
+            entity.DifficultyLevel,
+            entity.ProgressionMode == RunProgressionMode.Story.ToString()
+                ? new StoryRunOverlay(
+                    entity.StorySequenceKey,
+                    entity.StorySequenceVersion,
+                    entity.StoryStepKey,
+                    entity.StoryCheckpointKey)
+                : null);
+        RehydrateKnowledgeEntries(run, entity);
+        RehydrateAmbientConversationStates(run, entity);
+        return run;
+    }
+
+    private static EmotionalAffinityMatrixSnapshot DeserializeEmotionalAffinityMatrix(RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.EmotionalAffinityMatrixVersion))
+            throw new InvalidOperationException($"Run '{entity.Id}' has no emotional affinity matrix version.");
+        if (string.IsNullOrWhiteSpace(entity.EmotionalAffinityMatrixJson))
+            throw new InvalidOperationException($"Run '{entity.Id}' has no emotional affinity matrix snapshot.");
+
+        var rules = JsonSerializer.Deserialize<EmotionalAffinityRuleSnapshot[]>(entity.EmotionalAffinityMatrixJson)
+            ?? throw new InvalidOperationException($"Run '{entity.Id}' has an invalid emotional affinity matrix snapshot.");
+        return EmotionalAffinityMatrixSnapshot.Create(entity.EmotionalAffinityMatrixVersion, rules);
+    }
+
+    public static Room ToDomain(RoomEntity entity)
+    {
+        var nodes = entity.Nodes.Select(ToDomain).ToList();
+        var roomNpcs = entity.RoomNpcs.Select(ToDomain).ToList();
+        var localRuleStates = entity.LocalRuleStates.Select(ToDomain).ToList();
+
+        var bossProfile = string.IsNullOrWhiteSpace(entity.BossId)
+            ? null
+            : RoomBossProfile.Create(
+                entity.BossId,
+                entity.BossName ?? throw new InvalidOperationException("Boss name is missing."),
+                Enum.Parse<RoomType>(entity.BossRoomType ?? throw new InvalidOperationException("Boss room type is missing.")),
+                entity.BossDangerHint ?? throw new InvalidOperationException("Boss danger hint is missing."),
+                entity.BossEnemyTemplateKey ?? throw new InvalidOperationException("Boss enemy template key is missing."));
+
+        var grid = RoomGrid.Rehydrate(
+            entity.GridWidth,
+            entity.GridHeight,
+            entity.GridMovementBudget,
+            entity.GridMovementBudgetRemaining,
+            entity.GridStartX,
+            entity.GridStartY,
+            entity.GridPartyX,
+            entity.GridPartyY,
+            ParseGridRevealedNodeIds(entity.GridRevealedNodeIdsCsv),
+            ParseGridRevealedCells(entity.GridRevealedCellsCsv),
+            ParseGridElevation(entity.GridElevationCsv, entity.GridWidth, entity.GridHeight),
+            ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray(),
+            ParseGridFloorCells(entity.GridFloorCellsCsv, entity.GridWidth, entity.GridHeight),
+            ParseGridRevealedCells(entity.GridDoorCellsCsv).ToArray(),
+            ParseGridCellStringMap(entity.GridSurfaceOverridesCsv),
+            ParseGridCellStringMap(entity.GridDecorPlacementsCsv));
+
+        var room = Room.Rehydrate(
+            new RoomId(entity.Id),
+            entity.Depth,
+            Enum.Parse<RoomType>(entity.RoomType),
+            string.IsNullOrWhiteSpace(entity.PalaceState)
+                ? PalaceRoomState.Neutral
+                : Enum.Parse<PalaceRoomState>(entity.PalaceState),
+            entity.Theme,
+            bossProfile,
+            Enum.Parse<RoomState>(entity.State),
+            entity.CurrentNodeDepth,
+            nodes,
+            entity.LayoutTemplateKey,
+            entity.LayoutTemplateVersion,
+            grid,
+            entity.CurrentGridNodeId is { } currentGridNodeId ? new NodeId(currentGridNodeId) : null,
+            roomNpcs,
+            localRuleStates);
+
+        if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
+        {
+            room.AttachCatalogBinding(new CatalogRoomBinding(
+                entity.CatalogRoomKey,
+                entity.CatalogDisplayName ?? entity.CatalogRoomKey,
+                entity.CatalogNarrativeText,
+                entity.EnemyPoolKey,
+                entity.RewardPoolKey,
+                entity.LawPoolKey,
+                entity.CursePoolKey,
+                entity.CatalogIsUnique));
+        }
+
+        return room;
+    }
+
+    private static IEnumerable<NodeId> ParseGridRevealedNodeIds(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return [];
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(id => new NodeId(Guid.Parse(id)));
+    }
+
+    private static IEnumerable<(int X, int Y)> ParseGridRevealedCells(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return [];
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair =>
+            {
+                var parts = pair.Split(',');
+                return (X: int.Parse(parts[0]), Y: int.Parse(parts[1]));
+            });
+    }
+
+    /// <summary>Same "x,y" cell format as <see cref="ParseGridRevealedCells"/>, with a third
+    /// comma-separated component carrying the authored surface/decor key for that cell.</summary>
+    private static IReadOnlyDictionary<(int X, int Y), string> ParseGridCellStringMap(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return new Dictionary<(int X, int Y), string>();
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(triple => triple.Split(',', 3))
+            .ToDictionary(parts => (X: int.Parse(parts[0]), Y: int.Parse(parts[1])), parts => parts[2]);
+    }
+
+    /// <summary>Falls back to a flat (all-zero) map for rooms persisted before this field
+    /// existed — matches this project's nullable/defaulted-column migration convention.</summary>
+    /// <summary>
+    /// Empty means "every cell is floor" — how a room persisted before rooms had a shape must
+    /// be read, matching this project's defaulted-column migration convention. A stored mask of
+    /// the wrong length is treated the same way rather than crashing a run mid-load.
+    /// </summary>
+    private static IReadOnlyList<bool> ParseGridFloorCells(string? csv, int width, int height)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return Enumerable.Repeat(true, width * height).ToArray();
+        }
+
+        var parsed = csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(cell => cell == "1")
+            .ToArray();
+
+        return parsed.Length == width * height
+            ? parsed
+            : Enumerable.Repeat(true, width * height).ToArray();
+    }
+
+    /// <summary>Missing/unknown reads back as the enum's default — the "nothing special" value.</summary>
+    private static TEnum ParseEnumOrDefault<TEnum>(string? value) where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(value, out var parsed) ? parsed : default;
+
+    private static IReadOnlyList<int> ParseGridElevation(string? csv, int width, int height)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return new int[width * height];
+        }
+
+        return csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(int.Parse)
+            .ToArray();
+    }
+
+    public static RoomNpc ToDomain(RoomNpcEntity entity)
+    {
+        return RoomNpc.Rehydrate(
+            new RoomNpcId(entity.Id),
+            entity.CatalogNpcKey,
+            entity.OriginX,
+            entity.OriginY,
+            entity.X,
+            entity.Y,
+            Enum.Parse<NpcBehaviorArchetype>(entity.Behavior),
+            Enum.Parse<NpcAwarenessState>(entity.Awareness),
+            entity.AwarenessRadius,
+            ParseGridRevealedCells(entity.WaypointsCsv).ToArray(),
+            entity.WaypointIndex,
+            entity.StepCount);
+    }
+
+    public static LocalRuleState ToDomain(LocalRuleStateEntity entity)
+    {
+        var triggeredThresholds = string.IsNullOrEmpty(entity.TriggeredThresholdsCsv)
+            ? []
+            : entity.TriggeredThresholdsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray();
+
+        return LocalRuleState.Rehydrate(
+            entity.LocalRuleKey, entity.CumulativeSeverity, entity.HasBeenInformed, triggeredThresholds);
+    }
+
+    public static MapNode ToDomain(MapNodeEntity entity)
+    {
+        var parentNodeIds = entity.ParentNodeLinks
+            .Select(link => new NodeId(link.ParentNodeId))
+            .ToList();
+
+        return MapNode.Rehydrate(
+            new NodeId(entity.Id),
+            Enum.Parse<NodeEventType>(entity.EventType),
+            entity.Row,
+            entity.Lane,
+            entity.RiskLevel,
+            entity.RewardProfile,
+            parentNodeIds,
+            entity.IsBoss,
+            Enum.Parse<NodeState>(entity.State),
+            entity.ChosenEventOptionId,
+            string.IsNullOrEmpty(entity.CombatRiskTier) ? null : Enum.Parse<RiskTier>(entity.CombatRiskTier),
+            ParseEnumOrDefault<HiddenState>(entity.HiddenState),
+            ParseEnumOrDefault<DangerTell>(entity.DangerTell),
+            ParseEnumOrDefault<ContactBehavior>(entity.ContactBehavior),
+            entity.ExitDestinationRoomKey,
+            entity.ExitDestinationDisplayName);
+    }
+
+    public static ActivePalaceLaw ToDomain(RunActivePalaceLawEntity entity)
+    {
+        var domains = entity.Domains
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(d => Enum.Parse<PalaceLawDomain>(d.Trim()))
+            .ToArray();
+
+        return ActivePalaceLaw.Rehydrate(
+            new PalaceLawId(entity.LawId),
+            entity.Key,
+            entity.Name,
+            entity.Version,
+            domains,
+            entity.DisplayName,
+            entity.Description,
+            entity.Duration,
+            entity.AppliedAtUtc,
+            entity.ExpiresAtRoomId,
+            entity.ConsumedAtUtc,
+            entity.Rarity,
+            entity.Polarity,
+            entity.IsMajeure,
+            entity.RoomKey,
+            entity.IsCumulExempt);
+    }
+
+    public static ActiveCurse ToDomain(ActiveCurseEntity entity)
+    {
+        return ActiveCurse.Rehydrate(
+            entity.Id,
+            entity.Key,
+            entity.DisplayName,
+            entity.Description,
+            entity.DifficultyDelta,
+            entity.AppliedAtUtc,
+            entity.CurseDefinitionKey,
+            entity.Severity,
+            entity.Duration,
+            entity.ExpiresAtRoomId,
+            entity.ConsumedAtUtc,
+            entity.EffectSetKey);
+    }
+
+    public static ActiveCurseEntity ToActiveCurseEntity(ActiveCurse curse, Guid runId)
+    {
+        return new ActiveCurseEntity
+        {
+            Id = curse.Id,
+            RunId = runId,
+            Key = curse.Key,
+            DisplayName = curse.DisplayName,
+            Description = curse.Description,
+            DifficultyDelta = curse.DifficultyDelta,
+            AppliedAtUtc = curse.AppliedAtUtc,
+            CurseDefinitionKey = curse.CurseDefinitionKey,
+            Severity = curse.Severity,
+            Duration = curse.Duration,
+            ExpiresAtRoomId = curse.ExpiresAtRoomId,
+            ConsumedAtUtc = curse.ConsumedAtUtc,
+            EffectSetKey = curse.EffectSetKey
+        };
+    }
+
+    private static ActivePalaceLaw[] DeserializeSnapshotLaws(string json)
+    {
+        var raw = JsonSerializer.Deserialize<List<SnapshotLawDto>>(json);
+        if (raw is null) return [];
+
+        return raw.Select(l => ActivePalaceLaw.Rehydrate(
+            new PalaceLawId(Guid.Parse(l.Value)),
+            l.Key,
+            l.Name,
+            l.Version,
+            l.Domains.Select(d => Enum.Parse<PalaceLawDomain>(d.Trim())).ToArray()
+        )).ToArray();
+    }
+
+    private static RunPlayerSnapshot ToDomainPlayerSnapshot(RunPlayerSnapshotEntity entity)
+    {
+        var characters = entity.Characters
+           .OrderBy(c => c.SnapshotOrder)
+           .Select(ToDomainCharacterSnapshot)
+           .ToList(); ;
+
+        return RunPlayerSnapshot.Rehydrate(
+            entity.Id,
+            entity.PlayerId,
+            entity.DisplayName,
+            new DateTimeOffset(entity.CreatedAtUtc, TimeSpan.Zero),
+            characters);
+    }
+
+    private static RunCharacterSnapshot ToDomainCharacterSnapshot(RunCharacterSnapshotEntity entity)
+    {
+        if (entity.StatBlock is null)
+        {
+            throw new InvalidOperationException(
+                $"Character snapshot '{entity.Id}' has no persisted stat block.");
+        }
+
+        var statBlock = ToDomainCharacterStatSnapshot(entity.StatBlock);
+
+        var skills = entity.Skills
+            .Select(ToDomainCharacterSkillSnapshot)
+            .ToList();
+
+        return RunCharacterSnapshot.Rehydrate(
+            entity.Id,
+            entity.CharacterId,
+            entity.DefinitionKey,
+            entity.DisplayName,
+            statBlock,
+            skills,
+            string.IsNullOrWhiteSpace(entity.EquippedItemKeysCsv)
+                ? []
+                : entity.EquippedItemKeysCsv.Split(
+                    ';',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            entity.EmotionalRegisterCode,
+            entity.CurrentVitality,
+            entity.CurrentMana,
+            string.IsNullOrWhiteSpace(entity.EquipmentLoadoutJson)
+                ? []
+                : JsonSerializer.Deserialize<RunEquipmentAssignment[]>(entity.EquipmentLoadoutJson) ?? []);
+    }
+
+    private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)
+    {
+        return RunCharacterStatSnapshot.Rehydrate(
+            entity.Id,
+            entity.MaxVitality,
+            entity.AttackPower,
+            entity.Defense,
+            entity.StartingGuard,
+            entity.Speed,
+            entity.Initiative,
+            entity.Focus,
+            entity.Mana,
+            entity.Charge,
+            entity.MagicAttack,
+            entity.MagicDefense,
+            entity.Movement);
+    }
+
+    private static RunCharacterSkillSnapshot ToDomainCharacterSkillSnapshot(RunCharacterSkillSnapshotEntity entity)
+    {
+        return RunCharacterSkillSnapshot.Rehydrate(
+            entity.Id,
+            entity.SkillDefinitionKey,
+            entity.DisplayName,
+            entity.SkillType,
+            entity.TargetingMode,
+            entity.EffectType,
+            entity.ManaCost,
+            entity.ChargeCost,
+            entity.BasePower,
+            entity.Category,
+            entity.BasePowerIsPercentOfMaxVitality,
+            entity.TacticalRange,
+            entity.TacticalAreaShape,
+            entity.RequiresLineOfSight,
+            entity.Cooldown,
+            entity.IsUltimate,
+            entity.EmotionalRegister,
+            entity.TemporarySlot);
+    }
+
+    // -----------------------------------------------------------------------
+    // RewardOffer / RewardOption mapping
+    // -----------------------------------------------------------------------
+
+    public static RewardOfferEntity ToRewardOfferEntity(
+        Domain.Rewards.RewardOffer offer, Guid runId)
+    {
+        return new RewardOfferEntity
+        {
+            Id = offer.Id.Value,
+            RunId = runId,
+            Source = offer.Source.ToString(),
+            State = offer.State.ToString(),
+            DefeatedEnemiesJson = SerializeDefeatedEnemies(offer.DefeatedEnemies),
+            CreatedAtUtc = DateTime.UtcNow,
+            SelectedAtUtc = null,
+            Options = offer.Choices.Select((choice, index) => new RewardOptionEntity
+            {
+                Id = choice.Id.Value,
+                RewardOfferId = offer.Id.Value,
+                RewardType = choice.RewardType.ToString(),
+                Label = choice.Label,
+                Description = choice.Description,
+                PayloadKey = choice.PayloadKey,
+                SourceEnemyKey = choice.SourceEnemyKey,
+                SourceEnemyDisplayName = choice.SourceEnemyDisplayName,
+                PalaceShardCost = choice.PalaceShardCost,
+                HimLitShardCost = choice.HimLitShardCost,
+                IsSelected = false,
+                SelectionOrder = index
+            }).ToList()
+        };
+    }
+
+    public static Domain.Rewards.RewardOffer ToRewardOfferDomain(RewardOfferEntity entity)
+    {
+        var choices = entity.Options
+            .OrderBy(o => o.SelectionOrder)
+            .Select(ToRewardChoiceDomain)
+            .ToList();
+
+        var source = Enum.Parse<RewardSource>(entity.Source);
+        var state = Enum.Parse<RewardOfferState>(entity.State);
+        var selectedChoiceId = entity.Options
+            .FirstOrDefault(o => o.IsSelected)
+            ?.Id is Guid selectedId
+            ? new RewardChoiceId(selectedId)
+            : (RewardChoiceId?)null;
+
+        return Domain.Rewards.RewardOffer.Rehydrate(
+            new RewardOfferId(entity.Id),
+            source,
+            choices,
+            state,
+            selectedChoiceId,
+            DeserializeDefeatedEnemies(entity.DefeatedEnemiesJson));
+    }
+
+    private sealed record DefeatedEnemyLootEntrySnapshot(
+        string ItemKey,
+        string ItemDisplayName,
+        string Rarity,
+        int DropPercent);
+
+    private sealed record DefeatedEnemySummarySnapshot(
+        string EnemyKey,
+        string DisplayName,
+        string Description,
+        int Count,
+        List<DefeatedEnemyLootEntrySnapshot> LootEntries);
+
+    private static string? SerializeDefeatedEnemies(IReadOnlyCollection<Domain.Rewards.DefeatedEnemySummary> defeatedEnemies)
+    {
+        if (defeatedEnemies.Count == 0)
+        {
+            return null;
+        }
+
+        var snapshots = defeatedEnemies.Select(e => new DefeatedEnemySummarySnapshot(
+            e.EnemyKey,
+            e.DisplayName,
+            e.Description,
+            e.Count,
+            e.LootEntries.Select(l => new DefeatedEnemyLootEntrySnapshot(l.ItemKey, l.ItemDisplayName, l.Rarity, l.DropPercent)).ToList())).ToList();
+
+        return JsonSerializer.Serialize(snapshots);
+    }
+
+    private static List<Domain.Rewards.DefeatedEnemySummary> DeserializeDefeatedEnemies(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<DefeatedEnemySummarySnapshot>>(json) ?? [];
+
+        return snapshots.Select(s => new Domain.Rewards.DefeatedEnemySummary(
+            s.EnemyKey,
+            s.DisplayName,
+            s.Description,
+            s.Count,
+            s.LootEntries.Select(l => new Domain.Rewards.DefeatedEnemyLootEntry(l.ItemKey, l.ItemDisplayName, l.Rarity, l.DropPercent)).ToList())).ToList();
+    }
+
+    public static RewardChoice ToRewardChoiceDomain(RewardOptionEntity entity)
+    {
+        return RewardChoice.Rehydrate(
+            new RewardChoiceId(entity.Id),
+            Enum.Parse<RewardType>(entity.RewardType),
+            entity.Label,
+            entity.Description,
+            entity.PayloadKey ?? string.Empty,
+            entity.SourceEnemyKey,
+            entity.SourceEnemyDisplayName,
+            entity.PalaceShardCost,
+            entity.HimLitShardCost);
+    }
+    private static readonly JsonSerializerOptions NpcJsonOptions = new()
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private sealed record NpcMemoryEntrySnapshot(string KnowledgeKey, MemoryScope Scope, MemoryProvenance Provenance);
+
+    private sealed record NpcRelationshipSnapshot(
+        string NpcKey,
+        int RelationshipScore,
+        Dictionary<string, WoundState> WoundStates,
+        List<string> Flags,
+        int TimesMet,
+        string? CurrentDialogueNodeKey,
+        Dictionary<RelationshipAxis, int> AxisScores,
+        List<NpcMemoryEntrySnapshot> Memories);
+
+    private static string SerializeNpcRelationships(IReadOnlyCollection<NpcRelationship> relationships)
+    {
+        var snapshots = relationships.Select(r => new NpcRelationshipSnapshot(
+            r.NpcKey,
+            r.RelationshipScore,
+            r.WoundStates.ToDictionary(kv => kv.Key, kv => kv.Value),
+            r.Flags.ToList(),
+            r.TimesMet,
+            r.CurrentDialogueNodeKey,
+            r.AxisScores.ToDictionary(kv => kv.Key, kv => kv.Value),
+            r.Memories.Select(m => new NpcMemoryEntrySnapshot(m.KnowledgeKey, m.Scope, m.Provenance)).ToList())).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateNpcEncounters(Run run, RunEntity entity)
+    {
+        if (!string.IsNullOrWhiteSpace(entity.NpcRelationshipsJson))
+        {
+            var snapshots = JsonSerializer.Deserialize<List<NpcRelationshipSnapshot>>(
+                entity.NpcRelationshipsJson, NpcJsonOptions) ?? [];
+
+            foreach (var snapshot in snapshots)
+            {
+                run.RehydrateNpcRelationship(NpcRelationship.Rehydrate(
+                    snapshot.NpcKey,
+                    snapshot.RelationshipScore,
+                    snapshot.WoundStates,
+                    snapshot.Flags,
+                    snapshot.TimesMet,
+                    snapshot.CurrentDialogueNodeKey,
+                    snapshot.AxisScores ?? [],
+                    (snapshot.Memories ?? []).Select(m => NpcMemoryEntry.Create(m.KnowledgeKey, m.Scope, m.Provenance))));
+            }
+        }
+
+        run.RehydrateActiveNpcKey(entity.ActiveNpcKey);
+    }
+
+    private sealed record KnowledgeVersionSnapshot(string Value, MemoryProvenance Provenance);
+
+    private sealed record KnowledgeEntrySnapshot(string Key, KnowledgeCategory Category, List<KnowledgeVersionSnapshot> Versions);
+
+    private static string SerializeKnowledgeEntries(IReadOnlyCollection<KnowledgeEntry> entries)
+    {
+        var snapshots = entries.Select(e => new KnowledgeEntrySnapshot(
+            e.Key,
+            e.Category,
+            e.Versions.Select(v => new KnowledgeVersionSnapshot(v.Value, v.Provenance)).ToList())).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateKnowledgeEntries(Run run, RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.KnowledgeEntriesJson))
+        {
+            return;
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<KnowledgeEntrySnapshot>>(
+            entity.KnowledgeEntriesJson, NpcJsonOptions) ?? [];
+
+        foreach (var snapshot in snapshots)
+        {
+            var versions = snapshot.Versions.Select(v => KnowledgeVersion.Create(v.Value, v.Provenance));
+            run.RehydrateKnowledgeEntry(KnowledgeEntry.Rehydrate(snapshot.Key, snapshot.Category, versions));
+        }
+    }
+
+    private sealed record AmbientConversationStateSnapshot(
+        string AmbientConversationKey, int? LastTriggeredStep, int TimesTriggered);
+
+    private static string SerializeAmbientConversationStates(IReadOnlyCollection<AmbientConversationState> states)
+    {
+        var snapshots = states.Select(s => new AmbientConversationStateSnapshot(
+            s.AmbientConversationKey, s.LastTriggeredStep, s.TimesTriggered)).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateAmbientConversationStates(Run run, RunEntity entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity.AmbientConversationStatesJson))
+        {
+            return;
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<AmbientConversationStateSnapshot>>(
+            entity.AmbientConversationStatesJson, NpcJsonOptions) ?? [];
+
+        foreach (var snapshot in snapshots)
+        {
+            run.RehydrateAmbientConversationState(AmbientConversationState.Rehydrate(
+                snapshot.AmbientConversationKey, snapshot.LastTriggeredStep, snapshot.TimesTriggered));
+        }
+    }
+
+    private sealed record SnapshotLawDto(
+        string Value,
+        string Key,
+        string Name,
+        string Version,
+        string[] Domains);
+
+    private static (RunStatus Status, RunOutcome? Outcome) NormalizeLifecycle(
+        string persistedStatus,
+        string? persistedOutcome)
+    {
+        if (Enum.TryParse<RunOutcome>(persistedOutcome, ignoreCase: true, out var explicitOutcome))
+            return (RunStatus.Resolved, explicitOutcome);
+
+        return persistedStatus switch
+        {
+            nameof(RunStatus.Completed) => (RunStatus.Resolved, RunOutcome.Success),
+            nameof(RunStatus.Failed) => (RunStatus.Resolved, RunOutcome.Defeat),
+            nameof(RunStatus.Abandoned) => (RunStatus.Resolved, RunOutcome.Abandon),
+            nameof(RunStatus.Created) or nameof(RunStatus.RoomResolved) or
+                nameof(RunStatus.BossReached) or nameof(RunStatus.Interlude)
+                => (RunStatus.Active, null),
+            _ when Enum.TryParse<RunStatus>(persistedStatus, ignoreCase: true, out var status)
+                => (status, null),
+            _ => throw new InvalidOperationException(
+                $"Persisted run status '{persistedStatus}' is not supported.")
+        };
+    }
+
+}
