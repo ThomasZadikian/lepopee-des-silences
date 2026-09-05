@@ -28,9 +28,7 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.Rarity,
                 d.EffectRunType,
                 d.EffectValue,
-                CatalogRunItemMapper.TryMapType(d.Category, out var runItemType)
-                    ? CatalogRunItemMapper.MapEquipSlot(runItemType, d.UsageMode)
-                    : null,
+                d.AllowedSlots is { Count: 1 } ? d.AllowedSlots.Single() : null,
                 d.ReadablePages,
                 (d.EquipmentEffects ?? []).Select(effect => new ItemEquipmentEffectView(
                     effect.Kind,
@@ -52,6 +50,9 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.BasicAttackPower,
                 d.BasicAttackCategory,
                 d.PalaceShardCost,
-                d.HimLitShardCost)).ToArray());
+                d.HimLitShardCost,
+                d.AllowedSlots ?? [],
+                d.UniqueEquipGroup,
+                d.ProficiencyTags ?? [])).ToArray());
     }
 }

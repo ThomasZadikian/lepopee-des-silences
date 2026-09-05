@@ -86,11 +86,31 @@ public sealed partial class CatalogSeedRunner
         item.BasicAttackCategory = definition.BasicAttackCategory;
         item.Price = 0;
         item.EquipmentEffectsJson = equipmentEffectsJson;
+        var allowedSlots = ResolvePalaceItemAllowedSlots(definition.Key, definition.Category);
+        EquipmentDefinitionMetadata.Validate(allowedSlots, null, []);
+        item.AllowedSlotsJson = JsonSerializer.Serialize(allowedSlots, J);
+        item.UniqueEquipGroup = null;
+        item.ProficiencyTagsJson = "[]";
         item.IsContainer = false;
         item.ContainerCapacity = null;
         item.IsLiquid = false;
         item.ReadablePagesJson = "[]";
         item.UpdatedAtUtc = _now;
+    }
+
+    private static IReadOnlyList<string> ResolvePalaceItemAllowedSlots(string key, string category)
+    {
+        if (category == "Weapon") return ["MainWeapon"];
+        if (category == "Relic") return ["Relic"];
+        if (category != "Equipment") return [];
+
+        return key switch
+        {
+            "item.gants-service-muet" or "item.gantelet-trempe" => ["Hand"],
+            "item.epingle-protocole" => ["Chest"],
+            "item.couronne-sel" or "item.cornes-ivoire" => ["Head"],
+            _ => ["Relic"]
+        };
     }
 
     private static IReadOnlyCollection<ItemEquipmentEffect> DeriveAlwaysOnEquipmentEffects(

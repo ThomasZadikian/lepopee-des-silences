@@ -68,6 +68,42 @@ public sealed class PlayerProfile
         return character;
     }
 
+    public PlayerCharacter CreatePlayableCharacter(
+        string displayName,
+        ArchetypeDefinitionSnapshot archetype,
+        DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(archetype);
+        archetype.Validate();
+
+        var equipped = archetype.StarterEquippedSkills.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var skills = archetype.StarterKnownSkills
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(key => PlayerCharacterSkill.Create(key, now, "archetype", equipped.Contains(key)))
+            .ToArray();
+        if (skills.Length == 0)
+            throw new DomainException("An archetype must declare at least one starter skill.");
+
+        var character = PlayerCharacter.CreatePlayable(
+            "character.player.self", displayName, archetype.Key, archetype.BaseStats, skills);
+
+        foreach (var starter in archetype.StarterEquipment)
+        {
+            if (string.IsNullOrWhiteSpace(starter.ItemDefinitionKey))
+                throw new DomainException("Starter item definition key is required.");
+            var id = OwnedItemInstanceId.New();
+            var owned = PlayerPermanentItem.Create(id, starter.ItemDefinitionKey, null, now);
+            _permanentItems.Add(owned);
+            var item = PlayerCharacterItem.Rehydrate(id, starter.ItemDefinitionKey, now, "archetype", null);
+            character.AddItem(item);
+            character.EquipItem(id, starter.Position);
+        }
+
+        Roster.AddCharacter(character);
+        Touch(now);
+        return character;
+    }
+
     /// <summary>
     /// Irreversibly replaces the account-facing alias with an anonymous identifier while
     /// retaining non-identifying progression required for referential and gameplay integrity.
@@ -101,7 +137,11 @@ public sealed class PlayerProfile
     {
         foreach (var itemDefinitionKey in itemDefinitionKeys)
         {
-            if (HasPermanentItem(itemDefinitionKey))
+            // Delivery retries for the same run remain idempotent, while a later run may
+            // legitimately award another instance of the same definition (for two rings,
+            // consumable containers, etc.).
+            if (_permanentItems.Any(item => item.SourceRunId == sourceRunId
+                && string.Equals(item.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             _permanentItems.Add(PlayerPermanentItem.Create(itemDefinitionKey, sourceRunId, now));
@@ -142,6 +182,48 @@ public sealed class PlayerProfile
         var character = Roster.GetRequired(characterId);
         character.AddItem(PlayerCharacterItem.Create(itemKey, now, slot: slot));
         character.EquipItem(itemKey, slot);
+        Touch(now);
+    }
+
+    public void EquipItem(
+        PlayerCharacterId characterId,
+        OwnedItemInstanceId itemInstanceId,
+        EquipmentPosition targetPosition,
+        IReadOnlyCollection<EquipmentSlotKind> allowedSlots,
+        DateTimeOffset now)
+    {
+        var owned = _permanentItems.FirstOrDefault(item => item.Id == itemInstanceId)
+            ?? throw new DomainException($"Item instance '{itemInstanceId}' is not in the shared inventory.");
+        if (!allowedSlots.Any(slot => EquipmentPositionCompatibility.Accepts(targetPosition, slot)))
+            throw new DomainException(
+                $"Item '{owned.ItemDefinitionKey}' cannot be equipped in position '{targetPosition}'.");
+
+        var target = Roster.GetRequired(characterId);
+        var attachedElsewhere = Roster.Characters.FirstOrDefault(character =>
+            character.Id != characterId && character.Items.Any(item => item.Id == itemInstanceId));
+        if (attachedElsewhere is not null)
+            throw new DomainException($"Item instance '{itemInstanceId}' is already assigned to another character.");
+
+        var characterItem = target.Items.FirstOrDefault(item => item.Id == itemInstanceId);
+        if (characterItem is null)
+        {
+            characterItem = PlayerCharacterItem.Rehydrate(
+                owned.Id, owned.ItemDefinitionKey, owned.AcquiredAtUtc, "shared-inventory", null);
+            target.AddItem(characterItem);
+        }
+
+        target.EquipItem(itemInstanceId, targetPosition);
+        Touch(now);
+    }
+
+    public void UnequipItem(
+        PlayerCharacterId characterId,
+        OwnedItemInstanceId itemInstanceId,
+        DateTimeOffset now)
+    {
+        var character = Roster.GetRequired(characterId);
+        character.UnequipItem(itemInstanceId);
+        character.DetachItem(itemInstanceId);
         Touch(now);
     }
 

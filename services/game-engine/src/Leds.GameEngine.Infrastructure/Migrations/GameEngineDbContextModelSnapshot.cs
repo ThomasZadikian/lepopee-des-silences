@@ -2122,6 +2122,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("equipped_item_keys_csv");
 
+                    b.Property<string>("EquipmentLoadoutJson")
+                        .HasColumnType("text")
+                        .HasColumnName("equipment_loadout_json");
+
                     b.Property<Guid>("PlayerSnapshotId")
                         .HasColumnType("uuid")
                         .HasColumnName("player_snapshot_id");

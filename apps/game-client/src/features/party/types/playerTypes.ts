@@ -37,7 +37,9 @@ export type PlayerCharacterItemView = {
   acquiredAtUtc: string;
   source: string | null;
   isEquipped: boolean;
-  slot?: 'Weapon' | 'Accessory' | 'Relic';
+  slot?: string;
+  itemInstanceId?: string;
+  position?: EquipmentPosition | null;
 };
 
 export type PlayerCharacterView = {
@@ -50,6 +52,8 @@ export type PlayerCharacterView = {
   items: PlayerCharacterItemView[];
   maxEquippedItems: number;
   characterType: 'Standard' | 'Companion';
+  archetypeKey?: string | null;
+  baseStats?: PlayerCharacterStatsView | null;
 };
 
 export type PlayerProgressionView = {
@@ -62,6 +66,34 @@ export type PlayerPermanentItemView = {
   sourceRunId: string | null;
   acquiredAtUtc: string;
   containedLiquidDefinitionKey?: string | null;
+  itemInstanceId?: string;
+};
+
+export type EquipmentPosition =
+  | 'Head' | 'Neck' | 'Shoulders' | 'Cape' | 'Chest' | 'Wrist' | 'Hand'
+  | 'Waist' | 'Legs' | 'Feet' | 'Ring1' | 'Ring2' | 'Relic' | 'MainWeapon' | 'OffWeapon';
+
+export type EquipmentStatsView = PlayerCharacterStatsView & { movement: number };
+
+export type EquipmentChangePlanView = {
+  targetPosition: EquipmentPosition;
+  candidateItem: { itemInstanceId: string; definitionKey: string; displayName: string };
+  currentlyEquippedItem: { itemInstanceId: string; definitionKey: string; displayName: string } | null;
+  canEquip: boolean;
+  blockingReasons: string[];
+  currentEffectiveStats: EquipmentStatsView;
+  projectedEffectiveStats: EquipmentStatsView;
+  statDeltas: Array<{ stat: string; current: number; projected: number; delta: number }>;
+  currentTemporarySkills: string[];
+  projectedTemporarySkills: string[];
+  gainedTemporarySkills: string[];
+  lostTemporarySkills: string[];
+  currentVitality: number;
+  projectedCurrentVitality: number;
+  currentMana: number;
+  projectedCurrentMana: number;
+  allowedSlots: string[];
+  proficiencyTags: string[];
 };
 
 export type PalaceProgressView = {

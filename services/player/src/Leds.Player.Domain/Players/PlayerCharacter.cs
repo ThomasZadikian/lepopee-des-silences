@@ -77,6 +77,9 @@ public sealed class PlayerCharacter
         .Where(i => i.IsEquipped)
         .Select(i => i.ItemDefinitionKey);
     public int EquippedItemCount => _items.Count(i => i.IsEquipped);
+    public IReadOnlyDictionary<EquipmentPosition, OwnedItemInstanceId> EquipmentLoadout => _items
+        .Where(item => item.Position.HasValue)
+        .ToDictionary(item => item.Position!.Value, item => item.Id);
 
     public static PlayerCharacter Create(
         string definitionKey,
@@ -256,10 +259,32 @@ public sealed class PlayerCharacter
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        if (_items.Any(i => string.Equals(i.ItemDefinitionKey, item.ItemDefinitionKey, StringComparison.OrdinalIgnoreCase)))
+        if (_items.Any(i => i.Id == item.Id))
             return;
 
         _items.Add(item);
+    }
+
+    public void EquipItem(OwnedItemInstanceId itemInstanceId, EquipmentPosition targetPosition)
+    {
+        var item = FindItem(itemInstanceId);
+        if (item.Position == targetPosition)
+            return;
+        if (item.IsEquipped)
+            throw new DomainException($"Item instance '{itemInstanceId}' is already equipped in {item.Position}.");
+
+        // Build and validate the prospective mapping before mutating either item.
+        var occupied = _items.SingleOrDefault(candidate => candidate.Position == targetPosition);
+        var prospectiveIds = _items
+            .Where(candidate => candidate.IsEquipped && candidate.Id != occupied?.Id)
+            .Select(candidate => candidate.Id)
+            .Append(item.Id)
+            .ToArray();
+        if (prospectiveIds.Distinct().Count() != prospectiveIds.Length)
+            throw new DomainException("An item instance cannot occupy more than one equipment position.");
+
+        occupied?.Unequip();
+        item.Equip(targetPosition);
     }
 
     public void EquipItem(string itemKey, EquipmentSlotKind slot)
@@ -281,7 +306,7 @@ public sealed class PlayerCharacter
             throw new DomainException(
                 $"Cannot equip more than {slotLimit} item(s) in slot {slot}.");
 
-        item.Equip(slot);
+        item.Equip(NextLegacyPosition(slot));
     }
 
     public void EquipItem(string itemKey) => EquipItem(itemKey, EquipmentSlotKind.Relic);
@@ -291,12 +316,40 @@ public sealed class PlayerCharacter
         FindItem(itemKey).Unequip();
     }
 
+    public void UnequipItem(OwnedItemInstanceId itemInstanceId)
+    {
+        FindItem(itemInstanceId).Unequip();
+    }
+
+    public void DetachItem(OwnedItemInstanceId itemInstanceId)
+    {
+        var item = FindItem(itemInstanceId);
+        if (item.IsEquipped)
+            throw new DomainException($"Item instance '{itemInstanceId}' must be unequipped before it can be detached.");
+        _items.Remove(item);
+    }
+
     private PlayerCharacterItem FindItem(string itemKey)
     {
         var item = _items.FirstOrDefault(i => string.Equals(i.ItemDefinitionKey, itemKey, StringComparison.OrdinalIgnoreCase));
 
         return item ?? throw new DomainException($"Item '{itemKey}' is not owned by this character.");
     }
+
+    private PlayerCharacterItem FindItem(OwnedItemInstanceId itemInstanceId)
+    {
+        var item = _items.FirstOrDefault(candidate => candidate.Id == itemInstanceId);
+        return item ?? throw new DomainException($"Item instance '{itemInstanceId}' is not owned by this character.");
+    }
+
+    private EquipmentPosition NextLegacyPosition(EquipmentSlotKind slot) => slot switch
+    {
+        EquipmentSlotKind.MainWeapon or EquipmentSlotKind.Weapon => EquipmentPosition.MainWeapon,
+        EquipmentSlotKind.Ring or EquipmentSlotKind.Accessory => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Relic => new[] { EquipmentPosition.Relic, EquipmentPosition.Ring1, EquipmentPosition.Ring2 }
+            .First(position => _items.All(item => item.Position != position)),
+        _ => Enum.Parse<EquipmentPosition>(slot.ToString())
+    };
 
     /// <summary>
     /// Rehydrates a player character from a trusted persistence snapshot.

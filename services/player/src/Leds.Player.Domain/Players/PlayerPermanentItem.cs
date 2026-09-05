@@ -8,15 +8,17 @@ namespace Leds.Player.Domain.Players;
 public sealed class PlayerPermanentItem
 {
     private PlayerPermanentItem(
-        string itemDefinitionKey, Guid? sourceRunId, DateTimeOffset acquiredAtUtc,
+        OwnedItemInstanceId id, string itemDefinitionKey, Guid? sourceRunId, DateTimeOffset acquiredAtUtc,
         string? containedLiquidDefinitionKey = null)
     {
+        Id = id;
         ItemDefinitionKey = itemDefinitionKey;
         SourceRunId = sourceRunId;
         AcquiredAtUtc = acquiredAtUtc;
         ContainedLiquidDefinitionKey = containedLiquidDefinitionKey;
     }
 
+    public OwnedItemInstanceId Id { get; }
     public string ItemDefinitionKey { get; }
     public Guid? SourceRunId { get; }
     public DateTimeOffset AcquiredAtUtc { get; }
@@ -27,13 +29,23 @@ public sealed class PlayerPermanentItem
         if (string.IsNullOrWhiteSpace(itemDefinitionKey))
             throw new DomainException("Item definition key is required.");
 
-        return new PlayerPermanentItem(itemDefinitionKey.Trim(), sourceRunId, acquiredAtUtc);
+        return new PlayerPermanentItem(OwnedItemInstanceId.New(), itemDefinitionKey.Trim(), sourceRunId, acquiredAtUtc);
+    }
+
+    public static PlayerPermanentItem Create(
+        OwnedItemInstanceId id, string itemDefinitionKey, Guid? sourceRunId, DateTimeOffset acquiredAtUtc)
+    {
+        if (id.Value == Guid.Empty)
+            throw new DomainException("Owned item instance id is required.");
+        if (string.IsNullOrWhiteSpace(itemDefinitionKey))
+            throw new DomainException("Item definition key is required.");
+        return new PlayerPermanentItem(id, itemDefinitionKey.Trim(), sourceRunId, acquiredAtUtc);
     }
 
     public static PlayerPermanentItem Rehydrate(
-        string itemDefinitionKey, Guid? sourceRunId, DateTimeOffset acquiredAtUtc,
+        OwnedItemInstanceId id, string itemDefinitionKey, Guid? sourceRunId, DateTimeOffset acquiredAtUtc,
         string? containedLiquidDefinitionKey)
-        => new(itemDefinitionKey, sourceRunId, acquiredAtUtc, containedLiquidDefinitionKey);
+        => new(id, itemDefinitionKey, sourceRunId, acquiredAtUtc, containedLiquidDefinitionKey);
 
     // Caller (application layer) is responsible for validating against the catalog that this
     // item is actually a container before calling — this domain object has no catalog access.

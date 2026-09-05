@@ -5,24 +5,33 @@ namespace Leds.Player.Domain.Players;
 public sealed class PlayerCharacterItem
 {
     private PlayerCharacterItem(
+        OwnedItemInstanceId id,
         string itemDefinitionKey,
         DateTimeOffset acquiredAtUtc,
         string? source,
-        bool isEquipped,
-        EquipmentSlotKind slot)
+        EquipmentPosition? position)
     {
+        Id = id;
         ItemDefinitionKey = itemDefinitionKey;
         AcquiredAtUtc = acquiredAtUtc;
         Source = source;
-        IsEquipped = isEquipped;
-        Slot = slot;
+        Position = position;
     }
 
+    public OwnedItemInstanceId Id { get; }
     public string ItemDefinitionKey { get; }
     public DateTimeOffset AcquiredAtUtc { get; }
     public string? Source { get; }
-    public bool IsEquipped { get; private set; }
-    public EquipmentSlotKind Slot { get; private set; }
+    public bool IsEquipped => Position.HasValue;
+    public EquipmentPosition? Position { get; private set; }
+
+    [Obsolete("Use Position. Slot describes definition compatibility, not loadout placement.")]
+    public EquipmentSlotKind Slot => Position switch
+    {
+        EquipmentPosition.MainWeapon => EquipmentSlotKind.Weapon,
+        EquipmentPosition.Ring1 or EquipmentPosition.Ring2 => EquipmentSlotKind.Accessory,
+        _ => EquipmentSlotKind.Relic
+    };
 
     public static PlayerCharacterItem Create(
         string itemDefinitionKey,
@@ -35,18 +44,52 @@ public sealed class PlayerCharacterItem
             throw new DomainException("Item definition key is required.");
 
         return new PlayerCharacterItem(
+            OwnedItemInstanceId.New(),
             itemDefinitionKey.Trim(),
             acquiredAtUtc,
             string.IsNullOrWhiteSpace(source) ? null : source.Trim(),
-            isEquipped,
-            slot);
+            isEquipped ? LegacyPosition(slot) : null);
     }
 
-    internal void Equip(EquipmentSlotKind slot)
+    public static PlayerCharacterItem Rehydrate(
+        OwnedItemInstanceId id,
+        string itemDefinitionKey,
+        DateTimeOffset acquiredAtUtc,
+        string? source,
+        EquipmentPosition? position)
     {
-        Slot = slot;
-        IsEquipped = true;
+        if (id.Value == Guid.Empty)
+            throw new DomainException("Owned item instance id is required.");
+        if (string.IsNullOrWhiteSpace(itemDefinitionKey))
+            throw new DomainException("Item definition key is required.");
+
+        return new PlayerCharacterItem(
+            id,
+            itemDefinitionKey.Trim(),
+            acquiredAtUtc,
+            string.IsNullOrWhiteSpace(source) ? null : source.Trim(),
+            position);
     }
 
-    internal void Unequip() => IsEquipped = false;
+    internal void Equip(EquipmentPosition position) => Position = position;
+
+    internal void Unequip() => Position = null;
+
+    private static EquipmentPosition LegacyPosition(EquipmentSlotKind slot) => slot switch
+    {
+        EquipmentSlotKind.MainWeapon or EquipmentSlotKind.Weapon => EquipmentPosition.MainWeapon,
+        EquipmentSlotKind.Ring or EquipmentSlotKind.Accessory => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Head => EquipmentPosition.Head,
+        EquipmentSlotKind.Neck => EquipmentPosition.Neck,
+        EquipmentSlotKind.Shoulders => EquipmentPosition.Shoulders,
+        EquipmentSlotKind.Cape => EquipmentPosition.Cape,
+        EquipmentSlotKind.Chest => EquipmentPosition.Chest,
+        EquipmentSlotKind.Wrist => EquipmentPosition.Wrist,
+        EquipmentSlotKind.Hand => EquipmentPosition.Hand,
+        EquipmentSlotKind.Waist => EquipmentPosition.Waist,
+        EquipmentSlotKind.Legs => EquipmentPosition.Legs,
+        EquipmentSlotKind.Feet => EquipmentPosition.Feet,
+        EquipmentSlotKind.OffWeapon => EquipmentPosition.OffWeapon,
+        _ => EquipmentPosition.Relic
+    };
 }

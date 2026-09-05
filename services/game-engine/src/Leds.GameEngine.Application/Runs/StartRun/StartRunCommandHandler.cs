@@ -309,7 +309,11 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                     $"Catalog character '{character.DefinitionKey}' emotional register").ToString(),
                 statBlock: statSnapshot,
                 skills: skillSnapshots,
-                equippedItemKeys: character.EquippedItems));
+                equippedItemKeys: character.EquippedItems,
+                equipmentLoadout: (character.EquipmentLoadout ?? [])
+                    .Select(item => new RunEquipmentAssignment(
+                        Guid.NewGuid(), item.ItemInstanceId, item.ItemDefinitionKey, item.Position))
+                    .ToArray()));
         }
 
         var playerSnapshot = RunPlayerSnapshot.Create(

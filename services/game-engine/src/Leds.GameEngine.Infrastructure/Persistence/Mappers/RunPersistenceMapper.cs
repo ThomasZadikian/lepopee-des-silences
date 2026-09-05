@@ -363,6 +363,7 @@ public static class RunPersistenceMapper
             CurrentMana = snapshot.CurrentMana,
             SnapshotOrder = order,
             EquippedItemKeysCsv = string.Join(';', snapshot.EquippedItemKeys),
+            EquipmentLoadoutJson = JsonSerializer.Serialize(snapshot.EquipmentLoadout),
             StatBlock = snapshot.StatBlock is not null
                 ? ToStatSnapshotEntity(snapshot.StatBlock, entityId)
                 : null,
@@ -947,7 +948,10 @@ public static class RunPersistenceMapper
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             entity.EmotionalRegisterCode,
             entity.CurrentVitality,
-            entity.CurrentMana);
+            entity.CurrentMana,
+            string.IsNullOrWhiteSpace(entity.EquipmentLoadoutJson)
+                ? []
+                : JsonSerializer.Deserialize<RunEquipmentAssignment[]>(entity.EquipmentLoadoutJson) ?? []);
     }
 
     private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)

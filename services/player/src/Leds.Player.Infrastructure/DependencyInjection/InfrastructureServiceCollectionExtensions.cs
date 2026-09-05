@@ -2,9 +2,11 @@ using Leds.Player.Application.Abstractions;
 using Leds.Player.Infrastructure.Persistence;
 using Leds.Player.Infrastructure.Persistence.Repositories;
 using Leds.Player.Infrastructure.Security;
+using Leds.Player.Infrastructure.Catalog;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Leds.Player.Infrastructure.DependencyInjection;
 
@@ -16,6 +18,19 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("PlayerDb")));
 
         services.AddScoped<IPlayerProfileRepository, EfPlayerProfileRepository>();
+        services.Configure<CatalogGatewayOptions>(configuration.GetSection(CatalogGatewayOptions.SectionName));
+        services.AddHttpClient<IArchetypeDefinitionGateway, HttpArchetypeDefinitionGateway>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<CatalogGatewayOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = options.Timeout;
+        });
+        services.AddHttpClient<IEquipmentDefinitionGateway, HttpEquipmentDefinitionGateway>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<CatalogGatewayOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = options.Timeout;
+        });
         services.AddScoped<IProcessedIntegrationEventRepository, EfProcessedIntegrationEventRepository>();
         services.AddScoped<IAccountStore, EfAccountStore>();
         services.AddScoped<IAccountPrivacyMaintenanceStore, EfAccountPrivacyMaintenanceStore>();

@@ -164,16 +164,16 @@ public sealed class PlayerRuntimeStateCoverageTests
     }
 
     [Fact]
-    public void ReplaceEffectiveStats_ShouldValidateAndTopUpResources()
+    public void ReplaceEffectiveStats_ShouldValidateAndPreserveCurrentResources()
     {
         var state = PlayerRuntimeState.Create(100, [Skill()], currentVitality: 20, mana: 5, maxMana: 10);
         FluentActions.Invoking(() => state.ReplaceEffectiveStats(0, 10, 1)).Should().Throw<DomainException>();
 
         state.ReplaceEffectiveStats(120, 30, 4);
         state.MaxVitality.Should().Be(120);
-        state.CurrentVitality.Should().Be(120);
+        state.CurrentVitality.Should().Be(20);
         state.MaxMana.Should().Be(30);
-        state.Mana.Should().Be(30);
+        state.Mana.Should().Be(5);
         state.Charge.Should().Be(4);
     }
 

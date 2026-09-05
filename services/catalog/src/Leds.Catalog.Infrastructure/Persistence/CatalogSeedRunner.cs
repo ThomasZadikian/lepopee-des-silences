@@ -87,6 +87,7 @@ public sealed partial class CatalogSeedRunner
         await SeedCanonItemsAsync(cancellationToken);
         await SeedPalaceItemsAsync(cancellationToken);
         await SeedCanonicalWeaponsAsync(cancellationToken);
+        await SeedArchetypesAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await PruneCanonLawPlaceholdersAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
@@ -4691,7 +4692,9 @@ public sealed partial class CatalogSeedRunner
         bool usableInCombat, int effectValue, CancellationToken cancellationToken,
         IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
         bool isContainer = false, int? containerCapacity = null, bool isLiquid = false,
-        string? effectRunType = null, IReadOnlyList<string>? readablePages = null)
+        string? effectRunType = null, IReadOnlyList<string>? readablePages = null,
+        IReadOnlyList<string>? allowedSlots = null, string? uniqueEquipGroup = null,
+        IReadOnlyList<string>? proficiencyTags = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -4703,6 +4706,8 @@ public sealed partial class CatalogSeedRunner
         ItemTypeCatalog.Parse(category);
         ItemRarityCatalog.Parse(rarity);
         ItemEquipmentEffectValidator.Validate(key, equipmentEffects ?? []);
+        var resolvedAllowedSlots = allowedSlots ?? ResolveCanonicalItemAllowedSlots(key, category, flavorTag);
+        EquipmentDefinitionMetadata.Validate(resolvedAllowedSlots, uniqueEquipGroup, proficiencyTags ?? []);
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects ?? [], J);
         var readablePagesJson = JsonSerializer.Serialize(readablePages ?? [], J);
         var existing = await _ctx.ItemDefinitions.FirstOrDefaultAsync(i => i.Key == key, cancellationToken);
@@ -4731,6 +4736,9 @@ public sealed partial class CatalogSeedRunner
         item.EffectValue = effectValue;
         item.EffectRunType = effectRunType;
         item.EquipmentEffectsJson = equipmentEffectsJson;
+        item.AllowedSlotsJson = JsonSerializer.Serialize(resolvedAllowedSlots, J);
+        item.UniqueEquipGroup = string.IsNullOrWhiteSpace(uniqueEquipGroup) ? null : uniqueEquipGroup.Trim();
+        item.ProficiencyTagsJson = JsonSerializer.Serialize(proficiencyTags ?? [], J);
         item.IsContainer = isContainer;
         item.ContainerCapacity = containerCapacity;
         item.IsLiquid = isLiquid;
@@ -4743,6 +4751,21 @@ public sealed partial class CatalogSeedRunner
         // soon as the party wasn't standing shoulder to shoulder.
         item.TacticalRange = usableInCombat ? 4 : 1;
         item.UpdatedAtUtc = now;
+    }
+
+    private static IReadOnlyList<string> ResolveCanonicalItemAllowedSlots(
+        string key, string category, string flavorTag)
+    {
+        if (category == "Relic") return ["Relic"];
+        if (category != "Equipment") return [];
+
+        return key switch
+        {
+            "canon.item.masque-bec-oiseau" or "canon.item.lunettes-erudit" or "canon.item.monocle-pomenian" => ["Head"],
+            "canon.item.bague-du-courage" or "canon.item.bague-iris" => ["Ring"],
+            "canon.item.marteau-de-forge" => ["MainWeapon"],
+            _ => ["Relic"]
+        };
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────
     private async Task SeedCanonCursesAsync(CancellationToken cancellationToken)

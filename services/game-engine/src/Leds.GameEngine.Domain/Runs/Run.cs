@@ -795,7 +795,7 @@ public sealed class Run
         PlayerState.ReplaceEffectiveStats(maxVitality, maxMana, charge);
 
         MaxHp = maxVitality;
-        CurrentHp = maxVitality;
+        CurrentHp = PlayerState.CurrentVitality;
         Attack = attack;
         Defense = defense;
         Speed = speed;
@@ -824,7 +824,8 @@ public sealed class Run
         int magicAttack,
         int magicDefense,
         int movement = 4,
-        IReadOnlyCollection<string>? equippedItemKeys = null)
+        IReadOnlyCollection<string>? equippedItemKeys = null,
+        IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout = null)
     {
         var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
             ?? throw new DomainException($"Character '{characterId}' was not found in this run's player snapshot.");
@@ -832,9 +833,12 @@ public sealed class Run
         character.StatBlock.ReplaceStats(
             maxVitality, attackPower, defense, startingGuard, speed,
             initiative, focus, mana, charge, magicAttack, magicDefense, movement);
+        character.UpdateCurrentResources(character.CurrentVitality, character.CurrentMana);
 
         if (equippedItemKeys is not null)
             character.ReplaceEquippedItemKeys(equippedItemKeys);
+        if (equipmentLoadout is not null)
+            character.ReplaceEquipmentLoadout(equipmentLoadout);
     }
 
     /// <summary>

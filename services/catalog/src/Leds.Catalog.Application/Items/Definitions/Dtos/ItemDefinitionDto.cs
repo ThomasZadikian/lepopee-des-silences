@@ -33,7 +33,10 @@ public sealed record ItemDefinitionDto(
     int? BasicAttackPower = null,
     string? BasicAttackCategory = null,
     int PalaceShardCost = 0,
-    int HimLitShardCost = 0);
+    int HimLitShardCost = 0,
+    IReadOnlyCollection<string>? AllowedSlots = null,
+    string? UniqueEquipGroup = null,
+    IReadOnlyCollection<string>? ProficiencyTags = null);
 
 public sealed record ItemEquipmentEffectDto(
     string Kind,

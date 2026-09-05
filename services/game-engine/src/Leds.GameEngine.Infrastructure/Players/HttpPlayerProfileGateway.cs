@@ -61,6 +61,41 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<EquipmentChangePlanView> PreviewEquipmentChangeAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/{Uri.EscapeDataString(targetPosition)}/preview/{itemInstanceId}",
+            resources ?? new EquipmentResourceContextView(), cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            throw new NotFoundException("Player or item instance", itemInstanceId);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            throw new DomainException(await response.Content.ReadAsStringAsync(cancellationToken));
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EquipmentChangePlanView>(cancellationToken)
+            ?? throw new InvalidOperationException("Player Service returned an empty equipment plan.");
+    }
+
+    public async Task<PlayerProfileView> EquipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/{Uri.EscapeDataString(targetPosition)}/equip/{itemInstanceId}",
+            resources ?? new EquipmentResourceContextView(), cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> UnequipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/equipment/unequip/{itemInstanceId}",
+            content: null, cancellationToken);
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     public async Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync(
@@ -307,16 +342,26 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.Movement),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
-                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot))
+                        .Select(i => new PlayerCharacterItemView(
+                            i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot,
+                            i.ItemInstanceId, i.Position))
                         .ToArray(),
                     MaxEquippedItems: c.MaxEquippedItems,
-                    CharacterType: c.CharacterType))
+                    CharacterType: c.CharacterType,
+                    ArchetypeKey: c.ArchetypeKey,
+                    BaseStats: c.BaseStats is null ? null : new PlayerCharacterStatsView(
+                        c.BaseStats.MaxVitality, c.BaseStats.AttackPower, c.BaseStats.Defense,
+                        c.BaseStats.StartingGuard, c.BaseStats.Speed, c.BaseStats.Initiative,
+                        c.BaseStats.Focus, c.BaseStats.Mana, c.BaseStats.Charge,
+                        c.BaseStats.MagicAttack, c.BaseStats.MagicDefense, c.BaseStats.Movement)))
                 .ToArray(),
             Progression: new PlayerProgressionView(
                 dto.Progression.PalaceShardCount,
                 dto.Progression.HimLitShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
-                .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
+                .Select(i => new PlayerPermanentItemView(
+                    i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc,
+                    i.ContainedLiquidDefinitionKey, i.ItemInstanceId))
                 .ToArray(),
             MainStory: dto.MainStory is null
                 ? MainStoryProgressView.Incomplete
@@ -390,7 +435,9 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int MaxEquippedSkills,
         IReadOnlyCollection<PlayerCharacterItemResponse>? Items = null,
         int MaxEquippedItems = 3,
-        string CharacterType = "Standard");
+        string CharacterType = "Standard",
+        string? ArchetypeKey = null,
+        PlayerCharacterStatsResponse? BaseStats = null);
 
     private sealed record PlayerCharacterSkillResponse(
         string SkillKey,
@@ -403,13 +450,16 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         DateTimeOffset AcquiredAtUtc,
         string? Source,
         bool IsEquipped,
-        string Slot = "Relic");
+        string Slot = "Relic",
+        Guid ItemInstanceId = default,
+        string? Position = null);
 
     private sealed record PlayerPermanentItemResponse(
         string ItemDefinitionKey,
         Guid? SourceRunId,
         DateTimeOffset AcquiredAtUtc,
-        string? ContainedLiquidDefinitionKey = null);
+        string? ContainedLiquidDefinitionKey = null,
+        Guid ItemInstanceId = default);
 
     private sealed record PlayerCharacterStatsResponse(
         int MaxVitality,

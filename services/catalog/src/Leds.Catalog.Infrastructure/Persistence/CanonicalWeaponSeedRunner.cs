@@ -57,6 +57,9 @@ public sealed partial class CatalogSeedRunner
             item.BasicAttackCategory = weapon.Category;
             item.Price = weapon.Price;
             item.EquipmentEffectsJson = weapon.EquipmentEffectsJson;
+            item.AllowedSlotsJson = "[\"MainWeapon\"]";
+            item.UniqueEquipGroup = null;
+            item.ProficiencyTagsJson = "[]";
             item.IsContainer = false;
             item.ContainerCapacity = null;
             item.IsLiquid = false;

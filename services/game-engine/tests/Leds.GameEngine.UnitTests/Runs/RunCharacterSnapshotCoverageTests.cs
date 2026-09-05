@@ -93,6 +93,31 @@ public sealed class RunCharacterSnapshotCoverageTests
         snapshot.EquippedItemKeys.Should().BeEmpty();
     }
 
+    [Fact]
+    public void EquipmentLoadout_ShouldRejectDuplicateInstancesAndPositions()
+    {
+        var instance = Guid.NewGuid();
+        var duplicateInstance = () => RunCharacterSnapshot.Create(
+            Guid.NewGuid(), "character.test", "Hero", Stats(), [Skill("skill.one")],
+            emotionalRegisterCode: "Neutral",
+            equipmentLoadout:
+            [
+                new(Guid.NewGuid(), instance, "item.one", "Ring1"),
+                new(Guid.NewGuid(), instance, "item.one", "Ring2")
+            ]);
+        var duplicatePosition = () => RunCharacterSnapshot.Create(
+            Guid.NewGuid(), "character.test", "Hero", Stats(), [Skill("skill.one")],
+            emotionalRegisterCode: "Neutral",
+            equipmentLoadout:
+            [
+                new(Guid.NewGuid(), Guid.NewGuid(), "item.one", "Ring1"),
+                new(Guid.NewGuid(), Guid.NewGuid(), "item.two", "Ring1")
+            ]);
+
+        duplicateInstance.Should().Throw<DomainException>();
+        duplicatePosition.Should().Throw<DomainException>();
+    }
+
     [Theory]
     [InlineData(-10, -10, 0, 0)]
     [InlineData(150, 90, 100, 40)]

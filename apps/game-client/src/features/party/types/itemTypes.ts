@@ -7,8 +7,11 @@ export type ItemDefinitionView = {
   rarity: string;
   effectRunType: string | null;
   effectValue: number;
-  /** Weapon/Accessory/Relic, or null when not equippable — resolved server-side. */
+  /** Transitional single-slot convenience. Prefer allowedSlots. */
   equipSlot?: string | null;
+  allowedSlots?: string[];
+  uniqueEquipGroup?: string | null;
+  proficiencyTags?: string[];
   readablePages?: string[] | null;
   tacticalRange?: number;
   tacticalAreaShape?: string;

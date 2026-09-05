@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { getActivePlayerId } from '../../runs/stores/runStore';
 import { playerApi } from '../api/playerApi';
-import type { PlayerProfileView } from '../types/playerTypes';
+import type { EquipmentChangePlanView, EquipmentPosition, PlayerProfileView } from '../types/playerTypes';
 
 export const usePlayerStore = defineStore('player', () => {
   const profile = ref<PlayerProfileView | null>(null);
@@ -57,6 +57,36 @@ export const usePlayerStore = defineStore('player', () => {
     });
   }
 
+  async function previewEquipmentChange(
+    characterId: string, itemInstanceId: string, position: EquipmentPosition,
+    resources?: { currentVitality?: number; currentMana?: number },
+  ): Promise<EquipmentChangePlanView | null> {
+    let plan: EquipmentChangePlanView | null = null;
+    await execute(async () => {
+      plan = await playerApi.previewEquipmentChange(
+        getActivePlayerId(), characterId, itemInstanceId, position, resources,
+      );
+    });
+    return plan;
+  }
+
+  async function equipItemInstance(
+    characterId: string, itemInstanceId: string, position: EquipmentPosition,
+    resources?: { currentVitality?: number; currentMana?: number },
+  ) {
+    await execute(async () => {
+      profile.value = await playerApi.equipItemInstance(
+        getActivePlayerId(), characterId, itemInstanceId, position, resources,
+      );
+    });
+  }
+
+  async function unequipItemInstance(characterId: string, itemInstanceId: string) {
+    await execute(async () => {
+      profile.value = await playerApi.unequipItemInstance(getActivePlayerId(), characterId, itemInstanceId);
+    });
+  }
+
   return {
     profile,
     isLoading,
@@ -68,5 +98,8 @@ export const usePlayerStore = defineStore('player', () => {
     unequipSkill,
     equipItem,
     unequipItem,
+    previewEquipmentChange,
+    equipItemInstance,
+    unequipItemInstance,
   };
 });

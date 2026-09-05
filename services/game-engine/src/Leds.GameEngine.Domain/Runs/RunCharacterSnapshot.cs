@@ -17,7 +17,8 @@ public sealed class RunCharacterSnapshot
         IReadOnlyCollection<string>? equippedItemKeys = null,
         string? emotionalRegisterCode = null,
         int? currentVitality = null,
-        int? currentMana = null)
+        int? currentMana = null,
+        IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout = null)
     {
         Id = id;
         CharacterId = characterId;
@@ -29,6 +30,7 @@ public sealed class RunCharacterSnapshot
         CurrentMana = Math.Clamp(currentMana ?? statBlock.Mana, 0, statBlock.Mana);
         _skills.AddRange(skills);
         EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
+        EquipmentLoadout = NormalizeEquipmentLoadout(equipmentLoadout);
     }
 
     public Guid Id { get; }
@@ -42,6 +44,7 @@ public sealed class RunCharacterSnapshot
     public int CurrentMana { get; private set; }
     public IReadOnlyCollection<RunCharacterSkillSnapshot> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<string> EquippedItemKeys { get; private set; }
+    public IReadOnlyCollection<RunEquipmentAssignment> EquipmentLoadout { get; private set; }
 
     public static RunCharacterSnapshot Create(
         Guid characterId,
@@ -50,7 +53,8 @@ public sealed class RunCharacterSnapshot
         RunCharacterStatSnapshot statBlock,
         IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
         IReadOnlyCollection<string>? equippedItemKeys = null,
-        string? emotionalRegisterCode = null)
+        string? emotionalRegisterCode = null,
+        IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout = null)
     {
         if (characterId == Guid.Empty)
             throw new DomainException("Character id is required.");
@@ -74,7 +78,8 @@ public sealed class RunCharacterSnapshot
             equippedItemKeys,
             emotionalRegisterCode,
             statBlock.MaxVitality,
-            statBlock.Mana);
+            statBlock.Mana,
+            equipmentLoadout);
     }
 
     /// <summary>
@@ -102,6 +107,11 @@ public sealed class RunCharacterSnapshot
         EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
     }
 
+    public void ReplaceEquipmentLoadout(IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout)
+    {
+        EquipmentLoadout = NormalizeEquipmentLoadout(equipmentLoadout);
+    }
+
     public void UpdateCurrentResources(int currentVitality, int currentMana)
     {
         CurrentVitality = Math.Clamp(currentVitality, 0, StatBlock.MaxVitality);
@@ -125,6 +135,24 @@ public sealed class RunCharacterSnapshot
             "Character emotional register code");
     }
 
+    private static IReadOnlyCollection<RunEquipmentAssignment> NormalizeEquipmentLoadout(
+        IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout)
+    {
+        var assignments = equipmentLoadout ?? [];
+        if (assignments.Any(item => item.RunItemId == Guid.Empty
+            || item.SourceOwnedItemInstanceId == Guid.Empty
+            || string.IsNullOrWhiteSpace(item.ItemDefinitionKey)
+            || string.IsNullOrWhiteSpace(item.Position)))
+            throw new DomainException("Run equipment assignments must be complete.");
+        if (assignments.GroupBy(item => item.RunItemId).Any(group => group.Count() > 1)
+            || assignments.Where(item => item.SourceOwnedItemInstanceId.HasValue)
+                .GroupBy(item => item.SourceOwnedItemInstanceId).Any(group => group.Count() > 1))
+            throw new DomainException("An item instance cannot be assigned twice in a run loadout.");
+        if (assignments.GroupBy(item => item.Position, StringComparer.OrdinalIgnoreCase).Any(group => group.Count() > 1))
+            throw new DomainException("A run equipment position cannot contain two items.");
+        return assignments.ToArray();
+    }
+
     public static RunCharacterSnapshot Rehydrate(
         Guid id,
         Guid characterId,
@@ -135,10 +163,17 @@ public sealed class RunCharacterSnapshot
         IReadOnlyCollection<string>? equippedItemKeys = null,
         string? emotionalRegisterCode = null,
         int? currentVitality = null,
-        int? currentMana = null)
+        int? currentMana = null,
+        IReadOnlyCollection<RunEquipmentAssignment>? equipmentLoadout = null)
     {
         return new RunCharacterSnapshot(
             id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys,
-            emotionalRegisterCode, currentVitality, currentMana);
+            emotionalRegisterCode, currentVitality, currentMana, equipmentLoadout);
     }
 }
+
+public sealed record RunEquipmentAssignment(
+    Guid RunItemId,
+    Guid? SourceOwnedItemInstanceId,
+    string ItemDefinitionKey,
+    string Position);

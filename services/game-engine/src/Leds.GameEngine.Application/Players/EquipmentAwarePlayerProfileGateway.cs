@@ -53,6 +53,23 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
     public async Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
         => await EnrichAsync(await _inner.UnequipItemAsync(playerId, characterId, itemKey, cancellationToken), cancellationToken);
 
+    public Task<EquipmentChangePlanView> PreviewEquipmentChangeAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+        => _inner.PreviewEquipmentChangeAsync(
+            playerId, characterId, itemInstanceId, targetPosition, resources, cancellationToken);
+
+    public async Task<PlayerProfileView> EquipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken)
+        => await EnrichAsync(await _inner.EquipItemInstanceAsync(
+            playerId, characterId, itemInstanceId, targetPosition, resources, cancellationToken), cancellationToken);
+
+    public async Task<PlayerProfileView> UnequipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+        => await EnrichAsync(await _inner.UnequipItemInstanceAsync(
+            playerId, characterId, itemInstanceId, cancellationToken), cancellationToken);
+
     public async Task<PlayerProfileView> AddPermanentItemsAsync(
         Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
         => await EnrichAsync(await _inner.AddPermanentItemsAsync(playerId, itemDefinitionKeys, sourceRunId, cancellationToken), cancellationToken);
