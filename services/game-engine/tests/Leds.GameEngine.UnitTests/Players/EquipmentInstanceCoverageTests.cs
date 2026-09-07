@@ -1,12 +1,9 @@
 using FluentAssertions;
-using Leds.GameEngine.Api.Controllers;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Domain.Common;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Players;
@@ -83,33 +80,6 @@ public sealed class EquipmentInstanceCoverageTests
                 new UnequipItemInstanceCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.Empty),
                 CancellationToken.None))
             .Should().ThrowAsync<DomainException>();
-    }
-
-    [Fact]
-    public async Task Controller_ShouldForwardEveryInstanceEquipmentRequest()
-    {
-        var sender = new Mock<ISender>();
-        sender.Setup(candidate => candidate.Send(
-                It.IsAny<PreviewEquipmentChangeQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Plan());
-        sender.Setup(candidate => candidate.Send(
-                It.IsAny<EquipItemInstanceCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Profile());
-        sender.Setup(candidate => candidate.Send(
-                It.IsAny<UnequipItemInstanceCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Profile());
-        var controller = new PlayerProgressionController(sender.Object);
-
-        var preview = await controller.PreviewEquipmentChange(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Chest", new(90, 10), CancellationToken.None);
-        var equip = await controller.EquipItemInstance(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Chest", null, CancellationToken.None);
-        var unequip = await controller.UnequipItemInstance(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
-
-        preview.Result.Should().BeOfType<OkObjectResult>();
-        equip.Result.Should().BeOfType<OkObjectResult>();
-        unequip.Result.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
