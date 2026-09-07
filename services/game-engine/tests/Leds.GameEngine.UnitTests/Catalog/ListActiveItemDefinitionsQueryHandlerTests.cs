@@ -98,4 +98,28 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         item.EquipSlot.Should().BeNull();
         item.AllowedSlots.Should().Equal("Ring", "Relic");
     }
+
+    [Fact]
+    public async Task Handle_ShouldDefaultOptionalCollections_WhenEquipmentMetadataIsOmitted()
+    {
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.ListActiveItemDefinitionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new CatalogItemDefinitionSnapshot(
+                    "item.plain", "1.0.0", "Plain", "No metadata", null,
+                    "Material", "None", "Common", "None", "PersistentMeta", "Additive", 1,
+                    false, false)
+            });
+        var handler = new ListActiveItemDefinitionsQueryHandler(catalogGateway.Object);
+
+        var response = await handler.Handle(new ListActiveItemDefinitionsQuery(), CancellationToken.None);
+
+        var item = response.Items.Should().ContainSingle().Which;
+        item.EquipSlot.Should().BeNull();
+        item.AllowedSlots.Should().BeEmpty();
+        item.EquipmentEffects.Should().BeEmpty();
+        item.ProficiencyTags.Should().BeEmpty();
+    }
 }
