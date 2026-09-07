@@ -64,6 +64,42 @@ public sealed class EquipmentLoadoutTests
         EquipmentPositionCompatibility.Accepts(EquipmentPosition.Hand, EquipmentSlotKind.MainWeapon).Should().BeFalse();
     }
 
+    public static TheoryData<EquipmentPosition, EquipmentSlotKind> CompatiblePositions => new()
+    {
+        { EquipmentPosition.Head, EquipmentSlotKind.Head },
+        { EquipmentPosition.Neck, EquipmentSlotKind.Neck },
+        { EquipmentPosition.Shoulders, EquipmentSlotKind.Shoulders },
+        { EquipmentPosition.Cape, EquipmentSlotKind.Cape },
+        { EquipmentPosition.Chest, EquipmentSlotKind.Chest },
+        { EquipmentPosition.Wrist, EquipmentSlotKind.Wrist },
+        { EquipmentPosition.Hand, EquipmentSlotKind.Hand },
+        { EquipmentPosition.Waist, EquipmentSlotKind.Waist },
+        { EquipmentPosition.Legs, EquipmentSlotKind.Legs },
+        { EquipmentPosition.Feet, EquipmentSlotKind.Feet },
+        { EquipmentPosition.Ring1, EquipmentSlotKind.Ring },
+        { EquipmentPosition.Ring2, EquipmentSlotKind.Ring },
+        { EquipmentPosition.Relic, EquipmentSlotKind.Relic },
+        { EquipmentPosition.MainWeapon, EquipmentSlotKind.MainWeapon },
+        { EquipmentPosition.MainWeapon, EquipmentSlotKind.Weapon },
+        { EquipmentPosition.OffWeapon, EquipmentSlotKind.OffWeapon }
+    };
+
+    [Theory]
+    [MemberData(nameof(CompatiblePositions))]
+    public void Compatibility_ShouldAcceptEveryDeclaredPosition(
+        EquipmentPosition position,
+        EquipmentSlotKind slot)
+    {
+        EquipmentPositionCompatibility.Accepts(position, slot).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Compatibility_ShouldRejectUnknownPosition()
+    {
+        EquipmentPositionCompatibility.Accepts((EquipmentPosition)999, EquipmentSlotKind.Relic)
+            .Should().BeFalse();
+    }
+
     private static PlayerCharacter CreateCharacter() => PlayerCharacter.Create(
         "character.test",
         "Test",
