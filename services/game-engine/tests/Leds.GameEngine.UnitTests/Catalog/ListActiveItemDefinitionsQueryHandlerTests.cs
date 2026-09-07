@@ -76,4 +76,26 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
 
         response.Items.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Handle_ShouldLeaveTransitionalSlotEmpty_WhenSeveralSlotsAreAllowed()
+    {
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.ListActiveItemDefinitionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new CatalogItemDefinitionSnapshot(
+                    "item.hybrid", "1.0.0", "Hybrid", "Several positions", null,
+                    "Equipment", "Relic", "Rare", "Equip", "PersistentMeta", "Additive", 1,
+                    false, false, AllowedSlots: ["Ring", "Relic"])
+            });
+        var handler = new ListActiveItemDefinitionsQueryHandler(catalogGateway.Object);
+
+        var response = await handler.Handle(new ListActiveItemDefinitionsQuery(), CancellationToken.None);
+
+        var item = response.Items.Should().ContainSingle().Which;
+        item.EquipSlot.Should().BeNull();
+        item.AllowedSlots.Should().Equal("Ring", "Relic");
+    }
 }
