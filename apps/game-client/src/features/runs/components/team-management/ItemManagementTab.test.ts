@@ -17,6 +17,9 @@ vi.mock('../../../party/api/playerApi', () => ({
     unequipSkill: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
+    previewEquipmentChange: vi.fn(),
+    equipItemInstance: vi.fn(),
+    unequipItemInstance: vi.fn(),
   },
 }));
 

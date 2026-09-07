@@ -1186,7 +1186,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.BasicAttackPower,
             source.BasicAttackCategory,
             source.PalaceShardCost,
-            source.HimLitShardCost);
+            source.HimLitShardCost,
+            source.AllowedSlots,
+            source.UniqueEquipGroup,
+            source.ProficiencyTags);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1620,7 +1623,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int? BasicAttackPower = null,
         string? BasicAttackCategory = null,
         int PalaceShardCost = 0,
-        int HimLitShardCost = 0);
+        int HimLitShardCost = 0,
+        IReadOnlyCollection<string>? AllowedSlots = null,
+        string? UniqueEquipGroup = null,
+        IReadOnlyCollection<string>? ProficiencyTags = null);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,

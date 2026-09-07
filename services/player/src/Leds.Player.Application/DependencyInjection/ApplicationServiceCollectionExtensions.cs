@@ -4,6 +4,7 @@ using Leds.Player.Application.Accounts;
 using Leds.Player.Application.Common.Behaviors;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Leds.Player.Application.Players.Equipment;
 
 namespace Leds.Player.Application.DependencyInjection;
 
@@ -16,6 +17,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped<EquipmentChangePlanner>();
         services.AddSingleton<IRecoveryCodeService, DefaultRecoveryCodeService>();
         services.AddSingleton(TimeProvider.System);
 

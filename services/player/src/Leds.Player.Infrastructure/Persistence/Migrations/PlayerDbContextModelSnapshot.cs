@@ -264,19 +264,10 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("acquired_at_utc");
 
-                    b.Property<string>("EquipmentSlot")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("Relic")
-                        .HasColumnName("equipment_slot");
-
-                    b.Property<bool>("IsEquipped")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_equipped");
+                    b.Property<string>("EquipmentPosition")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("equipment_position");
 
                     b.Property<string>("ItemDefinitionKey")
                         .IsRequired()
@@ -295,8 +286,9 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayerCharacterId", "ItemDefinitionKey")
-                        .IsUnique();
+                    b.HasIndex("PlayerCharacterId", "EquipmentPosition")
+                        .IsUnique()
+                        .HasFilter("equipment_position IS NOT NULL");
 
                     b.ToTable("player_character_items", (string)null);
                 });
@@ -514,8 +506,7 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayerProfileId", "ItemDefinitionKey")
-                        .IsUnique();
+                    b.HasIndex("PlayerProfileId", "ItemDefinitionKey");
 
                     b.ToTable("player_permanent_items", (string)null);
                 });

@@ -70,9 +70,11 @@ public sealed class PlayerPermanentItemTests
     {
         var runId = Guid.NewGuid();
         var acquiredAt = DateTimeOffset.UtcNow;
+        var instanceId = OwnedItemInstanceId.New();
 
-        var item = PlayerPermanentItem.Rehydrate("item.flask", runId, acquiredAt, "liquid.tea");
+        var item = PlayerPermanentItem.Rehydrate(instanceId, "item.flask", runId, acquiredAt, "liquid.tea");
 
+        item.Id.Should().Be(instanceId);
         item.ItemDefinitionKey.Should().Be("item.flask");
         item.SourceRunId.Should().Be(runId);
         item.AcquiredAtUtc.Should().Be(acquiredAt);

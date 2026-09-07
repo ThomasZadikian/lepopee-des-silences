@@ -43,6 +43,9 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.BasicAttackCategory).HasColumnName("basic_attack_category").HasMaxLength(16);
         builder.Property(e => e.Price).HasColumnName("price");
         builder.Property(e => e.EquipmentEffectsJson).HasColumnName("equipment_effects_json").HasColumnType("jsonb");
+        builder.Property(e => e.AllowedSlotsJson).HasColumnName("allowed_slots_json").HasColumnType("jsonb").HasDefaultValue("[]").IsRequired();
+        builder.Property(e => e.UniqueEquipGroup).HasColumnName("unique_equip_group").HasMaxLength(96);
+        builder.Property(e => e.ProficiencyTagsJson).HasColumnName("proficiency_tags_json").HasColumnType("jsonb").HasDefaultValue("[]").IsRequired();
         builder.Property(e => e.IsContainer).HasColumnName("is_container").HasDefaultValue(false);
         builder.Property(e => e.ContainerCapacity).HasColumnName("container_capacity");
         builder.Property(e => e.IsLiquid).HasColumnName("is_liquid").HasDefaultValue(false);

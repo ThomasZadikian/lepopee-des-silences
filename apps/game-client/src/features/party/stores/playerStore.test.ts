@@ -13,6 +13,9 @@ vi.mock('../api/playerApi', () => ({
     unequipSkill: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
+    previewEquipmentChange: vi.fn(),
+    equipItemInstance: vi.fn(),
+    unequipItemInstance: vi.fn(),
   },
 }));
 
@@ -136,5 +139,21 @@ describe('usePlayerStore', () => {
 
     expect(playerApi.unequipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.a');
     expect(store.profile?.characters[0].items[0].isEquipped).toBe(false);
+  });
+
+  it('commits an equipment instance at the requested position', async () => {
+    const updated = baseProfile({ items: [{
+      itemKey: 'item.ring', itemInstanceId: 'instance-1', position: 'Ring2',
+      acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true,
+    }] });
+    vi.mocked(playerApi.equipItemInstance).mockResolvedValue(updated);
+    const store = usePlayerStore();
+
+    await store.equipItemInstance('char-1', 'instance-1', 'Ring2');
+
+    expect(playerApi.equipItemInstance).toHaveBeenCalledWith(
+      demoPlayerId, 'char-1', 'instance-1', 'Ring2', undefined,
+    );
+    expect(store.profile?.characters[0].items[0].position).toBe('Ring2');
   });
 });

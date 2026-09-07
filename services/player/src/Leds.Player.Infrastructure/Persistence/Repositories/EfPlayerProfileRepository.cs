@@ -208,12 +208,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
     private void UpdatePermanentItems(PlayerProfileEntity existing, PlayerProfile incoming)
     {
-        var existingByKey = existing.PermanentItems
-            .ToDictionary(i => i.ItemDefinitionKey, StringComparer.OrdinalIgnoreCase);
+        var existingById = existing.PermanentItems.ToDictionary(i => i.Id);
 
         foreach (var item in incoming.PermanentItems)
         {
-            if (existingByKey.TryGetValue(item.ItemDefinitionKey, out var existingItem))
+            if (existingById.TryGetValue(item.Id.Value, out var existingItem))
             {
                 existingItem.ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey;
                 continue;
@@ -249,15 +248,12 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
     private void UpdateItems(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
     {
-        var incomingItemKeys = character.Items
-            .Select(i => i.ItemDefinitionKey)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        existingCharacter.Items.RemoveAll(i => !incomingItemKeys.Contains(i.ItemDefinitionKey));
+        var incomingItemIds = character.Items.Select(i => i.Id.Value).ToHashSet();
+        existingCharacter.Items.RemoveAll(i => !incomingItemIds.Contains(i.Id));
 
         foreach (var item in character.Items)
         {
-            var existingItem = existingCharacter.Items.FirstOrDefault(i =>
-                string.Equals(i.ItemDefinitionKey, item.ItemDefinitionKey, StringComparison.OrdinalIgnoreCase));
+            var existingItem = existingCharacter.Items.FirstOrDefault(i => i.Id == item.Id.Value);
 
             if (existingItem is null)
             {
@@ -270,8 +266,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
             existingItem.AcquiredAtUtc = item.AcquiredAtUtc;
             existingItem.Source = item.Source;
-            existingItem.IsEquipped = item.IsEquipped;
-            existingItem.EquipmentSlot = item.Slot.ToString();
+            existingItem.EquipmentPosition = item.Position?.ToString();
         }
     }
 
@@ -366,14 +361,14 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     .ToArray();
 
             var items = c.Items
-                .Select(i => PlayerCharacterItem.Create(
+                .Select(i => PlayerCharacterItem.Rehydrate(
+                    new OwnedItemInstanceId(i.Id),
                     i.ItemDefinitionKey,
                     i.AcquiredAtUtc,
                     i.Source,
-                    i.IsEquipped,
-                    Enum.TryParse<EquipmentSlotKind>(i.EquipmentSlot, true, out var slot)
-                        ? slot
-                        : EquipmentSlotKind.Relic))
+                    Enum.TryParse<EquipmentPosition>(i.EquipmentPosition, true, out var position)
+                        ? position
+                        : null))
                 .ToArray();
 
             return PlayerCharacter.Rehydrate(new PlayerCharacterSnapshot
@@ -420,7 +415,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
         var permanentItems = entity.PermanentItems
             .Select(i => PlayerPermanentItem.Rehydrate(
-                i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
+                new OwnedItemInstanceId(i.Id), i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
             .ToList();
 
         var npcReputationScores = entity.NpcReputationScores
@@ -498,12 +493,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         return new PlayerCharacterItemEntity
         {
-            Id = Guid.NewGuid(),
+            Id = item.Id.Value,
             ItemDefinitionKey = item.ItemDefinitionKey,
             AcquiredAtUtc = item.AcquiredAtUtc,
             Source = item.Source,
-            IsEquipped = item.IsEquipped,
-            EquipmentSlot = item.Slot.ToString()
+            EquipmentPosition = item.Position?.ToString()
         };
     }
 
@@ -511,7 +505,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         return new PlayerPermanentItemEntity
         {
-            Id = Guid.NewGuid(),
+            Id = item.Id.Value,
             PlayerProfileId = playerProfileId,
             ItemDefinitionKey = item.ItemDefinitionKey,
             SourceRunId = item.SourceRunId,

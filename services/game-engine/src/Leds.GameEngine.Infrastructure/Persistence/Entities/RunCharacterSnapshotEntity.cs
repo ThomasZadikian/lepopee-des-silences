@@ -12,6 +12,7 @@ public sealed class RunCharacterSnapshotEntity
     public int CurrentMana { get; set; }
     public int SnapshotOrder { get; set; }
     public string? EquippedItemKeysCsv { get; set; }
+    public string? EquipmentLoadoutJson { get; set; }
     public RunPlayerSnapshotEntity? PlayerSnapshot { get; set; }
     public RunCharacterStatSnapshotEntity? StatBlock { get; set; }
     public List<RunCharacterSkillSnapshotEntity> Skills { get; set; } = [];

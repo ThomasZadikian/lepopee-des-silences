@@ -103,13 +103,14 @@ public sealed class PlayerCharacterCoverageMarginTests
     }
 
     [Fact]
-    public void AddItem_ShouldIgnoreDuplicateCaseInsensitively()
+    public void AddItem_ShouldAllowDistinctInstancesOfSameDefinition()
     {
         var character = Character();
         character.AddItem(Item("item.one"));
         character.AddItem(Item("ITEM.ONE"));
 
-        character.Items.Should().HaveCount(1);
+        character.Items.Should().HaveCount(2);
+        character.Items.Select(item => item.Id).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]

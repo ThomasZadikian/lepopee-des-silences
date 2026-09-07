@@ -15,6 +15,17 @@ public interface IPlayerProfileGateway
         string slot,
         CancellationToken cancellationToken);
 
+    Task<EquipmentChangePlanView> PreviewEquipmentChangeAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> EquipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, string targetPosition,
+        EquipmentResourceContextView? resources, CancellationToken cancellationToken);
+
+    Task<PlayerProfileView> UnequipItemInstanceAsync(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken);
+
     Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
 
     Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken);

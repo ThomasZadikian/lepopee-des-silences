@@ -225,7 +225,12 @@ public sealed class AccountManagementAndRecoveryTests
         profiles.Setup(x => x.GetByIdAsync(It.IsAny<PlayerId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(profile);
 
-        var created = await new CreateAccountCharacterCommandHandler(profiles.Object, Time())
+        var archetypes = new Mock<IArchetypeDefinitionGateway>();
+        archetypes.Setup(item => item.GetByKeyAsync("archetype.porteur", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ArchetypeDefinitionSnapshot(
+                "archetype.porteur", PlayerCharacterStatBlock.CreateDefaultPorteur(), [], [],
+                ["skill.basic.guard"], ["skill.basic.guard"]));
+        var created = await new CreateAccountCharacterCommandHandler(profiles.Object, Time(), archetypes.Object)
             .Handle(
                 new CreateAccountCharacterCommand(profile.Id.Value, "Aube", "archetype.porteur"),
                 CancellationToken.None);

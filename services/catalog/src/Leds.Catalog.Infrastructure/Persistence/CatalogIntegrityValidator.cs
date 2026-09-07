@@ -184,12 +184,68 @@ public sealed class CatalogIntegrityValidator
             var effects = Deserialize<ItemEquipmentEffect>(
                 errors, $"Item '{item.Key}' EquipmentEffectsJson", item.EquipmentEffectsJson ?? "[]");
             Capture(errors, $"Item '{item.Key}'", () => ItemEquipmentEffectValidator.Validate(item.Key, effects));
+            var allowedSlots = Deserialize<string>(
+                errors, $"Item '{item.Key}' AllowedSlotsJson", item.AllowedSlotsJson);
+            var proficiencyTags = Deserialize<string>(
+                errors, $"Item '{item.Key}' ProficiencyTagsJson", item.ProficiencyTagsJson);
+            Capture(errors, $"Item '{item.Key}'", () => EquipmentDefinitionMetadata.Validate(
+                allowedSlots, item.UniqueEquipGroup, proficiencyTags));
+            if ((item.Category is "Equipment" or "Relic" or "Weapon") && allowedSlots.Count == 0)
+                errors.Add($"Item '{item.Key}': equippable definitions require at least one AllowedSlot.");
 
             foreach (var effect in effects.Where(effect => effect.Kind == ItemEquipmentEffectKind.GrantSkill))
             {
                 if (!skillKeys.Contains(effect.SkillKey!))
                     errors.Add($"Item '{item.Key}': granted skill '{effect.SkillKey}' does not exist or is not active.");
             }
+        }
+
+        var itemByKey = items.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+        var archetypes = await _context.ArchetypeDefinitions
+            .Where(archetype => archetype.Status == "Active")
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
+        foreach (var archetype in archetypes)
+        {
+            var baseStats = DeserializeObject<Leds.Catalog.Application.Archetypes.ArchetypeBaseStatsDto>(
+                errors, $"Archetype '{archetype.Key}' BaseStatsJson", archetype.BaseStatsJson);
+            if (baseStats is null || baseStats.MaxVitality <= 0 || baseStats.Speed <= 0 || baseStats.Movement <= 0
+                || baseStats.AttackPower < 0 || baseStats.MagicAttack < 0 || baseStats.Defense < 0
+                || baseStats.MagicDefense < 0 || baseStats.StartingGuard < 0 || baseStats.Initiative < 0
+                || baseStats.Focus < 0 || baseStats.Mana < 0 || baseStats.Charge < 0)
+                errors.Add($"Archetype '{archetype.Key}': base stats are invalid.");
+
+            var proficiencies = Deserialize<string>(errors,
+                $"Archetype '{archetype.Key}' ProficiencyTagsJson", archetype.ProficiencyTagsJson);
+            Capture(errors, $"Archetype '{archetype.Key}'", () =>
+                EquipmentDefinitionMetadata.Validate([], null, proficiencies));
+            var starterEquipment = Deserialize<Leds.Catalog.Application.Archetypes.StarterEquipmentDto>(
+                errors, $"Archetype '{archetype.Key}' StarterEquipmentJson", archetype.StarterEquipmentJson);
+            if (starterEquipment.Select(entry => entry.EquipmentPosition)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != starterEquipment.Count)
+                errors.Add($"Archetype '{archetype.Key}': starter equipment positions must be unique.");
+            foreach (var starter in starterEquipment)
+            {
+                if (!itemByKey.TryGetValue(starter.ItemDefinitionKey, out var item))
+                {
+                    errors.Add($"Archetype '{archetype.Key}': starter item '{starter.ItemDefinitionKey}' does not exist.");
+                    continue;
+                }
+                var slots = Deserialize<string>(errors, $"Item '{item.Key}' AllowedSlotsJson", item.AllowedSlotsJson);
+                if (!slots.Any(slot => PositionAcceptsSlot(starter.EquipmentPosition, slot)))
+                    errors.Add($"Archetype '{archetype.Key}': starter item '{item.Key}' cannot occupy '{starter.EquipmentPosition}'.");
+            }
+
+            var known = Deserialize<string>(errors,
+                $"Archetype '{archetype.Key}' StarterKnownSkillsJson", archetype.StarterKnownSkillsJson);
+            var equipped = Deserialize<string>(errors,
+                $"Archetype '{archetype.Key}' StarterEquippedSkillsJson", archetype.StarterEquippedSkillsJson);
+            if (equipped.Count > 4) errors.Add($"Archetype '{archetype.Key}': at most four starter skills may be equipped.");
+            foreach (var key in known.Concat(equipped).Distinct(StringComparer.OrdinalIgnoreCase))
+                if (!skillKeys.Contains(key)) errors.Add($"Archetype '{archetype.Key}': starter skill '{key}' does not exist.");
+            foreach (var key in equipped)
+                if (!known.Contains(key, StringComparer.OrdinalIgnoreCase))
+                    errors.Add($"Archetype '{archetype.Key}': equipped starter skill '{key}' must also be known.");
         }
 
         var rooms = await _context.RoomDefinitions
@@ -393,6 +449,26 @@ public sealed class CatalogIntegrityValidator
             return [];
         }
     }
+
+    private static T? DeserializeObject<T>(ICollection<string> errors, string field, string json)
+        where T : class
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            errors.Add($"{field}: invalid JSON ({exception.Message}).");
+            return null;
+        }
+    }
+
+    private static bool PositionAcceptsSlot(string position, string slot) => position switch
+    {
+        "Ring1" or "Ring2" => string.Equals(slot, "Ring", StringComparison.OrdinalIgnoreCase),
+        _ => string.Equals(position, slot, StringComparison.OrdinalIgnoreCase)
+    };
 
     private static void Capture(ICollection<string> errors, string source, Action validation)
     {

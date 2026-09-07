@@ -10,13 +10,16 @@ public sealed class CreatePlayableCharacterCommandHandler
 {
     private readonly IPlayerProfileRepository _repository;
     private readonly TimeProvider _timeProvider;
+    private readonly IArchetypeDefinitionGateway _archetypes;
 
     public CreatePlayableCharacterCommandHandler(
         IPlayerProfileRepository repository,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IArchetypeDefinitionGateway archetypes)
     {
         _repository = repository;
         _timeProvider = timeProvider;
+        _archetypes = archetypes;
     }
 
     public async Task<PlayerProfileDto> Handle(
@@ -27,7 +30,9 @@ public sealed class CreatePlayableCharacterCommandHandler
         var profile = await _repository.GetByIdAsync(playerId, cancellationToken)
             ?? throw new NotFoundException("Player", request.PlayerId);
 
-        profile.CreatePlayableCharacter(request.DisplayName, request.ArchetypeKey, _timeProvider.GetUtcNow());
+        var archetype = await _archetypes.GetByKeyAsync(request.ArchetypeKey, cancellationToken)
+            ?? throw new NotFoundException("Archetype", request.ArchetypeKey);
+        profile.CreatePlayableCharacter(request.DisplayName, archetype, _timeProvider.GetUtcNow());
         await _repository.SaveAsync(profile, cancellationToken);
 
         return PlayerProfileDto.FromDomain(profile);

@@ -14,7 +14,13 @@ public sealed record PlayerRunSnapshotCharacterResponse(
     int BaseCharge,
     IReadOnlyCollection<string> SkillKeys,
     PlayerRunSnapshotCharacterStatsResponse? Stats = null,
-    IReadOnlyCollection<string>? EquippedItemKeys = null);
+    IReadOnlyCollection<string>? EquippedItemKeys = null,
+    IReadOnlyCollection<PlayerRunSnapshotEquipmentResponse>? EquipmentLoadout = null);
+
+public sealed record PlayerRunSnapshotEquipmentResponse(
+    Guid ItemInstanceId,
+    string ItemDefinitionKey,
+    string Position);
 
 public sealed record PlayerRunSnapshotCharacterStatsResponse(
     int MaxVitality,

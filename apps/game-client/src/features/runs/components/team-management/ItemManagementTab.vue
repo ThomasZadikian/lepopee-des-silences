@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import type { PlayerCharacterView } from '../../../party/types/playerTypes';
+import type {
+  EquipmentChangePlanView, EquipmentPosition, PlayerCharacterItemView,
+  PlayerCharacterView, PlayerPermanentItemView,
+} from '../../../party/types/playerTypes';
 import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
 import { itemsApi } from '../../../party/api/itemsApi';
@@ -8,253 +11,208 @@ import { useRunStore } from '../../stores/runStore';
 import { itemTypeMeta } from '../../../../shared/theme/typeColors';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
-
 const playerStore = usePlayerStore();
 const runStore = useRunStore();
-
 const allItems = ref<ItemDefinitionView[]>([]);
+const pendingPlan = ref<EquipmentChangePlanView | null>(null);
+
+const visiblePositions: Array<{ key: EquipmentPosition; label: string }> = [
+  { key: 'Head', label: 'Tête' }, { key: 'Neck', label: 'Cou' },
+  { key: 'Shoulders', label: 'Épaules' }, { key: 'Cape', label: 'Cape' },
+  { key: 'Chest', label: 'Torse' }, { key: 'Wrist', label: 'Poignets' },
+  { key: 'Hand', label: 'Mains' }, { key: 'Waist', label: 'Taille' },
+  { key: 'Legs', label: 'Jambes' }, { key: 'Feet', label: 'Pieds' },
+  { key: 'Ring1', label: 'Anneau I' }, { key: 'Ring2', label: 'Anneau II' },
+  { key: 'Relic', label: 'Relique' }, { key: 'MainWeapon', label: 'Arme principale' },
+];
 
 onMounted(async () => {
-  try {
-    const response = await itemsApi.listActive();
-    allItems.value = response.items;
-  } catch {
-    // Best-effort: fall back to raw keys below if the catalog lookup fails.
-  }
+  try { allItems.value = (await itemsApi.listActive()).items; } catch { /* raw keys remain usable */ }
 });
 
-function itemDisplayName(itemKey: string): string {
-  return allItems.value.find((i) => i.key === itemKey)?.displayName ?? itemKey;
-}
+const combatLocked = computed(() => Boolean(runStore.currentRun && runStore.shouldShowCombatScene));
+const equippedItems = computed(() => props.character.items.filter((item) => item.isEquipped));
+const equipmentSlots = computed(() => {
+  const slots = visiblePositions.map((position) => ({ ...position, item: undefined as PlayerCharacterItemView | undefined }));
+  const legacyRelicPositions: EquipmentPosition[] = ['Relic', 'Ring1', 'Ring2'];
+  for (const item of equippedItems.value) {
+    let position = item.position;
+    if (!position) {
+      if (item.slot === 'Weapon') position = 'MainWeapon';
+      else if (item.slot === 'Accessory') position = 'Neck';
+      else position = legacyRelicPositions.find((candidate) => !slots.find((slot) => slot.key === candidate)?.item);
+    }
+    const slot = slots.find((candidate) => candidate.key === position);
+    if (slot) slot.item = item;
+  }
+  return slots;
+});
 
-function itemTypeAccent(itemKey: string) {
-  return itemTypeMeta(allItems.value.find((i) => i.key === itemKey)?.category);
-}
-
+function definition(itemKey: string) { return allItems.value.find((item) => item.key === itemKey); }
+function itemDisplayName(itemKey: string) { return definition(itemKey)?.displayName ?? itemKey; }
+function itemTypeAccent(itemKey: string) { return itemTypeMeta(definition(itemKey)?.category); }
 function weaponContract(itemKey: string): string | null {
-  const item = allItems.value.find((candidate) => candidate.key === itemKey);
+  const item = definition(itemKey);
   if (!item || item.category !== 'Weapon') return null;
   const category = item.basicAttackCategory === 'Magic' ? 'magique' : 'physique';
   const lineOfSight = item.requiresLineOfSight ? ' · ligne de vue' : '';
-  return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1}`
-    + ` · ${category}${lineOfSight} · ${shapeLabel(item.tacticalAreaShape)}`;
+  return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1} · ${category}${lineOfSight}`;
 }
-
-function shapeLabel(shape: string | undefined): string {
-  switch (shape) {
-    case 'Cross': return 'croix';
-    case 'Diamond': return 'losange';
-    case 'Map': return 'carte';
-    default: return 'case';
-  }
-}
-
 function equipmentEffects(itemKey: string): string[] {
-  const item = allItems.value.find((candidate) => candidate.key === itemKey);
-  return (item?.equipmentEffects ?? []).map((effect) => {
+  return (definition(itemKey)?.equipmentEffects ?? []).map((effect) => {
     if (['StatModifier', 'StatBonus', 'StatBonusPercent'].includes(effect.kind)) {
       const amount = effect.amount ?? 0;
-      const unit = effect.kind === 'StatBonusPercent' ? '%' : '';
-      return `${amount >= 0 ? '+' : ''}${amount}${unit} ${statLabel(effect.statKind)}`;
+      return `${amount >= 0 ? '+' : ''}${amount}${effect.kind === 'StatBonusPercent' ? '%' : ''} ${statLabel(effect.statKind)}`;
     }
     if (effect.kind === 'GrantSkill') return `Compétence : ${effect.skillKey ?? 'inconnue'}`;
-    if (effect.kind === 'Affinity') return `Affinité : ${effect.affinityRegister ?? 'neutre'}`;
     return effect.kind;
   });
 }
-
-function itemCostLabel(itemKey: string): string | null {
-  const item = allItems.value.find((candidate) => candidate.key === itemKey);
-  const palaceShardCost = item?.palaceShardCost ?? 0;
-  const himLitShardCost = item?.himLitShardCost ?? 0;
-  if (palaceShardCost <= 0 && himLitShardCost <= 0) return null;
-  const parts = [];
-  if (palaceShardCost > 0) parts.push(`${palaceShardCost} Éclats du Palais`);
-  if (himLitShardCost > 0) parts.push(`${himLitShardCost} Éclats de Him'Lit`);
-  return parts.join(' · ');
-}
-
-function statLabel(stat: string | null | undefined): string {
+function statLabel(stat?: string | null) {
   const labels: Record<string, string> = {
-    MaxVitality: 'Vitalité',
-    AttackPower: 'Attaque',
-    Defense: 'Défense',
-    Guard: 'Garde',
-    Speed: 'Vitesse',
-    Initiative: 'Initiative',
-    Focus: 'Focus',
-    Mana: 'Mana',
-    MagicAttack: 'Attaque magique',
-    MagicDefense: 'Défense magique',
-    Movement: 'Déplacement',
-    RunItemCapacity: 'Capacité de besace',
+    MaxVitality: 'Vitalité', AttackPower: 'Attaque', MagicAttack: 'Attaque magique',
+    Defense: 'Défense', MagicDefense: 'Défense magique', StartingGuard: 'Garde',
+    Speed: 'Vitesse', Initiative: 'Initiative', Focus: 'Focus', Mana: 'Mana', Movement: 'Déplacement',
   };
   return stat ? (labels[stat] ?? stat) : 'statistique';
 }
 
-const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));
-const slotLimits = { Weapon: 1, Accessory: 1, Relic: 3 } as const;
-const equipmentSlots = computed(() => {
-  const weapons = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Weapon');
-  const accessories = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Accessory');
-  const relics = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Relic');
-  return [
-    { key: 'weapon', label: 'Arme', item: weapons[0] },
-    { key: 'accessory', label: 'Accessoire', item: accessories[0] },
-    { key: 'relic-1', label: 'Relique I', item: relics[0] },
-    { key: 'relic-2', label: 'Relique II', item: relics[1] },
-    { key: 'relic-3', label: 'Relique III', item: relics[2] },
-  ];
-});
+function allowedPositions(itemKey: string): EquipmentPosition[] {
+  const itemDefinition = definition(itemKey);
+  const authoredSlots = itemDefinition?.allowedSlots?.length
+    ? itemDefinition.allowedSlots
+    : itemDefinition?.equipSlot ? [itemDefinition.equipSlot] : [];
+  return authoredSlots.flatMap((slot) => {
+    if (slot === 'Ring') return ['Ring1', 'Ring2'] as EquipmentPosition[];
+    if (slot === 'Weapon') return ['MainWeapon'] as EquipmentPosition[];
+    if (slot === 'Accessory') return ['Neck'] as EquipmentPosition[];
+    if (slot === 'OffWeapon') return [];
+    return visiblePositions.some((position) => position.key === slot) ? [slot as EquipmentPosition] : [];
+  });
+}
+const equippablePermanentItems = computed(() => playerStore.permanentItems
+  .filter((item) => definition(item.itemDefinitionKey)?.allowedSlots?.includes('OffWeapon') !== true));
 
-function slotFor(itemKey: string): keyof typeof slotLimits | null {
-  const definition = allItems.value.find((item) => item.key === itemKey);
-  // Server-resolved (CatalogRunItemMapper.MapEquipSlot) — never re-derived here from
-  // raw category/type fields.
-  if (definition) return (definition.equipSlot as keyof typeof slotLimits | null) ?? null;
-  // Permanent inventory only contains equippable run rewards. Keep legacy
-  // entries usable while their catalog metadata is loading or being migrated.
-  return props.character.items.find((item) => item.itemKey === itemKey)?.slot ?? 'Relic';
+function equippedAssignment(item: PlayerPermanentItemView): PlayerCharacterItemView | undefined {
+  return props.character.items.find((owned) => owned.isEquipped && (
+    item.itemInstanceId ? owned.itemInstanceId === item.itemInstanceId : owned.itemKey === item.itemDefinitionKey
+  ));
+}
+function assignedToAnotherCharacter(item: PlayerPermanentItemView): boolean {
+  if (!item.itemInstanceId) return false;
+  return Boolean(playerStore.profile?.characters.some((character) => character.id !== props.character.id
+    && character.items.some((owned) => owned.itemInstanceId === item.itemInstanceId && owned.isEquipped)));
+}
+function preferredPosition(itemKey: string): EquipmentPosition | null {
+  const positions = allowedPositions(itemKey);
+  return positions.find((position) => !equipmentSlots.value.find((slot) => slot.key === position)?.item)
+    ?? positions[0] ?? null;
 }
 
-function slotLabel(slot: keyof typeof slotLimits): string {
-  return slot === 'Weapon' ? 'Arme' : slot === 'Accessory' ? 'Accessoire' : 'Relique';
-}
-
-function isSlotFull(itemKey: string): boolean {
-  const slot = slotFor(itemKey);
-  if (!slot) return true;
-  return equippedItems.value.filter((item) => (item.slot ?? 'Relic') === slot).length >= slotLimits[slot];
-}
-
-const equippablePermanentItems = computed(() =>
-  playerStore.permanentItems.filter((item) => slotFor(item.itemDefinitionKey) !== null),
-);
-
-function isEquippedOnCharacter(itemKey: string): boolean {
-  return props.character.items.some((i) => i.itemKey === itemKey && i.isEquipped);
-}
-
-async function toggleItem(itemKey: string, isEquipped: boolean) {
-  if (playerStore.isLoading) return;
-  if (isEquipped) {
-    await playerStore.unequipItem(props.character.id, itemKey);
-  } else {
-    if (isSlotFull(itemKey)) return;
-    await playerStore.equipItem(props.character.id, itemKey);
+async function requestEquip(item: PlayerPermanentItemView) {
+  if (playerStore.isLoading || combatLocked.value || assignedToAnotherCharacter(item)) return;
+  const position = preferredPosition(item.itemDefinitionKey);
+  if (!item.itemInstanceId || !position) {
+    await playerStore.equipItem(props.character.id, item.itemDefinitionKey); // legacy migration fallback
+    await syncRun();
+    return;
   }
-
-  // Mid-run resync: makes the new loadout's base stats apply to the run's next
-  // combat instead of only the player's next run. Silently skipped during an
-  // active combat (backend rejects it there — equip still updates the
-  // permanent profile, it just takes effect once the fight ends).
-  if (runStore.currentRun && !runStore.shouldShowCombatScene) {
-    await runStore.syncPartyStats();
-  }
+  pendingPlan.value = await playerStore.previewEquipmentChange(
+    props.character.id, item.itemInstanceId, position,
+  );
+}
+function legacyLoadoutFull(item: PlayerPermanentItemView): boolean {
+  return !item.itemInstanceId && !equippedAssignment(item)
+    && equippedItems.value.length >= props.character.maxEquippedItems;
+}
+async function confirmEquip() {
+  const plan = pendingPlan.value;
+  if (!plan?.canEquip || combatLocked.value) return;
+  await playerStore.equipItemInstance(
+    props.character.id, plan.candidateItem.itemInstanceId, plan.targetPosition,
+  );
+  pendingPlan.value = null;
+  await syncRun();
+}
+async function unequip(item: PlayerCharacterItemView) {
+  if (playerStore.isLoading || combatLocked.value) return;
+  if (item.itemInstanceId) await playerStore.unequipItemInstance(props.character.id, item.itemInstanceId);
+  else await playerStore.unequipItem(props.character.id, item.itemKey);
+  await syncRun();
+}
+async function syncRun() {
+  if (runStore.currentRun && !combatLocked.value) await runStore.syncPartyStats();
 }
 </script>
 
 <template>
   <div class="imk-root">
     <p v-if="playerStore.error" class="imk-error">{{ playerStore.error }}</p>
+    <p v-if="combatLocked" class="imk-error">L'équipement est verrouillé pendant un combat.</p>
 
-    <!-- ── Section 1: currently equipped ── -->
     <section class="imk-section">
-      <h4 class="imk-section__title">
-        Objets équipés · contrat tactique
+      <h4 class="imk-section__title">Objets équipés · silhouette
         <span class="imk-section__count">{{ equippedItems.length }} / {{ character.maxEquippedItems }}</span>
       </h4>
-      <ul class="imk-slots">
-        <li
-          v-for="slot in equipmentSlots"
-          :key="slot.key"
-          class="imk-slot"
+      <ul class="imk-slots" aria-label="Silhouette d'équipement">
+        <li v-for="slot in equipmentSlots" :key="slot.key" class="imk-slot"
           :class="{ 'imk-slot--empty': !slot.item }"
-          :style="slot.item ? { borderLeftColor: itemTypeAccent(slot.item.itemKey).color } : undefined"
-        >
+          :style="slot.item ? { borderLeftColor: itemTypeAccent(slot.item.itemKey).color } : undefined">
           <span class="imk-slot__label">{{ slot.label }}</span>
           <template v-if="slot.item">
             <div class="imk-row__info">
               <span class="imk-row__name">{{ itemDisplayName(slot.item.itemKey) }}</span>
-              <small v-if="weaponContract(slot.item.itemKey)" class="imk-row__contract">
-                {{ weaponContract(slot.item.itemKey) }}
-              </small>
-              <small
-                v-for="effect in equipmentEffects(slot.item.itemKey)"
-                :key="effect"
-                class="imk-row__effect"
-              >
-                {{ effect }}
-              </small>
-              <small v-if="itemCostLabel(slot.item.itemKey)" class="imk-row__cost">
-                {{ itemCostLabel(slot.item.itemKey) }}
-              </small>
+              <small v-if="weaponContract(slot.item.itemKey)" class="imk-row__contract">{{ weaponContract(slot.item.itemKey) }}</small>
+              <small v-for="effect in equipmentEffects(slot.item.itemKey)" :key="effect" class="imk-row__effect">{{ effect }}</small>
             </div>
-            <button
-              type="button"
-              class="imk-toggle imk-toggle--active"
-              :disabled="playerStore.isLoading"
-              @click="toggleItem(slot.item.itemKey, true)"
-            >
-              Déséquiper
-            </button>
+            <button type="button" class="imk-toggle imk-toggle--active"
+              :disabled="playerStore.isLoading || combatLocked" @click="unequip(slot.item)">Déséquiper</button>
           </template>
           <span v-else class="imk-slot__empty">Emplacement libre</span>
         </li>
       </ul>
     </section>
 
-    <!-- ── Section 2: permanent backpack (all owned items) ── -->
     <section class="imk-section">
-      <h4 class="imk-section__title">Sac permanent</h4>
+      <h4 class="imk-section__title">Inventaire partagé · sac permanent</h4>
       <ul v-if="equippablePermanentItems.length" class="imk-list">
-        <li
-          v-for="permanentItem in equippablePermanentItems"
-          :key="permanentItem.itemDefinitionKey"
-          class="imk-row"
-          :style="{ borderLeftColor: itemTypeAccent(permanentItem.itemDefinitionKey).color }"
-        >
+        <li v-for="item in equippablePermanentItems" :key="item.itemInstanceId ?? item.itemDefinitionKey"
+          class="imk-row" :style="{ borderLeftColor: itemTypeAccent(item.itemDefinitionKey).color }">
           <div class="imk-row__info">
-            <span class="imk-row__name">{{ itemDisplayName(permanentItem.itemDefinitionKey) }}</span>
-            <span v-if="slotFor(permanentItem.itemDefinitionKey)" class="imk-row__slot">
-              {{ slotLabel(slotFor(permanentItem.itemDefinitionKey)!) }}
-            </span>
-            <small v-if="weaponContract(permanentItem.itemDefinitionKey)" class="imk-row__contract">
-              {{ weaponContract(permanentItem.itemDefinitionKey) }}
-            </small>
-            <small
-              v-for="effect in equipmentEffects(permanentItem.itemDefinitionKey)"
-              :key="effect"
-              class="imk-row__effect"
-            >
-              {{ effect }}
-            </small>
-            <small
-              v-if="permanentItem.containedLiquidDefinitionKey"
-              class="imk-row__effect"
-            >
-              Contenu : {{ itemDisplayName(permanentItem.containedLiquidDefinitionKey) }}
-            </small>
-            <small v-if="itemCostLabel(permanentItem.itemDefinitionKey)" class="imk-row__cost">
-              {{ itemCostLabel(permanentItem.itemDefinitionKey) }}
-            </small>
+            <span class="imk-row__name">{{ itemDisplayName(item.itemDefinitionKey) }}</span>
+            <small class="imk-row__effect">{{ allowedPositions(item.itemDefinitionKey).map((p) => visiblePositions.find((v) => v.key === p)?.label).join(' · ') }}</small>
+            <small v-if="assignedToAnotherCharacter(item)" class="imk-row__cost">Assigné à un autre personnage</small>
           </div>
-          <button
-            type="button"
-            class="imk-toggle"
-            :class="{ 'imk-toggle--active': isEquippedOnCharacter(permanentItem.itemDefinitionKey) }"
-            :disabled="
-              playerStore.isLoading ||
-              (!isEquippedOnCharacter(permanentItem.itemDefinitionKey) && isSlotFull(permanentItem.itemDefinitionKey))
-            "
-            @click="toggleItem(permanentItem.itemDefinitionKey, isEquippedOnCharacter(permanentItem.itemDefinitionKey))"
-          >
-            {{ isEquippedOnCharacter(permanentItem.itemDefinitionKey) ? 'Équipé' : 'Équiper' }}
-          </button>
+          <button v-if="!equippedAssignment(item)" type="button" class="imk-toggle"
+            :disabled="playerStore.isLoading || combatLocked || assignedToAnotherCharacter(item) || legacyLoadoutFull(item)"
+            @click="requestEquip(item)">Aperçu</button>
+          <span v-else class="imk-row__slot">Équipé</span>
         </li>
       </ul>
       <p v-else class="imk-empty">Le sac permanent est vide pour l'instant.</p>
     </section>
+
+    <div v-if="pendingPlan" class="imk-preview" role="dialog" aria-modal="true" aria-label="Aperçu d'équipement">
+      <div class="imk-preview__card">
+        <h4>{{ pendingPlan.candidateItem.displayName }}</h4>
+        <p>Emplacement : {{ visiblePositions.find((p) => p.key === pendingPlan?.targetPosition)?.label }}</p>
+        <p v-if="pendingPlan.currentlyEquippedItem">Remplace : {{ pendingPlan.currentlyEquippedItem.displayName }}</p>
+        <ul v-if="pendingPlan.statDeltas.some((delta) => delta.delta !== 0)">
+          <li v-for="delta in pendingPlan.statDeltas.filter((entry) => entry.delta !== 0)" :key="delta.stat">
+            {{ statLabel(delta.stat) }} : {{ delta.current }} → {{ delta.projected }}
+            ({{ delta.delta > 0 ? '+' : '' }}{{ delta.delta }})
+          </li>
+        </ul>
+        <p v-for="skill in pendingPlan.gainedTemporarySkills" :key="`gain-${skill}`">Compétence gagnée : {{ skill }}</p>
+        <p v-for="skill in pendingPlan.lostTemporarySkills" :key="`loss-${skill}`">Compétence perdue : {{ skill }}</p>
+        <p v-if="!pendingPlan.canEquip" class="imk-error">{{ pendingPlan.blockingReasons.join(' · ') }}</p>
+        <div class="imk-preview__actions">
+          <button type="button" class="imk-toggle" @click="pendingPlan = null">Annuler</button>
+          <button type="button" class="imk-toggle imk-toggle--active"
+            :disabled="!pendingPlan.canEquip || playerStore.isLoading || combatLocked" @click="confirmEquip">Confirmer</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -433,5 +391,31 @@ async function toggleItem(itemKey: string, isEquipped: boolean) {
   font-size: 11px;
   color: var(--danger-dim);
   margin: 0;
+}
+
+.imk-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 70%);
+}
+
+.imk-preview__card {
+  width: min(520px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--ink-2);
+}
+
+.imk-preview__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>

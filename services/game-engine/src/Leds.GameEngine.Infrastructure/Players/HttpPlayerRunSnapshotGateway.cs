@@ -89,7 +89,11 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                         DisplayName: c.DisplayName,
                         Stats: stats,
                         Skills: skills,
-                        EquippedItemKeys: c.EquippedItemKeys ?? []);
+                        EquippedItemKeys: c.EquippedItemKeys ?? [],
+                        EquipmentLoadout: (c.EquipmentLoadout ?? [])
+                            .Select(item => new PlayerRunSnapshotEquipment(
+                                item.ItemInstanceId, item.ItemDefinitionKey, item.Position))
+                            .ToArray());
                 })
                 .ToArray());
     }
@@ -108,7 +112,13 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int BaseCharge,
         IReadOnlyCollection<string> SkillKeys,
         PlayerRunSnapshotCharacterStatsResponse? Stats = null,
-        IReadOnlyCollection<string>? EquippedItemKeys = null);
+        IReadOnlyCollection<string>? EquippedItemKeys = null,
+        IReadOnlyCollection<PlayerRunSnapshotEquipmentResponse>? EquipmentLoadout = null);
+
+    private sealed record PlayerRunSnapshotEquipmentResponse(
+        Guid ItemInstanceId,
+        string ItemDefinitionKey,
+        string Position);
 
     private sealed record PlayerRunSnapshotCharacterStatsResponse(
         int MaxVitality,

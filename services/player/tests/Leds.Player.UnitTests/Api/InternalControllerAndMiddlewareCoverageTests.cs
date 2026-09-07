@@ -8,6 +8,7 @@ using Leds.Player.Application.Internal.ConsumeRunOutcome;
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
+using Leds.Player.Application.Players.Equipment;
 using Leds.Player.Application.Players.UnlockSkill;
 using Leds.Player.Domain.Common;
 using Leds.Player.Domain.Players;
@@ -23,6 +24,64 @@ public sealed class InternalControllerAndMiddlewareCoverageTests
 {
     private static readonly Guid PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid CharacterId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+    [Fact]
+    public async Task PlayersController_ShouldForwardEveryInstanceEquipmentRequestAndOptionalContext()
+    {
+        var sender = new Mock<ISender>();
+        var profile = PlayerProfileDto.FromDomain(PlayerProfile.Create("Player", DateTimeOffset.UtcNow));
+        var stats = EquipmentStats.From(PlayerCharacterStatBlock.CreateDefaultPorteur());
+        var plan = new EquipmentChangePlan(
+            EquipmentPosition.Chest,
+            new EquipmentItemPlan(Guid.NewGuid(), "item.armour", "Armour"),
+            null,
+            true,
+            [],
+            stats,
+            stats,
+            [],
+            [],
+            [],
+            [],
+            [],
+            stats.MaxVitality,
+            stats.MaxVitality,
+            stats.Mana,
+            stats.Mana,
+            ["Chest"],
+            []);
+        sender.Setup(x => x.Send(It.IsAny<PreviewEquipItemQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(plan);
+        sender.Setup(x => x.Send(It.IsAny<EquipItemInstanceCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+        sender.Setup(x => x.Send(It.IsAny<UnequipItemInstanceCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+        var controller = new PlayersController(sender.Object);
+        var itemId = Guid.NewGuid();
+
+        (await controller.PreviewEquipItem(
+            PlayerId, CharacterId, itemId, EquipmentPosition.Chest, null, CancellationToken.None))
+            .Result.Should().BeOfType<OkObjectResult>();
+        (await controller.PreviewEquipItem(
+            PlayerId, CharacterId, itemId, EquipmentPosition.Chest, new(80, 20), CancellationToken.None))
+            .Result.Should().BeOfType<OkObjectResult>();
+        (await controller.EquipItemInstance(
+            PlayerId, CharacterId, itemId, EquipmentPosition.Chest, null, CancellationToken.None))
+            .Result.Should().BeOfType<OkObjectResult>();
+        (await controller.EquipItemInstance(
+            PlayerId, CharacterId, itemId, EquipmentPosition.Chest, new(70, 10), CancellationToken.None))
+            .Result.Should().BeOfType<OkObjectResult>();
+        (await controller.UnequipItemInstance(
+            PlayerId, CharacterId, itemId, CancellationToken.None))
+            .Result.Should().BeOfType<OkObjectResult>();
+
+        sender.Verify(x => x.Send(
+            It.Is<PreviewEquipItemQuery>(query => query.CurrentVitality == null && query.CurrentMana == null),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sender.Verify(x => x.Send(
+            It.Is<EquipItemInstanceCommand>(command => command.CurrentVitality == 70 && command.CurrentMana == 10),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 
     [Fact]
     public async Task InternalPlayersController_ShouldCoverOptionalRequestBranches()

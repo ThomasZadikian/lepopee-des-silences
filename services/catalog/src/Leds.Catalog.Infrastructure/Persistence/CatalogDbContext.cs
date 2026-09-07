@@ -15,6 +15,7 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<EnemyStatBlockEntity> EnemyStatBlocks => Set<EnemyStatBlockEntity>();
     public DbSet<EnemySkillLinkEntity> EnemySkillLinks => Set<EnemySkillLinkEntity>();
     public DbSet<ItemDefinitionEntity> ItemDefinitions => Set<ItemDefinitionEntity>();
+    public DbSet<ArchetypeDefinitionEntity> ArchetypeDefinitions => Set<ArchetypeDefinitionEntity>();
     public DbSet<PalaceLawDefinitionEntity> PalaceLawDefinitions => Set<PalaceLawDefinitionEntity>();
     public DbSet<CurseDefinitionEntity> CurseDefinitions => Set<CurseDefinitionEntity>();
     public DbSet<EffectSetEntity> EffectSets => Set<EffectSetEntity>();

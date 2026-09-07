@@ -83,9 +83,10 @@ public sealed class PlayerCharacterItemEntityConfiguration : IEntityTypeConfigur
         builder.Property(i => i.ItemDefinitionKey).HasColumnName("item_definition_key").HasMaxLength(160).IsRequired();
         builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
         builder.Property(i => i.Source).HasColumnName("source").HasMaxLength(64);
-        builder.Property(i => i.IsEquipped).HasColumnName("is_equipped").HasDefaultValue(false);
-        builder.Property(i => i.EquipmentSlot).HasColumnName("equipment_slot").HasMaxLength(16).HasDefaultValue("Relic").IsRequired();
-        builder.HasIndex(i => new { i.PlayerCharacterId, i.ItemDefinitionKey }).IsUnique();
+        builder.Property(i => i.EquipmentPosition).HasColumnName("equipment_position").HasMaxLength(32);
+        builder.HasIndex(i => new { i.PlayerCharacterId, i.EquipmentPosition })
+            .IsUnique()
+            .HasFilter("equipment_position IS NOT NULL");
         builder.HasOne(i => i.PlayerCharacter)
             .WithMany(c => c.Items)
             .HasForeignKey(i => i.PlayerCharacterId)
@@ -105,7 +106,7 @@ public sealed class PlayerPermanentItemEntityConfiguration : IEntityTypeConfigur
         builder.Property(i => i.SourceRunId).HasColumnName("source_run_id");
         builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
         builder.Property(i => i.ContainedLiquidDefinitionKey).HasColumnName("contained_liquid_definition_key").HasMaxLength(256);
-        builder.HasIndex(i => new { i.PlayerProfileId, i.ItemDefinitionKey }).IsUnique();
+        builder.HasIndex(i => new { i.PlayerProfileId, i.ItemDefinitionKey });
         builder.HasOne(i => i.PlayerProfile)
             .WithMany(p => p.PermanentItems)
             .HasForeignKey(i => i.PlayerProfileId)

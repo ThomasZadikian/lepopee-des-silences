@@ -3,6 +3,7 @@ using Leds.Player.Application.Players.CreatePlayableCharacter;
 using Leds.Player.Application.Players.CreatePlayerProfile;
 using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.EquipSkill;
+using Leds.Player.Application.Players.Equipment;
 using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Application.Players.UnequipSkill;
 using Leds.Player.Domain.Players;
@@ -146,7 +147,38 @@ public sealed class PlayersController : ControllerBase
         var response = await _sender.Send(new UnequipItemCommand(playerId, characterId, itemKey), cancellationToken);
         return Ok(response);
     }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/{targetPosition}/preview/{itemInstanceId:guid}")]
+    public async Task<ActionResult<EquipmentChangePlan>> PreviewEquipItem(
+        Guid playerId, Guid characterId, Guid itemInstanceId, EquipmentPosition targetPosition,
+        [FromBody] EquipmentResourceContext? context, CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(new PreviewEquipItemQuery(
+            playerId, characterId, itemInstanceId, targetPosition,
+            context?.CurrentVitality, context?.CurrentMana), cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/{targetPosition}/equip/{itemInstanceId:guid}")]
+    public async Task<ActionResult<PlayerProfileDto>> EquipItemInstance(
+        Guid playerId, Guid characterId, Guid itemInstanceId, EquipmentPosition targetPosition,
+        [FromBody] EquipmentResourceContext? context, CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(new EquipItemInstanceCommand(
+            playerId, characterId, itemInstanceId, targetPosition,
+            context?.CurrentVitality, context?.CurrentMana), cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/equipment/unequip/{itemInstanceId:guid}")]
+    public async Task<ActionResult<PlayerProfileDto>> UnequipItemInstance(
+        Guid playerId, Guid characterId, Guid itemInstanceId, CancellationToken cancellationToken)
+    {
+        return Ok(await _sender.Send(
+            new UnequipItemInstanceCommand(playerId, characterId, itemInstanceId), cancellationToken));
+    }
 }
 
 public sealed record CreatePlayerProfileRequest(string DisplayName);
 public sealed record CreatePlayableCharacterRequest(string DisplayName, string ArchetypeKey);
+public sealed record EquipmentResourceContext(int? CurrentVitality = null, int? CurrentMana = null);

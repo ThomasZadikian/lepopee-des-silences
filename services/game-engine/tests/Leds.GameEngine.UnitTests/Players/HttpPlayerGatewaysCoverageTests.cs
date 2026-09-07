@@ -228,6 +228,73 @@ public sealed class HttpPlayerGatewaysCoverageTests
         await gateway.GrantReputationMilestoneAsync(playerId, "npc", "milestone", null, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task ProfileGateway_ShouldMapInstanceEquipmentEndpoints()
+    {
+        var playerId = Guid.NewGuid();
+        var characterId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var planJson = $$"""
+        {"TargetPosition":"Chest","CandidateItem":{"ItemInstanceId":"{{itemId}}","DefinitionKey":"item.armour","DisplayName":"Armour"},
+        "CurrentlyEquippedItem":null,"CanEquip":true,"BlockingReasons":[],
+        "CurrentEffectiveStats":{"MaxVitality":100,"AttackPower":10,"MagicAttack":0,"Defense":5,"MagicDefense":0,"StartingGuard":0,"Speed":10,"Initiative":0,"Focus":0,"Mana":20,"Charge":0,"Movement":4},
+        "ProjectedEffectiveStats":{"MaxVitality":100,"AttackPower":10,"MagicAttack":0,"Defense":5,"MagicDefense":0,"StartingGuard":0,"Speed":10,"Initiative":0,"Focus":0,"Mana":20,"Charge":0,"Movement":4},
+        "StatDeltas":[],"CurrentTemporarySkills":[],"ProjectedTemporarySkills":[],"GainedTemporarySkills":[],"LostTemporarySkills":[],
+        "CurrentVitality":100,"ProjectedCurrentVitality":100,"CurrentMana":20,"ProjectedCurrentMana":20,
+        "AllowedSlots":["Chest"],"ProficiencyTags":[]}
+        """;
+        var profileJson = MinimalProfile(playerId, characterId);
+        var responses = new Queue<HttpResponseMessage>(
+        [
+            Json(HttpStatusCode.OK, planJson),
+            Json(HttpStatusCode.OK, planJson),
+            Json(HttpStatusCode.OK, profileJson),
+            Json(HttpStatusCode.OK, profileJson)
+        ]);
+        var gateway = new HttpPlayerProfileGateway(Client(_ => responses.Dequeue()));
+
+        var defaultResources = await gateway.PreviewEquipmentChangeAsync(
+            playerId, characterId, itemId, "Chest", null, CancellationToken.None);
+        var explicitResources = await gateway.PreviewEquipmentChangeAsync(
+            playerId, characterId, itemId, "Chest", new(80, 10), CancellationToken.None);
+        var equipped = await gateway.EquipItemInstanceAsync(
+            playerId, characterId, itemId, "Chest", null, CancellationToken.None);
+        var unequipped = await gateway.UnequipItemInstanceAsync(
+            playerId, characterId, itemId, CancellationToken.None);
+
+        defaultResources.CanEquip.Should().BeTrue();
+        explicitResources.CandidateItem.ItemInstanceId.Should().Be(itemId);
+        equipped.Id.Should().Be(playerId);
+        unequipped.Id.Should().Be(playerId);
+    }
+
+    [Fact]
+    public async Task ProfileGateway_ShouldTranslateAndValidateEquipmentPreviewResponses()
+    {
+        var ids = (Player: Guid.NewGuid(), Character: Guid.NewGuid(), Item: Guid.NewGuid());
+        var missing = new HttpPlayerProfileGateway(Client(_ => Json(HttpStatusCode.NotFound, "missing")));
+        var invalid = new HttpPlayerProfileGateway(Client(_ => Json(HttpStatusCode.BadRequest, "invalid slot")));
+        var empty = new HttpPlayerProfileGateway(Client(_ => Json(HttpStatusCode.OK, "null")));
+
+        await missing.Invoking(gateway => gateway.PreviewEquipmentChangeAsync(
+                ids.Player, ids.Character, ids.Item, "Chest", null, CancellationToken.None))
+            .Should().ThrowAsync<NotFoundException>();
+        await invalid.Invoking(gateway => gateway.PreviewEquipmentChangeAsync(
+                ids.Player, ids.Character, ids.Item, "Chest", null, CancellationToken.None))
+            .Should().ThrowAsync<DomainException>().WithMessage("*invalid slot*");
+        await empty.Invoking(gateway => gateway.PreviewEquipmentChangeAsync(
+                ids.Player, ids.Character, ids.Item, "Chest", null, CancellationToken.None))
+            .Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    private static string MinimalProfile(Guid playerId, Guid characterId) => $$"""
+    {"Id":"{{playerId}}","DisplayName":"Player","Characters":[{
+      "Id":"{{characterId}}","DefinitionKey":"hero","DisplayName":"Hero","Skills":[],
+      "Stats":{"MaxVitality":1,"AttackPower":0,"Defense":0,"StartingGuard":0,"Speed":1,"Initiative":0,"Focus":0,"Mana":0,"Charge":0},
+      "MaxEquippedSkills":4,"Items":[]
+    }],"Progression":{},"PermanentItems":[],"MainStory":null}
+    """;
+
     private static HttpClient Client(Func<HttpRequestMessage, HttpResponseMessage> responder) =>
         new(new StubHandler(responder)) { BaseAddress = new Uri("http://localhost") };
 

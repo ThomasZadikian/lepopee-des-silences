@@ -756,12 +756,94 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_generic_loot_pools", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.ArchetypeDefinitionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseStatsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("base_stats_json");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("ProficiencyTagsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("proficiency_tags_json");
+
+                    b.Property<string>("StarterEquipmentJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("starter_equipment_json");
+
+                    b.Property<string>("StarterEquippedSkillsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("starter_equipped_skills_json");
+
+                    b.Property<string>("StarterKnownSkillsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("starter_known_skills_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+                    b.HasIndex("Key").IsUnique();
+                    b.HasIndex("Status");
+                    b.ToTable("catalog_archetype_definitions", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.ItemDefinitionEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("AllowedSlotsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("allowed_slots_json");
 
                     b.Property<int>("BaseWeight")
                         .ValueGeneratedOnAdd()
@@ -823,6 +905,18 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<string>("EquipmentEffectsJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("equipment_effects_json");
+
+                    b.Property<string>("ProficiencyTagsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("proficiency_tags_json");
+
+                    b.Property<string>("UniqueEquipGroup")
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)")
+                        .HasColumnName("unique_equip_group");
 
                     b.Property<string>("FlavorTag")
                         .IsRequired()

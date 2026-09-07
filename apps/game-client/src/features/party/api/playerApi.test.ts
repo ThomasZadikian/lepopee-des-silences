@@ -58,6 +58,21 @@ describe('playerApi', () => {
     );
   });
 
+  it('previews and commits equipment by instance and concrete position', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValue({});
+
+    await playerApi.previewEquipmentChange('player-1', 'char-1', 'instance-1', 'Ring2');
+    await playerApi.equipItemInstance('player-1', 'char-1', 'instance-1', 'Ring2');
+    await playerApi.unequipItemInstance('player-1', 'char-1', 'instance-1');
+
+    expect(gameEngineApi.post).toHaveBeenNthCalledWith(1,
+      '/api/v2/players/player-1/characters/char-1/equipment/Ring2/preview/instance-1', {});
+    expect(gameEngineApi.post).toHaveBeenNthCalledWith(2,
+      '/api/v2/players/player-1/characters/char-1/equipment/Ring2/equip/instance-1', {});
+    expect(gameEngineApi.post).toHaveBeenNthCalledWith(3,
+      '/api/v2/players/player-1/characters/char-1/equipment/unequip/instance-1');
+  });
+
   it('returns the API response for getProfile', async () => {
     const mockResponse = { id: 'player-1', displayName: 'Test' };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

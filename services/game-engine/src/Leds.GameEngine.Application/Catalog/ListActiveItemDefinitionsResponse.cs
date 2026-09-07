@@ -9,10 +9,7 @@ public sealed record ItemDefinitionView(
     string Rarity,
     string? EffectRunType,
     int EffectValue,
-    // Weapon/Accessory/Relic, or null when this category isn't equippable at all
-    // (Consumable/Key/Currency/Material/...) — resolved server-side from Category via
-    // CatalogRunItemMapper, the same authority the actual equip command uses, so the
-    // frontend never re-derives it from raw category/type fields.
+    // Transitional convenience sourced from AllowedSlots for older clients.
     string? EquipSlot = null,
     IReadOnlyCollection<string>? ReadablePages = null,
     IReadOnlyCollection<ItemEquipmentEffectView>? EquipmentEffects = null,
@@ -25,7 +22,10 @@ public sealed record ItemDefinitionView(
     int? BasicAttackPower = null,
     string? BasicAttackCategory = null,
     int PalaceShardCost = 0,
-    int HimLitShardCost = 0);
+    int HimLitShardCost = 0,
+    IReadOnlyCollection<string>? AllowedSlots = null,
+    string? UniqueEquipGroup = null,
+    IReadOnlyCollection<string>? ProficiencyTags = null);
 
 public sealed record ItemEquipmentEffectView(
     string Kind,
