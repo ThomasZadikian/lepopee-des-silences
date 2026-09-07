@@ -62,6 +62,10 @@ export type AccountOverviewResponse = {
   characters: AccountCharacterResponse[];
 };
 
+export type CreateCharacterResponse = {
+  characters: AccountCharacterResponse[];
+};
+
 export type GameSessionLeaseResponse = {
   status: string;
   sessionId: string;
@@ -123,7 +127,7 @@ export const playerApi = {
     post<void>(`${accountRoot}/password-reset`, { token, newPassword }),
 
   createCharacter: (accessToken: string, body: CreateCharacterRequest) =>
-    post<unknown>(`${accountRoot}/characters`, body, authorizedHeaders(accessToken)),
+    post<CreateCharacterResponse>(`${accountRoot}/characters`, body, authorizedHeaders(accessToken)),
 
   getAccount: (accessToken: string) =>
     request<AccountOverviewResponse>(`${accountRoot}/me`, {

@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router';
 
 import AccountAccessShell from '../features/account/components/AccountAccessShell.vue';
 import { getAccessToken } from '../features/account/authSession';
-import { playerApi } from '../shared/api/playerApi';
+import { selectCharacter } from '../features/account/selectedCharacter';
+import { playerApi, type AccountCharacterResponse } from '../shared/api/playerApi';
 
 const router = useRouter();
 const characterName = ref('');
@@ -13,7 +14,8 @@ const error = ref<string | null>(null);
 const accountError = ref<string | null>(null);
 const busy = ref(false);
 const accountLoaded = ref(false);
-const hasExistingCharacter = ref(false);
+const characters = ref<AccountCharacterResponse[]>([]);
+const showCreation = ref(false);
 
 const archetypes = [
   {
@@ -52,10 +54,8 @@ async function loadAccountCharacters() {
 
   try {
     const account = await playerApi.getAccount(accessToken);
-    hasExistingCharacter.value = account.characters.length > 0;
-    if (hasExistingCharacter.value) {
-      await router.replace({ name: 'threshold' });
-    }
+    characters.value = account.characters;
+    showCreation.value = account.characters.length === 0;
   } catch (cause) {
     accountError.value = cause instanceof Error
       ? cause.message
@@ -86,10 +86,17 @@ async function continueToPalace() {
 
   try {
     busy.value = true;
-    await playerApi.createCharacter(accessToken, {
+    const existingIds = new Set(characters.value.map((character) => character.id));
+    const profile = await playerApi.createCharacter(accessToken, {
       displayName: characterName.value.trim(),
       archetypeKey: selected.value.key,
     });
+    const createdCharacter = profile.characters.find((character) =>
+      character.characterType === 'Player' && !existingIds.has(character.id));
+    if (!createdCharacter) {
+      throw new Error('Le personnage a été créé, mais il n’a pas pu être sélectionné. Rechargez la page.');
+    }
+    selectCharacter(createdCharacter.id);
     await router.push({ name: 'threshold' });
   } catch (cause) {
     error.value = cause instanceof Error
@@ -99,13 +106,36 @@ async function continueToPalace() {
     busy.value = false;
   }
 }
+
+async function playWithCharacter(characterId: string) {
+  selectCharacter(characterId);
+  await router.push({ name: 'threshold' });
+}
+
+function beginCharacterCreation() {
+  error.value = null;
+  showCreation.value = true;
+}
+
+function cancelCharacterCreation() {
+  error.value = null;
+  showCreation.value = false;
+}
+
+function archetypeName(character: AccountCharacterResponse): string {
+  return archetypes.find((archetype) => archetype.key === character.archetypeKey)?.name
+    ?? character.archetypeKey
+    ?? 'Archétype inconnu';
+}
 </script>
 
 <template>
   <AccountAccessShell
     kicker="Votre incarnation"
-    title="Choisir un archétype"
-    subtitle="Le Palais appartient au compte ; le nom, l’équipement et l’archétype appartiennent au personnage. L’archétype choisi est définitif."
+    :title="showCreation ? 'Choisir un archétype' : 'Choisir un personnage'"
+    :subtitle="showCreation
+      ? 'Le Palais appartient au compte ; le nom, l’équipement et l’archétype appartiennent au personnage. L’archétype choisi est définitif.'
+      : 'Votre compte peut abriter plusieurs personnages. Choisissez celui avec lequel vous souhaitez jouer.'"
   >
     <p v-if="!accountLoaded" class="character-selection__loading" role="status">
       Recherche de votre personnage…
@@ -115,7 +145,37 @@ async function continueToPalace() {
       {{ accountError }}
     </p>
 
-    <form v-else-if="!hasExistingCharacter" class="character-selection" @submit.prevent="continueToPalace">
+    <section v-else-if="!showCreation" class="character-list" aria-label="Personnages du compte">
+      <header class="character-list__header">
+        <div>
+          <span class="character-selection__summary-label">Personnages disponibles</span>
+          <p>Choisissez l’incarnation qui franchira le seuil du Palais.</p>
+        </div>
+        <button type="button" class="character-list__create" @click="beginCharacterCreation">
+          Créer un nouveau personnage
+        </button>
+      </header>
+
+      <div class="character-list__grid">
+        <button
+          v-for="character in characters"
+          :key="character.id"
+          type="button"
+          class="character-card"
+          :data-character-id="character.id"
+          @click="playWithCharacter(character.id)"
+        >
+          <span class="character-card__glyph">◇</span>
+          <span class="character-card__identity">
+            <strong>{{ character.displayName }}</strong>
+            <span>{{ archetypeName(character) }}</span>
+          </span>
+          <span class="character-card__action">Jouer</span>
+        </button>
+      </div>
+    </section>
+
+    <form v-else class="character-selection" @submit.prevent="continueToPalace">
       <label class="character-name">
         <span class="character-name__label">Nom du personnage</span>
         <input v-model="characterName" class="character-name__input" maxlength="40" autocomplete="off" placeholder="Nommer votre personnage" />
@@ -149,10 +209,21 @@ async function continueToPalace() {
 
       <p v-if="error" class="character-selection__error" role="alert">{{ error }}</p>
 
-      <button class="character-selection__submit" type="submit" :disabled="busy">
-        <span>◈</span>
-        <span>{{ busy ? 'Création…' : 'Entrer dans le Palais' }}</span>
-      </button>
+      <div class="character-selection__actions">
+        <button
+          v-if="characters.length > 0"
+          class="character-selection__cancel"
+          type="button"
+          :disabled="busy"
+          @click="cancelCharacterCreation"
+        >
+          Retour à la liste
+        </button>
+        <button class="character-selection__submit" type="submit" :disabled="busy">
+          <span>◈</span>
+          <span>{{ busy ? 'Création…' : 'Créer et entrer dans le Palais' }}</span>
+        </button>
+      </div>
     </form>
 
   </AccountAccessShell>
@@ -165,6 +236,72 @@ async function continueToPalace() {
   gap: 28px;
   text-align: left;
 }
+
+.character-list {
+  padding: 30px;
+  display: grid;
+  gap: 24px;
+}
+
+.character-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.character-list__header p {
+  margin: 7px 0 0;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.character-list__create,
+.character-selection__cancel {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  font: 600 10px var(--font);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.character-list__create:hover,
+.character-selection__cancel:hover { border-color: var(--mint-dim); color: var(--mint); }
+
+.character-list__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.character-card {
+  min-height: 92px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .3s, transform .3s, background .3s;
+}
+
+.character-card:hover {
+  border-color: var(--mint-dim);
+  background: color-mix(in srgb, var(--mint) 7%, var(--bg-2));
+  transform: translateY(-2px);
+}
+
+.character-card__glyph { color: var(--mint-dim); font-size: 22px; }
+.character-card__identity { min-width: 0; flex: 1; display: grid; gap: 5px; }
+.character-card__identity strong { color: var(--ink); font-family: var(--font-display); font-size: 21px; font-style: italic; font-weight: 400; }
+.character-card__identity span { color: var(--ink-4); font: 10px var(--font-mono); text-transform: uppercase; }
+.character-card__action { color: var(--mint); font: 600 10px var(--font); letter-spacing: .12em; text-transform: uppercase; }
 
 .character-name {
   display: grid;
@@ -268,10 +405,14 @@ async function continueToPalace() {
 }
 
 .character-selection__submit:disabled { opacity: .55; cursor: wait; }
+.character-selection__actions { display: flex; justify-content: flex-end; gap: 12px; }
 
 @media (max-width: 760px) {
   .archetype-grid { grid-template-columns: 1fr; }
   .archetype-card { min-height: 150px; }
   .character-selection { padding: 20px; }
+  .character-list { padding: 20px; }
+  .character-list__header { align-items: stretch; flex-direction: column; }
+  .character-list__grid { grid-template-columns: 1fr; }
 }
 </style>

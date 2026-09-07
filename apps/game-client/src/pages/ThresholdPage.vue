@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import LivingWalls from '../shared/components/LivingWalls.vue';
 import SessionMenu from '../features/account/components/SessionMenu.vue';
+import { clearSelectedCharacter } from '../features/account/selectedCharacter';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const router   = useRouter();
@@ -55,6 +56,11 @@ function onClickReprendre() {
 function onClickNouvelle() {
   if (hasResumable.value) showConfirm.value = true;
   else startRun();
+}
+
+async function changeCharacter() {
+  clearSelectedCharacter();
+  await router.push({ name: 'character-selection' });
 }
 
 async function confirmAbandon() {
@@ -118,6 +124,10 @@ const TOTAL_ROOMS = 27;
       </div>
 
       <p v-if="lifecycleError" class="threshold-error">{{ lifecycleError }}</p>
+
+      <button type="button" class="threshold-character-switch" @click="changeCharacter">
+        Changer de personnage
+      </button>
     </div>
 
     <!-- ── Modale de confirmation ── -->
@@ -293,6 +303,23 @@ const TOTAL_ROOMS = 27;
 .threshold-error {
   color: var(--danger);
   font-size: 0.78rem;
+}
+
+.threshold-character-switch {
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-3);
+  font: 600 10px var(--font);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .3s, color .3s;
+}
+
+.threshold-character-switch:hover {
+  border-color: var(--mint-dim);
+  color: var(--mint);
 }
 
 /* ── Modale de confirmation ── */

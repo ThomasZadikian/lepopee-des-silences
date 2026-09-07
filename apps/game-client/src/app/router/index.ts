@@ -11,6 +11,7 @@ import TeamHubPage from '../../pages/TeamHubPage.vue';
 import ThresholdPage from '../../pages/ThresholdPage.vue';
 import TutorialPage from '../../pages/TutorialPage.vue';
 import { restoreAuthenticatedSession } from '../../features/account/authSession';
+import { getSelectedCharacterId } from '../../features/account/selectedCharacter';
 import { playerApi } from '../../shared/api/playerApi';
 
 export const router = createRouter({
@@ -78,7 +79,7 @@ export const router = createRouter({
       path: '/palais',
       name: 'threshold',
       component: ThresholdPage,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresCharacterSelection: true },
     },
     {
       path: '/run/:runId?',
@@ -154,7 +155,12 @@ export async function requireAuthenticatedSession(
   if (!to.meta.requiresAuth) return true;
 
   const session = await restoreAuthenticatedSession(playerApi.refreshSession);
-  if (session) return true;
+  if (session) {
+    if (to.meta.requiresCharacterSelection && !getSelectedCharacterId()) {
+      return { name: 'character-selection' };
+    }
+    return true;
+  }
 
   return {
     name: 'login',

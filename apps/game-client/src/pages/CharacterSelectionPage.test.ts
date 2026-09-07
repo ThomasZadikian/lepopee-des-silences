@@ -23,8 +23,16 @@ async function mountReadyPage() {
 describe('CharacterSelectionPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     auth.getAccessToken.mockReturnValue('access-token');
-    api.createCharacter.mockResolvedValue({ id: 'character-id' });
+    api.createCharacter.mockResolvedValue({
+      characters: [{
+        id: 'character-id',
+        displayName: 'Aster',
+        characterType: 'Player',
+        archetypeKey: 'archetype.porteur',
+      }],
+    });
     api.getAccount.mockResolvedValue({ characters: [] });
   });
 
@@ -59,17 +67,78 @@ describe('CharacterSelectionPage', () => {
     expect(router.push).toHaveBeenCalledWith({ name: 'threshold' });
   });
 
-  it('continues with the existing character instead of proposing another creation', async () => {
+  it('lists every existing character and lets the user select one before playing', async () => {
     api.getAccount.mockResolvedValueOnce({
-      characters: [{ id: 'existing-character', displayName: 'Aster' }],
+      characters: [
+        { id: 'character-aster', displayName: 'Aster', archetypeKey: 'archetype.porteur' },
+        { id: 'character-nox', displayName: 'Nox', archetypeKey: 'archetype.porteur' },
+      ],
     });
 
     const wrapper = await mountReadyPage();
 
     expect(api.getAccount).toHaveBeenCalledWith('access-token');
     expect(api.createCharacter).not.toHaveBeenCalled();
-    expect(router.replace).toHaveBeenCalledWith({ name: 'threshold' });
+    expect(wrapper.text()).toContain('Aster');
+    expect(wrapper.text()).toContain('Nox');
+    expect(wrapper.text()).toContain('Créer un nouveau personnage');
     expect(wrapper.find('form').exists()).toBe(false);
+
+    await wrapper.get('[data-character-id="character-nox"]').trigger('click');
+
+    expect(sessionStorage.getItem('leds.selected-character-id')).toBe('character-nox');
+    expect(router.push).toHaveBeenCalledWith({ name: 'threshold' });
+  });
+
+  it('allows another character to be created without selecting an existing companion', async () => {
+    api.getAccount.mockResolvedValueOnce({
+      characters: [
+        { id: 'character-aster', displayName: 'Aster', archetypeKey: 'archetype.porteur' },
+      ],
+    });
+    api.createCharacter.mockResolvedValueOnce({
+      characters: [
+        { id: 'companion-mane', displayName: 'Mané', characterType: 'Companion' },
+        { id: 'character-aster', displayName: 'Aster', characterType: 'Player' },
+        { id: 'character-nox', displayName: 'Nox', characterType: 'Player' },
+      ],
+    });
+    const wrapper = await mountReadyPage();
+
+    await wrapper.get('.character-list__create').trigger('click');
+    await wrapper.get('input').setValue('Nox');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(sessionStorage.getItem('leds.selected-character-id')).toBe('character-nox');
+    expect(router.push).toHaveBeenCalledWith({ name: 'threshold' });
+  });
+
+  it('can cancel character creation and return to the existing list', async () => {
+    api.getAccount.mockResolvedValueOnce({
+      characters: [{ id: 'character-aster', displayName: 'Aster', archetypeKey: 'archetype.inconnu' }],
+    });
+    const wrapper = await mountReadyPage();
+
+    expect(wrapper.text()).toContain('archetype.inconnu');
+    await wrapper.get('.character-list__create').trigger('click');
+    expect(wrapper.find('form').exists()).toBe(true);
+    await wrapper.get('.character-selection__cancel').trigger('click');
+
+    expect(wrapper.find('form').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Aster');
+  });
+
+  it('keeps the user on creation when the returned profile contains no new playable character', async () => {
+    api.createCharacter.mockResolvedValueOnce({ characters: [] });
+    const wrapper = await mountReadyPage();
+
+    await wrapper.get('input').setValue('Nox');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('n’a pas pu être sélectionné');
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('requires an authenticated session and surfaces server failures', async () => {
