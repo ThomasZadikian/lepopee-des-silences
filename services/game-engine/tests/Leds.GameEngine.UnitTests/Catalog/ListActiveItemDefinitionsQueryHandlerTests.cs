@@ -32,7 +32,10 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
                     TacticalAreaShape: "Diamond",
                     RequiresLineOfSight: true,
                     PalaceShardCost: 500,
-                    HimLitShardCost: 25)
+                    HimLitShardCost: 25,
+                    AllowedSlots: ["Accessory"],
+                    UniqueEquipGroup: "pomenian-monocle",
+                    ProficiencyTags: ["light-accessory"])
             });
 
         var handler = new ListActiveItemDefinitionsQueryHandler(catalogGateway.Object);
@@ -46,6 +49,9 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         item.Category.Should().Be("Equipment");
         item.FlavorTag.Should().Be("Accessory");
         item.EquipSlot.Should().Be("Accessory");
+        item.AllowedSlots.Should().Equal("Accessory");
+        item.UniqueEquipGroup.Should().Be("pomenian-monocle");
+        item.ProficiencyTags.Should().Equal("light-accessory");
         item.Rarity.Should().Be("Epic");
         item.TacticalRange.Should().Be(2);
         item.TacticalAreaShape.Should().Be("Diamond");
