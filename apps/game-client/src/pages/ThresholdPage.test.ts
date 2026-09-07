@@ -64,6 +64,14 @@ describe('ThresholdPage tactical-only flow', () => {
     expect(router.push).toHaveBeenCalledWith('/run/run-tactical');
   });
 
+  it('lets the user return to the account character list', async () => {
+    const wrapper = mount(ThresholdPage, { attachTo: document.body });
+
+    await wrapper.get('.threshold-character-switch').trigger('click');
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'character-selection' });
+  });
+
   it('resumes an active run recovered from the backend', async () => {
     runStore.resumableRun = {
       id: 'run-recovered',

@@ -15,6 +15,7 @@ import {
   prefersReducedMotion,
 } from '../../palace-map/composables/usePartyTokenPath';
 import { getAuthenticatedAccountId } from '../../account/authSession';
+import { getSelectedCharacterId } from '../../account/selectedCharacter';
 import {
   unwrapRunResponse,
   type ActorAdvanceMode,
@@ -516,7 +517,7 @@ export const useRunStore = defineStore('run', () => {
       // le composant appelant ne navigue pas vers l'ancienne run.
       currentRun.value = null;
 
-      const response = await runApi.startRun(getActivePlayerId());
+      const response = await runApi.startRun(getActivePlayerId(), getSelectedCharacterId() ?? undefined);
       const run = unwrapRunResponse(response);
 
       lastChoiceResult.value = null;

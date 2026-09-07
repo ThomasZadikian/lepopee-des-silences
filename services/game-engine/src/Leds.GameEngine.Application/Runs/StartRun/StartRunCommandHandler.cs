@@ -61,6 +61,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var snapshot = await _playerGateway.GetRunSnapshotAsync(request.PlayerId, cancellationToken);
 
         var profile = await _playerProfileGateway.GetProfileAsync(request.PlayerId, cancellationToken);
+        var partyCharacters = RunPartySelectionPolicy.Resolve(
+            snapshot.Characters,
+            profile.Characters,
+            request.CharacterId);
         var progressionSelection = RunProgressionSelectionPolicy.Resolve(
             profile.MainStory,
             request.DifficultyLevel);
@@ -90,7 +94,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 .ListCharacterCombatDefinitionsAsync(cancellationToken))
             .ToDictionary(definition => definition.DefinitionKey, StringComparer.OrdinalIgnoreCase);
 
-        var mainCharacter = snapshot.Characters.FirstOrDefault()
+        var mainCharacter = partyCharacters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
 
         var equippedDefinitions = await _skillMerger.ResolveEquippedItemsAsync(
@@ -246,10 +250,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         // Plafond d'équipe (SFD v2, §5) : le porteur et au plus trois compagnons. Le roster
         // permanent n'est pas plafonné — le joueur recrute autant qu'il veut — mais seuls les
-        // MaxPartySize premiers partent en run. L'ordre du roster fait foi, et le personnage
-        // principal en est la tête (cf. snapshot.Characters.FirstOrDefault() plus haut).
+        // MaxPartySize premiers partent en run. La sélection explicite du compte place le
+        // personnage joué en tête, puis conserve uniquement les compagnons recrutés.
         var characterSnapshots = new List<RunCharacterSnapshot>();
-        foreach (var character in snapshot.Characters.Take(Run.MaxPartySize))
+        foreach (var character in partyCharacters.Take(Run.MaxPartySize))
         {
             if (!characterDefinitions.TryGetValue(character.DefinitionKey, out var characterDefinition))
             {

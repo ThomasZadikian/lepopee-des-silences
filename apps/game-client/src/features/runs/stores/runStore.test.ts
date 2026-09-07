@@ -6,6 +6,7 @@ import { rewardApi } from '../../rewards/api/rewardApi';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 import { combatApi } from '../../combat/api/combatApi';
 import { clearAuthenticatedSession, setAuthenticatedSession } from '../../account/authSession';
+import { clearSelectedCharacter, selectCharacter } from '../../account/selectedCharacter';
 
 vi.mock('../api/runApi', () => ({
   runApi: {
@@ -60,6 +61,7 @@ describe('useRunStore computed properties', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     clearAuthenticatedSession();
+    clearSelectedCharacter();
     try { localStorage.clear(); } catch {}
     vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
   });
@@ -261,6 +263,7 @@ describe('useRunStore actions', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     clearAuthenticatedSession();
+    clearSelectedCharacter();
     try { localStorage.clear(); } catch {}
     vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
   });
@@ -274,8 +277,26 @@ describe('useRunStore actions', () => {
 
     await store.startRun();
 
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String));
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), undefined);
     expect(store.currentRun?.id).toBe('run-1');
+  });
+
+  it('starts an authenticated run with the character selected by the user', async () => {
+    setAuthenticatedSession({
+      accountId: 'account-player-id',
+      sessionId: 'session-id',
+      accessToken: 'access-token',
+      accessTokenExpiresAtUtc: '2026-08-31T13:00:00Z',
+    });
+    selectCharacter('character-2');
+    const store = useRunStore();
+    vi.mocked(runApi.startRun).mockResolvedValue({
+      run: { id: 'run-2', status: 'Active', currentRoom: {} },
+    } as any);
+
+    await store.startRun();
+
+    expect(runApi.startRun).toHaveBeenCalledWith('account-player-id', 'character-2');
   });
 
   it('loadRun restores the active tactical combat', async () => {

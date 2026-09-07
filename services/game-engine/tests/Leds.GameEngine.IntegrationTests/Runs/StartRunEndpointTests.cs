@@ -105,4 +105,20 @@ public sealed class StartRunEndpointTests
         body.Should().Contain("Validation failed.");
         body.Should().Contain("Player id is required.");
     }
+
+    [Fact]
+    public async Task StartRun_ShouldReturnBadRequest_WhenCharacterIdIsEmpty()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v2/runs",
+            new
+            {
+                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                CharacterId = Guid.Empty
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync())
+            .Should().Contain("Character id must not be empty when provided.");
+    }
 }
