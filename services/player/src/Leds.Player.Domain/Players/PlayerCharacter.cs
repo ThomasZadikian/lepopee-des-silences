@@ -345,9 +345,13 @@ public sealed class PlayerCharacter
     private EquipmentPosition NextLegacyPosition(EquipmentSlotKind slot) => slot switch
     {
         EquipmentSlotKind.MainWeapon or EquipmentSlotKind.Weapon => EquipmentPosition.MainWeapon,
-        EquipmentSlotKind.Ring or EquipmentSlotKind.Accessory => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Ring => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Accessory => EquipmentPosition.Neck,
         EquipmentSlotKind.Relic => new[] { EquipmentPosition.Relic, EquipmentPosition.Ring1, EquipmentPosition.Ring2 }
-            .First(position => _items.All(item => item.Position != position)),
+            .Where(position => _items.All(item => item.Position != position))
+            .Select(position => (EquipmentPosition?)position)
+            .FirstOrDefault()
+            ?? throw new DomainException($"Cannot equip more than {MaxEquippedRelics} item(s) in slot {slot}."),
         _ => Enum.Parse<EquipmentPosition>(slot.ToString())
     };
 

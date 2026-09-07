@@ -11,7 +11,7 @@ public partial class AddOwnedItemInstancesAndEquipmentPositions : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropIndex("IX_player_character_items_player_character_id_item_definition_key", "player_character_items");
+        migrationBuilder.DropIndex("IX_player_character_items_player_character_id_item_definition_~", "player_character_items");
         migrationBuilder.DropIndex("IX_player_permanent_items_player_profile_id_item_definition_key", "player_permanent_items");
         migrationBuilder.DropColumn("is_equipped", "player_character_items");
         migrationBuilder.RenameColumn("equipment_slot", "player_character_items", "equipment_position");
@@ -41,7 +41,7 @@ public partial class AddOwnedItemInstancesAndEquipmentPositions : Migration
             nullable: false, defaultValue: "Relic", oldClrType: typeof(string), oldType: "character varying(32)", oldMaxLength: 32, oldNullable: true);
         migrationBuilder.AddColumn<bool>("is_equipped", "player_character_items", "boolean", nullable: false, defaultValue: false);
         migrationBuilder.CreateIndex(
-            "IX_player_character_items_player_character_id_item_definition_key",
+            "IX_player_character_items_player_character_id_item_definition_~",
             "player_character_items", new[] { "player_character_id", "item_definition_key" }, unique: true);
         migrationBuilder.CreateIndex(
             "IX_player_permanent_items_player_profile_id_item_definition_key",

@@ -29,7 +29,7 @@ public sealed class PlayerCharacterItem
     public EquipmentSlotKind Slot => Position switch
     {
         EquipmentPosition.MainWeapon => EquipmentSlotKind.Weapon,
-        EquipmentPosition.Ring1 or EquipmentPosition.Ring2 => EquipmentSlotKind.Accessory,
+        EquipmentPosition.Neck => EquipmentSlotKind.Accessory,
         _ => EquipmentSlotKind.Relic
     };
 
@@ -78,7 +78,8 @@ public sealed class PlayerCharacterItem
     private static EquipmentPosition LegacyPosition(EquipmentSlotKind slot) => slot switch
     {
         EquipmentSlotKind.MainWeapon or EquipmentSlotKind.Weapon => EquipmentPosition.MainWeapon,
-        EquipmentSlotKind.Ring or EquipmentSlotKind.Accessory => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Ring => EquipmentPosition.Ring1,
+        EquipmentSlotKind.Accessory => EquipmentPosition.Neck,
         EquipmentSlotKind.Head => EquipmentPosition.Head,
         EquipmentSlotKind.Neck => EquipmentPosition.Neck,
         EquipmentSlotKind.Shoulders => EquipmentPosition.Shoulders,
