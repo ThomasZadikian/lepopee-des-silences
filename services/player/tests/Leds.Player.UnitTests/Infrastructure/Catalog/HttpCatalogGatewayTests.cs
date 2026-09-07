@@ -9,6 +9,12 @@ namespace Leds.Player.UnitTests.Infrastructure.Catalog;
 public sealed class HttpCatalogGatewayTests
 {
     [Fact]
+    public void Options_ShouldUseSecureDefaultEndpoint()
+    {
+        new CatalogGatewayOptions().BaseUrl.Should().StartWith("https://");
+    }
+
+    [Fact]
     public async Task EquipmentGateway_ShouldReturnNullForMissingDefinition()
     {
         var gateway = new HttpEquipmentDefinitionGateway(Client(HttpStatusCode.NotFound));
