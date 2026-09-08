@@ -9,6 +9,11 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. "$PSScriptRoot\ensure-player-auth-secrets.ps1"
+
+Write-Host "Checking persistent local authentication keys..." -ForegroundColor Yellow
+Initialize-LedsPlayerAuthenticationSecrets -RepositoryRoot $repoRoot
+Write-Host "  Player authentication keys are configured." -ForegroundColor Green
 
 Write-Host "=== Leds Local Dev Environment ===" -ForegroundColor Cyan
 Write-Host ""

@@ -12,6 +12,8 @@ namespace Leds.Player.IntegrationTests;
 public sealed class PlayerApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string GameClientOrigin = "http://localhost:5173";
+    private static readonly string MfaProtectionKey = Convert.ToBase64String(
+        Enumerable.Range(1, 32).Select(value => (byte)value).ToArray());
 
     private PostgreSqlContainer? _container;
 
@@ -41,7 +43,8 @@ public sealed class PlayerApiFactory : WebApplicationFactory<Program>, IAsyncLif
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:PlayerDb"] = GetConnectionString(),
-                ["Cors:AllowedOrigins:0"] = GameClientOrigin
+                ["Cors:AllowedOrigins:0"] = GameClientOrigin,
+                ["Authentication:MfaProtectionKey"] = MfaProtectionKey
             });
         });
         builder.ConfigureServices(services =>

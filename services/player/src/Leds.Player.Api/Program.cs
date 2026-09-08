@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
+using Leds.Player.Api.Configuration;
 using Leds.Player.Api.Middleware;
 using Leds.Player.Application.DependencyInjection;
 using Leds.Player.Infrastructure.DependencyInjection;
@@ -62,12 +63,9 @@ if (string.IsNullOrWhiteSpace(signingKey))
     }
 }
 
-if (string.IsNullOrWhiteSpace(builder.Configuration["Authentication:MfaProtectionKey"])
-    && (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")))
-{
-    builder.Configuration["Authentication:MfaProtectionKey"] = Convert.ToBase64String(
-        RandomNumberGenerator.GetBytes(32));
-}
+AuthenticationKeyConfiguration.ConfigureMfaProtectionKey(
+    builder.Configuration,
+    allowEphemeralKey: builder.Environment.IsEnvironment("Testing"));
 
 if (builder.Environment.IsDevelopment()
     && string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Email:Mode"]))
