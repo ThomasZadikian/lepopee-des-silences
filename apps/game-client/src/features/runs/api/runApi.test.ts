@@ -14,10 +14,28 @@ describe('runApi', () => {
     vi.clearAllMocks();
   });
 
-  it('startRun sends POST with playerId', async () => {
+  it('startRun sends the account and selected character identifiers', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await runApi.startRun('player-1');
-    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs', { playerId: 'player-1' });
+    await runApi.startRun('player-1', 'character-2');
+    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs', {
+      playerId: 'player-1',
+      characterId: 'character-2',
+    });
+  });
+
+  it('keeps character selection optional for legacy and difficulty calls', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValue({});
+
+    await runApi.startRun('demo-player');
+    await runApi.startRun('demo-player', undefined, 3);
+
+    expect(gameEngineApi.post).toHaveBeenNthCalledWith(1, '/api/v2/runs', {
+      playerId: 'demo-player',
+    });
+    expect(gameEngineApi.post).toHaveBeenNthCalledWith(2, '/api/v2/runs', {
+      playerId: 'demo-player',
+      difficultyLevel: 3,
+    });
   });
 
   it('getRun sends GET request', async () => {

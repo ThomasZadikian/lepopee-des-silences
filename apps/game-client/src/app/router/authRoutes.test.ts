@@ -24,6 +24,7 @@ const expectedRoutes = [
 describe('Account/Auth route contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     auth.restoreAuthenticatedSession.mockResolvedValue(null);
   });
 
@@ -62,6 +63,16 @@ describe('Account/Auth route contract', () => {
       fullPath: '/palais',
     })).resolves.toBe(true);
     expect(auth.restoreAuthenticatedSession).toHaveBeenCalledWith(api.refreshSession);
+  });
+
+  it('redirects the Palace threshold to character selection when none was chosen', async () => {
+    auth.restoreAuthenticatedSession.mockResolvedValueOnce({ accountId: 'account-id' });
+
+    await expect(requireAuthenticatedSession({
+      meta: { requiresAuth: true, requiresCharacterSelection: true },
+      name: 'threshold',
+      fullPath: '/palais',
+    })).resolves.toEqual({ name: 'character-selection' });
   });
 
   it('redirects an unauthenticated gameplay route back to login with its return path', async () => {

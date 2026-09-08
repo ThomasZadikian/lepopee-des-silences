@@ -57,7 +57,10 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId, request.DifficultyLevel);
+        var command = new StartRunCommand(
+            request.PlayerId,
+            request.DifficultyLevel,
+            request.CharacterId);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -662,7 +665,10 @@ public sealed class RunsController : ControllerBase
 /// <summary>
 /// Lance une run avec le système de combat tactique.
 /// </summary>
-public sealed record StartRunRequest(Guid PlayerId, int? DifficultyLevel = null);
+public sealed record StartRunRequest(
+    Guid PlayerId,
+    int? DifficultyLevel = null,
+    Guid? CharacterId = null);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 public sealed record AdvanceRoomActorsRequest(string Mode);

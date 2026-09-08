@@ -1,3 +1,5 @@
+import { clearSelectedCharacter } from './selectedCharacter';
+
 export type AuthenticatedSession = {
   accountId: string;
   sessionId: string;
@@ -21,6 +23,7 @@ export function setAuthenticatedSession(session: AuthenticatedSession): void {
 
 export function clearAuthenticatedSession(): void {
   authenticatedSession = null;
+  clearSelectedCharacter();
 }
 
 export function getAuthenticatedSession(): AuthenticatedSession | null {
