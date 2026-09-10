@@ -279,13 +279,15 @@ public sealed class DevToolsEndpointTests
         var client = _factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(environment);
+            builder.UseSetting(
+                "Authentication:Jwt:SigningKey",
+                GameEngineApiFactory.TestJwtSigningKey);
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["DevTools:Enabled"] = enabled.ToString(),
-                    ["DevTools:Token"] = Token,
-                    ["Authentication:Jwt:SigningKey"] = "integration-only-signing-key-at-least-32-bytes"
+                    ["DevTools:Token"] = Token
                 });
             });
         }).CreateClient();

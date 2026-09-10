@@ -24,6 +24,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
 {
     public const string DevToolsToken = "integration-devtools-token";
     public const string TestAuthenticationScheme = "Test";
+    public const string TestJwtSigningKey = "integration-only-signing-key-at-least-32-bytes";
     public static readonly Guid TestPlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private PostgreSqlContainer? _container;
@@ -59,6 +60,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Authentication:Jwt:SigningKey", TestJwtSigningKey);
 
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
@@ -69,8 +71,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
                 ["PlayerGateway:BaseUrl"] = "http://player.test",
                 ["Outbox:DispatcherEnabled"] = "false",
                 ["DevTools:Enabled"] = "true",
-                ["DevTools:Token"] = DevToolsToken,
-                ["Authentication:Jwt:SigningKey"] = "integration-only-signing-key-at-least-32-bytes"
+                ["DevTools:Token"] = DevToolsToken
             });
         });
 
