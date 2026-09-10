@@ -9,10 +9,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Testcontainers.PostgreSql;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using Microsoft.Extensions.Options;
+using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Common;
 

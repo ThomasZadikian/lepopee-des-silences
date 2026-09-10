@@ -19,18 +19,36 @@ public sealed class StubRunRepository : IRunRepository
         return Task.FromResult(run);
     }
 
-    public Task<Run?> GetOpenByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken)
+    public Task<Run?> GetOpenByPlayerIdAsync(
+        Guid playerId,
+        CancellationToken cancellationToken) =>
+        GetOpenByPlayerIdAsync(playerId, RunMode.Normal, cancellationToken);
+
+    public Task<Run?> GetOpenByPlayerIdAsync(
+        Guid playerId,
+        RunMode mode,
+        CancellationToken cancellationToken)
     {
         var run = _runs.Values.SingleOrDefault(candidate =>
             candidate.PlayerId == playerId &&
+            candidate.Mode == mode &&
             candidate.Status is RunStatus.Active or RunStatus.Suspended);
         return Task.FromResult(run);
     }
 
-    public Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken)
+    public Task<bool> HasActiveOrSuspendedAsync(
+        Guid playerId,
+        CancellationToken cancellationToken) =>
+        HasActiveOrSuspendedAsync(playerId, RunMode.Normal, cancellationToken);
+
+    public Task<bool> HasActiveOrSuspendedAsync(
+        Guid playerId,
+        RunMode mode,
+        CancellationToken cancellationToken)
     {
         var exists = _runs.Values.Any(run =>
             run.PlayerId == playerId &&
+            run.Mode == mode &&
             run.Status is RunStatus.Active or RunStatus.Suspended);
         return Task.FromResult(exists);
     }
