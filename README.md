@@ -461,6 +461,14 @@ dans un ordre calendaire.
 .\scripts\dev\start-dev.ps1
 ```
 
+Le script initialise une seule fois les clés locales de signature JWT et de protection MFA dans
+le gestionnaire de secrets .NET. La clé MFA doit rester identique entre deux démarrages du Player
+Service : la remplacer rend les secrets TOTP déjà enregistrés indéchiffrables.
+
+Si un compte a configuré Google Authenticator avant l'introduction de cette clé persistante, son
+ancien secret a été chiffré avec une clé éphémère désormais perdue. Sur une base locale de test,
+exécuter `.\scripts\dev\reset-dev-db.ps1`, puis enrôler de nouveau l'authentificateur.
+
 ### Comptes de test locaux
 
 Au démarrage du Player Service sous l’environnement `Development`, le seeder crée les comptes

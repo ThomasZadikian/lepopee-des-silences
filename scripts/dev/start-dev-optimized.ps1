@@ -11,6 +11,11 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $logDir = Join-Path $repoRoot "logs"
+. "$PSScriptRoot\ensure-player-auth-secrets.ps1"
+
+Write-Host "Checking persistent local authentication keys..." -ForegroundColor Yellow
+Initialize-LedsPlayerAuthenticationSecrets -RepositoryRoot $repoRoot
+Write-Host "  [OK] Player authentication keys are configured." -ForegroundColor Green
 
 # Create logs directory if it doesn't exist
 if (!(Test-Path $logDir)) {

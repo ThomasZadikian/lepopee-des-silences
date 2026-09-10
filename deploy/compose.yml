@@ -28,6 +28,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__PlayerDb: ${PLAYER_CONNECTION_STRING}
       CatalogGateway__BaseUrl: http://catalog:8080
+      Authentication__Jwt__SigningKey: ${PLAYER_JWT_SIGNING_KEY}
+      Authentication__MfaProtectionKey: ${PLAYER_MFA_PROTECTION_KEY}
     depends_on:
       player-postgres:
         condition: service_healthy
