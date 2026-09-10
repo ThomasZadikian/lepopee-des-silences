@@ -50,6 +50,34 @@ public sealed class DevToolsEndpointTests
     }
 
     [Fact]
+    public async Task Status_ShouldReturnUnauthorized_WhenAccountIsNotAuthenticated()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: true,
+            role: null);
+
+        var response = await client.GetAsync("/api/dev/v2/status");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Status_ShouldReturnForbidden_WhenAccountIsPlayer()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: true,
+            role: "Player");
+
+        var response = await client.GetAsync("/api/dev/v2/status");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task Status_ShouldReturnForbidden_WhenTokenInvalid()
     {
         using var client = CreateClient(environment: "Development", enabled: true, includeToken: true, token: "wrong-token");
@@ -72,6 +100,80 @@ public sealed class DevToolsEndpointTests
         payload.Should().NotBeNull();
         payload!.Enabled.Should().BeTrue();
         payload.Environment.Should().Be("Development");
+    }
+
+    [Fact]
+    public async Task ResetSandbox_ShouldCreateDeveloperIslandRunWithoutDevToolsToken()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: false,
+            role: "Developer");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
+        payload!.Run.Mode.Should().Be("DeveloperSandbox");
+    }
+
+    [Fact]
+    public async Task ResetSandbox_ShouldReplacePreviousSandbox()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: false,
+            role: "Developer");
+        var request = new { CharacterId = GameEngineApiFactory.TestPlayerId };
+
+        var firstResponse = await client.PostAsJsonAsync("/api/dev/v2/sandboxes/reset", request);
+        var first = await firstResponse.Content.ReadFromJsonAsync<StartRunResponse>();
+        var secondResponse = await client.PostAsJsonAsync("/api/dev/v2/sandboxes/reset", request);
+        var secondBody = await secondResponse.Content.ReadAsStringAsync();
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: secondBody);
+        var second = await secondResponse.Content.ReadFromJsonAsync<StartRunResponse>();
+        second!.Run.Id.Should().NotBe(first!.Run.Id);
+        second.Run.Seed.Should().Be(first.Run.Seed,
+            because: "resetting the island must recreate the same deterministic test environment");
+    }
+
+    [Fact]
+    public async Task ResetSandbox_ShouldReturnNotFound_WhenEnvironmentIsProduction()
+    {
+        using var client = CreateClient(
+            environment: "Production",
+            enabled: true,
+            includeToken: false,
+            role: "Administrator");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ResetSandbox_ShouldRejectPlayerRole()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: false,
+            role: "Player");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -169,7 +271,8 @@ public sealed class DevToolsEndpointTests
         string environment,
         bool enabled,
         bool includeToken,
-        string? token = null)
+        string? token = null,
+        string? role = "Developer")
     {
         _factory.ResetDatabase();
 
@@ -181,13 +284,16 @@ public sealed class DevToolsEndpointTests
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["DevTools:Enabled"] = enabled.ToString(),
-                    ["DevTools:Token"] = Token
+                    ["DevTools:Token"] = Token,
+                    ["Authentication:Jwt:SigningKey"] = "integration-only-signing-key-at-least-32-bytes"
                 });
             });
         }).CreateClient();
 
         if (includeToken)
             client.DefaultRequestHeaders.Add("X-Leds-DevTools-Token", token ?? Token);
+        if (role is not null)
+            client.DefaultRequestHeaders.Add("X-Test-Role", role);
 
         return client;
     }

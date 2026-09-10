@@ -3,12 +3,16 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.UnitTests.Common;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.Extensions.Options;
 
 namespace Leds.GameEngine.IntegrationTests.Common;
 
@@ -18,6 +22,8 @@ public sealed class GameEngineApiCollection : ICollectionFixture<GameEngineApiFa
 public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string DevToolsToken = "integration-devtools-token";
+    public const string TestAuthenticationScheme = "Test";
+    public static readonly Guid TestPlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private PostgreSqlContainer? _container;
     private readonly SemaphoreSlim _resetLock = new(1, 1);
@@ -44,7 +50,9 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
     public new HttpClient CreateClient()
     {
         ResetDatabase();
-        return base.CreateClient();
+        var client = base.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Role", "Developer");
+        return client;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -60,7 +68,8 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
                 ["PlayerGateway:BaseUrl"] = "http://player.test",
                 ["Outbox:DispatcherEnabled"] = "false",
                 ["DevTools:Enabled"] = "true",
-                ["DevTools:Token"] = DevToolsToken
+                ["DevTools:Token"] = DevToolsToken,
+                ["Authentication:Jwt:SigningKey"] = "integration-only-signing-key-at-least-32-bytes"
             });
         });
 
@@ -69,6 +78,15 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
             services.RemoveAll<ICatalogContentGateway>();
             services.RemoveAll<IPlayerRunSnapshotGateway>();
             services.RemoveAll<IPlayerProfileGateway>();
+
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthenticationScheme;
+                    options.DefaultChallengeScheme = TestAuthenticationScheme;
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                    TestAuthenticationScheme,
+                    _ => { });
 
             services.AddSingleton<ICatalogContentGateway, StubCatalogContentGateway>();
             services.AddSingleton<IPlayerRunSnapshotGateway, TestPlayerRunSnapshotGateway>();
@@ -115,6 +133,30 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
         {
             _resetLock.Release();
         }
+    }
+}
+
+public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public TestAuthenticationHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : base(options, logger, encoder)
+    {
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var role = Request.Headers["X-Test-Role"].ToString();
+        if (string.IsNullOrWhiteSpace(role))
+            return Task.FromResult(AuthenticateResult.NoResult());
+
+        var identity = new ClaimsIdentity(
+            [new Claim("sub", GameEngineApiFactory.TestPlayerId.ToString()), new Claim(ClaimTypes.Role, role)],
+            Scheme.Name);
+        return Task.FromResult(AuthenticateResult.Success(
+            new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
     }
 }
 

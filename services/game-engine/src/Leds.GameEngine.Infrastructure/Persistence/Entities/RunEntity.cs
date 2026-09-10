@@ -4,6 +4,7 @@ public sealed class RunEntity
 {
     public Guid Id { get; set; }
     public Guid PlayerId { get; set; }
+    public string Mode { get; set; } = "Normal";
     public string Status { get; set; } = string.Empty;
     public string? Outcome { get; set; }
     public long Revision { get; set; }

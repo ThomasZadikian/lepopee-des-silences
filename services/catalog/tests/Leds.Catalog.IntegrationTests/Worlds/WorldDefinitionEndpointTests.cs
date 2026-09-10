@@ -28,6 +28,11 @@ public sealed class WorldDefinitionEndpointTests
         var palais = payload!.Definitions.Should().ContainSingle(w => w.Key == "palais").Subject;
         palais.EntryRoomKey.Should().Be("room.halldentree");
         palais.Status.Should().Be("Active");
+
+        var developerIsland = payload.Definitions.Should()
+            .ContainSingle(w => w.Key == "developer-island").Subject;
+        developerIsland.EntryRoomKey.Should().Be("room.developer-island.hub");
+        developerIsland.Status.Should().Be("Active");
     }
 
     private sealed record ListWorldDefinitionsResponse(IReadOnlyCollection<WorldDefinitionResponseDto> Definitions);

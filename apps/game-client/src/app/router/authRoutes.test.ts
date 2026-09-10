@@ -19,6 +19,7 @@ const expectedRoutes = [
   ['password-reset', '/reinitialisation-mot-de-passe'],
   ['character-selection', '/personnages'],
   ['account', '/compte'],
+  ['developer-island', '/ile-des-developpeurs'],
 ] as const;
 
 describe('Account/Auth route contract', () => {
@@ -40,7 +41,7 @@ describe('Account/Auth route contract', () => {
     expect(root?.redirect).toEqual({ name: 'character-selection' });
   });
 
-  it.each(['character-selection', 'account', 'threshold', 'run'])('protects the %s route', (name) => {
+  it.each(['character-selection', 'account', 'threshold', 'developer-island', 'run'])('protects the %s route', (name) => {
     const route = router.getRoutes().find((candidate) => candidate.name === name);
     expect(route?.meta.requiresAuth).toBe(true);
   });

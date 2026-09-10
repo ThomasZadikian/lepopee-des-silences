@@ -11,4 +11,14 @@ export const gameEngineApi = {
       method: 'POST',
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
+
+  postWithHeaders: <TResponse, TBody = unknown>(
+    path: string,
+    body: TBody,
+    headers: HeadersInit,
+  ) => httpRequest<TResponse>(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers,
+  }),
 };
