@@ -9,9 +9,9 @@ namespace Leds.Player.UnitTests.Infrastructure.Catalog;
 public sealed class HttpCatalogGatewayTests
 {
     [Fact]
-    public void Options_ShouldUseSecureDefaultEndpoint()
+    public void Options_ShouldUseLocalCatalogEndpointByDefault()
     {
-        new CatalogGatewayOptions().BaseUrl.Should().StartWith("https://");
+        new CatalogGatewayOptions().BaseUrl.Should().Be("http://localhost:5193");
     }
 
     [Fact]
