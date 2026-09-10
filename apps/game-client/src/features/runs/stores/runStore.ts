@@ -511,6 +511,19 @@ export const useRunStore = defineStore('run', () => {
   // Run lifecycle
   // -------------------------------------------------------------------------
 
+  async function activateStartedRun(run: RunDto) {
+    lastChoiceResult.value = null;
+    currentRun.value = run;
+    pendingRewardOffer.value = null;
+    lastOutcome.value = null;
+    resetNpcDialogue();
+    useTacticalCombatStore().clearCombat();
+    permanentItemCandidates.value = [];
+    isPermanentItemSelectionResolved.value = false;
+
+    await refreshPendingRewardIfNeeded();
+  }
+
   async function startRun() {
     await execute(async () => {
       // Vider currentRun avant l'appel pour que, si l'API échoue,
@@ -519,17 +532,7 @@ export const useRunStore = defineStore('run', () => {
 
       const response = await runApi.startRun(getActivePlayerId(), getSelectedCharacterId() ?? undefined);
       const run = unwrapRunResponse(response);
-
-      lastChoiceResult.value = null;
-      currentRun.value = run;
-      pendingRewardOffer.value = null;
-      lastOutcome.value = null;
-      resetNpcDialogue();
-      useTacticalCombatStore().clearCombat();
-      permanentItemCandidates.value = [];
-      isPermanentItemSelectionResolved.value = false;
-
-      await refreshPendingRewardIfNeeded();
+      await activateStartedRun(run);
     });
   }
 
@@ -543,17 +546,7 @@ export const useRunStore = defineStore('run', () => {
 
       const response = await runApi.startDeveloperSandbox(characterId, accessToken);
       const run = unwrapRunResponse(response);
-
-      lastChoiceResult.value = null;
-      currentRun.value = run;
-      pendingRewardOffer.value = null;
-      lastOutcome.value = null;
-      resetNpcDialogue();
-      useTacticalCombatStore().clearCombat();
-      permanentItemCandidates.value = [];
-      isPermanentItemSelectionResolved.value = false;
-
-      await refreshPendingRewardIfNeeded();
+      await activateStartedRun(run);
     });
   }
 

@@ -11,6 +11,7 @@ import { clearSelectedCharacter, selectCharacter } from '../../account/selectedC
 vi.mock('../api/runApi', () => ({
   runApi: {
     startRun: vi.fn(),
+    startDeveloperSandbox: vi.fn(),
     getRun: vi.fn(),
     getOpenRun: vi.fn(),
     resolveCurrentEvent: vi.fn(),
@@ -297,6 +298,44 @@ describe('useRunStore actions', () => {
     await store.startRun();
 
     expect(runApi.startRun).toHaveBeenCalledWith('account-player-id', 'character-2');
+  });
+
+  it('starts a developer sandbox with the selected character and access token', async () => {
+    setAuthenticatedSession({
+      accountId: 'account-player-id',
+      sessionId: 'session-id',
+      accessToken: 'access-token',
+      accessTokenExpiresAtUtc: '2026-08-31T13:00:00Z',
+    });
+    selectCharacter('character-2');
+    const store = useRunStore();
+    vi.mocked(runApi.startDeveloperSandbox).mockResolvedValue({
+      run: { id: 'sandbox-1', status: 'Active', currentRoom: {} },
+    } as any);
+
+    await store.startDeveloperSandbox();
+
+    expect(runApi.startDeveloperSandbox).toHaveBeenCalledWith('character-2', 'access-token');
+    expect(store.currentRun?.id).toBe('sandbox-1');
+  });
+
+  it('rejects developer sandbox entry when no character is selected', async () => {
+    const store = useRunStore();
+
+    await store.startDeveloperSandbox();
+
+    expect(runApi.startDeveloperSandbox).not.toHaveBeenCalled();
+    expect(store.error).toContain('Une session et un personnage sont requis');
+  });
+
+  it('rejects developer sandbox entry when the authenticated session is missing', async () => {
+    selectCharacter('character-2');
+    const store = useRunStore();
+
+    await store.startDeveloperSandbox();
+
+    expect(runApi.startDeveloperSandbox).not.toHaveBeenCalled();
+    expect(store.error).toContain('Une session et un personnage sont requis');
   });
 
   it('loadRun restores the active tactical combat', async () => {

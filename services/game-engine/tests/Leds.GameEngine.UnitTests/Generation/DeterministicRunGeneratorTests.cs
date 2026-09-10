@@ -97,6 +97,17 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
+    public async Task GenerateInitialRoomForWorld_ShouldRejectBlankWorldKey()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        var act = () => generator.GenerateInitialRoomForWorldAsync("seed", "   ");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("worldKey");
+    }
+
+    [Fact]
     public async Task GenerateInitialRoom_ShouldUseTheEntryRoomsOwnTemplate_WhenItIsCatalogProfiled()
     {
         // Regression guard for the catalog-before-geometry inversion (Chantier 1): the entry
