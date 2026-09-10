@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.UnitTests.Common;
@@ -92,7 +93,29 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
 
             services.AddSingleton<ICatalogContentGateway, StubCatalogContentGateway>();
             services.AddSingleton<IPlayerRunSnapshotGateway, TestPlayerRunSnapshotGateway>();
-            services.AddSingleton<IPlayerProfileGateway, StubPlayerProfileGateway>();
+            services.AddSingleton<IPlayerProfileGateway>(_ => new StubPlayerProfileGateway
+            {
+                Characters =
+                [
+                    new PlayerCharacterView(
+                        TestPlayerId,
+                        "character.player.self",
+                        "Le Porteur",
+                        [],
+                        new PlayerCharacterStatsView(
+                            MaxVitality: 1000,
+                            AttackPower: 100,
+                            Defense: 100,
+                            StartingGuard: 0,
+                            Speed: 20,
+                            Initiative: 20,
+                            Focus: 10,
+                            Mana: 0,
+                            Charge: 0),
+                        MaxEquippedSkills: 8,
+                        CharacterType: "Player")
+                ]
+            });
         });
     }
 

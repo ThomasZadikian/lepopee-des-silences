@@ -20,6 +20,8 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     /// logic in callers that spend two currencies non-atomically).</summary>
     public bool ForceHimLitSpendFailure { get; set; }
 
+    public IReadOnlyCollection<PlayerCharacterView> Characters { get; init; } = [];
+
     public List<(Guid PlayerId, Guid CharacterId, string SkillKey, string Source)> UnlockedSkills { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedCurrency { get; } = [];
     public List<(Guid PlayerId, int Amount, bool Succeeded)> SpentCurrencyAttempts { get; } = [];
@@ -212,5 +214,8 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         => Task.FromResult(EmptyProfile(playerId));
 
     private PlayerProfileView EmptyProfile(Guid playerId) => new(
-        playerId, "Stub Player", [], new PlayerProgressionView(GetBalance(playerId), GetHimLitBalance(playerId)));
+        playerId,
+        "Stub Player",
+        Characters,
+        new PlayerProgressionView(GetBalance(playerId), GetHimLitBalance(playerId)));
 }
