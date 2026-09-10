@@ -100,6 +100,7 @@ public sealed partial class CatalogSeedRunner
         await SeedLoisLieesAuxSallesAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
+        await SeedDeveloperIslandWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
         await SeedNpcReputationAffinitiesAsync(cancellationToken);
         await SeedCanonBossesAsync(cancellationToken);
@@ -6270,6 +6271,37 @@ public sealed partial class CatalogSeedRunner
         {
             room.WorldDefinitionId = worldId;
         }
+    }
+
+    private async Task SeedDeveloperIslandWorldAsync(CancellationToken cancellationToken)
+    {
+        const string worldKey = "developer-island";
+        const string entryRoomKey = "room.developer-island.hub";
+
+        await UpsertRoomAsync(
+            entryRoomKey,
+            "Île des développeurs",
+            "Un espace hors du canon destiné aux essais contrôlés du combat, des archétypes et des interactions.",
+            "Bac à sable",
+            "Epic",
+            "Peace",
+            0,
+            0,
+            cancellationToken,
+            excludeFromOpenPool: true,
+            isCulturalEcho: false);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+        await UpsertWorldAsync(worldKey, "Île des développeurs", entryRoomKey, cancellationToken);
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        var worldId = await _ctx.WorldDefinitions
+            .Where(world => world.Key == worldKey)
+            .Select(world => world.Id)
+            .FirstAsync(cancellationToken);
+        var entryRoom = await _ctx.RoomDefinitions
+            .SingleAsync(room => room.Key == entryRoomKey, cancellationToken);
+        entryRoom.WorldDefinitionId = worldId;
     }
 
     /// <summary>

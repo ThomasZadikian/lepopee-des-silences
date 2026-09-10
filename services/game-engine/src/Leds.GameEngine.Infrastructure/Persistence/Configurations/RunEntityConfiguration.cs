@@ -24,6 +24,7 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
 
         builder.Property(run => run.Id).HasColumnName("id");
         builder.Property(run => run.PlayerId).HasColumnName("player_id");
+        builder.Property(run => run.Mode).HasColumnName("mode").HasMaxLength(32).HasDefaultValue("Normal").IsRequired();
         builder.Property(run => run.Status).HasColumnName("status").HasMaxLength(64).IsRequired();
         builder.Property(run => run.Outcome).HasColumnName("outcome").HasMaxLength(32);
         builder.Property(run => run.Revision).HasColumnName("revision").IsConcurrencyToken();
@@ -90,9 +91,9 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
-        builder.HasIndex(run => run.PlayerId)
+        builder.HasIndex(run => new { run.PlayerId, run.Mode })
             .IsUnique()
-            .HasDatabaseName("ux_runs_player_active_or_suspended")
+            .HasDatabaseName("ux_runs_player_mode_active_or_suspended")
             .HasFilter("status IN ('Active', 'Suspended')");
         builder.HasIndex(run => run.Status);
         builder.HasIndex(run => run.CreatedAtUtc);

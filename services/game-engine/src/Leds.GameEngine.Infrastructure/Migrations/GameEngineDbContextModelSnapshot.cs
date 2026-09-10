@@ -2396,6 +2396,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_hp");
 
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Normal")
+                        .HasColumnName("mode");
+
                     b.Property<string>("NpcRelationshipsJson")
                         .HasColumnType("text")
                         .HasColumnName("npc_relationships_json");
@@ -2551,9 +2559,9 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("PlayerId")
+                    b.HasIndex("PlayerId", "Mode")
                         .IsUnique()
-                        .HasDatabaseName("ux_runs_player_active_or_suspended")
+                        .HasDatabaseName("ux_runs_player_mode_active_or_suspended")
                         .HasFilter("status IN ('Active', 'Suspended')");
 
                     b.HasIndex("Status");

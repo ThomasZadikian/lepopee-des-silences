@@ -10,7 +10,11 @@ public interface IRunRepository
 
     Task<Run?> GetOpenByPlayerIdAsync(Guid playerId, CancellationToken cancellationToken);
 
+    Task<Run?> GetOpenByPlayerIdAsync(Guid playerId, RunMode mode, CancellationToken cancellationToken);
+
     Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken);
+
+    Task<bool> HasActiveOrSuspendedAsync(Guid playerId, RunMode mode, CancellationToken cancellationToken);
 
     Task UpdateAsync(Run run, CancellationToken cancellationToken);
 

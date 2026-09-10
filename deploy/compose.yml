@@ -9,6 +9,7 @@ services:
       ConnectionStrings__GameEngineDb: ${GAME_ENGINE_CONNECTION_STRING}
       CatalogGateway__BaseUrl: http://catalog:8080
       PlayerGateway__BaseUrl: http://player:8080
+      Authentication__Jwt__SigningKey: ${PLAYER_JWT_SIGNING_KEY}
     depends_on:
       game-engine-postgres:
         condition: service_healthy

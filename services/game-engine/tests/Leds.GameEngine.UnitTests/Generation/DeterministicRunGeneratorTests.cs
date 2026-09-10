@@ -72,6 +72,42 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
+    public async Task GenerateInitialRoom_ShouldAlwaysUsePalais_WhenDeveloperIslandAlsoExists()
+    {
+        var catalogGateway = GatewayWithPalaisAndDeveloperIsland();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var room = await generator.GenerateInitialRoomAsync("seed-default-world");
+
+        room.CatalogBinding!.Key.Should().Be("room.halldentree");
+    }
+
+    [Fact]
+    public async Task GenerateInitialRoomForWorld_ShouldUseRequestedWorldEntryRoom()
+    {
+        var catalogGateway = GatewayWithPalaisAndDeveloperIsland();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var room = await generator.GenerateInitialRoomForWorldAsync(
+            "seed-developer-island",
+            "developer-island");
+
+        room.CatalogBinding!.Key.Should().Be("room.developer-island.hub");
+        room.CatalogBinding.DisplayName.Should().Be("Île des développeurs");
+    }
+
+    [Fact]
+    public async Task GenerateInitialRoomForWorld_ShouldRejectBlankWorldKey()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        var act = () => generator.GenerateInitialRoomForWorldAsync("seed", "   ");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithParameterName("worldKey");
+    }
+
+    [Fact]
     public async Task GenerateInitialRoom_ShouldUseTheEntryRoomsOwnTemplate_WhenItIsCatalogProfiled()
     {
         // Regression guard for the catalog-before-geometry inversion (Chantier 1): the entry
@@ -117,6 +153,46 @@ public sealed class DeterministicRunGeneratorTests
         room.Grid!.Width.Should().Be(26);
         room.Grid.Height.Should().Be(18);
     }
+
+    private static StubCatalogContentGateway GatewayWithPalaisAndDeveloperIsland() => new()
+    {
+        WorldDefinitions =
+        [
+            new CatalogWorldDefinition("developer-island", "Île des développeurs", "room.developer-island.hub"),
+            new CatalogWorldDefinition("palais", "Palais", "room.halldentree")
+        ],
+        RoomDefinitions =
+        [
+            EntryRoom("room.developer-island.hub", "Île des développeurs", "developer-island", "Peace"),
+            EntryRoom("room.halldentree", "Hall d'entrée", "palais", "Welcome")
+        ]
+    };
+
+    private static CatalogRoomDefinition EntryRoom(
+        string key,
+        string displayName,
+        string worldKey,
+        string theme) => new(
+            Key: key,
+            DisplayName: displayName,
+            Description: displayName,
+            NarrativeText: displayName,
+            RoomFamily: worldKey,
+            RoomRarity: "Epic",
+            Theme: theme,
+            MinDepth: 0,
+            MaxDepth: 0,
+            BaseWeight: 1,
+            EnemyPoolKey: null,
+            RewardPoolKey: null,
+            LawPoolKey: null,
+            CursePoolKey: null,
+            BossDefinitionKey: null,
+            IsUnique: true,
+            WorldKey: worldKey,
+            IsWorldEntryRoom: true,
+            TriggersStrictChain: false,
+            ReachableRoomKeys: []);
 
     [Fact]
     public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_ForACatalogBoundEntryRoom()

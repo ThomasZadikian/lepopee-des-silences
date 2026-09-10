@@ -65,11 +65,18 @@ public sealed class EfRunRepository : IRunRepository
 
     public async Task<Run?> GetOpenByPlayerIdAsync(
         Guid playerId,
+        CancellationToken cancellationToken) =>
+        await GetOpenByPlayerIdAsync(playerId, RunMode.Normal, cancellationToken);
+
+    public async Task<Run?> GetOpenByPlayerIdAsync(
+        Guid playerId,
+        RunMode mode,
         CancellationToken cancellationToken)
     {
         var runId = await _dbContext.Runs
             .AsNoTracking()
             .Where(entity => entity.PlayerId == playerId &&
+                entity.Mode == mode.ToString() &&
                 (entity.Status == nameof(RunStatus.Active) ||
                  entity.Status == nameof(RunStatus.Suspended)))
             .Select(entity => (Guid?)entity.Id)
@@ -82,10 +89,19 @@ public sealed class EfRunRepository : IRunRepository
 
     public Task<bool> HasActiveOrSuspendedAsync(Guid playerId, CancellationToken cancellationToken)
     {
+        return HasActiveOrSuspendedAsync(playerId, RunMode.Normal, cancellationToken);
+    }
+
+    public Task<bool> HasActiveOrSuspendedAsync(
+        Guid playerId,
+        RunMode mode,
+        CancellationToken cancellationToken)
+    {
         return _dbContext.Runs
             .AsNoTracking()
             .AnyAsync(
                 entity => entity.PlayerId == playerId &&
+                    entity.Mode == mode.ToString() &&
                     (entity.Status == nameof(RunStatus.Active) ||
                      entity.Status == nameof(RunStatus.Suspended)),
                 cancellationToken);

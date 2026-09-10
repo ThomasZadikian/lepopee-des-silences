@@ -1,4 +1,5 @@
 import { HttpError, httpRequest } from '../../../shared/api/httpClient';
+import { getAccessToken } from '../../account/authSession';
 import type {
   DevToolsCombatResponse,
   DevToolsPlayerDebugResponse,
@@ -13,7 +14,11 @@ const tokenHeaderName = 'X-Leds-DevTools-Token';
 const unavailableMessage = 'Devtools indisponibles ou endpoint non implemente.';
 
 function tokenHeaders(token: string): HeadersInit {
-  return { [tokenHeaderName]: token };
+  const accessToken = getAccessToken();
+  return {
+    [tokenHeaderName]: token,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
 }
 
 async function request<TResponse>(

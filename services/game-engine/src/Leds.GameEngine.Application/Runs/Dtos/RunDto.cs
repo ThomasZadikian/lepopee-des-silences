@@ -58,7 +58,8 @@ public sealed record RunDto(
     string ProgressionMode = "Standard",
     string? StoryDifficulty = null,
     int? DifficultyLevel = null,
-    StoryRunOverlayDto? Story = null)
+    StoryRunOverlayDto? Story = null,
+    string Mode = "Normal")
 {
     public static RunDto FromDomain(
         Run run,
@@ -113,7 +114,8 @@ public sealed record RunDto(
             ProgressionMode: run.ProgressionMode.ToString(),
             StoryDifficulty: run.StoryDifficulty?.ToString(),
             DifficultyLevel: run.DifficultyLevel?.Value,
-            Story: run.StoryOverlay is null ? null : StoryRunOverlayDto.FromDomain(run.StoryOverlay));
+            Story: run.StoryOverlay is null ? null : StoryRunOverlayDto.FromDomain(run.StoryOverlay),
+            Mode: run.Mode.ToString());
     }
 }
 

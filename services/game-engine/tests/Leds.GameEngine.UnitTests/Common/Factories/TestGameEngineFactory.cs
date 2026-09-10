@@ -158,7 +158,8 @@ public static class TestGameEngineFactory
         bool lawDenialEnabled = false,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        bool caliceInfiniEnabled = false)
+        bool caliceInfiniEnabled = false,
+        RunMode mode = RunMode.Normal)
     {
         var room = CreateThresholdRoom(targetInitialEventType);
 
@@ -173,7 +174,8 @@ public static class TestGameEngineFactory
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             caliceInfiniEnabled: caliceInfiniEnabled,
-            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create());
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create(),
+            mode: mode);
     }
 
     public static Run CreateRunWithPlayerSnapshot(

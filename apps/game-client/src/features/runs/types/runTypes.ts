@@ -183,6 +183,7 @@ export type RunDto = {
   generatorVersion: string;
   markovMatrixVersion: string;
   status: string;
+  mode?: 'Normal' | 'DeveloperSandbox';
   progressionMode?: 'Story' | 'Standard';
   storyDifficulty?: 'Canonical' | null;
   difficultyLevel?: number | null;

@@ -27,6 +27,7 @@ public static class RunPersistenceMapper
         {
             Id = run.Id.Value,
             PlayerId = run.PlayerId,
+            Mode = run.Mode.ToString(),
             Status = run.Status.ToString(),
             Outcome = run.Outcome?.ToString(),
             Revision = run.Revision,
@@ -594,7 +595,8 @@ public static class RunPersistenceMapper
             caliceInfiniEnabled: entity.CaliceInfiniEnabled,
             caliceInfiniLastUsedRoomIndex: entity.CaliceInfiniLastUsedRoomIndex,
             magicAttack: entity.MagicAttack,
-            magicDefense: entity.MagicDefense);
+            magicDefense: entity.MagicDefense,
+            mode: Enum.TryParse<RunMode>(entity.Mode, out var runMode) ? runMode : RunMode.Normal);
 
         RehydrateNpcEncounters(run, entity);
         run.RestoreProgressionMode(

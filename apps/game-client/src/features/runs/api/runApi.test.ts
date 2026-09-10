@@ -5,6 +5,7 @@ import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 vi.mock('../../../shared/api/gameEngineApi', () => ({
   gameEngineApi: {
     post: vi.fn(),
+    postWithHeaders: vi.fn(),
     get: vi.fn(),
   },
 }));
@@ -12,6 +13,18 @@ vi.mock('../../../shared/api/gameEngineApi', () => ({
 describe('runApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('starts a developer sandbox with the authenticated character', async () => {
+    vi.mocked(gameEngineApi.postWithHeaders).mockResolvedValueOnce({} as any);
+
+    await runApi.startDeveloperSandbox('character-2', 'access-token');
+
+    expect(gameEngineApi.postWithHeaders).toHaveBeenCalledWith(
+      '/api/dev/v2/sandboxes/reset',
+      { characterId: 'character-2' },
+      { Authorization: 'Bearer access-token' },
+    );
   });
 
   it('startRun sends the account and selected character identifiers', async () => {

@@ -16,6 +16,8 @@ namespace Leds.GameEngine.Application.Runs.StartRun;
 
 public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, StartRunResponse>
 {
+    private const string DeveloperSandboxSeed = "developer-island-v1";
+
     private readonly IRunGenerator _runGenerator;
     private readonly IRunRepository _runRepository;
     private readonly IPlayerRunSnapshotGateway _playerGateway;
@@ -52,7 +54,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         StartRunCommand request,
         CancellationToken cancellationToken)
     {
-        if (await _runRepository.HasActiveOrSuspendedAsync(request.PlayerId, cancellationToken))
+        var hasOpenRun = request.Mode == RunMode.Normal
+            ? await _runRepository.HasActiveOrSuspendedAsync(request.PlayerId, cancellationToken)
+            : await _runRepository.HasActiveOrSuspendedAsync(request.PlayerId, request.Mode, cancellationToken);
+        if (hasOpenRun)
         {
             throw new DomainException(
                 "The account already has an active or suspended run.");
@@ -65,9 +70,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             snapshot.Characters,
             profile.Characters,
             request.CharacterId);
-        var progressionSelection = RunProgressionSelectionPolicy.Resolve(
-            profile.MainStory,
-            request.DifficultyLevel);
+        var progressionSelection = request.Mode == RunMode.DeveloperSandbox
+            ? new RunProgressionSelection(RunProgressionMode.Standard, DifficultyLevel.Create(1), null)
+            : RunProgressionSelectionPolicy.Resolve(profile.MainStory, request.DifficultyLevel);
         var permanentItemKeys = (profile.PermanentItems ?? [])
             .Select(item => item.ItemDefinitionKey)
             .ToArray();
@@ -86,8 +91,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var himLitProtectionEnabled = permanentBehaviors.Contains("himlit-protection");
         var caliceInfiniEnabled = permanentBehaviors.Contains("infinite-chalice");
 
-        var seed = _runGenerator.GenerateSeed();
-        var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
+        var seed = request.Mode == RunMode.DeveloperSandbox
+            ? DeveloperSandboxSeed
+            : _runGenerator.GenerateSeed();
+        var initialRoom = request.Mode == RunMode.DeveloperSandbox
+            ? await _runGenerator.GenerateInitialRoomForWorldAsync(seed, "developer-island", cancellationToken)
+            : await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
         var emotionalAffinityMatrix = ToDomainMatrix(
             await _catalogContentGateway.GetEmotionalAffinityMatrixAsync(cancellationToken));
         var characterDefinitions = (await _catalogContentGateway
@@ -217,7 +226,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
             caliceInfiniEnabled: caliceInfiniEnabled,
-            emotionalAffinityMatrix: emotionalAffinityMatrix);
+            emotionalAffinityMatrix: emotionalAffinityMatrix,
+            mode: request.Mode);
 
         if (progressionSelection.Mode == RunProgressionMode.Story)
         {

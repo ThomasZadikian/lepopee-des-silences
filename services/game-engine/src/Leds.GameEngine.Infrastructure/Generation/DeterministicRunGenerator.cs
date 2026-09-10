@@ -67,17 +67,27 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         string seed,
         CancellationToken cancellationToken = default)
     {
+        return await GenerateInitialRoomForWorldAsync(seed, "palais", cancellationToken);
+    }
+
+    public async Task<Room> GenerateInitialRoomForWorldAsync(
+        string seed,
+        string worldKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(worldKey))
+            throw new ArgumentException("World key is required.", nameof(worldKey));
+
         var random = _randomFactory.CreateForRoom(
             seed,
             roomDepth: 0,
             GeneratorVersion);
 
-        // Refonte des Rooms : si un Monde est configuré au catalogue (ex. "Palais"), un
-        // nouveau run démarre directement sur sa salle de niveau 0. Un seul Monde existe
-        // pour la bêta ; l'ordre alphabétique des clés sert de désambiguïsation stable en
-        // attendant qu'un vrai concept de sélection de monde de départ existe.
+        // The caller selects the world explicitly. This prevents internal worlds such as the
+        // developer island from becoming the default merely because their key sorts first.
         var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
-        var startingWorld = worlds.OrderBy(w => w.Key, StringComparer.Ordinal).FirstOrDefault();
+        var startingWorld = worlds.FirstOrDefault(world =>
+            string.Equals(world.Key, worldKey, StringComparison.OrdinalIgnoreCase));
 
         if (startingWorld is not null)
         {

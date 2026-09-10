@@ -16,6 +16,11 @@ public interface IRunGenerator
         string seed,
         CancellationToken cancellationToken = default);
 
+    Task<Room> GenerateInitialRoomForWorldAsync(
+        string seed,
+        string worldKey,
+        CancellationToken cancellationToken = default);
+
     Task<Room> GenerateNextRoomAsync(Run run, CancellationToken cancellationToken = default);
 
     /// <summary>

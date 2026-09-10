@@ -33,7 +33,7 @@ describe('CharacterSelectionPage', () => {
         archetypeKey: 'archetype.porteur',
       }],
     });
-    api.getAccount.mockResolvedValue({ characters: [] });
+    api.getAccount.mockResolvedValue({ role: 'Player', characters: [] });
   });
 
   it('shows the current archetype and future locked slots', async () => {
@@ -88,6 +88,20 @@ describe('CharacterSelectionPage', () => {
 
     expect(sessionStorage.getItem('leds.selected-character-id')).toBe('character-nox');
     expect(router.push).toHaveBeenCalledWith({ name: 'threshold' });
+  });
+
+  it.each(['Developer', 'Administrator'])('sends a %s account to the developer island', async (role) => {
+    api.getAccount.mockResolvedValueOnce({
+      role,
+      characters: [
+        { id: 'character-dev', displayName: 'Aster', archetypeKey: 'archetype.porteur' },
+      ],
+    });
+    const wrapper = await mountReadyPage();
+
+    await wrapper.get('[data-character-id="character-dev"]').trigger('click');
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'developer-island' });
   });
 
   it('allows another character to be created without selecting an existing companion', async () => {

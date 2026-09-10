@@ -19,6 +19,7 @@ public static class DevToolsEndpointRouteBuilderExtensions
         var group = endpoints
             .MapGroup("/api/dev/v2")
             .WithTags("Development Tools")
+            .RequireAuthorization(policy => policy.RequireRole("Developer", "Administrator"))
             .AddEndpointFilter(async (context, next) =>
             {
                 var configuredToken = options.Token;

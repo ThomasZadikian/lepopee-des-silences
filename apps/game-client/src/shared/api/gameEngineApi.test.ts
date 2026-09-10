@@ -35,6 +35,22 @@ describe('gameEngineApi', () => {
     });
   });
 
+  it('postWithHeaders forwards authentication headers with the serialized body', async () => {
+    vi.mocked(httpRequest).mockResolvedValueOnce({});
+
+    await gameEngineApi.postWithHeaders(
+      '/api/dev/test',
+      { characterId: 'character-2' },
+      { Authorization: 'Bearer access-token' },
+    );
+
+    expect(httpRequest).toHaveBeenCalledWith('/api/dev/test', {
+      method: 'POST',
+      body: JSON.stringify({ characterId: 'character-2' }),
+      headers: { Authorization: 'Bearer access-token' },
+    });
+  });
+
   it('returns the response from httpRequest for get', async () => {
     const mockResponse = { data: 'test' };
     vi.mocked(httpRequest).mockResolvedValueOnce(mockResponse);

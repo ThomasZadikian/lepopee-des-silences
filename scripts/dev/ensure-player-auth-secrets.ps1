@@ -34,11 +34,15 @@ function Initialize-LedsPlayerAuthenticationSecrets {
         @{ Name = "Authentication:MfaProtectionKey"; ByteLength = 32 },
         @{ Name = "Authentication:Jwt:SigningKey"; ByteLength = 48 }
     )
+    $resolvedSecrets = @{}
 
     foreach ($definition in $secretDefinitions) {
         $escapedName = [Regex]::Escape($definition.Name)
-        $isConfigured = $configuredSecrets | Where-Object { $_ -match "^$escapedName\s*=" }
-        if ($isConfigured) {
+        $configuredLine = $configuredSecrets |
+            Where-Object { $_ -match "^$escapedName\s*=" } |
+            Select-Object -First 1
+        if ($configuredLine) {
+            $resolvedSecrets[$definition.Name] = ($configuredLine -split "=", 2)[1].Trim()
             continue
         }
 
@@ -47,5 +51,11 @@ function Initialize-LedsPlayerAuthenticationSecrets {
         if ($LASTEXITCODE -ne 0) {
             throw "Unable to persist development secret '$($definition.Name)'."
         }
+        $resolvedSecrets[$definition.Name] = $value
     }
+
+    # Child processes inherit these values. In particular, the Game Engine must validate
+    # access tokens with the exact key used by the Player API to issue them.
+    $env:Authentication__Jwt__SigningKey = $resolvedSecrets["Authentication:Jwt:SigningKey"]
+    $env:Authentication__MfaProtectionKey = $resolvedSecrets["Authentication:MfaProtectionKey"]
 }

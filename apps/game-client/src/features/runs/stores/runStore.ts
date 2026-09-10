@@ -14,7 +14,7 @@ import {
   partyWalkDurationMs,
   prefersReducedMotion,
 } from '../../palace-map/composables/usePartyTokenPath';
-import { getAuthenticatedAccountId } from '../../account/authSession';
+import { getAccessToken, getAuthenticatedAccountId } from '../../account/authSession';
 import { getSelectedCharacterId } from '../../account/selectedCharacter';
 import {
   unwrapRunResponse,
@@ -511,6 +511,19 @@ export const useRunStore = defineStore('run', () => {
   // Run lifecycle
   // -------------------------------------------------------------------------
 
+  async function activateStartedRun(run: RunDto) {
+    lastChoiceResult.value = null;
+    currentRun.value = run;
+    pendingRewardOffer.value = null;
+    lastOutcome.value = null;
+    resetNpcDialogue();
+    useTacticalCombatStore().clearCombat();
+    permanentItemCandidates.value = [];
+    isPermanentItemSelectionResolved.value = false;
+
+    await refreshPendingRewardIfNeeded();
+  }
+
   async function startRun() {
     await execute(async () => {
       // Vider currentRun avant l'appel pour que, si l'API échoue,
@@ -519,17 +532,21 @@ export const useRunStore = defineStore('run', () => {
 
       const response = await runApi.startRun(getActivePlayerId(), getSelectedCharacterId() ?? undefined);
       const run = unwrapRunResponse(response);
+      await activateStartedRun(run);
+    });
+  }
 
-      lastChoiceResult.value = null;
-      currentRun.value = run;
-      pendingRewardOffer.value = null;
-      lastOutcome.value = null;
-      resetNpcDialogue();
-      useTacticalCombatStore().clearCombat();
-      permanentItemCandidates.value = [];
-      isPermanentItemSelectionResolved.value = false;
+  async function startDeveloperSandbox() {
+    await execute(async () => {
+      currentRun.value = null;
+      const characterId = getSelectedCharacterId();
+      const accessToken = getAccessToken();
+      if (!characterId || !accessToken)
+        throw new Error('Une session et un personnage sont requis pour rejoindre l’Île des développeurs.');
 
-      await refreshPendingRewardIfNeeded();
+      const response = await runApi.startDeveloperSandbox(characterId, accessToken);
+      const run = unwrapRunResponse(response);
+      await activateStartedRun(run);
     });
   }
 
@@ -1039,6 +1056,7 @@ export const useRunStore = defineStore('run', () => {
     dismissReputationEffect,
 
     startRun,
+    startDeveloperSandbox,
     loadRun,
     progressRun,
     generateNextNodes,

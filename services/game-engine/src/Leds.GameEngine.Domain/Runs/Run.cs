@@ -246,7 +246,8 @@ public sealed class Run
         EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
         RunOutcome? outcome = null,
         long revision = 0,
-        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None,
+        RunMode mode = RunMode.Normal)
     {
         Id = id;
         PlayerId = playerId;
@@ -257,6 +258,7 @@ public sealed class Run
         Outcome = outcome;
         Revision = revision;
         TechnicalRecoveryState = technicalRecoveryState;
+        Mode = mode;
         CurrentRoomId = initialRoom.Id;
         StartedAt = startedAt;
         MaxHp = maxHp;
@@ -305,6 +307,8 @@ public sealed class Run
     public RunId Id { get; }
 
     public Guid PlayerId { get; }
+
+    public RunMode Mode { get; }
 
     public string Seed { get; }
 
@@ -979,7 +983,8 @@ public sealed class Run
         bool caliceInfiniEnabled = false,
         int magicAttack = 0,
         int magicDefense = 0,
-        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null)
+        EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
+        RunMode mode = RunMode.Normal)
     {
         if (playerId == Guid.Empty)
         {
@@ -1079,7 +1084,8 @@ public sealed class Run
             caliceInfiniEnabled: caliceInfiniEnabled,
             magicAttack: magicAttack,
             magicDefense: magicDefense,
-            emotionalAffinityMatrix: emotionalAffinityMatrix);
+            emotionalAffinityMatrix: emotionalAffinityMatrix,
+            mode: mode);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -3039,11 +3045,12 @@ public sealed class Run
         EmotionalAffinityMatrixSnapshot? emotionalAffinityMatrix = null,
         RunOutcome? outcome = null,
         long revision = 0,
-        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None)
+        TechnicalRecoveryState technicalRecoveryState = TechnicalRecoveryState.None,
+        RunMode mode = RunMode.Normal)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix, outcome, revision, technicalRecoveryState);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, emotionalAffinityMatrix, outcome, revision, technicalRecoveryState, mode);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

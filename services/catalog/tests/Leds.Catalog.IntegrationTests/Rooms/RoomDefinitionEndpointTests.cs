@@ -42,6 +42,21 @@ public sealed class RoomDefinitionEndpointTests
     }
 
     [Fact]
+    public async Task ListRoomDefinitions_ShouldExposeDeveloperIslandEntryRoom()
+    {
+        var response = await _client.GetAsync("/api/v2/catalog/room-definitions");
+        var payload = await response.Content.ReadFromJsonAsync<ListRoomDefinitionsResponse>();
+
+        var hub = payload!.Definitions.Should()
+            .ContainSingle(d => d.Key == "room.developer-island.hub").Subject;
+
+        hub.WorldKey.Should().Be("developer-island");
+        hub.IsWorldEntryRoom.Should().BeTrue();
+        hub.MinDepth.Should().Be(0);
+        hub.MaxDepth.Should().Be(0);
+    }
+
+    [Fact]
     public async Task ListRoomDefinitions_ShouldResolveStrictChainForFalaise()
     {
         var response = await _client.GetAsync("/api/v2/catalog/room-definitions");

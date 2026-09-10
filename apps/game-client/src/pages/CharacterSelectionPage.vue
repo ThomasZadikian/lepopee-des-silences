@@ -15,6 +15,7 @@ const accountError = ref<string | null>(null);
 const busy = ref(false);
 const accountLoaded = ref(false);
 const characters = ref<AccountCharacterResponse[]>([]);
+const accountRole = ref('Player');
 const showCreation = ref(false);
 
 const archetypes = [
@@ -55,6 +56,7 @@ async function loadAccountCharacters() {
   try {
     const account = await playerApi.getAccount(accessToken);
     characters.value = account.characters;
+    accountRole.value = account.role;
     showCreation.value = account.characters.length === 0;
   } catch (cause) {
     accountError.value = cause instanceof Error
@@ -97,7 +99,7 @@ async function continueToPalace() {
       throw new Error('Le personnage a été créé, mais il n’a pas pu être sélectionné. Rechargez la page.');
     }
     selectCharacter(createdCharacter.id);
-    await router.push({ name: 'threshold' });
+    await router.push({ name: destinationRouteName() });
   } catch (cause) {
     error.value = cause instanceof Error
       ? cause.message
@@ -109,7 +111,13 @@ async function continueToPalace() {
 
 async function playWithCharacter(characterId: string) {
   selectCharacter(characterId);
-  await router.push({ name: 'threshold' });
+  await router.push({ name: destinationRouteName() });
+}
+
+function destinationRouteName(): 'developer-island' | 'threshold' {
+  return accountRole.value === 'Developer' || accountRole.value === 'Administrator'
+    ? 'developer-island'
+    : 'threshold';
 }
 
 function beginCharacterCreation() {

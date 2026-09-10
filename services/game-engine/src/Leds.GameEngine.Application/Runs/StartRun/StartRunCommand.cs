@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.StartRun;
 
@@ -8,4 +9,5 @@ namespace Leds.GameEngine.Application.Runs.StartRun;
 public sealed record StartRunCommand(
     Guid PlayerId,
     int? DifficultyLevel = null,
-    Guid? CharacterId = null) : IRequest<StartRunResponse>;
+    Guid? CharacterId = null,
+    RunMode Mode = RunMode.Normal) : IRequest<StartRunResponse>;

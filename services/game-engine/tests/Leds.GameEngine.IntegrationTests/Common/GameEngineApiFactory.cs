@@ -1,13 +1,19 @@
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.UnitTests.Common;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using Testcontainers.PostgreSql;
 
 namespace Leds.GameEngine.IntegrationTests.Common;
@@ -18,6 +24,9 @@ public sealed class GameEngineApiCollection : ICollectionFixture<GameEngineApiFa
 public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string DevToolsToken = "integration-devtools-token";
+    public const string TestAuthenticationScheme = "Test";
+    public const string TestJwtSigningKey = "integration-only-signing-key-at-least-32-bytes";
+    public static readonly Guid TestPlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private PostgreSqlContainer? _container;
     private readonly SemaphoreSlim _resetLock = new(1, 1);
@@ -44,12 +53,15 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
     public new HttpClient CreateClient()
     {
         ResetDatabase();
-        return base.CreateClient();
+        var client = base.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Role", "Developer");
+        return client;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Authentication:Jwt:SigningKey", TestJwtSigningKey);
 
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
@@ -70,9 +82,40 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
             services.RemoveAll<IPlayerRunSnapshotGateway>();
             services.RemoveAll<IPlayerProfileGateway>();
 
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthenticationScheme;
+                    options.DefaultChallengeScheme = TestAuthenticationScheme;
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                    TestAuthenticationScheme,
+                    _ => { });
+
             services.AddSingleton<ICatalogContentGateway, StubCatalogContentGateway>();
             services.AddSingleton<IPlayerRunSnapshotGateway, TestPlayerRunSnapshotGateway>();
-            services.AddSingleton<IPlayerProfileGateway, StubPlayerProfileGateway>();
+            services.AddSingleton<IPlayerProfileGateway>(_ => new StubPlayerProfileGateway
+            {
+                Characters =
+                [
+                    new PlayerCharacterView(
+                        TestPlayerId,
+                        "character.player.self",
+                        "Le Porteur",
+                        [],
+                        new PlayerCharacterStatsView(
+                            MaxVitality: 1000,
+                            AttackPower: 100,
+                            Defense: 100,
+                            StartingGuard: 0,
+                            Speed: 20,
+                            Initiative: 20,
+                            Focus: 10,
+                            Mana: 0,
+                            Charge: 0),
+                        MaxEquippedSkills: 8,
+                        CharacterType: "Player")
+                ]
+            });
         });
     }
 
@@ -115,6 +158,30 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
         {
             _resetLock.Release();
         }
+    }
+}
+
+public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public TestAuthenticationHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : base(options, logger, encoder)
+    {
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var role = Request.Headers["X-Test-Role"].ToString();
+        if (string.IsNullOrWhiteSpace(role))
+            return Task.FromResult(AuthenticateResult.NoResult());
+
+        var identity = new ClaimsIdentity(
+            [new Claim("sub", GameEngineApiFactory.TestPlayerId.ToString()), new Claim(ClaimTypes.Role, role)],
+            Scheme.Name);
+        return Task.FromResult(AuthenticateResult.Success(
+            new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
     }
 }
 

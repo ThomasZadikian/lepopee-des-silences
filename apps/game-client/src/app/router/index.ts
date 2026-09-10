@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vu
 import AccountAccessPage from '../../pages/AccountAccessPage.vue';
 import AccountPage from '../../pages/AccountPage.vue';
 import CharacterSelectionPage from '../../pages/CharacterSelectionPage.vue';
+import DeveloperIslandPage from '../../pages/DeveloperIslandPage.vue';
 import ManifestationsPage from '../../pages/ManifestationsPage.vue';
 import ReputationPage from '../../pages/ReputationPage.vue';
 import RunPage from '../../pages/RunPage.vue';
@@ -79,6 +80,12 @@ export const router = createRouter({
       path: '/palais',
       name: 'threshold',
       component: ThresholdPage,
+      meta: { requiresAuth: true, requiresCharacterSelection: true },
+    },
+    {
+      path: '/ile-des-developpeurs',
+      name: 'developer-island',
+      component: DeveloperIslandPage,
       meta: { requiresAuth: true, requiresCharacterSelection: true },
     },
     {
