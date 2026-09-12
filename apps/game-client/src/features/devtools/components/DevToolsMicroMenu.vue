@@ -6,6 +6,7 @@ import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import type { ItemDefinitionView } from '../../party/types/itemTypes';
 import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
 import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
+import type { TacticalCombatRuntimeDto } from '../../combat/types/combatContracts';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import SkillsDevToolsWindow from '../windows/SkillsDevToolsWindow.vue';
 import ItemsDevToolsWindow from '../windows/ItemsDevToolsWindow.vue';
@@ -15,6 +16,7 @@ import RoomDevToolsWindow from '../windows/RoomDevToolsWindow.vue';
 import LawsDevToolsWindow from '../windows/LawsDevToolsWindow.vue';
 import CursesDevToolsWindow from '../windows/CursesDevToolsWindow.vue';
 import PsycheDevToolsWindow from '../windows/PsycheDevToolsWindow.vue';
+import CombatDevToolsWindow from '../windows/CombatDevToolsWindow.vue';
 
 const props = defineProps<{
   disabled: boolean;
@@ -25,6 +27,7 @@ const props = defineProps<{
   allLaws: PalaceLawDefinitionView[];
   allCurses: CurseDefinitionView[];
   psyche: DevToolsRunPsycheResponse | null;
+  combat: TacticalCombatRuntimeDto | null;
 }>();
 
 const emit = defineEmits<{
@@ -41,11 +44,15 @@ const emit = defineEmits<{
   addItem: [itemDefinitionKey: string, quantity: number];
   unlockSkill: [characterId: string, skillKey: string];
   refreshPsyche: [];
+  killEnemies: [];
+  killEnemy: [combatantId: string];
+  setVitals: [combatantId: string, vitality: number, guard: number];
+  applyStatus: [combatantId: string, statusKey: string, stacks: number, duration: number];
 }>();
 
 type WindowKey =
   | 'sorts' | 'objets' | 'run' | 'compagnons'
-  | 'salle' | 'lois' | 'malediction' | 'psyche';
+  | 'salle' | 'lois' | 'malediction' | 'psyche' | 'combat';
 
 const entries: { key: WindowKey; label: string; code: string }[] = [
   { key: 'sorts', label: 'Sorts', code: 'SO' },
@@ -56,6 +63,7 @@ const entries: { key: WindowKey; label: string; code: string }[] = [
   { key: 'lois', label: 'Lois', code: 'LO' },
   { key: 'malediction', label: 'Malédictions', code: 'MA' },
   { key: 'psyche', label: 'Psyché', code: 'PS' },
+  { key: 'combat', label: 'Combat', code: 'CO' },
 ];
 
 const activeWindow = ref<WindowKey | null>(null);
@@ -136,6 +144,16 @@ const activeWindow = ref<WindowKey | null>(null);
         :is-loading="props.isLoading"
         :psyche="props.psyche"
         @refresh="emit('refreshPsyche')"
+      />
+      <CombatDevToolsWindow
+        v-else-if="activeWindow === 'combat'"
+        :disabled="props.disabled"
+        :is-loading="props.isLoading"
+        :combat="props.combat"
+        @kill-enemies="emit('killEnemies')"
+        @kill-enemy="(combatantId) => emit('killEnemy', combatantId)"
+        @set-vitals="(combatantId, vitality, guard) => emit('setVitals', combatantId, vitality, guard)"
+        @apply-status="(combatantId, statusKey, stacks, duration) => emit('applyStatus', combatantId, statusKey, stacks, duration)"
       />
     </PageOverlayModal>
   </Teleport>

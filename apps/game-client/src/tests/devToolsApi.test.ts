@@ -69,6 +69,20 @@ describe('devToolsApi', () => {
     );
   });
 
+  it('unlocks skills only through the sandbox run endpoint', async () => {
+    await devToolsApi.unlockSkill('local-token', 'run-1', 'character-1', 'skill.writer.touch');
+
+    expect(httpRequest).toHaveBeenCalledWith(
+      '/api/dev/v2/runs/run-1/characters/character-1/skills/skill.writer.touch/unlock',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-Leds-DevTools-Token': 'local-token',
+        }),
+      }),
+    );
+  });
+
   it('maps protected or unavailable endpoints to a generic devtools error', async () => {
     vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Forbidden', 403, null));
 

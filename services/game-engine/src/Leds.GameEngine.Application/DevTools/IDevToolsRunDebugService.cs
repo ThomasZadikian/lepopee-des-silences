@@ -64,6 +64,14 @@ public interface IDevToolsRunDebugService
         int quantity,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Adds a catalog skill to one character's run snapshot only. The player
+    /// profile remains untouched and resetting the sandbox removes the grant.</summary>
+    Task<DevToolsRunDebugResult> UnlockSandboxSkillAsync(
+        Guid runId,
+        Guid characterId,
+        string skillKey,
+        CancellationToken cancellationToken = default);
+
     Task<DevToolsCombatDebugResult> ApplyCombatantStatusAsync(
         Guid runId,
         Guid combatantId,

@@ -6,6 +6,12 @@ export const gameEngineApi = {
       method: 'GET',
     }),
 
+  getWithHeaders: <TResponse>(path: string, headers: HeadersInit) =>
+    httpRequest<TResponse>(path, {
+      method: 'GET',
+      headers,
+    }),
+
   post: <TResponse, TBody = unknown>(path: string, body?: TBody) =>
     httpRequest<TResponse>(path, {
       method: 'POST',

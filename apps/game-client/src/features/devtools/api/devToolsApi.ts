@@ -2,7 +2,6 @@ import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import { getAccessToken } from '../../account/authSession';
 import type {
   DevToolsCombatResponse,
-  DevToolsPlayerDebugResponse,
   DevToolsRunPsycheResponse,
   DevToolsRunResponse,
   DevToolsStatusResponse,
@@ -161,10 +160,10 @@ export const devToolsApi = {
     );
   },
 
-  unlockSkill(token: string, playerId: string, characterId: string, skillKey: string) {
-    return post<DevToolsPlayerDebugResponse>(
+  unlockSkill(token: string, runId: string, characterId: string, skillKey: string) {
+    return post<DevToolsRunResponse>(
       token,
-      `/api/dev/v2/players/${playerId}/characters/${characterId}/skills/${skillKey}/unlock`,
+      `/api/dev/v2/runs/${runId}/characters/${characterId}/skills/${skillKey}/unlock`,
     );
   },
 

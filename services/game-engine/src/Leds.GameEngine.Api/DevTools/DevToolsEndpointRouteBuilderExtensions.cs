@@ -33,7 +33,8 @@ public static class DevToolsEndpointRouteBuilderExtensions
                 }
 
                 return await next(context);
-            });
+            })
+            .AddEndpointFilter(new DeveloperSandboxAccessFilter());
 
         group.MapGet("/status", (IWebHostEnvironment env) =>
             TypedResults.Ok(new DevToolsStatusResponse(true, env.EnvironmentName)));
@@ -197,14 +198,14 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
-        group.MapPost("/players/{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/unlock", async Task<Ok<DevToolsPlayerDebugResult>> (
-            Guid playerId,
+        group.MapPost("/runs/{runId:guid}/characters/{characterId:guid}/skills/{skillKey}/unlock", async Task<Ok<DevToolsRunDebugResult>> (
+            Guid runId,
             Guid characterId,
             string skillKey,
-            IDevToolsPlayerDebugService service,
+            IDevToolsRunDebugService service,
             CancellationToken cancellationToken) =>
         {
-            var result = await service.UnlockSkillAsync(playerId, characterId, skillKey, cancellationToken);
+            var result = await service.UnlockSandboxSkillAsync(runId, characterId, skillKey, cancellationToken);
             return TypedResults.Ok(result);
         });
 

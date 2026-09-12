@@ -5,7 +5,6 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.DevTools;
-using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
@@ -120,7 +119,7 @@ public sealed class DevToolsRunDebugServiceTests
     }
 
     [Fact]
-    public async Task AddDebugItem_ShouldGrantPermanentEligibleItemDirectlyToPermanentBackpack()
+    public async Task AddDebugItem_ShouldKeepPermanentEligibleItemInsideSandboxInventory()
     {
         var run = TestGameEngineFactory.CreateRun();
         var catalogGateway = new Mock<ICatalogContentGateway>();
@@ -142,17 +141,12 @@ public sealed class DevToolsRunDebugServiceTests
                 IsUsableInCombat: false,
                 IsUsableOutsideCombat: false,
                 IsPermanentEligible: true)));
-        var playerProfileGateway = new Mock<IPlayerProfileGateway>();
-        var service = await CreateServiceAsync(run, catalogGateway.Object, playerProfileGateway.Object);
+        var service = await CreateServiceAsync(run, catalogGateway.Object);
 
         var result = await service.AddDebugItemAsync(run.Id.Value, "item.weapon.arc-relieur", quantity: 1);
 
-        result.Run.InventoryItems.Should().BeEmpty();
-        playerProfileGateway.Verify(gateway => gateway.AddPermanentItemsAsync(
-            run.PlayerId,
-            It.Is<IReadOnlyCollection<string>>(keys => keys.Single() == "item.weapon.arc-relieur"),
-            run.Id.Value,
-            It.IsAny<CancellationToken>()), Times.Once);
+        result.Run.InventoryItems.Should().ContainSingle(item =>
+            item.DefinitionKey == "item.weapon.arc-relieur" && item.Quantity == 1);
     }
 
     [Fact]
@@ -184,8 +178,7 @@ public sealed class DevToolsRunDebugServiceTests
 
     private static async Task<DevToolsRunDebugService> CreateServiceAsync(
         Run run,
-        ICatalogContentGateway? catalogContentGateway = null,
-        IPlayerProfileGateway? playerProfileGateway = null)
+        ICatalogContentGateway? catalogContentGateway = null)
     {
         var runRepository = new StubRunRepository();
         await runRepository.AddAsync(run, CancellationToken.None);
@@ -195,8 +188,7 @@ public sealed class DevToolsRunDebugServiceTests
             Mock.Of<IRunGenerator>(),
             catalogContentGateway ?? Mock.Of<ICatalogContentGateway>(),
             Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IRewardOfferRepository>(),
-            playerProfileGateway ?? Mock.Of<IPlayerProfileGateway>());
+            Mock.Of<IRewardOfferRepository>());
     }
 
     private static (Run Run, TacticalCombat Combat) CreateRunWithActiveCombat(int enemyCount)
