@@ -348,7 +348,7 @@ public sealed class DevToolsEndpointTests
         payload.Should().NotBeNull();
         payload!.Run.ActiveCombatId.Should().NotBeNull();
         payload.EncounterDraft.RiskLevel.Should().Be(expectedRiskLevel);
-        payload.Combat.Id.Should().Be(payload.Run.ActiveCombatId);
+        payload.Combat.Id.Should().Be(payload.Run.ActiveCombatId!.Value.ToString());
         payload.Combat.Enemies.Should().NotBeEmpty();
     }
 
