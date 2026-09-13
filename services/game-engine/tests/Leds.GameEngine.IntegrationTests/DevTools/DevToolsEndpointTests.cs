@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Api.DevTools;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Hosting;
@@ -145,6 +146,49 @@ public sealed class DevToolsEndpointTests
     }
 
     [Fact]
+    public async Task CurrentSandbox_ShouldReturnExistingSandboxWithoutResettingIt()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: false,
+            role: "Developer");
+        var createdResponse = await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+        var created = await createdResponse.Content.ReadFromJsonAsync<StartRunResponse>();
+
+        var response = await client.GetAsync(
+            $"/api/dev/v2/sandboxes/current?characterId={GameEngineApiFactory.TestPlayerId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<DeveloperSandboxResponse>();
+        payload!.Run.Should().NotBeNull();
+        payload.Run!.Id.Should().Be(created!.Run.Id);
+        payload.Run.Mode.Should().Be("DeveloperSandbox");
+    }
+
+    [Fact]
+    public async Task CurrentSandbox_ShouldNotReturnSandboxCreatedForAnotherCharacter()
+    {
+        using var client = CreateClient(
+            environment: "Development",
+            enabled: true,
+            includeToken: false,
+            role: "Developer");
+        await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+
+        var response = await client.GetAsync(
+            $"/api/dev/v2/sandboxes/current?characterId={Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<DeveloperSandboxResponse>();
+        payload!.Run.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ResetSandbox_ShouldReturnNotFound_WhenEnvironmentIsProduction()
     {
         using var client = CreateClient(
@@ -177,10 +221,23 @@ public sealed class DevToolsEndpointTests
     }
 
     [Fact]
-    public async Task ForcePalaceRoomState_ShouldUpdateOnlyCurrentRoom()
+    public async Task RunMutation_ShouldReturnForbidden_WhenRunIsNotADeveloperSandbox()
     {
         using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
         var run = await StartRunAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/dev/v2/runs/{run.Run.Id}/current-room/climate",
+            new { Climate = "Heatwave" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ForcePalaceRoomState_ShouldUpdateOnlyCurrentRoom()
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
         var initialRoomId = run.Run.CurrentRoom.Id;
 
         var response = await client.PostAsJsonAsync(
@@ -200,7 +257,7 @@ public sealed class DevToolsEndpointTests
     public async Task ForceRoomClimate_ShouldExposeCurrentRoomClimate()
     {
         using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
-        var run = await StartRunAsync(client);
+        var run = await StartSandboxAsync(client);
 
         var response = await client.PostAsJsonAsync(
             $"/api/dev/v2/runs/{run.Run.Id}/current-room/climate",
@@ -221,7 +278,7 @@ public sealed class DevToolsEndpointTests
     public async Task ActivateLaw_ShouldBeIdempotent_AndClearLawsShouldRemoveActiveLaws()
     {
         using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
-        var run = await StartRunAsync(client);
+        var run = await StartSandboxAsync(client);
 
         var firstResponse = await client.PostAsJsonAsync(
             $"/api/dev/v2/runs/{run.Run.Id}/laws/activate",
@@ -249,7 +306,7 @@ public sealed class DevToolsEndpointTests
     public async Task AdvanceRooms_ShouldUseNormalRoomGenerationPipeline()
     {
         using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
-        var run = await StartRunAsync(client);
+        var run = await StartSandboxAsync(client);
 
         var response = await client.PostAsJsonAsync(
             $"/api/dev/v2/runs/{run.Run.Id}/advance-rooms",
@@ -265,6 +322,67 @@ public sealed class DevToolsEndpointTests
             .Which.Id.Should().Be(payload.Run.CurrentRoom.Id,
                 because: "the runtime DTO intentionally exposes only the current spatial room");
         payload.Run.MarkovMatrixVersion.Should().Be(run.Run.MarkovMatrixVersion);
+    }
+
+    [Theory]
+    [InlineData("Calme", 1)]
+    [InlineData("Tendu", 2)]
+    [InlineData("Dangereux", 3)]
+    [InlineData("Perilleux", 4)]
+    [InlineData("Fatal", 5)]
+    public async Task StartCombatScenario_ShouldLaunchARealTacticalCombatAtRequestedRisk(
+        string riskTier,
+        int expectedRiskLevel)
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/dev/v2/runs/{run.Run.Id}/combat-scenarios/start",
+            new { RiskTier = riskTier });
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        var payload = await response.Content.ReadFromJsonAsync<DevToolsCombatScenarioResult>();
+
+        payload.Should().NotBeNull();
+        payload!.Run.ActiveCombatId.Should().NotBeNull();
+        payload.EncounterDraft.RiskLevel.Should().Be(expectedRiskLevel);
+        payload.Combat.Id.Should().Be(payload.Run.ActiveCombatId!.Value.ToString());
+        payload.Combat.Enemies.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task StartCombatScenario_ShouldRejectASecondCombatWhileOneIsActive()
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
+        var endpoint = $"/api/dev/v2/runs/{run.Run.Id}/combat-scenarios/start";
+
+        var first = await client.PostAsJsonAsync(endpoint, new { RiskTier = "Tendu" });
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var second = await client.PostAsJsonAsync(endpoint, new { RiskTier = "Fatal" });
+
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UnlockSkill_ShouldAddSkillToSandboxSnapshotOnly()
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
+
+        var response = await client.PostAsync(
+            $"/api/dev/v2/runs/{run.Run.Id}/characters/{GameEngineApiFactory.TestPlayerId}/skills/skill.basic.guard/unlock",
+            null);
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        var payload = await response.Content.ReadFromJsonAsync<DevToolsRunDebugResult>();
+        var protagonist = payload!.Run.Party!.Members.Single(member => member.IsActive);
+        protagonist.Skills.Should().ContainSingle(skill =>
+            skill.Key == "skill.basic.guard" && skill.TemporarySlot == "DeveloperSandbox");
     }
 
     private HttpClient CreateClient(
@@ -307,6 +425,18 @@ public sealed class DevToolsEndpointTests
             new { PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111") });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
+        payload.Should().NotBeNull();
+        return payload!;
+    }
+
+    private static async Task<StartRunResponse> StartSandboxAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/dev/v2/sandboxes/reset",
+            new { CharacterId = GameEngineApiFactory.TestPlayerId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
         payload.Should().NotBeNull();
         return payload!;

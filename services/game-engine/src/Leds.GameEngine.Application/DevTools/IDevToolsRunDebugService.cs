@@ -2,6 +2,11 @@ namespace Leds.GameEngine.Application.DevTools;
 
 public interface IDevToolsRunDebugService
 {
+    Task<DevToolsCombatScenarioResult> StartCombatScenarioAsync(
+        Guid runId,
+        string riskTier,
+        CancellationToken cancellationToken = default);
+
     Task<DevToolsRunDebugResult> AdvanceRoomAsync(Guid runId, CancellationToken cancellationToken = default);
 
     Task<DevToolsRunDebugResult> AdvanceRoomsAsync(Guid runId, int count, CancellationToken cancellationToken = default);
@@ -62,6 +67,14 @@ public interface IDevToolsRunDebugService
         Guid runId,
         string itemDefinitionKey,
         int quantity,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a catalog skill to one character's run snapshot only. The player
+    /// profile remains untouched and resetting the sandbox removes the grant.</summary>
+    Task<DevToolsRunDebugResult> UnlockSandboxSkillAsync(
+        Guid runId,
+        Guid characterId,
+        string skillKey,
         CancellationToken cancellationToken = default);
 
     Task<DevToolsCombatDebugResult> ApplyCombatantStatusAsync(

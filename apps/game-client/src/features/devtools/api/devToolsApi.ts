@@ -2,7 +2,8 @@ import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import { getAccessToken } from '../../account/authSession';
 import type {
   DevToolsCombatResponse,
-  DevToolsPlayerDebugResponse,
+  DevToolsCombatRiskTier,
+  DevToolsCombatScenarioResponse,
   DevToolsRunPsycheResponse,
   DevToolsRunResponse,
   DevToolsStatusResponse,
@@ -99,6 +100,14 @@ export const devToolsApi = {
     return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/curses/clear`);
   },
 
+  startCombatScenario(token: string, runId: string, riskTier: DevToolsCombatRiskTier) {
+    return post<DevToolsCombatScenarioResponse>(
+      token,
+      `/api/dev/v2/runs/${runId}/combat-scenarios/start`,
+      { riskTier },
+    );
+  },
+
   killEnemies(token: string, runId: string) {
     return post<DevToolsCombatResponse>(token, `/api/dev/v2/runs/${runId}/combats/current/kill-enemies`);
   },
@@ -161,10 +170,10 @@ export const devToolsApi = {
     );
   },
 
-  unlockSkill(token: string, playerId: string, characterId: string, skillKey: string) {
-    return post<DevToolsPlayerDebugResponse>(
+  unlockSkill(token: string, runId: string, characterId: string, skillKey: string) {
+    return post<DevToolsRunResponse>(
       token,
-      `/api/dev/v2/players/${playerId}/characters/${characterId}/skills/${skillKey}/unlock`,
+      `/api/dev/v2/runs/${runId}/characters/${characterId}/skills/${skillKey}/unlock`,
     );
   },
 

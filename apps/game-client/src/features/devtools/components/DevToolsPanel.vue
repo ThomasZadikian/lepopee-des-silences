@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 
-import { getActivePlayerId, useRunStore } from '../../runs/stores/runStore';
+import { useRunStore } from '../../runs/stores/runStore';
 import { skillsApi } from '../../party/api/skillsApi';
 import { itemsApi } from '../../party/api/itemsApi';
 import { lawsApi } from '../../palace-laws/api/lawsApi';
 import { cursesApi } from '../../palace-laws/api/cursesApi';
+import { useTacticalCombatStore } from '../../combat/stores/useTacticalCombatStore';
 import { usePlayerStore } from '../../party/stores/playerStore';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import type { ItemDefinitionView } from '../../party/types/itemTypes';
@@ -13,7 +14,7 @@ import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
 import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
-import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
+import type { DevToolsCombatRiskTier, DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
 import DevToolsMicroMenu from './DevToolsMicroMenu.vue';
 
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const runStore = useRunStore();
 const playerStore = usePlayerStore();
+const tacticalCombatStore = useTacticalCombatStore();
 const devTools = useDevTools();
 const psyche = ref<DevToolsRunPsycheResponse | null>(null);
 const allSkills = ref<SkillDefinitionView[]>([]);
@@ -167,10 +169,49 @@ function clearCurses() {
   void execute((token) => devToolsApi.clearCurses(token, props.runId), 'Curses effacees.');
 }
 
+function startCombatScenario(riskTier: DevToolsCombatRiskTier) {
+  void execute(
+    (token) => devToolsApi.startCombatScenario(token, props.runId, riskTier),
+    `Combat ${riskTier.toLocaleLowerCase('fr-FR')} lancé.`,
+  );
+}
+
 function unlockSkill(characterId: string, skillKey: string) {
   void execute(
-    (token) => devToolsApi.unlockSkill(token, getActivePlayerId(), characterId, skillKey),
-    'Sort debloque.',
+    (token) => devToolsApi.unlockSkill(token, props.runId, characterId, skillKey),
+    'Sort débloqué pour cette sandbox.',
+  );
+}
+
+function killEnemies() {
+  void execute((token) => devToolsApi.killEnemies(token, props.runId), 'Tous les ennemis ont été éliminés.');
+}
+
+function killEnemy(combatantId: string) {
+  void execute(
+    (token) => devToolsApi.killEnemy(token, props.runId, combatantId),
+    'Ennemi éliminé.',
+  );
+}
+
+function setVitals(combatantId: string, vitality: number, guard: number) {
+  void execute(
+    (token) => devToolsApi.setVitals(token, props.runId, combatantId, vitality, guard),
+    'Vitalité et garde mises à jour.',
+  );
+}
+
+function applyStatus(
+  combatantId: string,
+  statusKey: string,
+  stacks: number,
+  duration: number,
+) {
+  void execute(
+    (token) => devToolsApi.applyStatus(
+      token, props.runId, combatantId, statusKey, stacks, duration,
+    ),
+    'État appliqué.',
   );
 }
 
@@ -214,6 +255,8 @@ function unlockSkill(characterId: string, skillKey: string) {
       :all-laws="allLaws"
       :all-curses="allCurses"
       :psyche="psyche"
+      :combat="tacticalCombatStore.combat"
+      @start-combat-scenario="startCombatScenario"
       @advance-room="advanceRoom"
       @advance-rooms="advanceRooms"
       @force-palace-state="forcePalaceState"
@@ -227,6 +270,10 @@ function unlockSkill(characterId: string, skillKey: string) {
       @add-item="addItem"
       @unlock-skill="unlockSkill"
       @refresh-psyche="refreshPsyche"
+      @kill-enemies="killEnemies"
+      @kill-enemy="killEnemy"
+      @set-vitals="setVitals"
+      @apply-status="applyStatus"
     />
   </aside>
 </template>

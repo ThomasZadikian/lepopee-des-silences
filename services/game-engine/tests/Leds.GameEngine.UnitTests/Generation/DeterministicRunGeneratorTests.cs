@@ -94,6 +94,9 @@ public sealed class DeterministicRunGeneratorTests
 
         room.CatalogBinding!.Key.Should().Be("room.developer-island.hub");
         room.CatalogBinding.DisplayName.Should().Be("Île des développeurs");
+        room.Nodes.Should().Contain(node =>
+            node.EventType == NodeEventType.Combat && node.State == NodeState.Available,
+            because: "the developer island must always expose a scenario-launchable combat node");
     }
 
     [Fact]
