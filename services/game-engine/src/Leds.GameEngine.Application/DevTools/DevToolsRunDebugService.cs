@@ -72,7 +72,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
         var combatPlan = FindReachableCombatNode(run.CurrentRoom)
             ?? throw new DomainException("The current room has no available standard combat node.");
-        var (node, path, cost) = combatPlan.Value;
+        var (node, path, cost) = combatPlan;
 
         node.SetCombatRiskTier(parsedRiskTier);
         if (run.CurrentRoom.Grid.PartyX != node.Lane || run.CurrentRoom.Grid.PartyY != node.Row)
