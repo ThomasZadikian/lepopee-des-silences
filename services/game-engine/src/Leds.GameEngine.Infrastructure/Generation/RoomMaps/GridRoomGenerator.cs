@@ -134,7 +134,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         var hasBoss = !string.IsNullOrWhiteSpace(bossDefinitionKey);
         var nodes = CreateNodes(
-            template, profile, floor, obstacles, deadEnds, (bossX, bossY), hasBoss, random);
+            template, profile, floor, obstacles, deadEnds, (bossX, bossY), hasBoss, random,
+            catalogRoomKey);
 
         var bossProfile = hasBoss
             ? await _bossProfileResolver.ResolveAsync(roomType, cancellationToken)
@@ -885,7 +886,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         IReadOnlyList<(int X, int Y)> deadEnds,
         (int X, int Y) bossCell,
         bool hasBoss,
-        Random random)
+        Random random,
+        string? catalogRoomKey)
     {
         var obstacleSet = new HashSet<(int X, int Y)>(obstacles);
         var occupiedCells = new HashSet<(int X, int Y)>
