@@ -324,6 +324,49 @@ public sealed class DevToolsEndpointTests
         payload.Run.MarkovMatrixVersion.Should().Be(run.Run.MarkovMatrixVersion);
     }
 
+    [Theory]
+    [InlineData("Calme", 1)]
+    [InlineData("Tendu", 2)]
+    [InlineData("Dangereux", 3)]
+    [InlineData("Perilleux", 4)]
+    [InlineData("Fatal", 5)]
+    public async Task StartCombatScenario_ShouldLaunchARealTacticalCombatAtRequestedRisk(
+        string riskTier,
+        int expectedRiskLevel)
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/dev/v2/runs/{run.Run.Id}/combat-scenarios/start",
+            new { RiskTier = riskTier });
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+        var payload = await response.Content.ReadFromJsonAsync<DevToolsCombatScenarioResult>();
+
+        payload.Should().NotBeNull();
+        payload!.Run.ActiveCombatId.Should().NotBeNull();
+        payload.EncounterDraft.RiskLevel.Should().Be(expectedRiskLevel);
+        payload.Combat.Id.Should().Be(payload.Run.ActiveCombatId);
+        payload.Combat.Enemies.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task StartCombatScenario_ShouldRejectASecondCombatWhileOneIsActive()
+    {
+        using var client = CreateClient(environment: "Development", enabled: true, includeToken: true);
+        var run = await StartSandboxAsync(client);
+        var endpoint = $"/api/dev/v2/runs/{run.Run.Id}/combat-scenarios/start";
+
+        var first = await client.PostAsJsonAsync(endpoint, new { RiskTier = "Tendu" });
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var second = await client.PostAsJsonAsync(endpoint, new { RiskTier = "Fatal" });
+
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task UnlockSkill_ShouldAddSkillToSandboxSnapshotOnly()
     {

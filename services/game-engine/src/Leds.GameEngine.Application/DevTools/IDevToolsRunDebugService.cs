@@ -2,6 +2,11 @@ namespace Leds.GameEngine.Application.DevTools;
 
 public interface IDevToolsRunDebugService
 {
+    Task<DevToolsCombatScenarioResult> StartCombatScenarioAsync(
+        Guid runId,
+        string riskTier,
+        CancellationToken cancellationToken = default);
+
     Task<DevToolsRunDebugResult> AdvanceRoomAsync(Guid runId, CancellationToken cancellationToken = default);
 
     Task<DevToolsRunDebugResult> AdvanceRoomsAsync(Guid runId, int count, CancellationToken cancellationToken = default);

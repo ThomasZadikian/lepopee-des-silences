@@ -5,6 +5,7 @@ import type {
   TacticalCombatantRuntimeDto,
   TacticalCombatRuntimeDto,
 } from '../../combat/types/combatContracts';
+import type { DevToolsCombatRiskTier } from '../types/devToolsTypes';
 
 const props = defineProps<{
   disabled: boolean;
@@ -13,12 +14,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  startScenario: [riskTier: DevToolsCombatRiskTier];
   killEnemies: [];
   killEnemy: [combatantId: string];
   setVitals: [combatantId: string, vitality: number, guard: number];
   applyStatus: [combatantId: string, statusKey: string, stacks: number, duration: number];
 }>();
 
+const riskTier = ref<DevToolsCombatRiskTier>('Tendu');
 const selectedCombatantId = ref<string | null>(null);
 const vitality = ref(0);
 const guard = ref(0);
@@ -80,7 +83,28 @@ function applySelectedStatus() {
     </header>
 
     <div v-if="!props.combat" class="devtools-window__body">
-      <p>Aucun combat actif. Un lanceur de scénarios sera ajouté dans le lot suivant.</p>
+      <p>Aucun combat actif. Lance un combat standard utilisant la carte, le bestiaire et l’IA réels.</p>
+      <div class="devtools-inline-form">
+        <label>
+          Risque
+          <select v-model="riskTier" data-testid="combat-risk-tier">
+            <option value="Calme">Calme</option>
+            <option value="Tendu">Tendu</option>
+            <option value="Dangereux">Dangereux</option>
+            <option value="Perilleux">Périlleux</option>
+            <option value="Fatal">Fatal</option>
+          </select>
+        </label>
+        <button
+          data-testid="start-combat-scenario"
+          type="button"
+          class="devtools-btn"
+          :disabled="props.disabled || props.isLoading"
+          @click="emit('startScenario', riskTier)"
+        >
+          Lancer le combat
+        </button>
+      </div>
     </div>
 
     <div v-else class="devtools-window__body">

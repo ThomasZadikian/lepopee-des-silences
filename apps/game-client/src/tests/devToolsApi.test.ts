@@ -83,6 +83,21 @@ describe('devToolsApi', () => {
     );
   });
 
+  it('starts a combat scenario with the requested risk tier', async () => {
+    await devToolsApi.startCombatScenario('local-token', 'run-1', 'Fatal');
+
+    expect(httpRequest).toHaveBeenCalledWith(
+      '/api/dev/v2/runs/run-1/combat-scenarios/start',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ riskTier: 'Fatal' }),
+        headers: expect.objectContaining({
+          'X-Leds-DevTools-Token': 'local-token',
+        }),
+      }),
+    );
+  });
+
   it('maps protected or unavailable endpoints to a generic devtools error', async () => {
     vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Forbidden', 403, null));
 

@@ -2,6 +2,8 @@ import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import { getAccessToken } from '../../account/authSession';
 import type {
   DevToolsCombatResponse,
+  DevToolsCombatRiskTier,
+  DevToolsCombatScenarioResponse,
   DevToolsRunPsycheResponse,
   DevToolsRunResponse,
   DevToolsStatusResponse,
@@ -96,6 +98,14 @@ export const devToolsApi = {
 
   clearCurses(token: string, runId: string) {
     return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/curses/clear`);
+  },
+
+  startCombatScenario(token: string, runId: string, riskTier: DevToolsCombatRiskTier) {
+    return post<DevToolsCombatScenarioResponse>(
+      token,
+      `/api/dev/v2/runs/${runId}/combat-scenarios/start`,
+      { riskTier },
+    );
   },
 
   killEnemies(token: string, runId: string) {

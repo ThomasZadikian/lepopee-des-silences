@@ -35,6 +35,17 @@ describe('CombatDevToolsWindow', () => {
     expect(wrapper.text()).toContain('Aucun combat actif');
   });
 
+  it('starts a standard combat scenario at the selected risk tier', async () => {
+    const wrapper = mount(CombatDevToolsWindow, {
+      props: { disabled: false, isLoading: false, combat: null },
+    });
+
+    await wrapper.get('[data-testid="combat-risk-tier"]').setValue('Fatal');
+    await wrapper.get('[data-testid="start-combat-scenario"]').trigger('click');
+
+    expect(wrapper.emitted('startScenario')).toEqual([['Fatal']]);
+  });
+
   it('emits combat mutations for the selected combatant', async () => {
     const wrapper = mount(CombatDevToolsWindow, {
       props: { disabled: false, isLoading: false, combat },

@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
@@ -16,6 +17,7 @@ using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using MediatR;
 
 namespace Leds.GameEngine.Application.DevTools;
 
@@ -34,19 +36,100 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly ICombatResolutionService _combatResolution;
     private readonly IRewardOfferRepository _rewardOfferRepository;
+    private readonly ISender _sender;
 
     public DevToolsRunDebugService(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
         ICatalogContentGateway catalogContentGateway,
         ICombatResolutionService combatResolution,
-        IRewardOfferRepository rewardOfferRepository)
+        IRewardOfferRepository rewardOfferRepository,
+        ISender sender)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
         _catalogContentGateway = catalogContentGateway;
         _combatResolution = combatResolution;
         _rewardOfferRepository = rewardOfferRepository;
+        _sender = sender;
+    }
+
+    public async Task<DevToolsCombatScenarioResult> StartCombatScenarioAsync(
+        Guid runId,
+        string riskTier,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.TryParse<RiskTier>(riskTier, ignoreCase: true, out var parsedRiskTier))
+            throw new DomainException($"Unsupported combat risk tier '{riskTier}'.");
+
+        var run = await GetRunAsync(runId, cancellationToken);
+        if (run.HasActiveCombat)
+            throw new DomainException("A combat is already active in this sandbox.");
+        if (run.HasPendingRewardOffer)
+            throw new DomainException("Select or discard the pending reward before starting another combat.");
+        if (run.CurrentRoom.State != RoomState.Active)
+            throw new DomainException("The current room must be in exploration state before starting a combat scenario.");
+
+        var combatPlan = FindReachableCombatNode(run.CurrentRoom)
+            ?? throw new DomainException("The current room has no available standard combat node.");
+        var (node, path, cost) = combatPlan.Value;
+
+        node.SetCombatRiskTier(parsedRiskTier);
+        if (run.CurrentRoom.Grid.PartyX != node.Lane || run.CurrentRoom.Grid.PartyY != node.Row)
+        {
+            // Explicit developer teleport along a valid path. Supplying only the target node keeps
+            // unrelated exploration events from intercepting the scenario launcher.
+            run.CurrentRoom.Grid.MoveTo(path, cost, [node]);
+        }
+        run.EnterGridNode(node.Id.Value);
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+
+        // Reuse the production event/combat pipeline. The launcher only prepares the selected
+        // node; encounter composition, roster, battlefield, initiative and opening AI remain real.
+        var resolved = await _sender.Send(new ResolveCurrentEventCommand(runId), cancellationToken);
+        var draft = resolved.EncounterDraft
+            ?? throw new DomainException("The selected developer scenario did not produce a combat draft.");
+        var combat = resolved.TacticalCombat
+            ?? throw new DomainException("The selected developer scenario did not start a tactical combat.");
+
+        return new DevToolsCombatScenarioResult(
+            $"Standard combat started at risk tier {parsedRiskTier}.",
+            resolved.Run,
+            draft,
+            combat,
+            resolved.TacticalEvents ?? []);
+    }
+
+    private static (MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?
+        FindReachableCombatNode(Room room)
+    {
+        var occupiedDestinations = room.RoomNpcs
+            .Select(npc => (npc.X, npc.Y))
+            .ToHashSet();
+
+        return room.Nodes
+            .Where(node =>
+                node.EventType == NodeEventType.Combat
+                && node.State == NodeState.Available
+                && !node.IsHidden
+                && !occupiedDestinations.Contains((node.Lane, node.Row)))
+            .Select(node =>
+            {
+                if (node.Lane == room.Grid.PartyX && node.Row == room.Grid.PartyY)
+                    return (Node: node, Route: ((IReadOnlyList<(int X, int Y)> Path, int Cost)?)([], 0));
+
+                return (Node: node, Route: room.Grid.FindPath(node.Lane, node.Row));
+            })
+            .Where(candidate => candidate.Route is not null)
+            .OrderBy(candidate => candidate.Route!.Value.Cost)
+            .ThenBy(candidate => candidate.Node.Id.Value)
+            .Select(candidate =>
+                ((MapNode Node, IReadOnlyList<(int X, int Y)> Path, int Cost)?) (
+                    candidate.Node,
+                    candidate.Route!.Value.Path,
+                    candidate.Route.Value.Cost))
+            .FirstOrDefault();
     }
 
     public async Task<DevToolsRunDebugResult> AdvanceRoomAsync(

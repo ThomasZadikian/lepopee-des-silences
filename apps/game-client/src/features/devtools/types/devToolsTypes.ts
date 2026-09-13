@@ -16,6 +16,19 @@ export type DevToolsCombatResponse = {
   combat: TacticalCombatRuntimeDto;
 };
 
+export type DevToolsCombatRiskTier = 'Calme' | 'Tendu' | 'Dangereux' | 'Perilleux' | 'Fatal';
+
+export type DevToolsCombatScenarioResponse = {
+  message: string;
+  run: RunDto;
+  encounterDraft: {
+    riskLevel: number;
+    encounterType: string;
+  };
+  combat: TacticalCombatRuntimeDto;
+  tacticalEvents: unknown[];
+};
+
 export type DevToolsPsycheStep = {
   depth: number;
   dominant: string;

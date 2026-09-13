@@ -48,6 +48,16 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
+        group.MapPost("/runs/{runId:guid}/combat-scenarios/start", async Task<Ok<DevToolsCombatScenarioResult>> (
+            Guid runId,
+            DevToolsStartCombatScenarioRequest request,
+            IDevToolsRunDebugService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.StartCombatScenarioAsync(runId, request.RiskTier, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
         group.MapPost("/runs/{runId:guid}/advance-rooms", async Task<Ok<DevToolsRunDebugResult>> (
             Guid runId,
             DevToolsAdvanceRoomsRequest request,
@@ -216,6 +226,8 @@ public static class DevToolsEndpointRouteBuilderExtensions
 public sealed record DevToolsStatusResponse(bool Enabled, string Environment);
 
 public sealed record DevToolsAdvanceRoomsRequest(int Count);
+
+public sealed record DevToolsStartCombatScenarioRequest(string RiskTier);
 
 public sealed record DevToolsSetPalaceStateRequest(string State);
 

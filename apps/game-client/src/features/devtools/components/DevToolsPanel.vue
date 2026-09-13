@@ -14,7 +14,7 @@ import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
 import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
-import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
+import type { DevToolsCombatRiskTier, DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
 import DevToolsMicroMenu from './DevToolsMicroMenu.vue';
 
@@ -169,6 +169,13 @@ function clearCurses() {
   void execute((token) => devToolsApi.clearCurses(token, props.runId), 'Curses effacees.');
 }
 
+function startCombatScenario(riskTier: DevToolsCombatRiskTier) {
+  void execute(
+    (token) => devToolsApi.startCombatScenario(token, props.runId, riskTier),
+    `Combat ${riskTier.toLocaleLowerCase('fr-FR')} lancé.`,
+  );
+}
+
 function unlockSkill(characterId: string, skillKey: string) {
   void execute(
     (token) => devToolsApi.unlockSkill(token, props.runId, characterId, skillKey),
@@ -249,6 +256,7 @@ function applyStatus(
       :all-curses="allCurses"
       :psyche="psyche"
       :combat="tacticalCombatStore.combat"
+      @start-combat-scenario="startCombatScenario"
       @advance-room="advanceRoom"
       @advance-rooms="advanceRooms"
       @force-palace-state="forcePalaceState"

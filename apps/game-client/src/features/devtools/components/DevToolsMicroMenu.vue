@@ -7,7 +7,7 @@ import type { ItemDefinitionView } from '../../party/types/itemTypes';
 import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
 import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import type { TacticalCombatRuntimeDto } from '../../combat/types/combatContracts';
-import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
+import type { DevToolsCombatRiskTier, DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import SkillsDevToolsWindow from '../windows/SkillsDevToolsWindow.vue';
 import ItemsDevToolsWindow from '../windows/ItemsDevToolsWindow.vue';
 import RunDevToolsWindow from '../windows/RunDevToolsWindow.vue';
@@ -31,6 +31,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  startCombatScenario: [riskTier: DevToolsCombatRiskTier];
   advanceRoom: [];
   advanceRooms: [count: number];
   forcePalaceState: [state: PalaceRoomStateKey];
@@ -150,6 +151,7 @@ const activeWindow = ref<WindowKey | null>(null);
         :disabled="props.disabled"
         :is-loading="props.isLoading"
         :combat="props.combat"
+        @start-scenario="(riskTier) => emit('startCombatScenario', riskTier)"
         @kill-enemies="emit('killEnemies')"
         @kill-enemy="(combatantId) => emit('killEnemy', combatantId)"
         @set-vitals="(combatantId, vitality, guard) => emit('setVitals', combatantId, vitality, guard)"

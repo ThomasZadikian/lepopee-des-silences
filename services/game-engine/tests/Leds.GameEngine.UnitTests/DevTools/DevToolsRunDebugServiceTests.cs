@@ -16,6 +16,7 @@ using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
+using MediatR;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.DevTools;
@@ -188,7 +189,8 @@ public sealed class DevToolsRunDebugServiceTests
             Mock.Of<IRunGenerator>(),
             catalogContentGateway ?? Mock.Of<ICatalogContentGateway>(),
             Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IRewardOfferRepository>());
+            Mock.Of<IRewardOfferRepository>(),
+            Mock.Of<ISender>());
     }
 
     private static (Run Run, TacticalCombat Combat) CreateRunWithActiveCombat(int enemyCount)
