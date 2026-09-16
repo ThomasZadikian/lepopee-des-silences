@@ -392,6 +392,12 @@ export const useRunStore = defineStore('run', () => {
    * stepping onto a node that triggers on contact. */
   async function resolveSelectedNodeIfAny() {
     if (currentRun.value?.currentRoom?.state !== 'NodeSelected') return;
+    // A combat deliberately keeps its source node selected until victory/defeat resolves it.
+    // Hostile pursuit is resolved inside advanceRoomActors(), then movePartyTo() reaches this
+    // helper once more after the reaction step. Without this guard that second pass asks the
+    // server to start the same encounter again, receives "combat already active", and leaves
+    // the exploration UI looking frozen at the moment of contact.
+    if (currentRun.value.activeCombatId) return;
 
     const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value.id);
     currentRun.value = resolveResponse.run;
