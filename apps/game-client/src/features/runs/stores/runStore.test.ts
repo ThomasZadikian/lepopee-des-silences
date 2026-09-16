@@ -627,6 +627,64 @@ describe('useRunStore actions', () => {
     expect(store.currentRun?.currentRoom.grid.partyX).toBe(1);
   });
 
+  it('movePartyTo resolves a hostile patrol contact only once when combat starts', async () => {
+    vi.useFakeTimers();
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      activeCombatId: null,
+      currentRoom: { state: 'Active', grid: { partyX: 0, partyY: 0 } },
+    } as any;
+
+    vi.mocked(runApi.moveParty).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        activeCombatId: null,
+        currentRoom: { state: 'Active', grid: { partyX: 1, partyY: 0 } },
+      },
+      collectedItemIds: [],
+      blockedItemIds: [],
+    } as any);
+    vi.mocked(runApi.advanceRoomActors).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        activeCombatId: null,
+        currentRoom: { state: 'NodeSelected', grid: { partyX: 1, partyY: 0 } },
+      },
+      movements: [{
+        actorId: 'enemy-1',
+        actorKind: 'Enemy',
+        fromX: 3,
+        fromY: 0,
+        toX: 2,
+        toY: 0,
+      }],
+      triggeredNodeId: 'enemy-1',
+    } as any);
+    vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        activeCombatId: 'combat-1',
+        currentRoom: { state: 'NodeSelected', grid: { partyX: 1, partyY: 0 } },
+      },
+      outcome: { title: 'Une présence vous intercepte' },
+    } as any);
+
+    const moving = store.movePartyTo(1, 0);
+    await vi.runAllTimersAsync();
+    await moving;
+
+    expect(runApi.advanceRoomActors).toHaveBeenCalledWith('run-1', 'HostilesOnly');
+    expect(runApi.resolveCurrentEvent).toHaveBeenCalledTimes(1);
+    expect(store.currentRun?.activeCombatId).toBe('combat-1');
+    expect(store.gameplayPhase).toBe('Combat');
+    expect(store.error).toBeNull();
+  });
+
   it('interactWithRoomNpc opens the Catalog dialogue returned for the adjacent actor', async () => {
     const store = useRunStore();
     store.currentRun = {
