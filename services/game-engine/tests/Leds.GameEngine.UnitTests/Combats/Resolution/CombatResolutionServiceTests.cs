@@ -100,6 +100,48 @@ public sealed class CombatResolutionServiceTests
     }
 
     [Fact]
+    public async Task ApplyOutcomeAsync_ShouldNotAwardPermanentCurrencies_ForDeveloperSandboxVictory()
+    {
+        var roomWithTargetNode = TestGameEngineFactory.CreateThresholdRoomWithTargetInitialNode(
+            NodeEventType.Combat,
+            targetCombatRiskTier: RiskTier.Fatal);
+        var run = Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-developer-sandbox-combat",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: roomWithTargetNode.Room,
+            startedAt: DateTimeOffset.UtcNow,
+            emotionalAffinityMatrix: Leds.GameEngine.UnitTests.Common.TestEmotionalAffinityMatrix.Create(),
+            mode: RunMode.DeveloperSandbox);
+        TestGameEngineFactory.EnterNode(run, roomWithTargetNode.TargetNode);
+
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
+        enemy.ApplyVitalityDamage(enemy.CurrentVitality);
+        combat.CompleteIfAllEnemiesDefeated();
+
+        var gateway = new Mock<IPlayerProfileGateway>();
+        var service = new CombatResolutionService(
+            CreateRewardOfferFactory(),
+            CreateGroundLootBuilder(),
+            gateway.Object,
+            Mock.Of<IOutboxWriter>(),
+            Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        gateway.Verify(
+            g => g.AwardCurrencyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        gateway.Verify(
+            g => g.AwardHimLitCurrencyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task ApplyOutcomeAsync_ShouldStillReturnRewardOffer_WhenEclatsGatewayThrows()
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.Combat);

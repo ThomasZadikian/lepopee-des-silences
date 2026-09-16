@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
@@ -23,6 +24,27 @@ public static class DeveloperSandboxEndpointRouteBuilderExtensions
             .WithTags("Developer Sandbox")
             .RequireAuthorization(policy => policy.RequireRole("Developer", "Administrator"));
 
+        group.MapGet("/current", async Task<IResult> (
+            Guid characterId,
+            ClaimsPrincipal user,
+            IRunRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryGetPlayerId(user, out var playerId))
+                return Results.Unauthorized();
+
+            var run = await repository.GetOpenByPlayerIdAsync(
+                playerId,
+                RunMode.DeveloperSandbox,
+                cancellationToken);
+
+            if (run?.PlayerSnapshot?.Characters.FirstOrDefault()?.CharacterId != characterId)
+                run = null;
+
+            return Results.Ok(new DeveloperSandboxResponse(
+                run is null ? null : RunDto.FromDomain(run)));
+        });
+
         group.MapPost("/reset", async Task<IResult> (
             DeveloperSandboxRequest request,
             ClaimsPrincipal user,
@@ -31,8 +53,7 @@ public static class DeveloperSandboxEndpointRouteBuilderExtensions
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            var subject = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(subject, out var playerId))
+            if (!TryGetPlayerId(user, out var playerId))
                 return Results.Unauthorized();
 
             var existing = await repository.GetOpenByPlayerIdAsync(
@@ -58,6 +79,13 @@ public static class DeveloperSandboxEndpointRouteBuilderExtensions
 
         return endpoints;
     }
+
+    private static bool TryGetPlayerId(ClaimsPrincipal user, out Guid playerId)
+    {
+        var subject = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(subject, out playerId);
+    }
 }
 
 public sealed record DeveloperSandboxRequest(Guid CharacterId);
+public sealed record DeveloperSandboxResponse(RunDto? Run);

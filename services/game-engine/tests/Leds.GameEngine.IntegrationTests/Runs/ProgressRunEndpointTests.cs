@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using System.Net;
@@ -166,47 +165,9 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase
         resolvePayload!.Run.ActiveCombatId.Should().NotBeNull(
             because: "these progression fixtures deliberately select a combat node");
 
-        using var killRequest = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"/api/dev/v2/runs/{runId}/combats/current/kill-enemies")
-        {
-            Content = JsonContent.Create(new { })
-        };
-        killRequest.Headers.Add(
-            "X-Leds-DevTools-Token",
-            GameEngineApiFactory.DevToolsToken);
-
-        var killResponse = await Client.SendAsync(killRequest);
-        var killBody = await killResponse.Content.ReadAsStringAsync();
-        killResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: killBody);
-
-        if (!selectReward)
-        {
-            return;
-        }
-
-        var pendingResponse = await Client.GetAsync(
-            $"/api/v2/runs/{runId}/rewards/pending");
-        if (pendingResponse.StatusCode != HttpStatusCode.OK)
-        {
-            return;
-        }
-
-        var rewardOffer = await pendingResponse.Content.ReadFromJsonAsync<RewardOfferDto>();
-        if (rewardOffer?.SelectedChoiceId is not null || rewardOffer?.Choices.Count is not > 0)
-        {
-            return;
-        }
-
-        var affordableChoice = rewardOffer.Choices.FirstOrDefault(choice =>
-            choice.PalaceShardCost == 0 && choice.HimLitShardCost == 0);
-        affordableChoice.Should().NotBeNull(
-            because: "every generated offer must expose a free reward or decline choice");
-
-        var selectResponse = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/rewards/select",
-            new { ChoiceId = affordableChoice!.Id });
-        var selectBody = await selectResponse.Content.ReadAsStringAsync();
-        selectResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: selectBody);
+        await CompleteActiveCombatAsync(
+            runId,
+            resolvePayload.Run.ActiveCombatId.Value,
+            selectReward);
     }
 }

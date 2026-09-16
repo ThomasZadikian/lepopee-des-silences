@@ -6,3 +6,10 @@ namespace Leds.GameEngine.Application.DevTools;
 public sealed record DevToolsRunDebugResult(string Message, RunDto Run);
 
 public sealed record DevToolsCombatDebugResult(string Message, TacticalCombatRuntimeDto Combat);
+
+public sealed record DevToolsCombatScenarioResult(
+    string Message,
+    RunDto Run,
+    CombatEncounterDraftDto EncounterDraft,
+    TacticalCombatRuntimeDto Combat,
+    IReadOnlyList<TacticalCombatEventDto> TacticalEvents);

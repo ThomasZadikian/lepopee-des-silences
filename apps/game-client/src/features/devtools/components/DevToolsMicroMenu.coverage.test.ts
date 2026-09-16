@@ -13,6 +13,7 @@ const baseProps = {
   allLaws: [],
   allCurses: [],
   psyche: null,
+  combat: null,
 };
 
 const stubs = {
@@ -43,6 +44,14 @@ const stubs = {
   PsycheDevToolsWindow: {
     template: '<button data-child="psyche" @click="$emit(\'refresh\')">psyche</button>',
   },
+  CombatDevToolsWindow: {
+    template: `<div data-child="combat">
+      <button class="kill-all" @click="$emit('killEnemies')"/>
+      <button class="kill-one" @click="$emit('killEnemy', 'enemy-1')"/>
+      <button class="vitals" @click="$emit('setVitals', 'ally-1', 50, 5)"/>
+      <button class="status" @click="$emit('applyStatus', 'enemy-1', 'poison', 2, 6)"/>
+    </div>`,
+  },
 };
 
 describe('DevToolsMicroMenu coverage margin', () => {
@@ -56,7 +65,7 @@ describe('DevToolsMicroMenu coverage margin', () => {
     });
 
     const buttons = wrapper.findAll('.devtools-micro-menu__btn');
-    expect(buttons).toHaveLength(8);
+    expect(buttons).toHaveLength(9);
 
     await buttons[0]!.trigger('click');
     await document.querySelector<HTMLElement>('[data-child="sorts"]')!.click();
@@ -99,6 +108,16 @@ describe('DevToolsMicroMenu coverage margin', () => {
     await buttons[7]!.trigger('click');
     document.querySelector<HTMLElement>('[data-child="psyche"]')!.click();
     expect(wrapper.emitted('refreshPsyche')).toHaveLength(1);
+
+    await buttons[8]!.trigger('click');
+    document.querySelector<HTMLElement>('[data-child="combat"] .kill-all')!.click();
+    document.querySelector<HTMLElement>('[data-child="combat"] .kill-one')!.click();
+    document.querySelector<HTMLElement>('[data-child="combat"] .vitals')!.click();
+    document.querySelector<HTMLElement>('[data-child="combat"] .status')!.click();
+    expect(wrapper.emitted('killEnemies')).toHaveLength(1);
+    expect(wrapper.emitted('killEnemy')).toEqual([['enemy-1']]);
+    expect(wrapper.emitted('setVitals')).toEqual([['ally-1', 50, 5]]);
+    expect(wrapper.emitted('applyStatus')).toEqual([['enemy-1', 'poison', 2, 6]]);
 
     expect(document.querySelector('.modal')).not.toBeNull();
     document.querySelector<HTMLElement>('.modal .close')!.click();

@@ -7,6 +7,7 @@ vi.mock('../../../shared/api/gameEngineApi', () => ({
     post: vi.fn(),
     postWithHeaders: vi.fn(),
     get: vi.fn(),
+    getWithHeaders: vi.fn(),
   },
 }));
 
@@ -15,14 +16,25 @@ describe('runApi', () => {
     vi.clearAllMocks();
   });
 
-  it('starts a developer sandbox with the authenticated character', async () => {
+  it('resets a developer sandbox with the authenticated character', async () => {
     vi.mocked(gameEngineApi.postWithHeaders).mockResolvedValueOnce({} as any);
 
-    await runApi.startDeveloperSandbox('character-2', 'access-token');
+    await runApi.resetDeveloperSandbox('character-2', 'access-token');
 
     expect(gameEngineApi.postWithHeaders).toHaveBeenCalledWith(
       '/api/dev/v2/sandboxes/reset',
       { characterId: 'character-2' },
+      { Authorization: 'Bearer access-token' },
+    );
+  });
+
+  it('finds the current developer sandbox with the access token', async () => {
+    vi.mocked(gameEngineApi.getWithHeaders).mockResolvedValueOnce({ run: null });
+
+    await runApi.getDeveloperSandbox('character/2', 'access-token');
+
+    expect(gameEngineApi.getWithHeaders).toHaveBeenCalledWith(
+      '/api/dev/v2/sandboxes/current?characterId=character%2F2',
       { Authorization: 'Bearer access-token' },
     );
   });

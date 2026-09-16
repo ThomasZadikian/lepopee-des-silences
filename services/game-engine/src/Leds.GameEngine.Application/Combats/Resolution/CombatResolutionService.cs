@@ -72,8 +72,11 @@ public sealed class CombatResolutionService : ICombatResolutionService
 
                 var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
-                await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
-                await AwardHimLitShardsAsync(run, combat, combatNode, cancellationToken);
+                if (run.Mode != RunMode.DeveloperSandbox)
+                {
+                    await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
+                    await AwardHimLitShardsAsync(run, combat, combatNode, cancellationToken);
+                }
                 await DropCombatLootOnGroundAsync(run, combat, combatNode, cancellationToken);
                 return rewardOffer;
 

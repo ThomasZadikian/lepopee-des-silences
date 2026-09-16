@@ -536,7 +536,7 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  async function startDeveloperSandbox() {
+  async function findDeveloperSandbox() {
     await execute(async () => {
       currentRun.value = null;
       const characterId = getSelectedCharacterId();
@@ -544,7 +544,20 @@ export const useRunStore = defineStore('run', () => {
       if (!characterId || !accessToken)
         throw new Error('Une session et un personnage sont requis pour rejoindre l’Île des développeurs.');
 
-      const response = await runApi.startDeveloperSandbox(characterId, accessToken);
+      const response = await runApi.getDeveloperSandbox(characterId, accessToken);
+      if (response.run) await activateStartedRun(response.run);
+    });
+  }
+
+  async function resetDeveloperSandbox() {
+    await execute(async () => {
+      currentRun.value = null;
+      const characterId = getSelectedCharacterId();
+      const accessToken = getAccessToken();
+      if (!characterId || !accessToken)
+        throw new Error('Une session et un personnage sont requis pour rejoindre l’Île des développeurs.');
+
+      const response = await runApi.resetDeveloperSandbox(characterId, accessToken);
       const run = unwrapRunResponse(response);
       await activateStartedRun(run);
     });
@@ -1056,7 +1069,8 @@ export const useRunStore = defineStore('run', () => {
     dismissReputationEffect,
 
     startRun,
-    startDeveloperSandbox,
+    findDeveloperSandbox,
+    resetDeveloperSandbox,
     loadRun,
     progressRun,
     generateNextNodes,

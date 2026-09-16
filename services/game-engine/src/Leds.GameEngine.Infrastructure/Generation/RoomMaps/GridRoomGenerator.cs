@@ -134,7 +134,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         var hasBoss = !string.IsNullOrWhiteSpace(bossDefinitionKey);
         var nodes = CreateNodes(
-            template, profile, floor, obstacles, deadEnds, (bossX, bossY), hasBoss, random);
+            template, profile, floor, obstacles, deadEnds, (bossX, bossY), hasBoss, random,
+            catalogRoomKey);
 
         var bossProfile = hasBoss
             ? await _bossProfileResolver.ResolveAsync(roomType, cancellationToken)
@@ -885,7 +886,8 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         IReadOnlyList<(int X, int Y)> deadEnds,
         (int X, int Y) bossCell,
         bool hasBoss,
-        Random random)
+        Random random,
+        string? catalogRoomKey)
     {
         var obstacleSet = new HashSet<(int X, int Y)>(obstacles);
         var occupiedCells = new HashSet<(int X, int Y)>
@@ -955,10 +957,27 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
                 .OrderByDescending(c => Math.Abs(c.X - template.StartX) + Math.Abs(c.Y - template.StartY))
                 .First(), Exists: true);
 
+        // The developer island is an operational test fixture as well as a themed room. Its
+        // combat launcher must not depend on an 8%-weighted Memory-room roll, otherwise a valid
+        // sandbox can be generated with nothing to launch. Reserve one ordinary visible cell
+        // for a standard combat while keeping the rest of the procedural room intact.
+        var guaranteedDeveloperCombatCell = !string.Equals(
+                catalogRoomKey,
+                "room.developer-island.hub",
+                StringComparison.OrdinalIgnoreCase)
+            ? (Cell: default((int X, int Y)), Exists: false)
+            : (Cell: chosenCells
+                    .Where(cell => !guaranteedRestCell.Exists || cell != guaranteedRestCell.Cell)
+                    .OrderBy(cell => Math.Abs(cell.X - template.StartX) + Math.Abs(cell.Y - template.StartY))
+                    .FirstOrDefault(),
+                Exists: chosenCells.Count(cell => !guaranteedRestCell.Exists || cell != guaranteedRestCell.Cell) > 0);
+
         foreach (var (x, y) in chosenCells)
         {
             var type = guaranteedRestCell.Exists && (x, y) == guaranteedRestCell.Cell
                 ? NodeEventType.Rest
+                : guaranteedDeveloperCombatCell.Exists && (x, y) == guaranteedDeveloperCombatCell.Cell
+                    ? NodeEventType.Combat
                 : NodeGenerationHeuristics.PickWeightedNodeType(profile, random);
             var riskLevel = random.Next(profile.RiskMin, profile.RiskMax);
             var combatRiskTier = NodeGenerationHeuristics.DeriveCombatRiskTier(type, riskLevel);

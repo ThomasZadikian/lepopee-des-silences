@@ -33,7 +33,14 @@ export const runApi = {
     );
   },
 
-  startDeveloperSandbox(characterId: string, accessToken: string) {
+  getDeveloperSandbox(characterId: string, accessToken: string) {
+    return gameEngineApi.getWithHeaders<GetOpenRunResponse>(
+      `/api/dev/v2/sandboxes/current?characterId=${encodeURIComponent(characterId)}`,
+      { Authorization: `Bearer ${accessToken}` },
+    );
+  },
+
+  resetDeveloperSandbox(characterId: string, accessToken: string) {
     return gameEngineApi.postWithHeaders<StartRunResponse, { characterId: string }>(
       '/api/dev/v2/sandboxes/reset',
       { characterId },

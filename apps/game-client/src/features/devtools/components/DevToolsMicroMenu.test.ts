@@ -20,6 +20,7 @@ function mountMenu() {
       allLaws: [],
       allCurses: [],
       psyche: null,
+      combat: null,
     },
     global: {
       stubs: {
@@ -31,6 +32,7 @@ function mountMenu() {
         LawsDevToolsWindow: windowStub('lois-window'),
         CursesDevToolsWindow: windowStub('malediction-window'),
         PsycheDevToolsWindow: windowStub('psyche-window'),
+        CombatDevToolsWindow: windowStub('combat-window'),
       },
     },
   });
@@ -43,7 +45,7 @@ describe('DevToolsMicroMenu', () => {
 
   it('renders one button per devtools window', () => {
     const wrapper = mountMenu();
-    expect(wrapper.findAll('.devtools-micro-menu__btn')).toHaveLength(8);
+    expect(wrapper.findAll('.devtools-micro-menu__btn')).toHaveLength(9);
   });
 
   it('gives each button a tooltip label', () => {
@@ -51,7 +53,7 @@ describe('DevToolsMicroMenu', () => {
     const titles = wrapper.findAll('.devtools-micro-menu__btn').map((btn) => btn.attributes('title'));
     expect(titles).toEqual([
       'Sorts', 'Objets', 'Run', 'Compagnons',
-      'Salle', 'Lois', 'Malédictions', 'Psyché',
+      'Salle', 'Lois', 'Malédictions', 'Psyché', 'Combat',
     ]);
   });
 
