@@ -258,6 +258,8 @@ public abstract class RunIntegrationTestBase
         Guid combatId,
         bool selectReward = true)
     {
+        const int maxTurnTransitions = 250;
+        var turnTransitions = 0;
         var combatResponse = await Client.GetAsync(
             $"/api/v2/runs/{runId}/tactical-combat");
 
@@ -270,6 +272,12 @@ public abstract class RunIntegrationTestBase
 
         while (combat!.Status == "Active")
         {
+            if (++turnTransitions > maxTurnTransitions)
+            {
+                throw new InvalidOperationException(
+                    $"Combat '{combatId}' did not complete after {maxTurnTransitions} turn transitions.");
+            }
+
             var isPlayerTurn = combat.Allies.Any(a => a.Combatant.Id == combat.ActiveCombatantId);
 
             if (isPlayerTurn)

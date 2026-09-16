@@ -1,6 +1,11 @@
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.UnitTests.Common;
 using Microsoft.AspNetCore.Hosting;
@@ -24,6 +29,7 @@ public sealed class GameEngineApiCollection : ICollectionFixture<GameEngineApiFa
 public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string DevToolsToken = "integration-devtools-token";
+    public const string TestRunSeed = "seed-integration-game-engine-v1";
     public const string TestAuthenticationScheme = "Test";
     public const string TestJwtSigningKey = "integration-only-signing-key-at-least-32-bytes";
     public static readonly Guid TestPlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -81,6 +87,7 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
             services.RemoveAll<ICatalogContentGateway>();
             services.RemoveAll<IPlayerRunSnapshotGateway>();
             services.RemoveAll<IPlayerProfileGateway>();
+            services.RemoveAll<IRunGenerator>();
 
             services.AddAuthentication(options =>
                 {
@@ -92,6 +99,11 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
                     _ => { });
 
             services.AddSingleton<ICatalogContentGateway, StubCatalogContentGateway>();
+            services.AddSingleton<DeterministicRunGenerator>();
+            services.AddSingleton<IRunGenerator>(provider =>
+                new FixedSeedRunGenerator(
+                    provider.GetRequiredService<DeterministicRunGenerator>(),
+                    TestRunSeed));
             services.AddSingleton<IPlayerRunSnapshotGateway, TestPlayerRunSnapshotGateway>();
             services.AddSingleton<IPlayerProfileGateway>(_ => new StubPlayerProfileGateway
             {
@@ -159,6 +171,51 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
             _resetLock.Release();
         }
     }
+}
+
+internal sealed class FixedSeedRunGenerator : IRunGenerator
+{
+    private readonly IRunGenerator _inner;
+    private readonly string _seed;
+
+    public FixedSeedRunGenerator(IRunGenerator inner, string seed)
+    {
+        _inner = inner;
+        _seed = seed;
+    }
+
+    public string GeneratorVersion => _inner.GeneratorVersion;
+
+    public string MarkovMatrixVersion => _inner.MarkovMatrixVersion;
+
+    public string GenerateSeed() => _seed;
+
+    public Task<Room> GenerateInitialRoomAsync(
+        string seed,
+        CancellationToken cancellationToken = default) =>
+        _inner.GenerateInitialRoomAsync(seed, cancellationToken);
+
+    public Task<Room> GenerateInitialRoomForWorldAsync(
+        string seed,
+        string worldKey,
+        CancellationToken cancellationToken = default) =>
+        _inner.GenerateInitialRoomForWorldAsync(seed, worldKey, cancellationToken);
+
+    public Task<Room> GenerateNextRoomAsync(
+        Run run,
+        CancellationToken cancellationToken = default) =>
+        _inner.GenerateNextRoomAsync(run, cancellationToken);
+
+    public Task<Room> GenerateSpecificRoomAsync(
+        Run run,
+        CatalogRoomDefinition? destination,
+        CancellationToken cancellationToken = default) =>
+        _inner.GenerateSpecificRoomAsync(run, destination, cancellationToken);
+
+    public Task<IReadOnlyList<UpcomingRoomPreview>> PreviewUpcomingRoomNamesAsync(
+        Run run,
+        CancellationToken cancellationToken = default) =>
+        _inner.PreviewUpcomingRoomNamesAsync(run, cancellationToken);
 }
 
 public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
