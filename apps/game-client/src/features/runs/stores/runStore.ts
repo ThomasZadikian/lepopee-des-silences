@@ -397,7 +397,13 @@ export const useRunStore = defineStore('run', () => {
     // helper once more after the reaction step. Without this guard that second pass asks the
     // server to start the same encounter again, receives "combat already active", and leaves
     // the exploration UI looking frozen at the moment of contact.
-    if (currentRun.value.activeCombatId) return;
+    if (currentRun.value.activeCombatId) {
+      const tactical = useTacticalCombatStore();
+      if (tactical.combat?.id !== currentRun.value.activeCombatId) {
+        tactical.setCombat(await combatApi.getCurrentTacticalCombat(currentRun.value.id));
+      }
+      return;
+    }
 
     const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value.id);
     currentRun.value = resolveResponse.run;
@@ -414,6 +420,14 @@ export const useRunStore = defineStore('run', () => {
       // sans lui.
       void tactical.playOpening(
         resolveResponse.tacticalEvents ?? [], resolveResponse.tacticalCombat);
+    } else if (resolveResponse.run.activeCombatId) {
+      // The run is the source of truth for the phase. A contact response can legitimately reach
+      // the browser without the embedded tactical snapshot (for example after an intermediary
+      // strips an optional payload). Entering Combat with an empty tactical store leaves the UI
+      // forever on "Le champ de bataille se met en place". Rehydrate through the dedicated GET,
+      // the same path used when a run containing an active combat is reopened.
+      const tactical = useTacticalCombatStore();
+      tactical.setCombat(await combatApi.getCurrentTacticalCombat(resolveResponse.run.id));
     }
 
     await refreshPendingRewardIfNeeded();
