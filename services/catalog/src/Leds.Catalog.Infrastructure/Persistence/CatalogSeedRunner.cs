@@ -6291,6 +6291,26 @@ public sealed partial class CatalogSeedRunner
             excludeFromOpenPool: true,
             isCulturalEcho: false);
 
+        // The Peace theme intentionally falls back to the neutral Memory scaffold in the
+        // game engine. That scaffold can generate Rare nodes, but every authored Rare/Memory
+        // enemy in the canonical bestiary is bound to a specific Palace room. The composition
+        // policy therefore excludes them from the developer island and cannot resolve contact.
+        // Publish a sandbox-only Rare opponent so every generated risk tier remains executable
+        // without leaking a canonical resident outside its authored room.
+        await UpsertEnemyAsync(
+            "developer.enemy.rare-training-dummy", "Mannequin d'entraînement rare",
+            "Une cible hors canon conçue pour éprouver les rencontres rares de l'Île des développeurs.",
+            "Guard", "Outils de test", "Rare", "Guard", isElite: true,
+            depthMin: 0, depthMax: 9, riskMin: 1, riskMax: 5,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "developer-island", "training-dummy", "rare" },
+            skillKeys: new[] { "skill.basic.strike" },
+            vitality: 70, attack: 9, defense: 8, guard: 4, speed: 8, focus: 2,
+            cancellationToken,
+            magicAttack: 4, magicDefense: 8, initiative: 6, mana: 0, menace: 5,
+            rarity: "Rare", registre: "Silence",
+            boundRoomKeys: new[] { entryRoomKey });
+
         await _ctx.SaveChangesAsync(cancellationToken);
         await UpsertWorldAsync(worldKey, "Île des développeurs", entryRoomKey, cancellationToken);
         await _ctx.SaveChangesAsync(cancellationToken);
