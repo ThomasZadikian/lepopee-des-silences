@@ -35,7 +35,19 @@ const runStore = useRunStore();
 const activeTab = ref<TabKey>(props.initialTab ?? 'equipe');
 watch(() => props.initialTab, (tab) => { if (tab) activeTab.value = tab; });
 
-const characters = computed(() => playerStore.profile?.characters ?? []);
+const characters = computed(() => {
+  const roster = playerStore.profile?.characters ?? [];
+  const party = runStore.currentRun?.party?.members;
+  if (!party?.length) return roster;
+
+  // Un compte peut posséder plusieurs personnages jouables, mais une run n'en engage
+  // qu'un seul avec ses compagnons. Le snapshot de la run est la source de vérité : utiliser
+  // le roster complet ici mélangeait les autres personnages du compte avec l'équipe active.
+  const rosterById = new Map(roster.map((character) => [character.id, character]));
+  return party
+    .map((member) => rosterById.get(member.id))
+    .filter((character): character is NonNullable<typeof character> => Boolean(character));
+});
 const needsCharacter = computed(() => activeTab.value === 'statistiques' || activeTab.value === 'grimoire' || activeTab.value === 'equipement');
 
 const selectedCharacterId = ref<string | null>(null);

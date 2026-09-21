@@ -116,9 +116,18 @@ export const useRunStore = defineStore('run', () => {
   /** Free-roam grid overlay of the current room. */
   const currentGrid = computed(() => currentRoom.value?.grid ?? null);
 
-  const shouldShowRunFailedPanel = computed(() =>
-    currentRun.value?.status === 'Failed',
+  const isRunDefeat = computed(() =>
+    currentRun.value?.status === 'Failed'
+      || (currentRun.value?.status === 'Resolved' && currentRun.value.outcome === 'Defeat'),
   );
+
+  const isRunResolved = computed(() =>
+    currentRun.value?.status === 'Resolved'
+      || currentRun.value?.status === 'Completed'
+      || currentRun.value?.status === 'Failed',
+  );
+
+  const shouldShowRunFailedPanel = computed(() => isRunDefeat.value);
 
   const shouldShowCombatScene = computed(() =>
     Boolean(currentRun.value?.activeCombatId),
@@ -130,7 +139,7 @@ export const useRunStore = defineStore('run', () => {
 
   const shouldShowRunMap = computed(() =>
     Boolean(currentRun.value) &&
-    !shouldShowRunFailedPanel.value &&
+    !isRunResolved.value &&
     !shouldShowCombatScene.value &&
     !shouldShowRewardPanel.value,
   );
@@ -138,7 +147,7 @@ export const useRunStore = defineStore('run', () => {
   const gameplayPhase = computed(() => {
     if (!currentRun.value) return 'Loading';
 
-    if (shouldShowRunFailedPanel.value || currentRun.value.status === 'Completed') {
+    if (isRunResolved.value) {
       if (permanentItemCandidates.value.length > 0 && !isPermanentItemSelectionResolved.value) {
         return 'ItemSelection';
       }
@@ -199,8 +208,7 @@ export const useRunStore = defineStore('run', () => {
     if (isPermanentItemSelectionResolved.value) return;
     if (permanentItemCandidates.value.length > 0) return;
 
-    const status = currentRun.value.status;
-    if (status !== 'Completed' && status !== 'Failed') return;
+    if (!isRunResolved.value) return;
 
     isLoadingPermanentItemCandidates.value = true;
     try {
@@ -1077,6 +1085,7 @@ export const useRunStore = defineStore('run', () => {
     shouldShowRewardPanel,
     shouldShowRunMap,
     shouldShowRunFailedPanel,
+    isRunDefeat,
     gameplayPhase,
     isLoading,
     actorsAdvancing,
