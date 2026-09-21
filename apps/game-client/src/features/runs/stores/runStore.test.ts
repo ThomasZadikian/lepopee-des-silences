@@ -5,6 +5,7 @@ import { runApi } from '../api/runApi';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 import { combatApi } from '../../combat/api/combatApi';
+import { useTacticalCombatStore } from '../../combat/stores/useTacticalCombatStore';
 import { clearAuthenticatedSession, setAuthenticatedSession } from '../../account/authSession';
 import { clearSelectedCharacter, selectCharacter } from '../../account/selectedCharacter';
 
@@ -682,6 +683,59 @@ describe('useRunStore actions', () => {
     expect(runApi.resolveCurrentEvent).toHaveBeenCalledTimes(1);
     expect(store.currentRun?.activeCombatId).toBe('combat-1');
     expect(store.gameplayPhase).toBe('Combat');
+    expect(store.error).toBeNull();
+  });
+
+  it('advanceRoomActors resolves an idle patrol contact into combat', async () => {
+    vi.useFakeTimers();
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      activeCombatId: null,
+      currentRoom: { state: 'Active', grid: { partyX: 1, partyY: 0 } },
+    } as any;
+
+    vi.mocked(runApi.advanceRoomActors).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        activeCombatId: null,
+        currentRoom: { state: 'NodeSelected', grid: { partyX: 1, partyY: 0 } },
+      },
+      movements: [{
+        actorId: 'enemy-1',
+        actorKind: 'Enemy',
+        fromX: 3,
+        fromY: 0,
+        toX: 2,
+        toY: 0,
+      }],
+      triggeredNodeId: 'enemy-1',
+    } as any);
+    vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        activeCombatId: 'combat-1',
+        currentRoom: { state: 'NodeSelected', grid: { partyX: 1, partyY: 0 } },
+      },
+      outcome: { title: 'Une présence vous intercepte' },
+    } as any);
+    vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue({
+      id: 'combat-1',
+    } as any);
+
+    const advancing = store.advanceRoomActors('All');
+    await vi.runAllTimersAsync();
+    await advancing;
+
+    expect(runApi.resolveCurrentEvent).toHaveBeenCalledTimes(1);
+    expect(combatApi.getCurrentTacticalCombat).toHaveBeenCalledWith('run-1');
+    expect(useTacticalCombatStore().combat?.id).toBe('combat-1');
+    expect(store.currentRun?.activeCombatId).toBe('combat-1');
+    expect(store.gameplayPhase).toBe('Combat');
+    expect(store.actorsAdvancing).toBe(false);
     expect(store.error).toBeNull();
   });
 
