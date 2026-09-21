@@ -151,6 +151,28 @@ public sealed class EnemyDefinitionEndpointTests
     }
 
     [Fact]
+    public async Task DeveloperIsland_ShouldPublishRoomBoundRareEnemyEligibleAtEveryRiskTier()
+    {
+        for (var riskLevel = 1; riskLevel <= 5; riskLevel++)
+        {
+            var response = await _client.GetAsync(
+                $"/api/v2/catalog/enemy-definitions/compatible?roomType=Memory&riskLevel={riskLevel}");
+
+            var body = await response.Content.ReadAsStringAsync();
+            response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+            var payload = await response.Content
+                .ReadFromJsonAsync<ListEnemyDefinitionsResponse>();
+
+            payload.Should().NotBeNull();
+            payload!.Definitions.Should().ContainSingle(definition =>
+                definition.Key == "developer.enemy.rare-training-dummy"
+                && definition.Rarity == "Rare"
+                && definition.BoundRoomKeys.Contains("room.developer-island.hub"));
+        }
+    }
+
+    [Fact]
     public async Task GetCompatibleEnemyDefinitions_ShouldReturn400_WhenRiskLevelIsZero()
     {
         var response = await _client.GetAsync(
@@ -212,5 +234,7 @@ public sealed class EnemyDefinitionEndpointTests
         int MaxRiskLevel,
         IReadOnlyCollection<string> CompatibleRoomTypes,
         IReadOnlyCollection<string> Tags,
-        IReadOnlyCollection<string> SkillKeys);
+        IReadOnlyCollection<string> SkillKeys,
+        string Rarity,
+        IReadOnlyCollection<string> BoundRoomKeys);
 }
