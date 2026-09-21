@@ -183,6 +183,8 @@ export type RunDto = {
   generatorVersion: string;
   markovMatrixVersion: string;
   status: string;
+  /** Terminal result when status === 'Resolved'. Legacy payloads may still use terminal statuses. */
+  outcome?: 'Success' | 'Defeat' | 'Abandon' | null;
   mode?: 'Normal' | 'DeveloperSandbox';
   progressionMode?: 'Story' | 'Standard';
   storyDifficulty?: 'Canonical' | null;

@@ -530,13 +530,13 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       <template v-else>
         <section class="phase-center">
           <p class="es-kicker">Run terminée</p>
-          <h3 class="es-h2">{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
+          <h3 class="es-h2">{{ runStore.isRunDefeat ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
           <p class="es-lede es-dim">
-            {{ runStore.currentRun.status === 'Failed' ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.' : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
+            {{ runStore.isRunDefeat ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.' : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
           </p>
           <button
             class="es-btn"
-            :class="runStore.currentRun.status === 'Failed' ? 'es-btn--danger' : 'es-btn--mint'"
+            :class="runStore.isRunDefeat ? 'es-btn--danger' : 'es-btn--mint'"
             @click="handleLeaveRun"
           >
             Quitter la run

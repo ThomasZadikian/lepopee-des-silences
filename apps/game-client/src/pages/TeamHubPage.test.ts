@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import TeamHubPage from './TeamHubPage.vue';
 import { usePlayerStore } from '../features/party/stores/playerStore';
+import { useRunStore } from '../features/runs/stores/runStore';
 import { playerApi } from '../features/party/api/playerApi';
 import type { PlayerProfileView } from '../features/party/types/playerTypes';
 
@@ -124,6 +125,38 @@ describe('TeamHubPage', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('La Compagne');
+  });
+
+  it('shows only the selected run party instead of every playable character on the account', async () => {
+    const profile = baseProfile();
+    profile.characters[0].displayName = 'Personnage hors run';
+    profile.characters.push(
+      { ...profile.characters[0], id: 'char-2', displayName: 'Personnage sélectionné' },
+      {
+        ...profile.characters[0],
+        id: 'companion-1',
+        displayName: 'Compagne recrutée',
+        characterType: 'Companion',
+      },
+    );
+    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
+    useRunStore().currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      party: {
+        members: [
+          { id: 'char-2', displayName: 'Personnage sélectionné' },
+          { id: 'companion-1', displayName: 'Compagne recrutée' },
+        ],
+      },
+    } as any;
+
+    const wrapper = mount(TeamHubPage);
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Personnage hors run');
+    expect(wrapper.text()).toContain('Personnage sélectionné');
+    expect(wrapper.text()).toContain('Compagne recrutée');
   });
 
   it('switches to the Statistiques tab and shows the radar chart', async () => {

@@ -200,6 +200,15 @@ describe('useRunStore computed properties', () => {
     expect(store.gameplayPhase).toBe('Completed');
   });
 
+  it('treats the current Resolved + Defeat contract as a terminal defeat', () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Resolved', outcome: 'Defeat' } as any;
+
+    expect(store.shouldShowRunFailedPanel).toBe(true);
+    expect(store.shouldShowRunMap).toBe(false);
+    expect(store.gameplayPhase).toBe('Completed');
+  });
+
   it('gameplayPhase returns ItemSelection when the run just ended with unresolved candidates', () => {
     const store = useRunStore();
     store.currentRun = { id: 'run-1', status: 'Completed' } as any;
