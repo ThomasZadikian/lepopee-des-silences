@@ -336,7 +336,8 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver, INpcDi
                 if (itemDef.IsPermanentEligible)
                 {
                     await _playerProfileGateway.AddPermanentItemsAsync(
-                        run.PlayerId, [itemDef.Key], run.Id.Value, cancellationToken);
+                        run.PlayerId, run.PlayerSnapshot!.Characters.First().CharacterId,
+                        [itemDef.Key], run.Id.Value, cancellationToken);
                     return $"{npc.DisplayName} te tend {itemDef.DisplayName}.";
                 }
 

@@ -237,7 +237,7 @@ describe('BesacePanel coverage margin', () => {
     expect(wrapper.text()).toContain('sac permanent');
     await wrapper.find('.bp-btn').trigger('click');
     await flushPromises();
-    expect(mocks.runStore.grantPermanentItem).toHaveBeenCalledWith('weapon');
+    expect(mocks.runStore.grantPermanentItem).toHaveBeenCalledWith('weapon', 'char-1');
     expect(mocks.playerStore.loadProfile).toHaveBeenCalled();
     expect(mocks.playerStore.equipItem).toHaveBeenCalledWith('char-1', 'weapon');
     expect(mocks.runStore.syncPartyStats).toHaveBeenCalled();

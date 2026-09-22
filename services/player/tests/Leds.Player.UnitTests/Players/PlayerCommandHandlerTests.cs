@@ -130,16 +130,21 @@ public sealed class PlayerCommandHandlerTests
     public async Task AddPermanentItems_ShouldAddItemsAndPersist()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.CreatePlayableCharacter(
+            "L'Aventurier", "archetype.porteur", DateTimeOffset.UtcNow);
         var repository = RepositoryFor(profile);
         var handler = new AddPermanentItemsCommandHandler(repository.Object, TimeProvider.System);
         var sourceRunId = Guid.NewGuid();
 
         var response = await handler.Handle(
-            new AddPermanentItemsCommand(profile.Id.Value, ["item.sac-a-dos", "item.amulette"], sourceRunId), CancellationToken.None);
+            new AddPermanentItemsCommand(
+                profile.Id.Value, character.Id.Value,
+                ["item.sac-a-dos", "item.amulette"], sourceRunId), CancellationToken.None);
 
         response.PermanentItems.Should().HaveCount(2);
         response.PermanentItems.Should().Contain(i =>
             i.ItemDefinitionKey == "item.sac-a-dos" && i.SourceRunId == sourceRunId);
+        response.Characters.Single().Items.Should().HaveCount(2);
         repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

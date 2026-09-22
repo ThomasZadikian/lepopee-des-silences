@@ -96,7 +96,7 @@ public sealed class EquipmentChangePlannerTests
     }
 
     [Fact]
-    public async Task Plan_ShouldDetectAssignmentToAnotherCharacter()
+    public async Task Plan_ShouldRejectAnItemOwnedByAnotherCharacter()
     {
         var setup = Setup([]);
         setup.Equipment.Add(new EquipmentDefinitionSnapshot(
@@ -105,14 +105,15 @@ public sealed class EquipmentChangePlannerTests
             "companion.test", "Companion", PlayerCharacterStatBlock.CreateDefaultPorteur(),
             ["skill.companion"], DateTimeOffset.UtcNow);
         var companion = setup.Profile.Roster.Characters.Single(character => character.CharacterType == "Companion");
-        setup.Profile.EquipItem(
-            companion.Id, setup.Item.Id, EquipmentPosition.Chest,
-            [EquipmentSlotKind.Chest], DateTimeOffset.UtcNow);
+        setup.Character.DetachItem(setup.Item.Id);
+        companion.AddItem(PlayerCharacterItem.Rehydrate(
+            setup.Item.Id, setup.Item.ItemDefinitionKey, setup.Item.AcquiredAtUtc, "test", null));
 
         var plan = await setup.Planner.PlanAsync(
             setup.Profile, setup.Character.Id, setup.Item.Id, EquipmentPosition.Chest,
             null, null, CancellationToken.None);
 
+        plan.BlockingReasons.Should().Contain("ItemNotOwnedByCharacter");
         plan.BlockingReasons.Should().Contain("ItemAlreadyEquippedElsewhere");
     }
 

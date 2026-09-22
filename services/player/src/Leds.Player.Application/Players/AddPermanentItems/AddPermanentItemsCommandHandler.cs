@@ -21,7 +21,11 @@ public sealed class AddPermanentItemsCommandHandler : IRequestHandler<AddPermane
         var profile = await _repository.GetByIdAsync(new PlayerId(request.PlayerId), cancellationToken)
             ?? throw new NotFoundException("Player", request.PlayerId);
 
-        profile.AddPermanentItems(request.ItemDefinitionKeys, request.SourceRunId, _timeProvider.GetUtcNow());
+        profile.AddPermanentItems(
+            new PlayerCharacterId(request.CharacterId),
+            request.ItemDefinitionKeys,
+            request.SourceRunId,
+            _timeProvider.GetUtcNow());
 
         await _repository.SaveAsync(profile, cancellationToken);
 

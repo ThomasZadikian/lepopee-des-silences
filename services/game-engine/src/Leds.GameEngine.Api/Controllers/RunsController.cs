@@ -342,7 +342,8 @@ public sealed class RunsController : ControllerBase
         [FromBody] ConfirmPermanentItemSelectionRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new ConfirmPermanentItemSelectionCommand(runId, request.ItemDefinitionKeys);
+        var command = new ConfirmPermanentItemSelectionCommand(
+            runId, request.ItemDefinitionKeys, request.CharacterId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -694,6 +695,7 @@ public sealed record UseGrimoireRequest(Guid CharacterId);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 
-public sealed record ConfirmPermanentItemSelectionRequest(IReadOnlyCollection<string> ItemDefinitionKeys);
+public sealed record ConfirmPermanentItemSelectionRequest(
+    IReadOnlyCollection<string> ItemDefinitionKeys, Guid? CharacterId = null);
 
 public sealed record PourRunItemLiquidRequest(Guid LiquidItemId);

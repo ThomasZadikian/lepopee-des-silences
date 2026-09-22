@@ -138,6 +138,15 @@ describe('runApi', () => {
     );
   });
 
+  it('confirmPermanentItemSelection can assign an immediate reward to a character', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await runApi.confirmPermanentItemSelection('run-1', ['item.a'], 'character-selected');
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/runs/run-1/permanent-items/confirm',
+      { itemDefinitionKeys: ['item.a'], characterId: 'character-selected' },
+    );
+  });
+
   it('removePalaceLaw sends POST to the revoke route', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
     await runApi.removePalaceLaw('run-1', 'law-echo-v1');

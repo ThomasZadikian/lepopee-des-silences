@@ -68,7 +68,7 @@ public sealed class EquipmentCommandHandlerTests
     }
 
     [Fact]
-    public async Task Unequip_ShouldDetachItemAndRejectMissingPlayer()
+    public async Task Unequip_ShouldKeepItemAssignedAndRejectMissingPlayer()
     {
         var fixture = Fixture();
         fixture.Profile.EquipItem(
@@ -81,7 +81,8 @@ public sealed class EquipmentCommandHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Characters.Single().Items.Should().BeEmpty();
+        result.Characters.Single().Items.Should().ContainSingle(item =>
+            item.ItemInstanceId == fixture.Item.Id.Value && !item.IsEquipped);
         await new UnequipItemInstanceCommandHandler(MissingRepository().Object, new FixedTimeProvider(Now))
             .Invoking(candidate => candidate.Handle(command, CancellationToken.None))
             .Should().ThrowAsync<NotFoundException>();

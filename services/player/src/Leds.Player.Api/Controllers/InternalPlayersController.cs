@@ -181,7 +181,8 @@ public sealed class InternalPlayersController : ControllerBase
         [FromBody] AddPermanentItemsRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new AddPermanentItemsCommand(playerId, request.ItemDefinitionKeys, request.SourceRunId);
+        var command = new AddPermanentItemsCommand(
+            playerId, request.CharacterId, request.ItemDefinitionKeys, request.SourceRunId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -306,7 +307,8 @@ public sealed record SourceRunRequest(Guid? SourceRunId);
 
 public sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 
-public sealed record AddPermanentItemsRequest(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
+public sealed record AddPermanentItemsRequest(
+    Guid CharacterId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
 
 public sealed record SetPermanentItemContentRequest(string LiquidDefinitionKey);
 

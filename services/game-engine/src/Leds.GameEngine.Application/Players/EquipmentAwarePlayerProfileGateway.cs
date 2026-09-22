@@ -71,8 +71,10 @@ public sealed class EquipmentAwarePlayerProfileGateway : IPlayerProfileGateway
             playerId, characterId, itemInstanceId, cancellationToken), cancellationToken);
 
     public async Task<PlayerProfileView> AddPermanentItemsAsync(
-        Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
-        => await EnrichAsync(await _inner.AddPermanentItemsAsync(playerId, itemDefinitionKeys, sourceRunId, cancellationToken), cancellationToken);
+        Guid playerId, Guid characterId, IReadOnlyCollection<string> itemDefinitionKeys,
+        Guid? sourceRunId, CancellationToken cancellationToken)
+        => await EnrichAsync(await _inner.AddPermanentItemsAsync(
+            playerId, characterId, itemDefinitionKeys, sourceRunId, cancellationToken), cancellationToken);
 
     public async Task<PlayerProfileView> SetPermanentItemContentAsync(
         Guid playerId, string itemDefinitionKey, string liquidDefinitionKey, CancellationToken cancellationToken)
