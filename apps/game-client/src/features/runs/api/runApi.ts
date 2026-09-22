@@ -114,10 +114,12 @@ export const runApi = {
     );
   },
 
-  confirmPermanentItemSelection(runId: string, itemDefinitionKeys: string[]) {
-    return gameEngineApi.post<ConfirmPermanentItemSelectionResponse, { itemDefinitionKeys: string[] }>(
+  confirmPermanentItemSelection(runId: string, itemDefinitionKeys: string[], characterId?: string) {
+    return gameEngineApi.post<ConfirmPermanentItemSelectionResponse, {
+      itemDefinitionKeys: string[]; characterId?: string;
+    }>(
       `/api/v2/runs/${runId}/permanent-items/confirm`,
-      { itemDefinitionKeys },
+      { itemDefinitionKeys, ...(characterId ? { characterId } : {}) },
     );
   },
 

@@ -544,6 +544,7 @@ public sealed class SelectRewardCommandHandlerTests
             because: "a permanent-eligible item must never sit in the run's temporary inventory");
         var grant = playerProfileGateway.AddedPermanentItems.Should().ContainSingle().Subject;
         grant.PlayerId.Should().Be(run.PlayerId);
+        grant.CharacterId.Should().Be(run.PlayerSnapshot!.Characters.First().CharacterId);
         grant.ItemDefinitionKeys.Should().ContainSingle().Which.Should().Be("item.weapon.arc-relieur");
         grant.SourceRunId.Should().Be(run.Id.Value);
         response.Run.PendingRewardOfferId.Should().BeNull();

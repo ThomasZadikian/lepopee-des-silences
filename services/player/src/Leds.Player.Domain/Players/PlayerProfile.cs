@@ -135,6 +135,12 @@ public sealed class PlayerProfile
 
     public void AddPermanentItems(IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, DateTimeOffset now)
     {
+        if (Roster.Characters.Count == 1)
+        {
+            AddPermanentItems(Roster.Characters.Single().Id, itemDefinitionKeys, sourceRunId, now);
+            return;
+        }
+
         foreach (var itemDefinitionKey in itemDefinitionKeys)
         {
             // Delivery retries for the same run remain idempotent, while a later run may
@@ -145,6 +151,39 @@ public sealed class PlayerProfile
                 continue;
 
             _permanentItems.Add(PlayerPermanentItem.Create(itemDefinitionKey, sourceRunId, now));
+        }
+
+        Touch(now);
+    }
+
+    public void AddPermanentItems(
+        PlayerCharacterId ownerCharacterId,
+        IReadOnlyCollection<string> itemDefinitionKeys,
+        Guid? sourceRunId,
+        DateTimeOffset now)
+    {
+        var owner = Roster.GetRequired(ownerCharacterId);
+
+        foreach (var itemDefinitionKey in itemDefinitionKeys)
+        {
+            var owned = _permanentItems.FirstOrDefault(item => item.SourceRunId == sourceRunId
+                && string.Equals(item.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase));
+            if (owned is null)
+            {
+                owned = PlayerPermanentItem.Create(itemDefinitionKey, sourceRunId, now);
+                _permanentItems.Add(owned);
+            }
+
+            var assignedCharacter = Roster.Characters.FirstOrDefault(character =>
+                character.Items.Any(item => item.Id == owned.Id));
+            if (assignedCharacter is not null && assignedCharacter.Id != ownerCharacterId)
+                throw new DomainException($"Item instance '{owned.Id}' is already assigned to another character.");
+
+            if (assignedCharacter is null)
+            {
+                owner.AddItem(PlayerCharacterItem.Rehydrate(
+                    owned.Id, owned.ItemDefinitionKey, owned.AcquiredAtUtc, "permanent-reward", null));
+            }
         }
 
         Touch(now);
@@ -176,11 +215,13 @@ public sealed class PlayerProfile
         EquipmentSlotKind slot,
         DateTimeOffset now)
     {
+        var character = Roster.GetRequired(characterId);
         if (!HasPermanentItem(itemKey))
             throw new DomainException($"Item '{itemKey}' is not in the permanent backpack.");
+        if (!character.Items.Any(item =>
+                string.Equals(item.ItemDefinitionKey, itemKey, StringComparison.OrdinalIgnoreCase)))
+            throw new DomainException($"Item '{itemKey}' is not owned by this character.");
 
-        var character = Roster.GetRequired(characterId);
-        character.AddItem(PlayerCharacterItem.Create(itemKey, now, slot: slot));
         character.EquipItem(itemKey, slot);
         Touch(now);
     }
@@ -193,24 +234,15 @@ public sealed class PlayerProfile
         DateTimeOffset now)
     {
         var owned = _permanentItems.FirstOrDefault(item => item.Id == itemInstanceId)
-            ?? throw new DomainException($"Item instance '{itemInstanceId}' is not in the shared inventory.");
+            ?? throw new DomainException($"Item instance '{itemInstanceId}' is not in the permanent inventory.");
         if (!allowedSlots.Any(slot => EquipmentPositionCompatibility.Accepts(targetPosition, slot)))
             throw new DomainException(
                 $"Item '{owned.ItemDefinitionKey}' cannot be equipped in position '{targetPosition}'.");
 
         var target = Roster.GetRequired(characterId);
-        var attachedElsewhere = Roster.Characters.FirstOrDefault(character =>
-            character.Id != characterId && character.Items.Any(item => item.Id == itemInstanceId));
-        if (attachedElsewhere is not null)
-            throw new DomainException($"Item instance '{itemInstanceId}' is already assigned to another character.");
-
         var characterItem = target.Items.FirstOrDefault(item => item.Id == itemInstanceId);
         if (characterItem is null)
-        {
-            characterItem = PlayerCharacterItem.Rehydrate(
-                owned.Id, owned.ItemDefinitionKey, owned.AcquiredAtUtc, "shared-inventory", null);
-            target.AddItem(characterItem);
-        }
+            throw new DomainException($"Item instance '{itemInstanceId}' is not owned by this character.");
 
         target.EquipItem(itemInstanceId, targetPosition);
         Touch(now);
@@ -223,7 +255,6 @@ public sealed class PlayerProfile
     {
         var character = Roster.GetRequired(characterId);
         character.UnequipItem(itemInstanceId);
-        character.DetachItem(itemInstanceId);
         Touch(now);
     }
 

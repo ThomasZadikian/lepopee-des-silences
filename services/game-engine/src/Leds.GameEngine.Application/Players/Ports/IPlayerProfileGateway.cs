@@ -28,7 +28,9 @@ public interface IPlayerProfileGateway
 
     Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
 
-    Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken);
+    Task<PlayerProfileView> AddPermanentItemsAsync(
+        Guid playerId, Guid characterId, IReadOnlyCollection<string> itemDefinitionKeys,
+        Guid? sourceRunId, CancellationToken cancellationToken);
 
     Task<PlayerProfileView> SetPermanentItemContentAsync(Guid playerId, string itemDefinitionKey, string liquidDefinitionKey, CancellationToken cancellationToken);
 

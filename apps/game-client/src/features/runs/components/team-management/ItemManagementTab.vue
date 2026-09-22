@@ -90,18 +90,25 @@ function allowedPositions(itemKey: string): EquipmentPosition[] {
     return visiblePositions.some((position) => position.key === slot) ? [slot as EquipmentPosition] : [];
   });
 }
-const equippablePermanentItems = computed(() => playerStore.permanentItems
-  .filter((item) => definition(item.itemDefinitionKey)?.allowedSlots?.includes('OffWeapon') !== true));
+const equippablePermanentItems = computed(() => {
+  const ownedInstanceIds = new Set(props.character.items
+    .map((item) => item.itemInstanceId)
+    .filter((id): id is string => Boolean(id)));
+  const legacyOwnedKeys = new Set(props.character.items
+    .filter((item) => !item.itemInstanceId)
+    .map((item) => item.itemKey));
+
+  return playerStore.permanentItems.filter((item) =>
+    definition(item.itemDefinitionKey)?.allowedSlots?.includes('OffWeapon') !== true
+    && (item.itemInstanceId
+      ? ownedInstanceIds.has(item.itemInstanceId) || legacyOwnedKeys.has(item.itemDefinitionKey)
+      : legacyOwnedKeys.has(item.itemDefinitionKey)));
+});
 
 function equippedAssignment(item: PlayerPermanentItemView): PlayerCharacterItemView | undefined {
   return props.character.items.find((owned) => owned.isEquipped && (
     item.itemInstanceId ? owned.itemInstanceId === item.itemInstanceId : owned.itemKey === item.itemDefinitionKey
   ));
-}
-function assignedToAnotherCharacter(item: PlayerPermanentItemView): boolean {
-  if (!item.itemInstanceId) return false;
-  return Boolean(playerStore.profile?.characters.some((character) => character.id !== props.character.id
-    && character.items.some((owned) => owned.itemInstanceId === item.itemInstanceId && owned.isEquipped)));
 }
 function preferredPosition(itemKey: string): EquipmentPosition | null {
   const positions = allowedPositions(itemKey);
@@ -110,7 +117,7 @@ function preferredPosition(itemKey: string): EquipmentPosition | null {
 }
 
 async function requestEquip(item: PlayerPermanentItemView) {
-  if (playerStore.isLoading || combatLocked.value || assignedToAnotherCharacter(item)) return;
+  if (playerStore.isLoading || combatLocked.value) return;
   const position = preferredPosition(item.itemDefinitionKey);
   if (!item.itemInstanceId || !position) {
     await playerStore.equipItem(props.character.id, item.itemDefinitionKey); // legacy migration fallback
@@ -174,22 +181,21 @@ async function syncRun() {
     </section>
 
     <section class="imk-section">
-      <h4 class="imk-section__title">Inventaire partagé · sac permanent</h4>
+      <h4 class="imk-section__title">Inventaire du personnage · sac permanent</h4>
       <ul v-if="equippablePermanentItems.length" class="imk-list">
         <li v-for="item in equippablePermanentItems" :key="item.itemInstanceId ?? item.itemDefinitionKey"
           class="imk-row" :style="{ borderLeftColor: itemTypeAccent(item.itemDefinitionKey).color }">
           <div class="imk-row__info">
             <span class="imk-row__name">{{ itemDisplayName(item.itemDefinitionKey) }}</span>
             <small class="imk-row__effect">{{ allowedPositions(item.itemDefinitionKey).map((p) => visiblePositions.find((v) => v.key === p)?.label).join(' · ') }}</small>
-            <small v-if="assignedToAnotherCharacter(item)" class="imk-row__cost">Assigné à un autre personnage</small>
           </div>
           <button v-if="!equippedAssignment(item)" type="button" class="imk-toggle"
-            :disabled="playerStore.isLoading || combatLocked || assignedToAnotherCharacter(item) || legacyLoadoutFull(item)"
+            :disabled="playerStore.isLoading || combatLocked || legacyLoadoutFull(item)"
             @click="requestEquip(item)">Aperçu</button>
           <span v-else class="imk-row__slot">Équipé</span>
         </li>
       </ul>
-      <p v-else class="imk-empty">Le sac permanent est vide pour l'instant.</p>
+      <p v-else class="imk-empty">Ce personnage ne possède encore aucun objet permanent.</p>
     </section>
 
     <div v-if="pendingPlan" class="imk-preview" role="dialog" aria-modal="true" aria-label="Aperçu d'équipement">

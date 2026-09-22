@@ -33,7 +33,7 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> UnequippedItems { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, Guid ItemInstanceId, string Position)> EquippedItemInstances { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, Guid ItemInstanceId)> UnequippedItemInstances { get; } = [];
-    public List<(Guid PlayerId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId)> AddedPermanentItems { get; } = [];
+    public List<(Guid PlayerId, Guid CharacterId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId)> AddedPermanentItems { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey, string LiquidDefinitionKey)> SetPermanentItemContents { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey)> ClearedPermanentItemContents { get; } = [];
     public List<(Guid PlayerId, string CompanionDefinitionKey, string DisplayName, IReadOnlyCollection<string> SkillKeys)> RecruitedCompanions { get; } = [];
@@ -101,9 +101,11 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         return Task.FromResult(EmptyProfile(playerId));
     }
 
-    public Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
+    public Task<PlayerProfileView> AddPermanentItemsAsync(
+        Guid playerId, Guid characterId, IReadOnlyCollection<string> itemDefinitionKeys,
+        Guid? sourceRunId, CancellationToken cancellationToken)
     {
-        AddedPermanentItems.Add((playerId, itemDefinitionKeys, sourceRunId));
+        AddedPermanentItems.Add((playerId, characterId, itemDefinitionKeys, sourceRunId));
         return Task.FromResult(EmptyProfile(playerId));
     }
 

@@ -2,9 +2,9 @@ using Leds.Player.Domain.Common;
 
 namespace Leds.Player.Domain.Players;
 
-// The permanent backpack itself (SFD "Système d'équipement et sac permanent" § 6) — unlimited
-// storage, survives between runs. Distinct from PlayerCharacterItem, which only models the
-// per-character *equipped* subset; an item must be here before it can be equipped.
+// Persistent registry of physical item instances — unlimited storage, survives between runs.
+// PlayerCharacterItem carries the owning-character assignment as well as the optional equipment
+// position. An instance must exist in both models before that character can equip it.
 public sealed class PlayerPermanentItem
 {
     private PlayerPermanentItem(

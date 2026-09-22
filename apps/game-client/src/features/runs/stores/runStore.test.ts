@@ -524,9 +524,11 @@ describe('useRunStore actions', () => {
       confirmedItemDefinitionKeys: ['weapon.lame-seuil'],
     });
 
-    await store.grantPermanentItem('weapon.lame-seuil');
+    await store.grantPermanentItem('weapon.lame-seuil', 'character-selected');
 
-    expect(runApi.confirmPermanentItemSelection).toHaveBeenCalledWith('run-1', ['weapon.lame-seuil']);
+    expect(runApi.confirmPermanentItemSelection).toHaveBeenCalledWith(
+      'run-1', ['weapon.lame-seuil'], 'character-selected',
+    );
     expect(store.isPermanentItemSelectionResolved).toBe(false);
   });
 

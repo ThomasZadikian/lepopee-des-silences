@@ -231,11 +231,13 @@ export const useRunStore = defineStore('run', () => {
    * must never short-circuit the real end-of-run screen for every OTHER eligible item found
    * later. Same underlying endpoint, same idempotent domain rule (no-op if already owned).
    */
-  async function grantPermanentItem(itemDefinitionKey: string) {
+  async function grantPermanentItem(itemDefinitionKey: string, characterId: string) {
     if (!currentRun.value) return;
 
     await execute(async () => {
-      await runApi.confirmPermanentItemSelection(currentRun.value!.id, [itemDefinitionKey]);
+      await runApi.confirmPermanentItemSelection(
+        currentRun.value!.id, [itemDefinitionKey], characterId,
+      );
     });
   }
 

@@ -190,17 +190,19 @@ const slotLimits: Record<EquipSlot, number> = { Weapon: 1, Accessory: 1, Relic: 
 const selectedItemEquipSlot = computed(() =>
   (selectedItem.value?.equipSlot as EquipSlot | undefined) ?? null);
 
-// Equipping requires the item to already be in the player's permanent backpack — a
+// Equipping requires the item to already belong to the selected character — a
 // freshly-found run item normally only gets there through the end-of-run keepsake ceremony,
 // but toggleEquip() grants it right away the moment the player actually tries to equip it.
+const equipTargetCharacter = computed(() =>
+  playerStore.profile?.characters.find((c) => c.id === selectedCharacterId.value));
+
 const selectedItemIsPermanentlyOwned = computed(() =>
   Boolean(
     selectedItem.value &&
-      playerStore.permanentItems.some((owned) => owned.itemDefinitionKey === selectedItem.value!.definitionKey),
+      equipTargetCharacter.value?.items.some(
+        (owned) => owned.itemKey === selectedItem.value!.definitionKey,
+      ),
   ));
-
-const equipTargetCharacter = computed(() =>
-  playerStore.profile?.characters.find((c) => c.id === selectedCharacterId.value));
 
 const isEquippedOnTarget = computed(() =>
   Boolean(
@@ -225,7 +227,7 @@ async function toggleEquip() {
     } else {
       if (isTargetSlotFull.value) return;
       if (!selectedItemIsPermanentlyOwned.value) {
-        await runStore.grantPermanentItem(itemKey);
+        await runStore.grantPermanentItem(itemKey, selectedCharacterId.value);
         await playerStore.loadProfile();
       }
       await playerStore.equipItem(selectedCharacterId.value, itemKey);

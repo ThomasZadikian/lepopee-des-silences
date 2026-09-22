@@ -42,6 +42,7 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
         response.ConfirmedItemDefinitionKeys.Should().Contain("item.relic.tome");
         playerProfileGateway.AddedPermanentItems.Should().ContainSingle(call =>
             call.PlayerId == run.PlayerId &&
+            call.CharacterId == run.PlayerSnapshot!.Characters.First().CharacterId &&
             call.SourceRunId == run.Id.Value &&
             call.ItemDefinitionKeys.Contains("item.relic.tome"));
     }
@@ -131,6 +132,34 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
+        playerProfileGateway.AddedPermanentItems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectARecipientOutsideTheRunParty()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.TryAddRunItem(CreateItem("item.relic.tome"));
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(candidate => candidate.GetByIdAsync(
+                run.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(run);
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway.Setup(candidate => candidate.GetItemDefinitionByKeyAsync(
+                "item.relic.tome", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(
+                CreateSnapshot("item.relic.tome", isPermanentEligible: true)));
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var handler = new ConfirmPermanentItemSelectionCommandHandler(
+            repository.Object, catalogGateway.Object, playerProfileGateway);
+
+        var act = () => handler.Handle(
+            new ConfirmPermanentItemSelectionCommand(
+                run.Id.Value, ["item.relic.tome"], Guid.NewGuid()),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*n'appartient pas à cette run*");
         playerProfileGateway.AddedPermanentItems.Should().BeEmpty();
     }
 

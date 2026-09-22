@@ -105,7 +105,8 @@ public sealed class SelectRewardCommandHandler
         if (itemDefinition is { IsPermanentEligible: true })
         {
             await _playerProfileGateway.AddPermanentItemsAsync(
-                run.PlayerId, [itemDefinition.Key], run.Id.Value, cancellationToken);
+                run.PlayerId, run.PlayerSnapshot!.Characters.First().CharacterId,
+                [itemDefinition.Key], run.Id.Value, cancellationToken);
 
             run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
                 run.CurrentRoom.CatalogBinding?.DisplayName, itemDefinition.DisplayName));

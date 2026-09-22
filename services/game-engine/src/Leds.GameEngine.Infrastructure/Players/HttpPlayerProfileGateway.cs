@@ -96,11 +96,13 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
-    public async Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
+    public async Task<PlayerProfileView> AddPermanentItemsAsync(
+        Guid playerId, Guid characterId, IReadOnlyCollection<string> itemDefinitionKeys,
+        Guid? sourceRunId, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync(
             $"/api/v2/internal/players/{playerId}/permanent-items",
-            new AddPermanentItemsRequestBody(itemDefinitionKeys, sourceRunId), cancellationToken);
+            new AddPermanentItemsRequestBody(characterId, itemDefinitionKeys, sourceRunId), cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
@@ -402,7 +404,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
 
     private sealed record SourceRunRequestBody(Guid? SourceRunId);
 
-    private sealed record AddPermanentItemsRequestBody(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
+    private sealed record AddPermanentItemsRequestBody(
+        Guid CharacterId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
 
     private sealed record SetPermanentItemContentRequestBody(string LiquidDefinitionKey);
 

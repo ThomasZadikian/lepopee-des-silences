@@ -59,8 +59,16 @@ public sealed class ConfirmPermanentItemSelectionCommandHandler
             }
         }
 
+        var snapshot = run.PlayerSnapshot
+            ?? throw new DomainException("La run ne contient aucun personnage destinataire.");
+        var ownerCharacterId = request.CharacterId
+            ?? snapshot.Characters.First().CharacterId;
+        if (!snapshot.Characters.Any(character => character.CharacterId == ownerCharacterId))
+            throw new DomainException("Le personnage destinataire n'appartient pas à cette run.");
+
         await _playerProfileGateway.AddPermanentItemsAsync(
-            run.PlayerId, requestedKeys, run.Id.Value, cancellationToken);
+            run.PlayerId, ownerCharacterId,
+            requestedKeys, run.Id.Value, cancellationToken);
 
         // Carries a container's poured-in liquid over into the permanent backpack — the
         // permanent item itself was just added above, this only sets its mutable content.

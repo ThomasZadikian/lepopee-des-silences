@@ -335,6 +335,42 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void AddPermanentItems_ShouldAssignNewInstancesToTheSelectedCharacterOnly()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var selected = profile.CreatePlayableCharacter("Écrivain", "archetype.ecrivain", now);
+        var other = profile.CreatePlayableCharacter("Porteur", "archetype.porteur", now);
+
+        profile.AddPermanentItems(selected.Id, ["item.plume"], Guid.NewGuid(), now);
+
+        var permanentItem = profile.PermanentItems.Should().ContainSingle().Subject;
+        selected.Items.Should().ContainSingle(item =>
+            item.Id == permanentItem.Id && item.ItemDefinitionKey == "item.plume" && !item.IsEquipped);
+        other.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UnequipItem_ShouldKeepThePermanentItemAssignedToItsCharacter()
+    {
+        var profile = CreateProfileWithCharacter();
+        var character = profile.Roster.Characters.Single();
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(character.Id, ["item.plume"], Guid.NewGuid(), now);
+        var item = profile.PermanentItems.Single();
+        profile.EquipItem(
+            character.Id,
+            item.Id,
+            EquipmentPosition.MainWeapon,
+            [EquipmentSlotKind.Weapon],
+            now);
+
+        profile.UnequipItem(character.Id, item.Id, now);
+
+        character.Items.Should().ContainSingle(owned => owned.Id == item.Id && !owned.IsEquipped);
+    }
+
+    [Fact]
     public void EquipItem_ShouldAddItemToCharacterAndEquipIt_WhenOwnedInPermanentBackpack()
     {
         var profile = CreateProfileWithCharacter();

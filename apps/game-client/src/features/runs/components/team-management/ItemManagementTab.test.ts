@@ -43,8 +43,8 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     },
     maxEquippedItems: 3,
     items: [
-      { itemKey: 'item.relic.tome', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
-      { itemKey: 'item.equipment.sac', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: false },
+      { itemInstanceId: 'instance-tome', itemKey: 'item.relic.tome', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
+      { itemInstanceId: 'instance-sac', itemKey: 'item.equipment.sac', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: false },
     ],
     ...overrides,
   };
@@ -57,9 +57,9 @@ function baseProfile(character: PlayerCharacterView): PlayerProfileView {
     characters: [character],
     progression: { palaceShardCount: 0 },
     permanentItems: [
-      { itemDefinitionKey: 'item.relic.tome', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
-      { itemDefinitionKey: 'item.equipment.sac', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
-      { itemDefinitionKey: 'item.never-equipped', sourceRunId: 'run-2', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+      { itemInstanceId: 'instance-tome', itemDefinitionKey: 'item.relic.tome', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+      { itemInstanceId: 'instance-sac', itemDefinitionKey: 'item.equipment.sac', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+      { itemInstanceId: 'instance-other', itemDefinitionKey: 'item.never-equipped', sourceRunId: 'run-2', acquiredAtUtc: '2026-01-01T00:00:00Z' },
     ],
   };
 }
@@ -144,18 +144,28 @@ describe('ItemManagementTab', () => {
     expect(wrapper.text()).toContain('12 puissance · portée 4 · magique · ligne de vue');
   });
 
-  it('lists every permanently-owned item in the backpack section, regardless of equip state', () => {
+  it('lists only the permanent items owned by the selected character', () => {
     const character = baseCharacter();
-    usePlayerStore().profile = baseProfile(character);
+    const otherCharacter = baseCharacter({
+      id: 'char-2',
+      displayName: 'L’autre personnage',
+      items: [{
+        itemInstanceId: 'instance-other', itemKey: 'item.never-equipped',
+        acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: false,
+      }],
+    });
+    const profile = baseProfile(character);
+    profile.characters = [character, otherCharacter];
+    usePlayerStore().profile = profile;
     const wrapper = mount(ItemManagementTab, { props: { character } });
 
     const backpackSection = wrapper.findAll('.imk-section')[1];
     expect(backpackSection.text()).toContain('item.relic.tome');
     expect(backpackSection.text()).toContain('item.equipment.sac');
-    expect(backpackSection.text()).toContain('item.never-equipped');
+    expect(backpackSection.text()).not.toContain('item.never-equipped');
   });
 
-  it('calls unequipItem when clicking an equipped item toggle', async () => {
+  it('calls unequipItemInstance when clicking an equipped item toggle', async () => {
     const character = baseCharacter();
     usePlayerStore().profile = baseProfile(character);
     const wrapper = mount(ItemManagementTab, { props: { character } });
@@ -163,7 +173,9 @@ describe('ItemManagementTab', () => {
     const equippedSection = wrapper.findAll('.imk-section')[0];
     await equippedSection.find('.imk-toggle').trigger('click');
 
-    expect(playerApi.unequipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.relic.tome');
+    expect(playerApi.unequipItemInstance).toHaveBeenCalledWith(
+      demoPlayerId, 'char-1', 'instance-tome',
+    );
   });
 
   it('calls equipItem when clicking an unequipped backpack item toggle', async () => {
@@ -185,6 +197,7 @@ describe('ItemManagementTab', () => {
         { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
         { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
         { itemKey: 'item.c', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
+        { itemKey: 'item.d', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: false },
       ],
     });
     const profile = baseProfile(character);
@@ -203,7 +216,7 @@ describe('ItemManagementTab', () => {
     expect(dRow.find('.imk-toggle').attributes('disabled')).toBeDefined();
   });
 
-  it('does not disable equip for a companion just because the protagonist loadout is full', () => {
+  it('does not expose protagonist items in a companion inventory', () => {
     const protagonist = baseCharacter({
       items: [
         { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
@@ -228,8 +241,7 @@ describe('ItemManagementTab', () => {
     const wrapper = mount(ItemManagementTab, { props: { character: companion } });
 
     const backpackSection = wrapper.findAll('.imk-section')[1];
-    const row = backpackSection.findAll('.imk-row').find((r) => r.text().includes('item.a'))!;
-    expect(row.find('.imk-toggle').attributes('disabled')).toBeUndefined();
+    expect(backpackSection.text()).not.toContain('item.a');
   });
 
   it('shows the empty-backpack message when no permanent items are owned', () => {
@@ -239,6 +251,6 @@ describe('ItemManagementTab', () => {
     usePlayerStore().profile = profile;
     const wrapper = mount(ItemManagementTab, { props: { character } });
 
-    expect(wrapper.text()).toContain('Le sac permanent est vide pour l\'instant.');
+    expect(wrapper.text()).toContain('Ce personnage ne possède encore aucun objet permanent.');
   });
 });

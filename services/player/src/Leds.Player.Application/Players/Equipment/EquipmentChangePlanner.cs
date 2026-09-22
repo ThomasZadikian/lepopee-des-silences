@@ -35,6 +35,8 @@ public sealed class EquipmentChangePlanner
             return EquipmentChangePlan.Blocked(targetPosition, candidateId, "ItemDefinitionMissing", character.StatBlock);
 
         var blocking = new List<string>();
+        if (!character.Items.Any(item => item.Id == candidateId))
+            blocking.Add("ItemNotOwnedByCharacter");
         if (!candidateDefinition.AllowedSlots.Any(slot => PositionAccepts(targetPosition, slot)))
             blocking.Add("SlotNotAllowed");
 
