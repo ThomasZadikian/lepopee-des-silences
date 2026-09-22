@@ -19,7 +19,7 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldAddPermanentItems_WhenSelectionIsValid()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
         run.TryAddRunItem(CreateItem("item.relic.tome"));
 
         var repository = new Mock<IRunRepository>();
@@ -50,7 +50,7 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldCarryOverContainerContent_WhenConfirmedItemIsAFilledContainer()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
         var container = RunItem.Create(
             "item.fiole-cristal", "Fiole de cristal", "",
             RunItemType.Passive, RunItemRarity.Rare, 1, RunItemEffectType.None, 0,
@@ -138,7 +138,7 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldRejectARecipientOutsideTheRunParty()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
         run.TryAddRunItem(CreateItem("item.relic.tome"));
         var repository = new Mock<IRunRepository>();
         repository.Setup(candidate => candidate.GetByIdAsync(

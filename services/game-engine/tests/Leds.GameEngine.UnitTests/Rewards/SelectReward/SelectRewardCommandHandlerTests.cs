@@ -494,7 +494,7 @@ public sealed class SelectRewardCommandHandlerTests
         // permanent dès sa sélection en récompense — il n'entre jamais dans
         // run.RunItems, contrairement aux consommables couverts par les autres tests
         // de ce fichier (ex. Handle_ShouldGrantItemAndDeductBothCurrencies...).
-        var run = TestGameEngineFactory.CreateRun();
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
 
         var itemChoice = RewardChoice.Create(
             RewardType.TemporaryItem,
