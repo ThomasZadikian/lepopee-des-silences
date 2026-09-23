@@ -6,8 +6,9 @@ import type {
 } from '../../../party/types/playerTypes';
 import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
+import { playerApi } from '../../../party/api/playerApi';
 import { itemsApi } from '../../../party/api/itemsApi';
-import { useRunStore } from '../../stores/runStore';
+import { getActivePlayerId, useRunStore } from '../../stores/runStore';
 import { itemTypeMeta } from '../../../../shared/theme/typeColors';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
@@ -15,6 +16,15 @@ const playerStore = usePlayerStore();
 const runStore = useRunStore();
 const allItems = ref<ItemDefinitionView[]>([]);
 const pendingPlan = ref<EquipmentChangePlanView | null>(null);
+const openPosition = ref<EquipmentPosition | null>(null);
+const pinnedPosition = ref<EquipmentPosition | null>(null);
+const comparisonPlan = ref<EquipmentChangePlanView | null>(null);
+const comparisonItemKey = ref<string | null>(null);
+const comparisonLoading = ref(false);
+const comparisonError = ref<string | null>(null);
+const comparisonPointer = ref({ x: 0, y: 0 });
+const previewCache = new Map<string, EquipmentChangePlanView>();
+let previewRequestId = 0;
 
 const visiblePositions: Array<{ key: EquipmentPosition; label: string }> = [
   { key: 'Head', label: 'Tête' }, { key: 'Neck', label: 'Cou' },
@@ -191,17 +201,127 @@ function preferredPosition(itemKey: string): EquipmentPosition | null {
     ?? positions[0] ?? null;
 }
 
-async function requestEquip(item: PlayerPermanentItemView) {
+function slotCandidates(position: EquipmentPosition) {
+  return equippablePermanentItems.value.filter((item) =>
+    !equippedAssignment(item) && allowedPositions(item.itemDefinitionKey).includes(position));
+}
+
+function previewKey(item: PlayerPermanentItemView, position: EquipmentPosition) {
+  return `${item.itemInstanceId ?? item.itemDefinitionKey}:${position}`;
+}
+
+const comparisonStyle = computed(() => {
+  const width = typeof window === 'undefined' ? 1280 : window.innerWidth;
+  const height = typeof window === 'undefined' ? 800 : window.innerHeight;
+  return {
+    left: `${Math.max(8, Math.min(comparisonPointer.value.x + 18, width - 318))}px`,
+    top: `${Math.max(8, Math.min(comparisonPointer.value.y + 18, height - 330))}px`,
+  };
+});
+
+function trackComparisonPointer(event: MouseEvent) {
+  comparisonPointer.value = { x: event.clientX, y: event.clientY };
+}
+
+function clearComparison() {
+  previewRequestId += 1;
+  comparisonPlan.value = null;
+  comparisonItemKey.value = null;
+  comparisonLoading.value = false;
+  comparisonError.value = null;
+}
+
+function openSlotPicker(position: EquipmentPosition) {
+  if (openPosition.value !== position) clearComparison();
+  openPosition.value = position;
+}
+
+function closeSlotPicker(position: EquipmentPosition) {
+  if (pinnedPosition.value === position) return;
+  if (openPosition.value === position) openPosition.value = null;
+  clearComparison();
+}
+
+function toggleSlotPicker(position: EquipmentPosition) {
+  if (pinnedPosition.value === position) {
+    pinnedPosition.value = null;
+    openPosition.value = null;
+    clearComparison();
+    return;
+  }
+  pinnedPosition.value = position;
+  openSlotPicker(position);
+}
+
+function handleSlotFocusOut(event: FocusEvent, position: EquipmentPosition) {
+  const slot = event.currentTarget as HTMLElement;
+  if (event.relatedTarget instanceof Node && slot.contains(event.relatedTarget)) return;
+  closeSlotPicker(position);
+}
+
+async function loadEquipmentPreview(
+  item: PlayerPermanentItemView, position: EquipmentPosition,
+): Promise<EquipmentChangePlanView | null> {
+  if (!item.itemInstanceId) return null;
+  const key = previewKey(item, position);
+  const cached = previewCache.get(key);
+  if (cached) return cached;
+  const plan = await playerApi.previewEquipmentChange(
+    getActivePlayerId(), props.character.id, item.itemInstanceId, position,
+  );
+  previewCache.set(key, plan);
+  return plan;
+}
+
+async function previewCandidate(
+  item: PlayerPermanentItemView, position: EquipmentPosition, event?: Event,
+) {
+  if (event && 'clientX' in event) trackComparisonPointer(event as MouseEvent);
+  else if (event?.currentTarget instanceof HTMLElement) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    comparisonPointer.value = { x: bounds.right, y: bounds.top };
+  }
+
+  const itemKey = previewKey(item, position);
+  const requestId = ++previewRequestId;
+  comparisonItemKey.value = itemKey;
+  comparisonPlan.value = null;
+  comparisonError.value = null;
+
+  if (!item.itemInstanceId) {
+    comparisonLoading.value = false;
+    comparisonError.value = 'Comparaison indisponible pour cet objet historique.';
+    return;
+  }
+
+  comparisonLoading.value = true;
+  try {
+    const plan = await loadEquipmentPreview(item, position);
+    if (requestId === previewRequestId && comparisonItemKey.value === itemKey) {
+      comparisonPlan.value = plan;
+    }
+  } catch {
+    if (requestId === previewRequestId) {
+      comparisonError.value = 'Le comparatif ne peut pas être chargé pour le moment.';
+    }
+  } finally {
+    if (requestId === previewRequestId) comparisonLoading.value = false;
+  }
+}
+
+async function requestEquip(item: PlayerPermanentItemView, requestedPosition?: EquipmentPosition) {
   if (playerStore.isLoading || combatLocked.value) return;
-  const position = preferredPosition(item.itemDefinitionKey);
+  const position = requestedPosition ?? preferredPosition(item.itemDefinitionKey);
   if (!item.itemInstanceId || !position) {
     await playerStore.equipItem(props.character.id, item.itemDefinitionKey); // legacy migration fallback
     await syncRun();
     return;
   }
-  pendingPlan.value = await playerStore.previewEquipmentChange(
-    props.character.id, item.itemInstanceId, position,
-  );
+  pendingPlan.value = previewCache.get(previewKey(item, position))
+    ?? await playerStore.previewEquipmentChange(props.character.id, item.itemInstanceId, position);
+  pinnedPosition.value = null;
+  openPosition.value = null;
+  clearComparison();
 }
 function legacyLoadoutFull(item: PlayerPermanentItemView): boolean {
   return !item.itemInstanceId && !equippedAssignment(item)
@@ -213,6 +333,7 @@ async function confirmEquip() {
   await playerStore.equipItemInstance(
     props.character.id, plan.candidateItem.itemInstanceId, plan.targetPosition,
   );
+  previewCache.clear();
   pendingPlan.value = null;
   await syncRun();
 }
@@ -220,6 +341,7 @@ async function unequip(item: PlayerCharacterItemView) {
   if (playerStore.isLoading || combatLocked.value) return;
   if (item.itemInstanceId) await playerStore.unequipItemInstance(props.character.id, item.itemInstanceId);
   else await playerStore.unequipItem(props.character.id, item.itemKey);
+  previewCache.clear();
   await syncRun();
 }
 async function syncRun() {
@@ -250,11 +372,18 @@ async function syncRun() {
             <li v-for="position in leftPositions" :key="position">
               <article
                 class="imk-slot"
-                :class="{ 'imk-slot--empty': !equipmentSlot(position).item }"
+                :class="{
+                  'imk-slot--empty': !equipmentSlot(position).item,
+                  'imk-slot--picker-open': openPosition === position,
+                }"
                 :data-equipment-position="position"
                 :style="equipmentSlot(position).item
                   ? { '--slot-accent': itemTypeAccent(equipmentSlot(position).item!.itemKey).color }
                   : undefined"
+                @mouseenter="openSlotPicker(position)"
+                @mouseleave="closeSlotPicker(position)"
+                @mousemove="trackComparisonPointer"
+                @focusout="handleSlotFocusOut($event, position)"
               >
                 <span class="imk-slot__glyph" aria-hidden="true">
                   {{ equipmentSlot(position).item ? itemGlyph(equipmentSlot(position).item!.itemKey, position) : positionGlyphs[position] }}
@@ -278,6 +407,47 @@ async function syncRun() {
                   :disabled="playerStore.isLoading || combatLocked"
                   @click="unequip(equipmentSlot(position).item!)"
                 >×</button>
+                <button
+                  type="button"
+                  class="imk-slot__browse"
+                  :aria-label="`Choisir un objet pour ${equipmentSlot(position).label}`"
+                  :aria-expanded="openPosition === position"
+                  :disabled="combatLocked"
+                  @focus="openSlotPicker(position)"
+                  @click.stop="toggleSlotPicker(position)"
+                >⌄</button>
+                <div
+                  v-if="openPosition === position"
+                  class="imk-slot-picker"
+                  role="listbox"
+                  :aria-label="`Objets équipables : ${equipmentSlot(position).label}`"
+                >
+                  <header>
+                    <strong>{{ equipmentSlot(position).label }}</strong>
+                    <small>{{ slotCandidates(position).length }} compatible{{ slotCandidates(position).length > 1 ? 's' : '' }}</small>
+                  </header>
+                  <ul v-if="slotCandidates(position).length">
+                    <li v-for="item in slotCandidates(position)" :key="item.itemInstanceId ?? item.itemDefinitionKey">
+                      <button
+                        type="button"
+                        class="imk-slot-picker__item"
+                        role="option"
+                        :aria-selected="false"
+                        :disabled="playerStore.isLoading || combatLocked"
+                        @mouseenter="previewCandidate(item, position, $event)"
+                        @mousemove="trackComparisonPointer"
+                        @mouseleave="clearComparison"
+                        @focus="previewCandidate(item, position, $event)"
+                        @click="requestEquip(item, position)"
+                      >
+                        <span class="imk-slot-picker__glyph" aria-hidden="true">{{ itemGlyph(item.itemDefinitionKey, position) }}</span>
+                        <span><strong>{{ itemDisplayName(item.itemDefinitionKey) }}</strong><small>{{ definition(item.itemDefinitionKey)?.rarity ?? 'Objet' }}</small></span>
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    </li>
+                  </ul>
+                  <p v-else>Aucun objet compatible dans l'inventaire.</p>
+                </div>
               </article>
             </li>
           </ul>
@@ -299,11 +469,18 @@ async function syncRun() {
             <li v-for="position in rightPositions" :key="position">
               <article
                 class="imk-slot"
-                :class="{ 'imk-slot--empty': !equipmentSlot(position).item }"
+                :class="{
+                  'imk-slot--empty': !equipmentSlot(position).item,
+                  'imk-slot--picker-open': openPosition === position,
+                }"
                 :data-equipment-position="position"
                 :style="equipmentSlot(position).item
                   ? { '--slot-accent': itemTypeAccent(equipmentSlot(position).item!.itemKey).color }
                   : undefined"
+                @mouseenter="openSlotPicker(position)"
+                @mouseleave="closeSlotPicker(position)"
+                @mousemove="trackComparisonPointer"
+                @focusout="handleSlotFocusOut($event, position)"
               >
                 <span class="imk-slot__glyph" aria-hidden="true">
                   {{ equipmentSlot(position).item ? itemGlyph(equipmentSlot(position).item!.itemKey, position) : positionGlyphs[position] }}
@@ -327,6 +504,47 @@ async function syncRun() {
                   :disabled="playerStore.isLoading || combatLocked"
                   @click="unequip(equipmentSlot(position).item!)"
                 >×</button>
+                <button
+                  type="button"
+                  class="imk-slot__browse"
+                  :aria-label="`Choisir un objet pour ${equipmentSlot(position).label}`"
+                  :aria-expanded="openPosition === position"
+                  :disabled="combatLocked"
+                  @focus="openSlotPicker(position)"
+                  @click.stop="toggleSlotPicker(position)"
+                >⌄</button>
+                <div
+                  v-if="openPosition === position"
+                  class="imk-slot-picker"
+                  role="listbox"
+                  :aria-label="`Objets équipables : ${equipmentSlot(position).label}`"
+                >
+                  <header>
+                    <strong>{{ equipmentSlot(position).label }}</strong>
+                    <small>{{ slotCandidates(position).length }} compatible{{ slotCandidates(position).length > 1 ? 's' : '' }}</small>
+                  </header>
+                  <ul v-if="slotCandidates(position).length">
+                    <li v-for="item in slotCandidates(position)" :key="item.itemInstanceId ?? item.itemDefinitionKey">
+                      <button
+                        type="button"
+                        class="imk-slot-picker__item"
+                        role="option"
+                        :aria-selected="false"
+                        :disabled="playerStore.isLoading || combatLocked"
+                        @mouseenter="previewCandidate(item, position, $event)"
+                        @mousemove="trackComparisonPointer"
+                        @mouseleave="clearComparison"
+                        @focus="previewCandidate(item, position, $event)"
+                        @click="requestEquip(item, position)"
+                      >
+                        <span class="imk-slot-picker__glyph" aria-hidden="true">{{ itemGlyph(item.itemDefinitionKey, position) }}</span>
+                        <span><strong>{{ itemDisplayName(item.itemDefinitionKey) }}</strong><small>{{ definition(item.itemDefinitionKey)?.rarity ?? 'Objet' }}</small></span>
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    </li>
+                  </ul>
+                  <p v-else>Aucun objet compatible dans l'inventaire.</p>
+                </div>
               </article>
             </li>
           </ul>
@@ -381,6 +599,45 @@ async function syncRun() {
       </ul>
       <p v-else class="imk-empty">Ce personnage ne possède encore aucun objet permanent.</p>
     </section>
+
+    <aside
+      v-if="comparisonItemKey && (comparisonLoading || comparisonPlan || comparisonError)"
+      class="imk-comparison-tooltip"
+      :style="comparisonStyle"
+      aria-live="polite"
+    >
+      <template v-if="comparisonPlan">
+        <header>
+          <span>Comparatif</span>
+          <strong>{{ comparisonPlan.candidateItem.displayName }}</strong>
+        </header>
+        <p v-if="comparisonPlan.currentlyEquippedItem" class="imk-comparison-tooltip__replacement">
+          Remplace {{ comparisonPlan.currentlyEquippedItem.displayName }}
+        </p>
+        <ul v-if="comparisonPlan.statDeltas.some((delta) => delta.delta !== 0)">
+          <li v-for="delta in comparisonPlan.statDeltas.filter((entry) => entry.delta !== 0)" :key="delta.stat">
+            <span>{{ statLabel(delta.stat) }}</span>
+            <span>{{ delta.current }} → {{ delta.projected }}</span>
+            <strong :class="delta.delta > 0 ? 'is-positive' : 'is-negative'">
+              {{ delta.delta > 0 ? '+' : '' }}{{ delta.delta }}
+            </strong>
+          </li>
+        </ul>
+        <p v-else>Aucune variation de statistiques.</p>
+        <p v-for="skill in comparisonPlan.gainedTemporarySkills" :key="`hover-gain-${skill}`" class="is-positive">
+          + Compétence : {{ skill }}
+        </p>
+        <p v-for="skill in comparisonPlan.lostTemporarySkills" :key="`hover-loss-${skill}`" class="is-negative">
+          − Compétence : {{ skill }}
+        </p>
+        <p v-if="!comparisonPlan.canEquip" class="imk-error">
+          {{ comparisonPlan.blockingReasons.join(' · ') }}
+        </p>
+        <small>Cliquez pour afficher la confirmation.</small>
+      </template>
+      <p v-else-if="comparisonLoading" class="imk-comparison-tooltip__loading">Calcul du comparatif…</p>
+      <p v-else class="imk-error">{{ comparisonError }}</p>
+    </aside>
 
     <div v-if="pendingPlan" class="imk-preview" role="dialog" aria-modal="true" aria-label="Aperçu d'équipement">
       <div class="imk-preview__card">
@@ -517,6 +774,13 @@ async function syncRun() {
   transform: translateY(-1px);
 }
 
+.imk-slot--picker-open {
+  z-index: 12;
+  border-color: var(--slot-accent);
+  background: var(--raise);
+  opacity: 1;
+}
+
 .imk-slot-column--right .imk-slot {
   grid-template-columns: 22px minmax(0, 1fr) 32px;
   border-inline-start: 1px solid var(--line-soft);
@@ -534,6 +798,7 @@ async function syncRun() {
 .imk-slot-column--right .imk-slot__remove { grid-column: 1; grid-row: 1; }
 
 .imk-slot--empty { border-style: dashed; opacity: .58; }
+.imk-slot--empty.imk-slot--picker-open { opacity: 1; }
 
 .imk-slot__glyph,
 .imk-item-card__icon {
@@ -593,8 +858,8 @@ async function syncRun() {
 }
 
 .imk-slot-column--right .imk-slot__details { left: auto; right: 5px; }
-.imk-slot:hover .imk-slot__details,
-.imk-slot:focus-within .imk-slot__details { opacity: 1; transform: translateY(0); }
+.imk-slot:not(.imk-slot--picker-open):hover .imk-slot__details,
+.imk-slot:not(.imk-slot--picker-open):focus-within .imk-slot__details { opacity: 1; transform: translateY(0); }
 
 .imk-slot__remove {
   width: 21px;
@@ -604,6 +869,91 @@ async function syncRun() {
   place-items: center;
   border-color: transparent;
   font-size: 15px;
+}
+
+.imk-slot__browse {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink-5);
+  font-size: 12px;
+  cursor: pointer;
+}
+.imk-slot__browse:hover,
+.imk-slot__browse:focus-visible,
+.imk-slot__browse[aria-expanded='true'] { color: var(--mint-dim); outline: none; }
+.imk-slot__browse:disabled { opacity: .3; cursor: not-allowed; }
+.imk-slot-column--right .imk-slot__browse { right: auto; left: 2px; }
+
+.imk-slot-picker {
+  position: absolute;
+  z-index: 20;
+  top: -1px;
+  left: calc(100% - 1px);
+  width: min(270px, 72vw);
+  max-height: 310px;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  background: var(--raise);
+  box-shadow: var(--shadow-deep);
+  color: var(--ink-2);
+}
+.imk-slot-column--right .imk-slot-picker { left: auto; right: calc(100% - 1px); }
+.imk-slot-picker > header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+.imk-slot-picker > header strong {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.imk-slot-picker > header small { color: var(--ink-5); font-size: 8px; }
+.imk-slot-picker ul { list-style: none; margin: 0; padding: 4px; }
+.imk-slot-picker li + li { border-top: 1px solid var(--line-soft); }
+.imk-slot-picker > p { margin: 0; padding: 14px 10px; color: var(--ink-4); font-size: 9px; }
+.imk-slot-picker__item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.imk-slot-picker__item:hover,
+.imk-slot-picker__item:focus-visible { background: rgb(143 196 191 / 9%); outline: 1px solid rgb(143 196 191 / 26%); }
+.imk-slot-picker__item:disabled { opacity: .42; cursor: not-allowed; }
+.imk-slot-picker__item > span:nth-child(2) { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.imk-slot-picker__item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 500; }
+.imk-slot-picker__item small { color: var(--ink-5); font-size: 8px; }
+.imk-slot-picker__glyph {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  aspect-ratio: 1;
+  border: 1px solid var(--line-soft);
+  color: var(--mint-dim);
+  font-family: var(--font-display);
 }
 
 .imk-avatar-stage {
@@ -759,6 +1109,46 @@ async function syncRun() {
 
 .imk-empty { margin: 0; padding: 28px 14px; font-size: 11px; color: var(--ink-4); font-style: italic; }
 .imk-error { margin: 0; font-family: var(--font-mono); font-size: 11px; color: var(--danger-dim); }
+
+.imk-comparison-tooltip {
+  position: fixed;
+  z-index: 80;
+  width: min(300px, calc(100vw - 16px));
+  max-height: min(312px, calc(100vh - 16px));
+  overflow: auto;
+  padding: 11px;
+  border: 1px solid var(--line-strong);
+  background: rgb(18 20 25 / 98%);
+  box-shadow: var(--shadow-deep);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.imk-comparison-tooltip header { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.imk-comparison-tooltip header span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mint-dim);
+}
+.imk-comparison-tooltip header strong { color: var(--ink-2); font-size: 12px; }
+.imk-comparison-tooltip ul { list-style: none; margin: 8px 0; padding: 0; }
+.imk-comparison-tooltip li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 34px;
+  gap: 7px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.imk-comparison-tooltip li strong { text-align: right; }
+.imk-comparison-tooltip p { margin: 6px 0; font-size: 9px; }
+.imk-comparison-tooltip > small { color: var(--ink-5); font-size: 8px; }
+.imk-comparison-tooltip__replacement { color: var(--ink-5); }
+.imk-comparison-tooltip .is-positive { color: var(--mint-dim); }
+.imk-comparison-tooltip .is-negative { color: var(--danger-dim); }
+.imk-comparison-tooltip__loading { color: var(--ink-4); font-style: italic; }
 
 .imk-preview {
   position: fixed;

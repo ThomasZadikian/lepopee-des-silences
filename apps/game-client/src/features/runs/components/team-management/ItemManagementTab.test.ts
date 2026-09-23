@@ -8,7 +8,9 @@ import { usePlayerStore } from '../../../party/stores/playerStore';
 import { playerApi } from '../../../party/api/playerApi';
 import { itemsApi } from '../../../party/api/itemsApi';
 import { demoPlayerId } from '../../../runs/stores/runStore';
-import type { PlayerCharacterView, PlayerProfileView } from '../../../party/types/playerTypes';
+import type {
+  EquipmentChangePlanView, PlayerCharacterView, PlayerProfileView,
+} from '../../../party/types/playerTypes';
 
 vi.mock('../../../party/api/playerApi', () => ({
   playerApi: {
@@ -61,6 +63,40 @@ function baseProfile(character: PlayerCharacterView): PlayerProfileView {
       { itemInstanceId: 'instance-sac', itemDefinitionKey: 'item.equipment.sac', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
       { itemInstanceId: 'instance-other', itemDefinitionKey: 'item.never-equipped', sourceRunId: 'run-2', acquiredAtUtc: '2026-01-01T00:00:00Z' },
     ],
+  };
+}
+
+function equipmentPlan(overrides: Partial<EquipmentChangePlanView> = {}): EquipmentChangePlanView {
+  return {
+    targetPosition: 'Feet',
+    candidateItem: {
+      itemInstanceId: 'instance-sac',
+      definitionKey: 'item.equipment.sac',
+      displayName: 'Bottes du veilleur',
+    },
+    currentlyEquippedItem: null,
+    canEquip: true,
+    blockingReasons: [],
+    currentEffectiveStats: {
+      maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+      speed: 10, initiative: 10, focus: 0, mana: 0, charge: 0, movement: 4,
+    },
+    projectedEffectiveStats: {
+      maxVitality: 100, attackPower: 12, defense: 9, startingGuard: 0,
+      speed: 10, initiative: 10, focus: 0, mana: 0, charge: 0, movement: 4,
+    },
+    statDeltas: [{ stat: 'Defense', current: 6, projected: 9, delta: 3 }],
+    currentTemporarySkills: [],
+    projectedTemporarySkills: [],
+    gainedTemporarySkills: [],
+    lostTemporarySkills: [],
+    currentVitality: 100,
+    projectedCurrentVitality: 100,
+    currentMana: 0,
+    projectedCurrentMana: 0,
+    allowedSlots: ['Feet'],
+    proficiencyTags: [],
+    ...overrides,
   };
 }
 
@@ -145,6 +181,69 @@ describe('ItemManagementTab', () => {
 
     expect(wrapper.find('.imk-inventory-grid').exists()).toBe(true);
     expect(wrapper.findAll('.imk-item-card')).toHaveLength(2);
+  });
+
+  it('opens a slot picker on hover and lists only compatible unequipped items', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [
+        {
+          key: 'item.relic.tome', displayName: 'Le Tome 38', description: '', category: 'Relic',
+          flavorTag: 'Lore', rarity: 'Unique', effectRunType: null, effectValue: 0,
+          allowedSlots: ['Relic'],
+        },
+        {
+          key: 'item.equipment.sac', displayName: 'Bottes du veilleur', description: '', category: 'Armor',
+          flavorTag: 'Armure', rarity: 'Rare', effectRunType: null, effectValue: 0,
+          allowedSlots: ['Feet'],
+        },
+      ],
+    });
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    await wrapper.get('[data-equipment-position="Feet"]').trigger('mouseenter');
+
+    const picker = wrapper.get('.imk-slot-picker');
+    expect(picker.text()).toContain('Bottes du veilleur');
+    expect(picker.text()).not.toContain('Le Tome 38');
+    expect(picker.attributes('aria-label')).toContain('Pieds');
+  });
+
+  it('shows the server-authored statistic comparison beside the pointer', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [{
+        key: 'item.equipment.sac', displayName: 'Bottes du veilleur', description: '', category: 'Armor',
+        flavorTag: 'Armure', rarity: 'Rare', effectRunType: null, effectValue: 0,
+        allowedSlots: ['Feet'],
+      }],
+    });
+    vi.mocked(playerApi.previewEquipmentChange).mockResolvedValue(equipmentPlan());
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    await wrapper.get('[data-equipment-position="Feet"]').trigger('mouseenter');
+    const candidate = wrapper.get('.imk-slot-picker__item');
+    await candidate.trigger('mouseenter', { clientX: 180, clientY: 220 });
+    await flushPromises();
+
+    expect(playerApi.previewEquipmentChange).toHaveBeenCalledWith(
+      demoPlayerId, 'char-1', 'instance-sac', 'Feet',
+    );
+    const comparison = wrapper.get('.imk-comparison-tooltip');
+    expect(comparison.text()).toContain('Défense');
+    expect(comparison.text()).toContain('6 → 9');
+    expect(comparison.text()).toContain('+3');
+    expect(comparison.attributes('style')).toContain('left:');
+
+    await candidate.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Bottes du veilleur');
+    expect(playerApi.previewEquipmentChange).toHaveBeenCalledTimes(1);
   });
 
   it('shows the tactical contract of a weapon', async () => {
