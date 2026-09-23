@@ -105,7 +105,46 @@ describe('ItemManagementTab', () => {
     usePlayerStore().profile = baseProfile(character);
     const wrapper = mount(ItemManagementTab, { props: { character } });
 
-    expect(wrapper.find('.imk-section__title').text()).toContain('1 / 3');
+    expect(wrapper.find('.imk-profile-header__meta').text()).toContain('1 / 3');
+  });
+
+  it('renders the complete paper-doll layout with all authored equipment positions', () => {
+    const character = baseCharacter({ archetypeKey: 'archetype.ecrivain' });
+    usePlayerStore().profile = baseProfile(character);
+
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+
+    expect(wrapper.find('.imk-paper-doll').exists()).toBe(true);
+    expect(wrapper.findAll('[data-equipment-position]')).toHaveLength(14);
+    expect(wrapper.find('.imk-avatar-stage').text()).toContain('Le Porteur');
+    expect(wrapper.find('.imk-avatar-stage').text()).toContain('Ecrivain');
+  });
+
+  it('shows effective character statistics beside the equipment silhouette', () => {
+    const character = baseCharacter({
+      baseStats: {
+        maxVitality: 90, attackPower: 10, defense: 6, startingGuard: 0,
+        speed: 10, initiative: 10, focus: 0, mana: 0, charge: 0,
+      },
+    });
+    usePlayerStore().profile = baseProfile(character);
+
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    const stats = wrapper.find('.imk-stat-panel');
+
+    expect(stats.text()).toMatch(/Vitalité100\s*\+10/);
+    expect(stats.text()).toMatch(/Attaque12\s*\+2/);
+    expect(stats.text()).toContain('Déplacement4');
+  });
+
+  it('renders the permanent inventory as an item grid', () => {
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+
+    expect(wrapper.find('.imk-inventory-grid').exists()).toBe(true);
+    expect(wrapper.findAll('.imk-item-card')).toHaveLength(2);
   });
 
   it('shows the tactical contract of a weapon', async () => {
