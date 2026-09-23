@@ -246,6 +246,200 @@ describe('ItemManagementTab', () => {
     expect(playerApi.previewEquipmentChange).toHaveBeenCalledTimes(1);
   });
 
+  it('supports keyboard preview and pinned selection on a left-hand slot', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [
+        {
+          key: 'item.relic.tome', displayName: 'Le Tome 38', description: '', category: 'Relic',
+          flavorTag: 'Lore', rarity: 'Unique', effectRunType: null, effectValue: 0,
+          allowedSlots: ['Relic'],
+        },
+        {
+          key: 'item.equipment.sac', displayName: 'Lame de test', description: '', category: 'Weapon',
+          flavorTag: 'Arme', rarity: 'Rare', effectRunType: null, effectValue: 0,
+          allowedSlots: ['MainWeapon'],
+        },
+      ],
+    });
+    vi.mocked(playerApi.previewEquipmentChange).mockResolvedValue(equipmentPlan({
+      targetPosition: 'MainWeapon',
+      candidateItem: {
+        itemInstanceId: 'instance-sac',
+        definitionKey: 'item.equipment.sac',
+        displayName: 'Lame de test',
+      },
+    }));
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    const slot = wrapper.get('[data-equipment-position="MainWeapon"]');
+    await slot.trigger('mouseenter');
+    await slot.trigger('mousemove', { clientX: 100, clientY: 120 });
+    const candidate = slot.get('.imk-slot-picker__item');
+    await candidate.trigger('focus');
+    await flushPromises();
+    expect(wrapper.get('.imk-comparison-tooltip').text()).toContain('Lame de test');
+
+    await candidate.trigger('mouseleave');
+    expect(wrapper.find('.imk-comparison-tooltip').exists()).toBe(false);
+    await candidate.trigger('focus');
+    await flushPromises();
+    await candidate.trigger('click');
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Lame de test');
+    await wrapper.get('[role="dialog"] .imk-preview__actions button').trigger('click');
+
+    await slot.trigger('mouseenter');
+    const browse = slot.get('.imk-slot__browse');
+    await browse.trigger('click');
+    await slot.trigger('mouseleave');
+    expect(slot.find('.imk-slot-picker').exists()).toBe(true);
+    await browse.trigger('click');
+    expect(slot.find('.imk-slot-picker').exists()).toBe(false);
+
+    await browse.trigger('focus');
+    await slot.trigger('focusout', { relatedTarget: browse.element });
+    expect(slot.find('.imk-slot-picker').exists()).toBe(true);
+    await slot.trigger('focusout', { relatedTarget: document.createElement('button') });
+    expect(slot.find('.imk-slot-picker').exists()).toBe(false);
+  });
+
+  it('explains when a legacy item cannot provide a statistic comparison', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [{
+        key: 'item.equipment.legacy-boots', displayName: 'Vieilles bottes', description: '', category: 'Armor',
+        flavorTag: 'Armure', rarity: 'Common', effectRunType: null, effectValue: 0,
+        allowedSlots: ['Feet'],
+      }],
+    });
+    const character = baseCharacter({
+      items: [{
+        itemKey: 'item.equipment.legacy-boots', acquiredAtUtc: '2026-01-01T00:00:00Z',
+        source: 'legacy', isEquipped: false,
+      }],
+    });
+    const profile = baseProfile(character);
+    profile.permanentItems = [{
+      itemDefinitionKey: 'item.equipment.legacy-boots', sourceRunId: null,
+      acquiredAtUtc: '2026-01-01T00:00:00Z',
+    }];
+    usePlayerStore().profile = profile;
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    await wrapper.get('[data-equipment-position="Feet"]').trigger('mouseenter');
+    await wrapper.get('.imk-slot-picker__item').trigger('focus');
+
+    expect(wrapper.get('.imk-comparison-tooltip').text()).toContain(
+      'Comparaison indisponible pour cet objet historique.',
+    );
+    expect(playerApi.previewEquipmentChange).not.toHaveBeenCalled();
+  });
+
+  it('shows a non-blocking message when the comparison API fails', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [{
+        key: 'item.equipment.sac', displayName: 'Bottes du veilleur', description: '', category: 'Armor',
+        flavorTag: 'Armure', rarity: 'Rare', effectRunType: null, effectValue: 0,
+        allowedSlots: ['Feet'],
+      }],
+    });
+    vi.mocked(playerApi.previewEquipmentChange).mockRejectedValue(new Error('network'));
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    await wrapper.get('[data-equipment-position="Feet"]').trigger('mouseenter');
+    await wrapper.get('.imk-slot-picker__item').trigger('mouseenter');
+    await flushPromises();
+
+    expect(wrapper.get('.imk-comparison-tooltip').text()).toContain(
+      'Le comparatif ne peut pas être chargé pour le moment.',
+    );
+  });
+
+  it('renders replacement, skill and blocking details returned by the server', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [
+        {
+          key: 'item.relic.tome', displayName: 'Bottes actuelles', description: '', category: 'Armor',
+          flavorTag: 'Armure', rarity: 'Common', effectRunType: null, effectValue: 0,
+          allowedSlots: ['Feet'],
+        },
+        {
+          key: 'item.equipment.sac', displayName: 'Bottes interdites', description: '', category: 'Armor',
+          flavorTag: 'Armure', rarity: 'Rare', effectRunType: null, effectValue: 0,
+          allowedSlots: ['Feet'],
+        },
+      ],
+    });
+    vi.mocked(playerApi.previewEquipmentChange).mockResolvedValue(equipmentPlan({
+      candidateItem: {
+        itemInstanceId: 'instance-sac', definitionKey: 'item.equipment.sac', displayName: 'Bottes interdites',
+      },
+      currentlyEquippedItem: {
+        itemInstanceId: 'instance-tome', definitionKey: 'item.relic.tome', displayName: 'Bottes actuelles',
+      },
+      canEquip: false,
+      blockingReasons: ['Archétype incompatible'],
+      statDeltas: [],
+      gainedTemporarySkills: ['Pas léger'],
+      lostTemporarySkills: ['Ancrage'],
+    }));
+    const character = baseCharacter({
+      items: [
+        { itemInstanceId: 'instance-tome', itemKey: 'item.relic.tome', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true, position: 'Feet' },
+        { itemInstanceId: 'instance-sac', itemKey: 'item.equipment.sac', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: false },
+      ],
+    });
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    await wrapper.get('[data-equipment-position="Feet"]').trigger('mouseenter');
+    await wrapper.get('.imk-slot-picker__item').trigger('mouseenter');
+    await flushPromises();
+
+    const comparison = wrapper.get('.imk-comparison-tooltip');
+    expect(comparison.text()).toContain('Remplace Bottes actuelles');
+    expect(comparison.text()).toContain('Aucune variation de statistiques.');
+    expect(comparison.text()).toContain('+ Compétence : Pas léger');
+    expect(comparison.text()).toContain('− Compétence : Ancrage');
+    expect(comparison.text()).toContain('Archétype incompatible');
+  });
+
+  it('previews then confirms an instanced item from the permanent inventory', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [{
+        key: 'item.equipment.sac', displayName: 'Bottes du veilleur', description: '', category: 'Armor',
+        flavorTag: 'Armure', rarity: 'Rare', effectRunType: null, effectValue: 0,
+        allowedSlots: ['Feet'],
+      }],
+    });
+    vi.mocked(playerApi.previewEquipmentChange).mockResolvedValue(equipmentPlan());
+    const character = baseCharacter();
+    vi.mocked(playerApi.equipItemInstance).mockResolvedValue(baseProfile(character));
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    const sac = wrapper.findAll('.imk-item-card').find((card) => card.text().includes('Bottes du veilleur'))!;
+    await sac.get('.imk-toggle').trigger('click');
+    await flushPromises();
+    await wrapper.get('[role="dialog"] .imk-toggle--active').trigger('click');
+    await flushPromises();
+
+    expect(playerApi.previewEquipmentChange).toHaveBeenCalledWith(
+      demoPlayerId, 'char-1', 'instance-sac', 'Feet', undefined,
+    );
+    expect(playerApi.equipItemInstance).toHaveBeenCalledWith(
+      demoPlayerId, 'char-1', 'instance-sac', 'Feet', undefined,
+    );
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+  });
+
   it('shows the tactical contract of a weapon', async () => {
     vi.mocked(itemsApi.listActive).mockResolvedValue({
       items: [{
