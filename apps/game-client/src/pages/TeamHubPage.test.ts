@@ -207,7 +207,7 @@ describe('TeamHubPage', () => {
     expect(wrapper.text()).toContain('Valider les choix');
   });
 
-  it('switches to the Équipement tab and shows the equipped-items section', async () => {
+  it('switches to the Équipement tab and shows the character loadout', async () => {
     usePlayerStore().profile = baseProfile();
     const wrapper = mount(TeamHubPage);
     await flushPromises();
@@ -215,7 +215,8 @@ describe('TeamHubPage', () => {
     const tab = wrapper.findAll('.team-hub__tab').find((b) => b.text() === 'Équipement');
     await tab!.trigger('click');
 
-    expect(wrapper.text()).toContain('Objets équipés');
+    expect(wrapper.text()).toContain("Profil d'équipement");
+    expect(wrapper.find('.imk-paper-doll').exists()).toBe(true);
   });
 
   it('switches to the Besace tab and shows the empty-run status when no run is active', async () => {
