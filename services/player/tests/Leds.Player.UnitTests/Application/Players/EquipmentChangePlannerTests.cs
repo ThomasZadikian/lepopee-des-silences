@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Text.Json;
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Application.Players.Equipment;
 using Leds.Player.Domain.Players;
@@ -7,6 +8,21 @@ namespace Leds.Player.UnitTests.Application.Players;
 
 public sealed class EquipmentChangePlannerTests
 {
+    [Fact]
+    public async Task Plan_ShouldSerializeTargetPositionAsNameForGameEngine()
+    {
+        var setup = Setup([]);
+        setup.Equipment.Add(new EquipmentDefinitionSnapshot(
+            "item.heavy", "Leg armour", ["Legs"], null, [], []));
+
+        var plan = await setup.Planner.PlanAsync(
+            setup.Profile, setup.Character.Id, setup.Item.Id, EquipmentPosition.Legs,
+            null, null, CancellationToken.None);
+
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(plan, JsonSerializerOptions.Web));
+        json.RootElement.GetProperty("targetPosition").GetString().Should().Be("Legs");
+    }
+
     [Fact]
     public async Task Plan_ShouldUseCatalogSlotAndProficiencyMetadata()
     {
