@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Domain.Players;
 
@@ -180,7 +181,7 @@ public sealed class EquipmentChangePlanner
 }
 
 public sealed record EquipmentChangePlan(
-    EquipmentPosition TargetPosition,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] EquipmentPosition TargetPosition,
     EquipmentItemPlan CandidateItem,
     EquipmentItemPlan? CurrentlyEquippedItem,
     bool CanEquip,
